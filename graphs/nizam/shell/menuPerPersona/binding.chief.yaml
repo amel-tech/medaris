@@ -1,0 +1,20 @@
+# nizam.shell.menuPerPersona for the başnazım, on the local stack, in a wide window (1440 x 900): "Vedat", SYSTEM_ADMIN. The whole menu:
+# Genel, Platform, Talepler, Denetim and Ayarlar, seventeen entries (two of them with no page behind them: F-P0-4), the role line "Medaris
+# başnazımı", no picker. It makes and removes nothing: the stack's seed is the data. Under --absent the replay also looks for what he is
+# not given: no köşk menu (Dersler, Başvurular...), no "Çıkış yap", no "Celseler"/"Talebeler"/"Ders kayıtları", no language menu.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.chief.yaml \
+#     --to wide --absent --out <dir>
+# shell#9 is carried as the code draws it (22 texts, the list in the e2e has 21: F-X-20); a2 and a3 hold as written.
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  chief:
+    given: { opensAt: wide, who: chief, unread: none, waiting: none }
+    as: systemAdmin
+    open: '{nizam}/'

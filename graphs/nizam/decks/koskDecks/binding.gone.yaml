@@ -1,0 +1,49 @@
+# nizam.decks.koskDecks, gone meanwhile: the proposal the page shows is DELETED behind its back, so the nazım's write is answered 404 DECK_PROPOSAL_NOT_FOUND ("Bu öneri artık yok."),
+# and a deck hidden by someone else is answered 404 KOSK_DECK_NOT_FOUND ("Bu deste artık yok ya da zaten gizli."). The row leaves, the toast says why, and the dialog closes (FAIL.gone
+# of rejecting and of hiding); the form's write is refused and the form stays (FAIL.gone of submitting).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/decks/koskDecks \
+#     --bind graphs/nizam/decks/koskDecks/binding.gone.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How: as binding.answered.yaml, with the same doubts, except that the proposal is deleted with one SQL statement instead of refused (no route deletes a proposal: it is the walk's own
+# row, found by its title and nothing else), which is the only way to get a 404 for a proposal that existed. A deck that is hidden is answered 404 the same whether it was hidden or
+# deleted, so `confirmHide` hides it through the API as there. Data: the same as binding.yaml's `both`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.decks.koskDecks
+
+states:
+  rejectFormReady:
+    before:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, meanwhile, delete]
+        expect: 'deck-data meanwhile delete'
+  confirmHide:
+    before:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, meanwhile, hide]
+        expect: 'deck-data meanwhile hide'
+  formProposal:
+    before:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, meanwhile, delete, '3']
+        expect: 'deck-data meanwhile delete'
+
+scenarios:
+  gone:
+    given: { world: both, answer: gone }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    vars: { newName: 'Deneme destesi koskDecks sıfırdan', reason: 'Bu konu zaten bir destede var.' }
+    setup:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, make, kdecks, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi kdecks"'
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, make, both]
+        expect: 'decks=1 proposals=2'
+    teardown:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, kdecks]
+        expect: 'course remove kdecks'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from decks where kosk_id = '{seed.kosk2}') + (select count(*) from deck_proposals where kosk_id = '{seed.kosk2}') + (select count(*) from courses where title like 'Deneme dersi kdecks%') as n"]
+        expect: '"n":0'

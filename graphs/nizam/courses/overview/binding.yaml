@@ -1,0 +1,130 @@
+# nizam.courses.overview on the local stack (graphs/README.md, "The stack and the bindings"): nizam-web on :4001 in a wide window (1280 x 900), signed in
+# through Keycloak's real form as the köşk nazımı, the başnazım and the Medaris nazımı. Each of the first three scenarios makes a course of its own in the
+# seed's second köşk, Kubbealtı Köşkü (`--kosk {seed.kosk2}`, which the seed's köşk nazımı manages and no seeded flow reads), enters it the way a person
+# does, from Dersler, and removes it in `teardown`; the two refusal scenarios open the seed's own course by address and read it, change nothing.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/courses/overview \
+#     --bind graphs/nizam/courses/overview/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code. What the stack was SEEN to
+# say, as GETs: the Medaris nazımı is refused by GET /courses/<seeded>/stats (403 AUTHZ_FORBIDDEN), and GET /me gives the başnazım `roles.systemAdmin`.
+# `--emit-spec` only loads the binding.
+#
+# Every walk of a scenario runs its `setup` and its `teardown` (the replay begins and ends a scenario for each path), so a path that presses Onayla
+# changes only the course that walk made, and the next path makes another. `course.mjs make` takes a tag made before away first, so a crashed walk
+# leaves nothing in the way, and `remove` says `none` the second time.
+#
+#   triage    the main story. "Deneme dersi ovwMain" in a köşk of its own: applicantC and applicantD apply to a course that asks for approval and
+#             wait; applicantE applies and is answered with Onayla by the köşk nazımı (POST .../approve), so the course holds ONE enrolled talebe
+#             and TWO waiting applications; the başmüderris is seated as a second hoca (helpers/seat-hoca.mjs), so the imam's star is drawn;
+#             overview-data.mjs then shapes the four celses (Celse 1 with no way in, Celse 2 a Zoom link, Celse 3 cancelled, Celse 4 in person) and
+#             reads the counts the page must show from what was made. The köşk nazımı opens Dersler and follows the course's title, reads the
+#             warning for "Celse 1" and the rows, and `--cover transitions` takes every link and button of the page from here, Onayla and Reddet
+#             included (the hand-over `handed_over.decide_applications`; what they do is nizam.courses.decideApplications's).
+#   chief     the başnazım on "Deneme dersi ovwChief": open enrollment, applicantG enrolled at once, so the course holds one enrolled talebe and no
+#             waiting application; every celse has a way in and one is cancelled, so no warning; one hoca, so no star. "Nazar’da aç" is drawn
+#             (e2e kosk-view#13) and `--cover transitions` presses it: a new tab at nazar's /ders/<id>/nazirlar, this tab staying on the page.
+#   draft     the köşk nazımı on "Deneme dersi ovwDraft": a DRAFT with one week and one celse twenty days ago, so the badge says Taslak (e2e
+#             kosk-view#15), no celse is ahead ("Yaklaşan celse yok"), no application waits ("Bekleyen başvuru yok") and the week has begun ("Devam eden
+#             hafta" 1 of "Toplam 1 hafta").
+#   refused   the Medaris nazımı opens the seed's own course "Nahiv Metinleri": GET /courses/:id/stats answers 403 and the page draws "Bu bölüm için
+#             izniniz yok". The 404 of the same call (a course that is not there) draws the same screen through the same transition and is not a
+#             scenario of its own. Reading the seeded course writes audit rows only if the reader is allowed; a refused read writes none.
+#   elsewhere the köşk nazımı opens the seeded course under the OTHER köşk's address: the numbers answer, the course is not that köşk's
+#             (`course.koskId !== kosk.id`), and the page draws the same screen through notFound(). The reads of the köşk nazımı on the seeded course
+#             write the audit rows every load of the page writes (course.content_read, and course.roster_read for the numbers and the enrollments).
+#
+# Not bound in this file, with the reason:
+#   answer: statsFailed, down; applications: unreadable    the stack cannot make tedrisat fail a read (RETRY is not bound either)
+#   answer: refused by a 404       the same transition as the 403; one scenario walks it
+#   a hosted course (a medrese's course in the köşk)        the seed has none in the köşk's page and `--madrasah` courses are the nazar flows' data;
+#                                  e2e kosk-view#13 opens one as the başnazım (needs.yaml says what is left)
+#   hocas: none                    a course is saved with at least one hoca
+# What e2e kosk-view#11-#15 assert that no scenario carries: #11's exact rows (three: no way in, cancelled, Zoom; here four with the in-person row and
+# counts read from the course), its text "Mehmet Emin Işıkoğlu" (the seed's own name; here the hocas' count and "Hoca" are read), #12 is stale (it
+# waits for /edit, which never commits; the walk takes the redirect to /curriculum), #14's second half (the numbers after Onayla, nizam.courses.
+# decideApplications), and #13's hosted course.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.overview
+
+browser: { width: 1280, height: 900 }
+
+scenarios:
+  triage:
+    given: { answer: ok, applications: some, reader: nazim, status: published, enrollment: approval, programme: lacking, hocas: several }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/dersler'
+    vars: { course: '{ovwMain.course}' }
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'koskCourses->courseOverview' }
+    setup:
+      - run: [node, helpers/course.mjs, make, ovwMain, --kosk, '{seed.kosk2}', --approval, --talebe, applicantC, applicantD, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+      - run: [node, helpers/api.mjs, koskNazim, POST, '/courses/{ovwMain.course}/enrollments/{secret.E2E_APPLICANT_E_SUB}/approve']
+        expect: ENROLLED
+      - run: [node, helpers/seat-hoca.mjs, '{ovwMain.course}', basmuderris]
+        expect: 'seat-hoca MEDRESE_BASMUDERRIS'
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, build, ovwMain, lacking, --approved, '1']
+        expect: 'overview-data build ovwMain lacking'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, ovwMain]
+        expect: 'course remove ovwMain'
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, clear]
+        expect: 'overview-data clear'
+
+  chief:
+    given: { answer: ok, applications: none, reader: chief, status: published, enrollment: open, programme: covered, hocas: one }
+    as: systemAdmin
+    open: '{nizam}/kosks/{seed.kosk2}/dersler'
+    vars: { course: '{ovwChief.course}' }
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'koskCourses->courseOverview' }
+    setup:
+      - run: [node, helpers/course.mjs, make, ovwChief, --kosk, '{seed.kosk2}', --talebe, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, build, ovwChief, covered]
+        expect: 'overview-data build ovwChief covered'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, ovwChief]
+        expect: 'course remove ovwChief'
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, clear]
+        expect: 'overview-data clear'
+
+  draft:
+    given: { answer: ok, applications: none, reader: nazim, status: draft, enrollment: open, programme: empty, hocas: one }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/dersler'
+    vars: { course: '{ovwDraft.course}' }
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'koskCourses->courseOverview' }
+    setup:
+      - run: [node, helpers/course.mjs, make, ovwDraft, --kosk, '{seed.kosk2}', --draft, --weeks, '1', --lessons, '1', --start, '-20']
+        expect: '"title":"Deneme dersi ovwDraft"'
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, build, ovwDraft, empty]
+        expect: 'overview-data build ovwDraft empty'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, ovwDraft]
+        expect: 'course remove ovwDraft'
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, clear]
+        expect: 'overview-data clear'
+
+  refused:
+    given: { answer: refused, applications: none, reader: nazim, status: published, enrollment: open, programme: empty, hocas: one }
+    as: medarisNazim
+    open: '{nizam}/kosks/{seed.kosk}/courses/{seed.courses.standalone}'
+    # the screen draws none of the overview, but `--absent` looks for its nodes and some of them are spelled with the numbers: an empty file satisfies them
+    setup:
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, blank]
+        expect: 'overview-data blank'
+    teardown:
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, clear]
+        expect: 'overview-data clear'
+
+  elsewhere:
+    given: { answer: elsewhere, applications: none, reader: nazim, status: published, enrollment: open, programme: empty, hocas: one }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{seed.courses.standalone}'
+    setup:
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, blank]
+        expect: 'overview-data blank'
+    teardown:
+      - run: [node, ../nizam/courses/overview/overview-data.mjs, clear]
+        expect: 'overview-data clear'

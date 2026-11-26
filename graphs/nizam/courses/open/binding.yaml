@@ -1,0 +1,133 @@
+# nizam.courses.open on the local stack (graphs/README.md, "The stack and the bindings"): nizam-web at http://localhost:4001, the köşk nazımı
+# of a köşk made for the walk, and the form "Ders aç".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/open \
+#     --bind graphs/nizam/courses/open/binding.yaml --absent --out <dir>                                (the main story)
+#   ... --cover transitions --absent --out <dir>                                                       (every scenario below)
+#   ... --bind graphs/nizam/courses/open/binding.<sessionsFailed|forbidden|requestLeft>.yaml --cover transitions --out <dir>   (the three walks
+#       that need events or a node `before` of their own)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every address below is from the
+# code and unverified until the walk phase. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>`, read-only: it
+# writes a spec and walks nothing).
+#
+# The data. This flow writes (a course, its celses, the answer to a request), so none of it happens in a seeded köşk, which other flows read:
+# every scenario that opens a course makes a köşk of its own in `setup` (walk-data.mjs, tedrisat's HTTP API as the başnazım; KOSK_NAZIM is its
+# one nazım) and `teardown` removes every course whose title starts with "Deneme dersi nizam-courses-open", the course request of the walk, the
+# notifications that point at those courses and the köşk. `setup` removes the same tag first, so a walk that died leaves nothing to be
+# refused. The hocas are the seeded MUDERRIS ("Hamdi Müderris", the first, as the e2e takes her) and the spare talebe APPLICANT_C ("Esma
+# Başvuran", the second); while a walk runs they hold the müderris role of the draft, and teardown takes the course away and with it their
+# rows. The two walks that only read (a nazım of Medaris who does not manage the köşk, and a köşk that is not there) write nothing.
+#
+# What a walk leaves and cannot remove: audit_log rows (kosk.create and kosk.delete, user.lookup for each hoca found, course_request.create
+# and .accept, the nazım changes). Nothing is sent to anyone: no talebe is enrolled in the course.
+#
+# The start date is fixed (Monday 1 March 2027): the summary then reads "2 celse planlanacak, 1 Mart – 8 Mart 2027, her Pazartesi 21:00".
+#
+# Scenarios (each adds transitions the others do not, which is why they are in one file; the three that need their own events or a node
+# `before` are the files beside it):
+#   opens           (the main story) a köşk with no policy, the blank form is refused (the four messages), the name is typed, the first hoca
+#                   found, the date and a day set, and the course made with its two celses; the walk also reaches the second hoca, the imam,
+#                   the unvan, the boxes, the draft or published choice and the way out, through `--cover transitions` (courses#1, #2, #3)
+#   lockApproval    the köşk's policy fixes "Kayıt onayı gereksin" on: the sentence says so
+#   notFound        an address the realm does not know
+#   fromRequest     opened by ?talep=<id> of a request the walk makes: the name starts with its title and the course answers it (accepts)
+#   requestGone     opened by ?talep= of an id nobody has: a blank form that answers nothing
+#   refused         a nazım of Medaris, who does not manage the köşk: the "Bu bölüm için izniniz yok" screen
+#   missing         a köşk id that does not exist: the same screen with a 404
+#   (binding.sessionsFailed.yaml) 52 weeks of four days: the course is made and the 208 celses are refused, and the page lands on Celse planla
+#   (binding.forbidden.yaml)      the nazım is taken off the köşk between filling the form and pressing: the course is refused
+#   (binding.requestLeft.yaml)    the request is answered by another between the page and the press: the course is made, the request is not
+# Not bound, and why:
+#   - access: unreadable (the page that says the course information could not be read): tedrisat answers every read the stack makes and the
+#     stack cannot make both reads fail
+#   - lookup: down: the realm's directory cannot be made to stop
+#   - answer: unknownUser (an account that vanishes between the search and the press) and failed (the directory down, a body the API
+#     refuses, a naming-oneself refusal: a nazım of the köşk naming themselves is refused or not by tedrisat's self-grant guard, and
+#     helpers/course.mjs says the köşk's nazım cannot also be a hoca, which was not verified)
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.open
+
+scenarios:
+  # The main story: Dersler of the walk's köşk, "Ders aç" pressed (kosk-view#10), the blank form refused, the name typed, the hoca found by
+  # e-mail address, the date and a day set, the course made. `--cover transitions` also walks the second hoca, the imam, the unvan, "Çıkar",
+  # the boxes, "Hemen yayımla", the cover caption and the way out through Vazgeç and the breadcrumb.
+  opens:
+    given: { fromRequest: false, access: open, request: accepted, lookup: found, policy: free, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskCourses->courseNew' }
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }
+  # The köşk's policy "her kayıt onaylı": the box is checked and off limits and the sentence under it says so (nizam.settings of the köşk
+  # sets it; here the köşk is made with it). The course is made with approval on whatever the form shows (courses#3's neighbour, MDRS-174).
+  lockApproval:
+    given: { fromRequest: false, access: open, request: accepted, lookup: found, policy: locked, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskCourses->courseNew' }
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open, --locked]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":true', wantLessons: '"lessons":2' }
+  # An address no account has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." under the search field, nobody listed.
+  notFound:
+    given: { fromRequest: false, access: open, request: accepted, lookup: notFound, policy: free, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskCourses->courseNew' }
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: kimse.yok@example.test, hocaB: baskasi.yok@example.test, startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }
+  # "Kabul et" of nizam.courseRequests.decide leaves the person on the form with ?talep=<id>; the walk opens that address (the other flow's
+  # walk is not run here). The name starts with the request's title, so no FILL_IN is taken; the course is made and the request is accepted
+  # with it (the effect `acceptCourseRequest`).
+  fromRequest:
+    given: { fromRequest: true, access: open, request: accepted, lookup: found, policy: free, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/new?talep={made.request}'
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open, --request]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open talep, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }
+  # A ?talep= nobody has: the page opens a blank form and says nothing (F-W4-open-6); the course answers no request.
+  requestGone:
+    given: { fromRequest: true, access: open, request: gone, lookup: found, policy: free, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/new?talep=00000000-0000-4000-8000-000000000000'
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }
+  # The seeded Medaris nazımı reaches the address of a seeded köşk she does not manage (the layout lets a nazım of Medaris through, the page
+  # does not): the refusal screen. Nothing is made or changed, so there is no setup and no teardown.
+  refused:
+    given: { fromRequest: false, access: refused, request: accepted, lookup: found, policy: free, answer: created }
+    as: medarisNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/new'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }
+  # A köşk id that does not exist: the köşk is not read, the caller's roles are, and the page answers the same screen with a 404. Nothing is made.
+  missing:
+    given: { fromRequest: false, access: missing, request: accepted, lookup: found, policy: free, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/00000000-0000-4000-8000-000000000000/courses/new'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }

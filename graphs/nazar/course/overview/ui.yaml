@@ -1,0 +1,77 @@
+# The screens of nazar.course.overview: Genel bakış of a course (/ders/<id>), with its boxes of waiting work, and the face of a
+# course that could not be read. Read from apps/nazar/features/course-overview; the words are copied from
+# libs/i18n/src/locales/tr/nazar.json, key for key. Four messages are not in an i18n file; the catalog keeps them under
+# `composed.` with the code that builds each:
+#   composed.CourseOverview.courseTitle      "{title}"   the course's title in the h1, in a <bdi> (course-overview-page.tsx:91)
+#   composed.CourseOverview.count            "{count}"   a box's number, Intl.NumberFormat(locale) in <p class="mds-h2"> (:131)
+#   composed.CourseOverview.nextSessionTime  "{time}"    the next celse's start worded by sessionTime(), on the course's clock
+#                                                        (course-overview.ts:75, features/pano/pano.ts:142), e.g. "17 Kas Sal 21:00"
+#   composed.CourseOverview.openInTedrisName "Tedris’te aç (yeni sekmede açılır)"  the link's accessible name: its text, a space and the
+#                                                        visually hidden CourseOverview.openInTedrisHint (:107-111)
+# No message says what a flow changes: the flow only reads, so there is no `changes` key.
+schema: delurio-graph/0
+kind: ui
+id: nazar.course.overview
+flow: nazar.course.overview
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  title: Sarf Dersi
+  count: "2"
+  time: 17 Kas Sal 21:00
+
+# The page keeps no focus of its own on load (nothing in features/course-overview sets one), so there is no `initialFocus` on the
+# page and no `focus` here: the graph says nothing of what the code does not say (focus-not-set below).
+nodes:
+  # --- the page -------------------------------------------------------------------------------------------------------------
+  overviewPage: { type: page, component: Page, role: main, in: [listed, empty, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: composed.CourseOverview.courseTitle, params: { title: course.title } }, in: [listed, empty], source: apps/nazar/features/course-overview/components/course-overview-page.tsx:90 } # h1: the title in a <bdi> and the state's badge, so its accessible name ends with "Yayında" or "Taslak"
+  courseStatus: { type: text, component: Text, text: { oneOf: [Account.scopeBadge.published, Account.scopeBadge.draft] }, in: [listed, empty], source: apps/nazar/features/course-overview/components/course-overview-page.tsx:92 } # a Badge inside the h1 (data-testid="course-status"); Yayında for a published course, Taslak for a draft one
+  openInTedris: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.CourseOverview.openInTedrisName }, text: { key: CourseOverview.openInTedris }, in: [listed, empty], emits: OPEN_TEDRIS, source: apps/nazar/features/course-overview/components/course-overview-page.tsx:100 } # target=_blank and rel=noopener noreferrer; the new tab is said in the name; left out when NAZAR__TEDRIS_URL is empty
+
+  # --- the boxes ------------------------------------------------------------------------------------------------------------
+  # Each box is a Card (libs/ui/src/mds/card.tsx): an <h3> that holds the link, and the value in a <p class="mds-h2"> outside the
+  # link, whose ::after covers the card. The four headings are not drawn as nodes of their own; they are F-C-course-a-18.
+  boxList: { type: list, component: List, role: list, name: { key: CourseOverview.listLabel }, in: [listed], source: apps/nazar/features/course-overview/components/course-overview-page.tsx:118 } # <ul aria-label>, data-testid="overview-boxes"
+  boxApplications: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.boxes.applications }, in: [listed], when: "applications == 'waiting'", emits: FOLLOW_APPLICATIONS, source: apps/nazar/features/course-overview/course-overview.ts:72 } # the link's name is the title alone, not the number (F-C-course-a-18)
+  valueApplications: { type: text, component: Text, text: { key: composed.CourseOverview.count, params: { count: course.pendingApplications } }, in: [listed], when: "applications == 'waiting'", source: apps/nazar/features/course-overview/components/course-overview-page.tsx:130 }
+  boxHomework: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.boxes.homework }, in: [listed], when: "homework == 'waiting'", emits: FOLLOW_HOMEWORK, source: apps/nazar/features/course-overview/course-overview.ts:73 }
+  valueHomework: { type: text, component: Text, text: { key: composed.CourseOverview.count, params: { count: course.awaitingReview } }, in: [listed], when: "homework == 'waiting'", source: apps/nazar/features/course-overview/components/course-overview-page.tsx:130 }
+  boxLacking: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.boxes.withoutAccess }, in: [listed], when: "sessions == 'lacking'", emits: FOLLOW_LACKING, source: apps/nazar/features/course-overview/course-overview.ts:74 } # leads a reader who holds neither celse code to a refusal (OVERVIEW-1)
+  valueLacking: { type: text, component: Text, text: { key: composed.CourseOverview.count, params: { count: course.sessionsWithoutAccess } }, in: [listed], when: "sessions == 'lacking'", source: apps/nazar/features/course-overview/components/course-overview-page.tsx:130 }
+  boxNext: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.boxes.nextSession }, in: [listed], when: "sessions != 'none'", emits: FOLLOW_NEXT, source: apps/nazar/features/course-overview/course-overview.ts:75 } # drawn for every reader of the course, whatever they hold (OVERVIEW-1)
+  valueNext: { type: text, component: Text, text: { key: composed.CourseOverview.nextSessionTime, params: { time: course.nextSession } }, in: [listed], when: "sessions != 'none'", source: apps/nazar/features/course-overview/course-overview.ts:75 } # a time, not a number: the course's clock, not the reader's
+
+  # --- nothing is drawn as waiting ------------------------------------------------------------------------------------------
+  emptyLine: { type: text, component: Text, text: { key: CourseOverview.empty }, in: [empty], source: apps/nazar/features/course-overview/components/course-overview-page.tsx:116 } # an EmptyState: a div and a paragraph, no role, no live region
+
+  # --- the course could not be read -------------------------------------------------------------------------------------------
+  failedPageTitle: { type: text, component: Heading, role: heading, text: { key: Nav.ders.overview }, in: [loadFailed], source: apps/nazar/features/course-overview/components/course-overview-page.tsx:48 } # h1: the page's own, drawn before the face
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState inside the shell is a <section aria-labelledby>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: CourseOverview.loadFailedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # an h1 again: LoadFailed passes no headingLevel (F-L-16)
+  failedText: { type: text, component: Text, text: { key: CourseOverview.loadFailed }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:46 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+
+edges:
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { triggers: [boxApplications, students_opened] }
+  - { triggers: [boxHomework, homework_opened] }
+  - { triggers: [boxLacking, sessions_opened] }
+  - { triggers: [boxLacking, sessions_refused] }
+  - { triggers: [boxNext, sessions_opened] }
+  - { triggers: [boxNext, sessions_refused] }
+  - { triggers: [retryButton, opened] }
+
+rules:
+  - { id: F-C-course-a-18, rule: "The boxes are Cards whose title is an <h3> straight under the page's <h1> (h2 is skipped: card.tsx:8,29-30), and the value, a number or the time of the next celse, is a <p class=\"mds-h2\"> outside the link (card.tsx:47-51; course-overview-page.tsx:130), so a list of links reads \"Bekleyen başvuru\", \"Sıradaki celse\" with no number and no time, and a paragraph is dressed as a heading. Fix: headingLevel={2} on the Cards, and the value inside the link as visually hidden text, or aria-describedby on the link." }
+  - { id: OVERVIEW-1, rule: "\"Sıradaki celse\" is drawn from the course read alone, for every reader of the course, and \"Katılım yolu eksik celse\" for every reader who holds course.staff_read (enrollment.decide, enrollment.complete or enrollment.remove bring it); both are plain links to Celseler, whose page asks session.manage or session.live_link (sessions-page.tsx:54, course-permissions.ts:37). A ders nazırı granted neither (a post with no permission, or one with enrollment.decide only; the seeded post holds session.manage and is not led astray) is led from the box to \"Bu sayfaya izniniz yok\". It is the nav graph's `link-refused` (course-overview.ts:74-75). The menu already cuts entries by code (MDRS-290: Ödevler, Değerlendirme, Ders destesi); the boxes do not. Not seen in a browser: read from the code, and from the effective-permissions rule that makes course.staff_read follow roster work (libs/common/src/authz/effective-permissions.ts:294). Fix: draw both boxes only for a holder of one of the two codes, or without a link. New finding (not in the inventory); the domain's getCourseBadgeCounts and the page's gate are the evidence." }
+  - { id: OVERVIEW-2, rule: "The tab's title is \"Genel bakış · Medaris Nazar\" for every course (page.tsx:5-8 reads only the catalog, and the root template adds the app's name), and the h1 names the course while the title does not, so a müderris with several courses open in tabs, or a history entry, cannot tell them apart (WCAG 2.4.2, 2.4.6). Proposed id; not in the inventory (0.2 notes the fact, not as a finding). Fix: generateMetadata reads the course's title, as the other course pages could." }
+  - { id: OVERVIEW-3, rule: "A box is drawn only for a count above zero; a count that could not be read, whether refused (a ders nazırı) or failed (a 500 of badge-counts, a failed submissions read), is null and draws nothing (course-overview-page.tsx:71-78; overviewBoxes drops null as it drops zero). A course whose every box is missing then says \"Bekleyen işiniz yok.\", so a failed read is told as an empty list where the page has a retry for the course read only. The code comment owns the choice (\"rather than a zero\"); the empty line is what makes it untrue. Proposed id; not in the inventory. Fix: tell a failed read apart (a line or a retry), keep the refusal quiet." }
+  - { id: F-L-16, rule: "The retry face is a SystemState with `shell`, whose heading level defaults to 1 (system-state.tsx:24; load-failed.tsx draws no headingLevel), under the page's own <h1> \"Genel bakış\": two <h1> on the page. Read from the code, not seen (nothing in the stack makes the course read fail). Fix: LoadFailed passes headingLevel={2} when `shell` (shared with nazar.shell.errorStates)." }
+  - { id: focus-not-set, rule: "Nothing in features/course-overview sets autoFocus, initialFocus or calls .focus(), so the graph says nothing of where the focus is when the page opens, and a box link leaves the page (a full document request), so there is no return to draw. Recorded so the silence is not read as an omission. Where the browser leaves it after a navigation is not verified." }
+  - { id: no-loading-file, rule: "This page is the only one of the course's pages with no loading.tsx (app/ders/[dersId]/ holds none), so the root loading.tsx, the skeleton of the whole shell, stands in while its reads run, where the others show a skeleton of their own body under the shell that is already drawn. Read from the code; not seen in a browser. A note, not a finding: nothing is announced either way (the root skeleton's <output> says \"Yükleniyor\")." }
+  - { id: hidden-course-badge, rule: "The badge can say only Yayında or Taslak (course-overview-page.tsx:66,93): CourseDetailResponse has no hidden flag, while Hesap's badge for the same course says Gizli (features/account/assignments-view.ts:28). Whether a hidden course can be opened here at all (the başnazım, or a başmüderris, by its address) and what this page then says was not verified. A note, not a finding." }
+  - { id: new-tab-is-said, rule: "\"Tedris’te aç\" opens a new tab and says so in its name, with a visually hidden \"(yeni sekmede açılır)\" (course-overview-page.tsx:107-111). Holds; the recordings' \"Aç\" link does not (F-C-course-a-22, nazar.recordings.*)." }
+  - { id: label-in-name, rule: "A link's visible text is contained in its accessible name: \"Tedris’te aç\" in \"Tedris’te aç (yeni sekmede açılır)\", and each box's title in itself (WCAG 2.5.3). Holds." }

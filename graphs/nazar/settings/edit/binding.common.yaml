@@ -1,0 +1,72 @@
+# nazar.settings.edit on the local stack, the parts every file of this folder shares: the data source, the events, the locators of
+# the nodes that role and name cannot find, and the two exits. It has no scenario and no effect: `binding.yaml` (the walks that save and
+# the two reads) and `binding.refused.yaml` (the two saves the API refuses) extend it, because `extends` merges scenarios by key and a
+# walk of the second file must not walk the first's again.
+#
+# The walk never changes a seeded medrese. `setup` makes a medrese of its own through tedrisat's HTTP API (settings-data.mjs, a helper
+# of this folder): "Ayarlar Deneme Medresesi", never saved, with a description and the spare talebe APPLICANT_C ("Esma Başvuran") as its
+# başmüderris; `--saved` has her save it once (alwaysApproval on, as the e2e's seed has it) and `--courses` gives it a hosting right in
+# the seed's second köşk and three courses (published, draft, hidden). Its ids and words go to graphs/.local/made/settingsEdit.json, read
+# here as the data source `made`. `teardown` removes the courses, deletes the medrese (its settings row, hosting right and role
+# assignments go with it) and clears the notification her appointment sent. What it cannot undo: the audit rows (madrasah.create,
+# madrasah.settings.update, madrasah.delete, hosting_right.grant) and the invitation mails of the three courses (course.mjs clears
+# those). `nazirRefused` only reads the seeded medrese, as the seeded nazır.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.settings.edit
+
+data:
+  made: { json: ../.local/made/settingsEdit.json }
+
+# What the walk types is the scenario's `vars`: the flow only knows that a field was typed in, and the case variable `attempt` says which
+# kind of text. A field the walk types in is no longer compared with its saved value (SPEC §4), so the `value` of the name and the
+# description is checked on the way in only.
+events:
+  EDIT:
+    - fill: { role: textbox, name: Medrese adı, value: '{typedName}' }
+    - fill: { role: textbox, name: Açıklama, value: '{typedDescription}' }
+  # a second change after a save: the description again (the same text would leave the form as saved, and Kaydet off)
+  EDIT_AGAIN:
+    - fill: { role: textbox, name: Açıklama, value: '{typedAgain}' }
+  # a refused field typed again: both fields are put to text the page accepts
+  FIX:
+    - fill: { role: textbox, name: Medrese adı, value: '{fixName}' }
+    - fill: { role: textbox, name: Açıklama, value: '{fixDescription}' }
+  RELOAD:
+    - reload: true
+  # leaving by the address: the başmüderris's landing is her Pano
+  NAVIGATE:
+    - goto: '{nazar}/'
+
+states:
+  left: { url: '{nazar}/**' }
+  courses_opened: { url: '{nazar}/medrese/*/dersler' }
+  not_found: { text: Sayfa bulunamadı }
+
+nodes:
+  # a bare <main> is also the page a walk leaves for: the heading of this page is what tells it apart
+  page: { role: main, hasText: Medrese ayarları }
+  # target=_blank, rel=noopener noreferrer, href /tr/madrasahs/<id> (e2e settings#1 a18, a19); the name carries the hidden hint
+  viewPage: { css: 'a[target=_blank][rel="noopener noreferrer"][href$="/tr/madrasahs/{madrasahId}"]', hasText: Medrese sayfasını gör }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # the refused field carries aria-invalid="true" (e2e settings#3 a2)
+  nameInvalid: { css: 'input[name="name"][aria-invalid="true"]' }
+  descriptionInvalid: { css: 'textarea[name="description"][aria-invalid="true"]' }
+  # the four levels, by their words, inside the list (the sidebar has other list items that say "Medaris")
+  tiersList: { testId: policy-tiers }
+  tierMedaris: { role: listitem, within: { testId: policy-tiers }, hasText: '/^Medaris/' }
+  tierKosk: { role: listitem, within: { testId: policy-tiers }, hasText: '/^Dersin açıldığı köşk/' }
+  tierMedrese: { role: listitem, within: { testId: policy-tiers }, hasText: '{made.name}' }
+  tierMedreseSaved: { role: listitem, within: { testId: policy-tiers }, hasText: '{savedName}' }
+  tierDers: { role: listitem, within: { testId: policy-tiers }, hasText: '/^Ders ayarları/' }
+  # the courses the policies apply to: one published and one draft; the hidden one is not listed (e2e settings#1 a13-a16)
+  courseList: { testId: policy-courses }
+  coursePublished: { role: listitem, within: { testId: policy-courses }, hasText: Yayında, count: 1 }
+  courseDraft: { role: listitem, within: { testId: policy-courses }, hasText: Taslak, count: 1 }
+  # href /medrese/<id>/dersler (e2e settings#1 a17)
+  coursesLink: { css: 'a[href$="/medrese/{madrasahId}/dersler"]', hasText: Medrese dersleri }
+  # the sidebar's card (or the picker's button) names the medrese; it follows a save through router.refresh() (e2e settings#4 a4)
+  scopeName: { css: aside, hasText: '{made.name}' }
+  scopeNameSaved: { css: aside, hasText: '{savedName}' }

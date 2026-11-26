@@ -1,0 +1,79 @@
+# The screens of tedris.decks.publish: the author's page of a deck (/decks/<id>, the "Genel" tab) as far as publication goes: the status badge, the card
+# "Kimler görebilir" with its one button (it asks, takes the request back, or takes a public deck back, by the deck's status), and the toasts of the
+# two actions. Everything else the owner's page draws (the progress, the counts, the sample cards, "Çalış", the tabs, "Düzenle", "Desteyi sil") is
+# another flow's (flow.yaml scope.outOfView).
+# The words are copied from libs/i18n/src/locales/tr/tedris.json (keys kept, root removed) by <scratchpad>/publish-probe/catalog.mjs. Two texts are built in
+# code and are in no i18n file, so they are `composed.*`:
+#   composed.Publish.title   "{title}"      the deck's name, the h1 of the page, a value the API gives               deck-header.tsx:54
+#   composed.Button.loading  "Yükleniyor"   the kit Button's default `loadingLabel`, the hidden status of a busy button   libs/ui/src/mds/button.tsx:62 (DCK-23)
+# `changes` is the app's own message that tells the author what asking does ("Herkese açmak için yayın iste: Medaris yönetimi inceler, uygun bulursa
+# yayımlar"), the text the card shows for a private deck, because the app has no message for "what this flow changes" and a graph never invents one.
+# Seen and read: the private card (the badge "Özel", the card, the button, the empty hidden status) was looked at in Chromium on the local stack, read only
+# (15 Nov 2026); the other cards, the toasts and the busy state are read from the code and are not seen in a browser, which the `source` of each says.
+# Samples are invented and neutral; {at} is the time of the request as the page writes it (deck-model.ts:216-236, 383-388), a walk's own and matched by a
+# pattern in the binding.
+schema: delurio-graph/0
+kind: ui
+id: tedris.decks.publish
+flow: tedris.decks.publish
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  title: Yayın denemesi destesi
+  at: 29 Eylül 2026 Salı 21:10’da
+changes: { key: Decks.whoPRIVATE }
+
+nodes:
+  # ---- what the page says after a step (the unified kit's Toaster, Base UI, libs/ui/src/mds/toast.tsx). First in the file, so that a replay reads them first: a success toast closes by itself after 6 s ----
+  requestedToast: { type: alert, component: Alert, role: dialog, name: { labelledBy: requestedTitle }, in: [pendingDeck], when: "notice == 'requested'", source: libs/ui/src/mds/toast.tsx:77 } # a low-priority toast: role dialog, not modal, closes after 6 s; the region around it is "Bildirimler"
+  requestedTitle: { type: text, component: Text, text: { key: Decks.requestedTitle }, in: [pendingDeck], when: "notice == 'requested'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:80 } # a <p>; the toast has a title and no description
+  withdrawnToast: { type: alert, component: Alert, role: dialog, name: { labelledBy: withdrawnTitle }, in: [privateDeck], when: "notice == 'withdrawn'", source: libs/ui/src/mds/toast.tsx:77 }
+  withdrawnTitle: { type: text, component: Text, text: { key: Decks.withdrawnTitle }, in: [privateDeck], when: "notice == 'withdrawn'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:80 }
+  requestFailedToast: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: requestFailedTitle }, in: [privateDeck], when: "notice == 'requestFailed'", source: libs/ui/src/mds/toast.tsx:77 } # an error toast stays until it is closed; Base UI gives a high-priority toast the role alertdialog and aria-hidden until it is focused (toast-roles)
+  requestFailedTitle: { type: text, component: Text, text: { key: Decks.publishFailedTitle }, in: [privateDeck], when: "notice == 'requestFailed'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:71 }
+  requestFailedText: { type: text, component: Text, text: { key: Decks.tryAgain }, in: [privateDeck], when: "notice == 'requestFailed'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:74 } # one text for every refusal, a 409 included (PUB-1)
+  withdrawFailedToast: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: withdrawFailedTitle }, in: [pendingDeck, publishedDeck, rejectedDeck], when: "notice == 'withdrawFailed'", source: libs/ui/src/mds/toast.tsx:77 }
+  withdrawFailedTitle: { type: text, component: Text, text: { key: Decks.withdrawFailedTitle }, in: [pendingDeck, publishedDeck, rejectedDeck], when: "notice == 'withdrawFailed'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:72 }
+  withdrawFailedText: { type: text, component: Text, text: { key: Decks.tryAgain }, in: [pendingDeck, publishedDeck, rejectedDeck], when: "notice == 'withdrawFailed'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:74 }
+
+  # ---- the page and its header (deck-detail-page.tsx, deck-header.tsx) ----
+  deckPage: { type: page, component: Page, role: main, in: [privateDeck, requesting, pendingDeck, withdrawingPending, publishedDeck, takingBackPublished, rejectedDeck, withdrawingRejected], source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:55, script: actions } # no name, no initial focus: the page sets none (focus-not-set). Server-drawn, so the card reads without JavaScript and its button needs it (not verified without JavaScript)
+  deckHeading: { type: text, component: Heading, role: heading, text: { key: composed.Publish.title, params: { title: title } }, in: [privateDeck, requesting, pendingDeck, withdrawingPending, publishedDeck, takingBackPublished, rejectedDeck, withdrawingRejected], source: apps/tedris/features/flashcards/components/deck-header.tsx:54 } # h1, dir=auto
+  statusPrivate: { type: text, component: Text, text: { key: Decks.statusPRIVATE }, in: [privateDeck, requesting], source: apps/tedris/features/flashcards/components/deck-header.tsx:68 } # a badge with a padlock; the text carries the meaning
+  statusPending: { type: text, component: Text, text: { key: Decks.statusPENDING }, in: [pendingDeck, withdrawingPending], source: apps/tedris/features/flashcards/components/deck-header.tsx:65 } # a warning badge with a clock
+  statusPublished: { type: text, component: Text, text: { key: Decks.statusPUBLISHED }, in: [publishedDeck, takingBackPublished], source: apps/tedris/features/flashcards/components/deck-header.tsx:63 }
+  statusRejected: { type: text, component: Text, text: { key: Decks.statusREJECTED }, in: [rejectedDeck, withdrawingRejected], source: apps/tedris/features/flashcards/components/deck-header.tsx:67 } # an error badge with a padlock
+
+  # ---- the card "Kimler görebilir" (deck-owner-overview.tsx:209-235) ----
+  whoHeading: { type: text, component: Heading, role: heading, text: { key: Decks.whoTitle }, in: [privateDeck, requesting, pendingDeck, withdrawingPending, publishedDeck, takingBackPublished, rejectedDeck, withdrawingRejected], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:210 } # h2; the card is an unlabelled <section> inside an unlabelled <aside>
+  whoPrivate: { type: text, component: Text, text: { key: Decks.whoPRIVATE }, in: [privateDeck, requesting, rejectedDeck, withdrawingRejected], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:110 } # also the text of a refused request: there is no sentence for it (DCK-13)
+  whoPending: { type: text, component: Text, text: { key: Decks.whoPENDING, params: { at: at } }, in: [pendingDeck, withdrawingPending], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:107 } # {at} is the time of the request in the page's time zone, so a replay matches it by pattern (binding)
+  whoPublished: { type: text, component: Text, text: { key: Decks.whoPUBLISHED }, in: [publishedDeck, takingBackPublished], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:109 }
+  requestButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.requestPublish }, in: [privateDeck, requesting], disabledIn: [requesting], emits: REQUEST, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:214 } # busy: aria-disabled, aria-busy. The three buttons are one element: React keeps it and swaps its label
+  withdrawButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.withdrawRequest }, in: [pendingDeck, withdrawingPending], disabledIn: [withdrawingPending], emits: WITHDRAW, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:222 } # no confirmation (take-back-asks-nothing)
+  makePrivateButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.makePrivate }, in: [publishedDeck, takingBackPublished, rejectedDeck, withdrawingRejected], disabledIn: [takingBackPublished, withdrawingRejected], emits: WITHDRAW, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:222 } # for a published deck and, wrongly, for a refused one (DCK-13)
+  busyStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [requesting, withdrawingPending, takingBackPublished, withdrawingRejected], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the busy button (DCK-23: "Yükleniyor" is the kit's constant)
+
+edges:
+  - { labelledBy: [requestedToast, requestedTitle] }
+  - { labelledBy: [withdrawnToast, withdrawnTitle] }
+  - { labelledBy: [requestFailedToast, requestFailedTitle] }
+  - { labelledBy: [withdrawFailedToast, withdrawFailedTitle] }
+  - { triggers: [requestButton, requesting] }
+  - { triggers: [withdrawButton, withdrawingPending] }
+  - { triggers: [makePrivateButton, takingBackPublished] }
+  - { triggers: [makePrivateButton, withdrawingRejected] }
+
+rules:
+  - { id: DCK-13, rule: "a refused deck gets the text of a private deck (\"Bu deste özel… yayın iste\") and the button \"Özele çek\", because everything that is not PRIVATE falls into the else branch (deck-owner-overview.tsx:105-110, :213-232); the catalog has no sentence for a refusal. The API takes a new request from a refused deck (flashcard-deck.service.ts:272-278), so the author must withdraw before asking again. The graph draws what the code does (rejectedDeck, withdrawingRejected). Fix: branch on REJECTED (decision D1)" }
+  - { id: PUB-1, rule: "new, provisional id: every refusal of either action, a 409 DECK_PUBLISH_STATE_CONFLICT included, draws the one error toast \"Yayın isteği gönderilemedi\" or \"İstek geri çekilemedi\" with \"Bir sorun oluştu. Yeniden dene.\", and nothing reads the page again (deck-owner-overview.tsx:68-77; router.refresh() is on the success path only, :82). A page drawn before the deck moved on (another tab, a reviewer, the başnazım taking it back) keeps its old status and its old button, and \"Yeniden dene\" asks the same refused question until the page is reloaded. Read from the code; the 409 was not made in a browser. Fix: refresh on a 409 (decision D2)" }
+  - { id: PUB-2, rule: "new, provisional id: the button is idle again before the new page arrives. changePublication sets publishing to false at :67, shows the success toast, and only then calls router.refresh() (:82), which is asynchronous, so for the length of that fetch the card still says \"Yayın iste\" with the button enabled. A second press in that gap is sent and answers 409, and its error toast (PUB-1) stands beside the success one. Read from the code, not seen in a browser. Fix: keep publishing true until the refreshed props arrive, or navigate with a transition" }
+  - { id: PUB-3, rule: "new, provisional id: the reason a reviewer gives for a refusal reaches the author only in the notification (DECK_PUBLISH_RESULT, \"Gerekçe: …\", tedris.json NotificationsPage.types.DECK_PUBLISH_RESULT.bodyReason). The deck answer carries no reason (flashcard-deck-response.dto.ts:32-36), so the author's page shows the badge \"Yayın isteği reddedildi\" and the text of a private deck, and cannot say why. Fix: add the reason to the deck answer and say it in the refused card (decision D1)" }
+  - { id: PUB-4, rule: "new, provisional id: the owner view is chosen by the token's sub against authorId only (deck-page-data.ts:39) and knows no course deck, so the hoca who wrote a course deck and opens it here is offered \"Yayın iste\"; the API takes the request on a course deck for course staff and an approval would make the course deck public (domain invariant course-deck-staff-use-course-routes, finding deck-manage-private-reaches-course-decks). Read from the code, not walked: no course deck of a hoca's is opened in this flow's binding" }
+  - { id: DCK-23, rule: "the busy label \"Yükleniyor\" is the kit Button's default loadingLabel (button.tsx:62); the button passes none (deck-owner-overview.tsx:214-232), so it is not a catalog message. The toast's close button \"Kapat\" (toast.tsx:97) and the toaster's region name \"Bildirimler\" (toast.tsx:127, ToastHost passes no label) are constants of the kit too (the same as ADDCAL-2 and MDRS-233); not drawn here, no step presses the close button" }
+  - { id: toast-roles, rule: "Base UI gives a low-priority toast (success, info) role dialog, aria-modal false, named by its title (ToastRoot.js:423-428), and a high-priority one (warning, error: priority high) role alertdialog with aria-hidden true until it is focused, announced by the viewport's own role=alert element (ToastViewport.js:224); the viewport is a polite region. The error toast of tedris.learning.addToCalendar was measured; the success toast's role is read from the Base UI source and was not measured. A replay finds a toast by its role attribute and its words, not by role and name" }
+  - { id: toast-stack, rule: "an earlier error toast stays until it is closed and a new action does not close it (no id is passed to notify, toast.tsx:19), so two toasts, or three (the provider's limit), can stand together; the graph draws only the toast of the last finished action (the variable notice) and a replay without --absent does not mind the others" }
+  - { id: focus-not-set, rule: "the page sets no initial focus (no autofocus anywhere in deck-detail-page.tsx or deck-owner-overview.tsx; the focus is at the document's start after a load, not verified in a browser) and none after an action. The button that was pressed is the same DOM element after the refresh (React reconciles the three Button branches at one position, deck-owner-overview.tsx:213-233), so the focus very likely stays on it with its new label; not measured, so no `focus` is drawn" }
+  - { id: take-back-asks-nothing, rule: "\"İsteği geri çek\" and \"Özele çek\" ask nothing first, although the second makes a deck every signed-in person could read private at one press. The page promises it in so many words (\"İstediğin an özele çekebilirsin\", Decks.whoPUBLISHED), so the graph draws no confirmation; both are one DELETE and the page chooses the label by the status it read" }

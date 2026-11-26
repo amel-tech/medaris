@@ -1,4 +1,5 @@
 import {
+  type AppealListResponse,
   type AuditPageResponse,
   type CourseRequestListResponse,
   type KoskApplicationListResponse,
@@ -83,3 +84,8 @@ export const getKoskName = (
     const kosk = await c.kosks.getKoskById({ id: koskId });
     return { id: kosk.id, name: kosk.name };
   });
+
+/** İtirazlar: the appeals waiting for a decision, with both tab counts. */
+export const getPendingAppeals = (): Promise<
+  PlatformRead<AppealListResponse>
+> => read("the appeals", (c) => c.nizam.listAppeals({ status: "PENDING" }));

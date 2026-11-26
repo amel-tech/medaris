@@ -1,0 +1,21 @@
+{
+  "CoursePage.resourcesTitle": "Bu dersin kaynakları",
+  "CoursePage.resourcesLocked": "Kaynakları derse kayıtlı talebeler açar.",
+  "SessionPage.resourcesTitle": "Kaynaklar",
+  "SessionPage.resourcesOwn": "Bu celse",
+  "SessionPage.resourcesCourse": "Ders geneli",
+  "Homework.sectionTitle": "Ödev",
+  "Homework.assignmentFiles": "Ödevin dosyaları",
+  "FileDownload.title": "Dosya indirilemedi",
+  "FileDownload.forbidden": "Bu dosyayı indirme iznin yok.",
+  "FileDownload.notFound": "Bu dosya artık yok.",
+  "FileDownload.unavailable": "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.",
+  "FileDownload.failed": "Bir sorun çıktı. Biraz sonra yeniden dene.",
+  "common.toast.close": "Kapat",
+  "composed.Files.linkRow": "{name} (yeni sekmede açılır)",
+  "composed.Files.fileRow": "{name} (indirilir)",
+  "composed.Files.assignmentRow": "{name} (indirilir)",
+  "composed.Files.plainRow": "{name}",
+  "composed.Files.type": "{type}",
+  "composed.Files.size": "{size}"
+}

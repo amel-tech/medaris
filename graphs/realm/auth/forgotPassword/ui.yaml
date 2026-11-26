@@ -1,0 +1,104 @@
+# The three screens of realm.auth.forgotPassword, all Keycloak's pages on the Medaris theme: login-reset-password.ftl (the
+# form, LoginResetPassword.tsx, still in the old shadcn kit), login.ftl again with the notice (Login.tsx, login-form.tsx,
+# which realm.auth.signIn draws too) and login-update-password.ftl (LoginUpdatePassword.tsx with update-password-form.tsx).
+# The words are the theme's tr messages, copied with their keys from apps/keycloak-theme/src/login/i18n.ts (the `tr` object,
+# lines 191-335). Five messages are Keycloak's own, which the theme does not override, from keycloakify 11.16.0
+# (messages_defaultSet/tr.js): doSubmit (:9), missingUsernameMessage (:154), updatePasswordMessage (:171), resetPasswordMessage
+# (:172), emailSentMessage (:175). One is built in code and belongs to no i18n file: composed.UpdatePassword.forAccount is updatePasswordForAccount with its
+# {0} named {account}, because LoginUpdatePassword.tsx:69-78 cuts the message around the user name and sets that in a <bdi>
+# (the key keeps {0} for the length "10" of the rule messages, and a sample is one value per placeholder). The one entry
+# not copied from the app is Changes.note: the theme has no sentence that says what a reset changes, so one short Turkish
+# sentence was written for it (the flow changes a password, and nothing in the product says so).
+# The pages are drawn by React in the browser from window.kcContext, so they need JavaScript (no `script` on them).
+# `savingPassword` draws only what changes while the form is on its way, the busy button and its status line; the rest of
+# the page stays as it was.
+schema: delurio-graph/0
+kind: ui
+id: realm.auth.forgotPassword
+flow: realm.auth.forgotPassword
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples: { "0": "10", account: ornek-kullanici }
+changes: { key: Changes.note }
+focus: { newPasswordInvalid: passwordNewKept, newPasswordMismatch: confirmNewKept }
+
+nodes:
+  # the card's logo, on every screen: the client id names the app (app-of-client.ts:9)
+  logoTedris: { type: text, component: Text, role: img, name: { literal: "Medaris — Tedris" }, in: [resetForm, resetFormError, sentNotice, newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], when: "app == 'tedris'", source: libs/ui/src/mds/logo.tsx:52 }
+  logoNizam: { type: text, component: Text, role: img, name: { literal: "Medaris — Nizam" }, in: [resetForm, resetFormError, sentNotice, newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], when: "app == 'nizam'", source: libs/ui/src/mds/logo.tsx:52 }
+  logoNazar: { type: text, component: Text, role: img, name: { literal: "Medaris — Nazar" }, in: [resetForm, resetFormError, sentNotice, newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], when: "app == 'nazar'", source: libs/ui/src/mds/logo.tsx:52 }
+
+  # login-reset-password.ftl
+  resetPage: { type: page, component: Page, role: main, name: { labelledBy: resetTitle }, initialFocus: resetUsername, in: [resetForm, resetFormError], source: libs/ui/src/giris/auth-card.tsx:41 } # the user name field has autoFocus (LoginResetPassword.tsx:69), on the first load and after the refusal alike
+  resetTitle: { type: text, component: Heading, role: heading, text: { key: emailForgotTitle }, in: [resetForm, resetFormError], source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:43 } # the one h1, id kc-page-title
+  resetSentence: { type: text, component: Text, text: { key: emailInstruction }, in: [resetForm, resetFormError], source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:44 }
+  resetUsername: { type: field, component: TextField, role: textbox, text: { key: usernameOrEmail }, value: { literal: "" }, in: [resetForm, resetFormError], source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:64 } # dir=ltr, autocomplete=username, not required; aria-invalid after the refusal (K5: no aria-describedby)
+  resetRefusal: { type: text, component: Text, text: { key: missingUsernameMessage }, in: [resetFormError], source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:75 } # span#input-error-username, aria-live polite, not linked to the field (K5)
+  send: { type: action, component: Button, role: button, intent: confirm, text: { key: doSubmit }, in: [resetForm, resetFormError], emits: SEND, source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:87 } # a plain button of the old kit: no busy state (K4)
+  backToLogin: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: backToLogin }, in: [resetForm, resetFormError], emits: BACK_TO_LOGIN, source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:90 } # a#kc-back-to-login, href url.loginUrl
+
+  # login.ftl again, with the notice (what realm.auth.signIn draws, less what this flow does not touch)
+  noticePage: { type: page, component: Page, role: main, name: { labelledBy: loginTitle }, in: [sentNotice], source: libs/ui/src/giris/auth-card.tsx:41 } # no initialFocus: nothing has the focus (K3, FORGOT-1)
+  loginTitle: { type: text, component: Heading, role: heading, text: { key: loginAccountTitle }, in: [sentNotice], source: libs/ui/src/giris/auth-card.tsx:54 } # the one h1, "Giriş yap": the title of the sign-in page, over the notice
+  loginSubtitle: { type: text, component: Text, text: { key: loginAccountSubtitle }, in: [sentNotice], source: apps/keycloak-theme/src/login/pages/Login.tsx:67 }
+  sentMessage: { type: status, component: Status, role: status, text: { key: emailSentMessage }, in: [sentNotice], source: apps/keycloak-theme/src/login/Template.tsx:81 } # an Alert of tone success: role status, in the page as it loads (FORGOT-1)
+  noticeRequired: { type: text, component: Text, text: { key: requiredFields }, in: [sentNotice], source: libs/ui/src/giris/login-form.tsx:76 }
+  noticeUsername: { type: field, component: TextField, role: textbox, text: { key: usernameOrEmail }, in: [sentNotice], source: libs/ui/src/giris/login-form.tsx:79 } # holds what was typed on the reset form (login.username)
+  noticePassword: { type: field, component: TextField, role: textbox, text: { key: password }, value: { literal: "" }, in: [sentNotice], source: libs/ui/src/giris/login-form.tsx:97 } # type=password, always empty
+  noticeForgot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: doForgotPassword }, in: [sentNotice], emits: FORGOT_PASSWORD, source: libs/ui/src/giris/login-form.tsx:105 }
+  noticeSignIn: { type: action, component: Button, role: button, intent: confirm, text: { key: doLogIn }, in: [sentNotice], emits: SIGN_IN, source: libs/ui/src/giris/login-form.tsx:124 }
+  noticeNoAccount: { type: text, component: Text, text: { key: noAccount }, in: [sentNotice], source: apps/keycloak-theme/src/login/pages/Login.tsx:71 }
+  noticeRegister: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: doRegister }, in: [sentNotice], emits: REGISTER, source: apps/keycloak-theme/src/login/pages/Login.tsx:72 }
+
+  # login-update-password.ftl
+  newPasswordPage: { type: page, component: Page, role: main, name: { labelledBy: newTitle }, initialFocus: passwordNew, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: libs/ui/src/giris/auth-card.tsx:41 } # "Yeni şifre" has autoFocus (update-password-form.tsx:138), on the link's page and after the refusal alike
+  newTitle: { type: text, component: Heading, role: heading, text: { key: updatePasswordTitle }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:67 } # the one h1, id kc-page-title
+  mustChangeAfterReset: { type: status, component: Status, role: status, text: { key: resetPasswordMessage }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped], when: "entry == 'forgotLink'", source: apps/keycloak-theme/src/login/Template.tsx:81 } # Keycloak's message of type warning, an Alert of role status; the refusal replaces it
+  mustChangeRequired: { type: status, component: Status, role: status, text: { key: updatePasswordMessage }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped], when: "entry == 'requiredAction'", source: apps/keycloak-theme/src/login/Template.tsx:81 } # the message Keycloak gives a held sign-in (UPDATE_PASSWORD), also of type warning; "siz" (K10)
+  refusalAlert: { type: alert, component: Alert, role: alert, text: { key: invalidPasswordNotEmailMessage }, in: [newPasswordRefused], source: apps/keycloak-theme/src/login/Template.tsx:81 } # Keycloak's message of type error, an Alert of role alert; shown on top because the policy error is not a field error (LoginUpdatePassword.tsx:64-66)
+  accountSentence: { type: text, component: Text, text: { key: composed.UpdatePassword.forAccount, params: { account: account } }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:69 } # {account} is the user name Keycloak sends, set in a <bdi>; built in code, so a replay matches it by pattern (binding)
+  newRequired: { type: text, component: Text, text: { key: requiredFields }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: libs/ui/src/giris/update-password-form.tsx:130 }
+  passwordNew: { type: field, component: TextField, role: textbox, text: { key: passwordNew }, value: { literal: "" }, in: [newPasswordForm, newPasswordRefused], source: libs/ui/src/giris/update-password-form.tsx:132 } # type=password, autocomplete new-password, required and aria-required, no HTML validation (noValidate); described by the rule list
+  passwordNewKept: { type: field, component: TextField, role: textbox, text: { key: passwordNew }, in: [newPasswordInvalid, newPasswordMismatch, newPasswordRetyped], source: libs/ui/src/giris/update-password-form.tsx:132 } # holds what was typed; aria-invalid and described by its reason while it has one
+  showNew: { type: action, component: Button, role: button, name: { key: showPassword }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: libs/ui/src/giris/password-field.tsx:130 } # keeps one name; aria-pressed and the input's type change, which this graph cannot say
+  ruleList: { type: list, component: List, role: list, in: [newPasswordForm, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: libs/ui/src/giris/password-field.tsx:35 } # under the first field while it has no reason of its own; the rule for the e-mail address is not in it (FORGOT-2)
+  ruleLength: { type: list, component: ListItem, role: listitem, text: { key: passwordRuleLength }, in: [newPasswordForm, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:97 } # "10" is typed here (K9); a met rule adds ", karşılandı" for a screen reader
+  ruleNotUsername: { type: list, component: ListItem, role: listitem, text: { key: passwordRuleNotUsername }, in: [newPasswordForm, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:99 }
+  passwordReasonEmpty: { type: text, component: Text, text: { key: error-user-attribute-required }, in: [newPasswordInvalid], when: "typed == 'nothing'", source: libs/ui/src/giris/update-password-form.tsx:105 } # under the first field; the field's aria-describedby points at it
+  passwordReasonShort: { type: text, component: Text, text: { key: passwordTooShort }, in: [newPasswordInvalid], when: "typed == 'short'", source: libs/ui/src/giris/update-password-form.tsx:107 } # "10" typed in the page (K9)
+  passwordReasonRules: { type: text, component: Text, text: { key: passwordRulesUnmet }, in: [newPasswordInvalid], when: "typed == 'usesName'", source: libs/ui/src/giris/update-password-form.tsx:108 } # names the e-mail address too, though the page cannot test it (FORGOT-2)
+  confirmNew: { type: field, component: TextField, role: textbox, text: { key: passwordNewConfirm }, value: { literal: "" }, in: [newPasswordForm, newPasswordRefused], source: libs/ui/src/giris/update-password-form.tsx:171 } # type=password, autocomplete new-password
+  confirmNewKept: { type: field, component: TextField, role: textbox, text: { key: passwordNewConfirm }, in: [newPasswordInvalid, newPasswordMismatch, newPasswordRetyped], source: libs/ui/src/giris/update-password-form.tsx:171 }
+  showConfirm: { type: action, component: Button, role: button, name: { key: showPasswordConfirm }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: libs/ui/src/giris/password-field.tsx:130 }
+  confirmReasonEmpty: { type: text, component: Text, text: { key: error-user-attribute-required }, in: [newPasswordInvalid], when: "typed == 'nothing'", source: libs/ui/src/giris/update-password-form.tsx:109 }
+  confirmReasonMismatch: { type: text, component: Text, text: { key: passwordMismatch }, in: [newPasswordMismatch], source: libs/ui/src/giris/update-password-form.tsx:111 }
+  signOutOthers: { type: field, component: TextField, role: checkbox, text: { key: logoutOtherSessions }, checked: signOutOthers, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], emits: TOGGLE_SIGN_OUT_OTHERS, source: libs/ui/src/giris/update-password-form.tsx:185 } # name="logout-sessions" value="on", ticked from the start (defaultChecked)
+  signOutOthersHelp: { type: text, component: Text, text: { key: logoutOtherSessionsHelp }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], source: libs/ui/src/giris/update-password-form.tsx:190 }
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: updatePasswordSubmit }, in: [newPasswordForm, newPasswordInvalid, newPasswordMismatch, newPasswordRetyped, newPasswordRefused], emits: SAVE, source: libs/ui/src/giris/update-password-form.tsx:194 } # enabled whatever the rules say: the reason is written under the field on submit
+  saveBusy: { type: action, component: Button, role: button, text: { key: updatePasswordSubmit }, in: [savingPassword], disabledIn: [savingPassword], source: libs/ui/src/mds/button.tsx:139 } # aria-busy and aria-disabled, never disabled
+  savingStatus: { type: status, component: Status, role: status, text: { key: formSubmitting }, in: [savingPassword], source: libs/ui/src/mds/button.tsx:113 } # a visually hidden <output> beside the button
+
+edges:
+  - { labelledBy: [resetPage, resetTitle] }
+  - { labelledBy: [noticePage, loginTitle] }
+  - { labelledBy: [newPasswordPage, newTitle] }
+  - { triggers: [send, sending] }
+  - { triggers: [backToLogin, handed_over.sign_in] }
+  - { triggers: [noticeForgot, resetForm] }
+  - { triggers: [noticeSignIn, handed_over.sign_in] }
+  - { triggers: [noticeRegister, handed_over.register] }
+  - { triggers: [save, savingPassword] }
+
+rules:
+  - { id: K2, rule: "Every Keycloak page has the same tab title, Keycloak's 'Medaris adresinde oturum açın' (Template.tsx:57, no page passes documentTitle): the reset form, the notice, the new-password page and the error page this flow ends on cannot be told apart by title (WCAG 2.4.2). Measured on all of them. Not a node: the graph cannot draw a title." }
+  - { id: K3, rule: "The notice is login.ftl again and nothing in it has the focus (document.activeElement is the body, Login.tsx and login-form.tsx set no autoFocus), so a keyboard or screen-reader user starts at the top of a page that no longer says what they did. The reset form (LoginResetPassword.tsx:69) and the new-password page (update-password-form.tsx:138) do autofocus. Fix: move the focus to the status." }
+  - { id: K4, rule: "login-reset-password.ftl is still in the old shadcn kit with raw colour classes (LoginResetPassword.tsx:57, :87-96, components/styles.ts), while the sign-in and new-password pages are on the unified design; its button has no busy state, so a second press before the answer posts again. The two halves of one reset do not look like one flow." }
+  - { id: K5, rule: "The reset form's reason ('Lütfen kullanıcı adını belirtin.') is a span#input-error-username that no aria-describedby links to its field (LoginResetPassword.tsx:64-84; measured: aria-invalid true, aria-describedby none); its aria-live=polite is on an element that is not there until the page has loaded anew, so it announces nothing. Fix: link it with aria-describedby, or use the kit's Field, which does it on the new-password page." }
+  - { id: K9, rule: "The new-password page types the length 10 into its rule and into its short-password reason (LoginUpdatePassword.tsx:97 and :104) instead of reading the realm's policy; they agree today (config/keycloak/realms/_base.json:20) and not if the policy changes. Register.tsx:57 reads it." }
+  - { id: K10, rule: "The Turkish copy changes from 'siz' to 'sen' inside this one flow: the reset form and Keycloak's notice ('Şifrenizi mi unuttunuz?', 'e-posta almalısınız') and the mail speak as 'siz'; the new-password page ('Yeni şifreni belirle', 'hesabın için') as 'sen'; and the message of a held sign-in on that same page ('Hesabınızı etkinleştirmek için şifrenizi değiştirmeniz gerekiyor.') as 'siz' again." }
+  - { id: FORGOT-1, rule: "After 'Gönder' the person is shown the sign-in page again (title 'Giriş yap', its subtitle, the whole form) with Keycloak's stock sentence 'Daha fazla talimatla kısa sürede bir e-posta almalısınız.' above it in a status region. The page does not say a mail was sent to the address they typed, how long the link lasts (30 minutes, config/keycloak/realms/_base.json:44), or to look in the spam folder (LoginVerifyEmail.tsx:47-53 has that hint for the verification mail); the status is part of a page that loaded anew and nothing moves the focus to it (K3). It is the same page for an address with no account, which is what keeps the answer from telling (measured on the local stack: same page, same sentence, same kept address; the mail is the only difference). Fix: a page of its own, as login-verify-email.ftl is, that does not name the address but says 'if it has an account'; or at least override emailSentMessage and move the focus." }
+  - { id: FORGOT-2, rule: "The new-password page lists two rules, not three: Keycloak sends it only the user name, so 'E-posta adresinden farklı' is left off (LoginUpdatePassword.tsx:45-51, update-password-form.tsx:81-84). An address typed as the password passes the page's own checks, is posted, and is refused by the realm policy notEmail (config/keycloak/realms/_base.json:20) with an alert on top of a page that loaded anew, both fields empty (measured). Its own reason text, passwordRulesUnmet, names the address although the page cannot test it. Fix: pass the person's address to the page (the user-profile attribute) or keep what was typed." }
+  - { id: FORGOT-3, rule: "A link that was used once (and, by the same code path, one older than 30 minutes: not waited for, not verified) ends on error.ftl: 'Giriş tamamlanamadı', 'Giriş işlemin yarıda kaldı ya da geçersiz hâle geldi.' (ErrorPage.tsx:36-43). Nothing says the link is spent or how to ask for a new one, and the only link, 'Giriş sayfasına dön', goes to the app's address (client.baseUrl), not to the reset form. Keycloak's own message ('Eylem süresi doldu. Lütfen şimdi giriş yapmaya devam edin.') is never shown (ErrorPage.tsx:10-11). Measured in the browser that used the link and in another." }
+  - { id: FORGOT-4, rule: "The reset ends signed in, on the app's landing, with no word that the password changed, and no mail says so either; and Diğer cihazlarda çıkış yap is ticked from the start (update-password-form.tsx:185-191), so a person who only meant to set a password also ends their other sessions without having chosen to. The first is a product gap, see needs.yaml; the second is the page's default." }

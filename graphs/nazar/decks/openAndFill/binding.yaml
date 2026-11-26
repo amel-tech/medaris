@@ -1,0 +1,67 @@
+# nazar.decks.openAndFill on the local stack (graphs/README.md, "The stack and the bindings"): the hoca of a course the walk makes for itself, at
+# http://localhost:4002, and a ders nazırı who is refused the page.
+#   node apps/engine/src/cli.ts replay graphs/nazar/decks/openAndFill --bind graphs/nazar/decks/openAndFill/binding.yaml --out <dir>
+#   ... --cover transitions      the two scenarios below; the colleague's walk is in binding.others.yaml
+# NOT RUN in the writing phase (no replay is run in it): nothing below has been walked. Where it rests on the code alone it says so. What the walks share
+# (events, effects, locators, addresses) and what they make and take away is in binding.common.yaml, read that first.
+#
+# The two scenarios, by what the person holds in the course:
+#   opens    fresh    MUDERRIS, the course's hoca (the main story). The course has no deck; the walk opens one with "Deste aç", fills it, edits and
+#                     deletes. The deck is the hoca's own, so every write of the card routes is accepted.
+#   closed   closed   DERS_NAZIR with a post in the course and no code at all: the page refuses (nazar.access.dersNazirPages owns the menu side of this).
+#
+# `call` holds the request of each write while its busy state is checked: the server action is a POST to the page's own address, and the page's reads
+# are GETs with a query, so it matches only the POST. It answers 200 whatever the API said, so a refused write cannot be held and compared here; the
+# refusals of the card routes are walked by binding.others.yaml, which leaves `call` off on `savingCard` and `removing`.
+# Not bound, so the replay cannot reach them (reported): FAIL.signedOut of every write (the stack cannot end the session in the middle of one),
+# FAIL.other and FAIL.forbidden of every write (no condition of the stack makes the API refuse a valid body, and a code taken away between the page and
+# the press cannot be arranged), FAIL.missing of the first read (the course is the walk's own), and a call that fails outright (the network down).
+schema: delurio-graph/0
+kind: binding
+extends: ./binding.common.yaml
+flow: nazar.decks.openAndFill
+
+scenarios:
+  # The main story: the menu's "Ders destesi", the dialog, a deck of the hoca's own, and the cards.
+  opens:
+    given: { course: fresh }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { deckTitle: Deneme destesi deck-fill, cardFront: قَرَأَ, cardBack: 'Okudu, okur.', revisedBack: 'Okudu, okuyor.' }
+    setup:
+      - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, make, deck-fill, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course":'
+    teardown:
+      - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, deck-fill]
+        expect: removed
+
+  # A ders nazırı with a post and no permission: the address answers "Bu sayfaya izniniz yok" (the menu does not list the page, so no nav entry).
+  closed:
+    given: { course: closed }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/deste'
+    vars: { deckTitle: Deneme destesi deck-fill, cardFront: قَرَأَ, cardBack: 'Okudu, okur.', revisedBack: 'Okudu, okuyor.' }
+    setup:
+      - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, make, deck-fill, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course":'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, deck-fill]
+        expect: removed
+
+states:
+  creating: { call: '{nazar}/ders/{made.course}/deste' }
+  addingCard: { call: '{nazar}/ders/{made.course}/deste/*' }
+  addingBatch: { call: '{nazar}/ders/{made.course}/deste/*' }
+  savingCard: { call: '{nazar}/ders/{made.course}/deste/*' }
+  removing: { call: '{nazar}/ders/{made.course}/deste/*' }

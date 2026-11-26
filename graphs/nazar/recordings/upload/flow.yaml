@@ -1,0 +1,553 @@
+# Uploading a session's recording to Bunny Stream from Ders kayıtları (/ders/<id>/kayitlar) in nazar-web, read from the code of PR #394
+# (apps/nazar/features/recordings, tedrisat's recording-upload controller and service, the recording repository and the encoding poller).
+# It says what the code does today, and what this stack can walk of it:
+#   - The library's keys are unset locally, so POST /lessons/:id/recordings/uploads and its signature route answer 503
+#     BUNNY_STREAM_NOT_CONFIGURED once the caller holds recording.upload. A walk gets as far as the dialog and the file that is not chosen;
+#     the replay has no action that sets a file input, so everything after "CHOOSE_FILE" (the release time, the signing, the TUS upload to
+#     Bunny, its stop, its failures, the toast) is drawn from the code and not walked. The binding says so state by state.
+#   - The page's list never shows a FAILED upload to anyone (MDRS-259): the state `vanished` is what that looks like.
+#   - Two findings come from tedrisat's service and are carried by the domain (graphs/domain/tedrisat-sessions.yaml, startRecordingUpload):
+#     the upload is accepted on a cancelled celse (`upload-on-cancelled-session`) and a refusal after Bunny created the video leaves an
+#     orphan video (UPLOAD-1, from reading).
+#   - Who sees what is `can`: the müderris holds both codes and sees two tabs; a ders nazırı with recording.upload alone sees the upload form
+#     alone; one with recording.manage alone is told "Burada yükleme yoktur" and her dialog is the paste form (nazar.recordings.add's);
+#     one with neither is refused the page.
+schema: delurio-graph/0
+kind: flow
+id: nazar.recordings.upload
+status: captured
+domain: medaris.api
+ui: nazar.recordings.upload
+title: Upload a recording video to Bunny Stream
+summary: >-
+  On Ders kayıtları a holder of recording.upload presses "Kayıt ekle" on a celse that has no recording, "Düzenle" on one that has (the
+  video takes the link's or the old video's place) or "Devam et" on an upload left halfway. One dialog opens, on the upload tab, and asks
+  for a video file the browser sends to Bunny itself, with a progress bar, a stop ("İptal") and, after a stop or a dropped connection, a
+  resume ("Devam et"). Before the first byte tedrisat creates the video in Bunny and signs its upload for 24 hours (a changed release
+  time is written first). When Bunny has the whole file the dialog closes with a toast and the row says "Hazırlanıyor"; the page reads
+  itself again every 10 seconds until tedrisat's encoding poll settles the recording: "Hazır", or, when the upload failed or its 24
+  hours passed, the row simply goes (MDRS-259). Locally the library is not configured and the answer is 503.
+
+scope:
+  shows: >-
+    the recordings page of one course as a holder of recording.upload reads it, the dialog's tabs (the paste tab only as far as taking
+    it), the file's checks, the release time written first, the two calls to tedrisat (start, sign again), the browser's TUS upload to
+    Bunny as events, its stop and failures, and the row after it: "Hazırlanıyor", "Hazır" or gone
+  world: open
+  outOfView:
+    - "the paste tab's form and its writes (a link, 'Düzenle' of a link, a stream as the recording): nazar.recordings.add"
+    - "the release dialog ('Değiştir' in the Erişim column) and the release fields' own checks (empty, past, before the celse): nazar.recordings.add"
+    - "the course page, the Celseler page and the talebe's watch page that read the recording: tedris.course.recordings, tedris.celse.watchRecording, nazar.sessions.manage"
+    - "a failed read of the page ('Ders kayıtları okunamadı' with a retry) and a session that ends under the dialog (the upload waits on 'Yükleme hazırlanıyor…' while the page goes to sign-in, recording-dialog.tsx:72-79)"
+    - "the TUS protocol itself (chunks of 50 MiB, the retry delays, the signature's headers) and Bunny's own encoding; they are the events SENT, NETWORK_DROPS, BUNNY_REFUSES, BUNNY_BREAKS and POLL_READY / POLL_FAILED"
+    - "the second 'Düzenle' on a row that is PROCESSING, and 'İptal' pressed while tedrisat is still asked (it takes effect when the answer arrives)"
+
+decisions:
+  D1:
+    question: >-
+      Should the upload route refuse a cancelled celse, as the paste route does (409 LESSON_CANCELLED)? Today an upload is accepted and
+      the dialog has no sentence for the refusal.
+    recommend: >-
+      Yes: refuse it in startRecordingUpload with LESSON_CANCELLED and add the sentence to uploadErrorKey, so a video is never made for a
+      celse that will not be held. (This page can reach it only for a cancelled celse that already holds a recording.)
+    affects: [starting]
+  D2:
+    question: >-
+      Should a failed or lapsed upload stay on Ders kayıtları for the course team, with the reason and a retry (MDRS-259)? Today a FAILED
+      recording is listed to no one and the row reads 'Kayıt yok'.
+    recommend: >-
+      Yes: list it to the holders of recording.manage or recording.upload with 'Yükleme başarısız' and the reason Bunny gave, and let
+      'Kayıt ekle' say that it replaces it. The retry already works, the page only has to show what it replaces.
+    affects: [vanished]
+
+context:
+  can:
+    values: [both, uploadOnly, manageOnly, neither]
+    initial: any
+    say:
+      both: "she holds recording.manage and recording.upload (the müderris): two tabs, the release fields, 'Düzenle' on every recording"
+      uploadOnly: "she holds recording.upload and not recording.manage (a ders nazırı granted it alone): the upload form alone, no release fields"
+      manageOnly: "she holds recording.manage and not recording.upload: the page says 'Burada yükleme yoktur', and her dialog is the paste form"
+      neither: "she holds neither code: the page is refused"
+  held:
+    values: [nothing, link, video, encoding]
+    initial: any
+    say:
+      nothing: "the celse holds no recording ('Kayıt yok'); a FAILED upload counts as none, since it is not listed"
+      link: "the celse's recording is a pasted or stream link, READY"
+      video: "the celse's recording is a Bunny video that is READY"
+      encoding: "the celse's recording is a Bunny upload still PROCESSING: bytes on their way, or Bunny encoding what it got"
+  file:
+    values: [video, notVideo, tooBig, zeroBytes]
+    initial: any
+    say:
+      video: "the file she picks is a video of at most 10 GB (a type of video/*, or an extension the page knows)"
+      notVideo: "the file she picks is not a video"
+      tooBig: "the file she picks is a video of more than 10 GB"
+      zeroBytes: "the file she picks has no bytes"
+  stored:
+    values: [none, kept]
+    initial: any
+    say:
+      none: "this browser's tus storage holds no earlier upload of this file to this celse"
+      kept: "this browser holds an earlier upload of this file to this celse, with its video's id"
+  resign:
+    values: [signs, expired, closed]
+    initial: any
+    say:
+      signs: "tedrisat signs the same video again: the upload is PROCESSING and its 24 hours have not passed"
+      expired: "tedrisat refuses to sign it again: the upload's 24 hours have passed (RECORDING_UPLOAD_CLOSED, reason expired)"
+      closed: "tedrisat refuses to sign it again: the upload is no longer PROCESSING, or the celse has no such upload (RECORDING_UPLOAD_CLOSED, RECORDING_UPLOAD_NOT_FOUND)"
+  mode:
+    values: [add, edit, resume]
+    initial: add
+    say:
+      add: "'Kayıt ekle': a new recording"
+      edit: "'Düzenle': the video takes the recording's place"
+      resume: "'Devam et': the dialog continues a halfway upload and takes the same file again"
+  chosen:
+    values: [nothing, nothingTried, good, notVideo, tooBig, zeroBytes]
+    initial: nothing
+    say:
+      nothing: "no file is chosen, and no error is shown"
+      nothingTried: "no file is chosen and Yükle was pressed: 'Bir video dosyası seçin.'"
+      good: "a video of the right size is chosen"
+      notVideo: "a file that is not a video is chosen: 'Bu bir video dosyası değil.'"
+      tooBig: "a file over 10 GB is chosen: 'Dosya 10 GB sınırını aşıyor.'"
+      zeroBytes: "a file with no bytes is chosen: 'Bir video dosyası seçin.'"
+  release:
+    values: [unchanged, changed, written]
+    initial: unchanged
+    say:
+      unchanged: "the release choice is the celse's own"
+      changed: "she chose another time for talebe to watch; it is not written yet"
+      written: "this dialog already wrote the new time, before the upload"
+  why:
+    values: [none, notConfigured, unavailable, exists, gone, forbidden, notFound, closed, expired, network, refused, failed, releaseGone, releaseForbidden]
+    initial: none
+    say:
+      none: "nothing has gone wrong in this dialog"
+      notConfigured: "'Video kütüphanesi ayarlı değil.' (BUNNY_STREAM_NOT_CONFIGURED: the stack's own answer)"
+      unavailable: "'Bunny şu an yanıt vermiyor.' (BUNNY_STREAM_UNAVAILABLE)"
+      exists: "'Bu celsenin zaten bir kaydı var; onu düzenleyin. Sayfa yenileniyor.' (RECORDING_EXISTS)"
+      gone: "'Bu celse ya da kayıt artık yok. Sayfa yenileniyor.' (LESSON_NOT_FOUND)"
+      forbidden: "'Bunu yapma izniniz yok.' (AUTHZ_FORBIDDEN)"
+      notFound: "'Bu dosyanın yarım kalan yüklemesi bu tarayıcıda bulunamadı.' (UPLOAD_NOT_FOUND, said by the page itself, with no call)"
+      closed: "'Bu yükleme artık sürdürülemez. Sayfa yenileniyor.' (RECORDING_UPLOAD_CLOSED or _NOT_FOUND)"
+      expired: "'Yüklemenin 24 saatlik süresi doldu; sürdürülemez.' (RECORDING_UPLOAD_CLOSED, reason expired)"
+      network: "'Bağlantı koptu.' (UPLOAD_NETWORK: the browser's request to Bunny got no answer after its retries)"
+      refused: "'Bunny yüklemeyi kabul etmedi.' (UPLOAD_REFUSED: Bunny answered 401 or 403)"
+      failed: "'Video gönderilemedi.' (UPLOAD_FAILED: any other error of the TUS upload)"
+      releaseGone: "the release time could not be written: the celse is gone"
+      releaseForbidden: "the release time could not be written: recording.manage is not held"
+
+effects:
+  dialogAdd: { set: { mode: add, chosen: nothing, release: unchanged, why: none } }
+  dialogEdit: { set: { mode: edit, chosen: nothing, release: unchanged, why: none } }
+  dialogResume: { set: { mode: resume, chosen: nothing, release: unchanged, why: none } }
+  chooseGood: { set: { chosen: good, why: none } }
+  chooseNotVideo: { set: { chosen: notVideo, why: none } }
+  chooseTooBig: { set: { chosen: tooBig, why: none } }
+  chooseZeroBytes: { set: { chosen: zeroBytes, why: none } }
+  triedNothing: { set: { chosen: nothingTried } }
+  releaseChanged: { set: { release: changed } }
+  releaseWritten: { set: { release: written } }
+  clearWhy: { set: { why: none } }
+  whyNotConfigured: { set: { why: notConfigured } }
+  whyUnavailable: { set: { why: unavailable } }
+  whyExists: { set: { why: exists } }
+  whyGone: { set: { why: gone } }
+  whyForbidden: { set: { why: forbidden } }
+  whyNotFound: { set: { why: notFound } }
+  whyClosed: { set: { why: closed } }
+  whyExpired: { set: { why: expired } }
+  whyNetwork: { set: { why: network } }
+  whyRefused: { set: { why: refused } }
+  whyFailed: { set: { why: failed } }
+  whyReleaseGone: { set: { why: releaseGone } }
+  whyReleaseForbidden: { set: { why: releaseForbidden } }
+
+failures:
+  opened:
+    from: listCourseRecordings
+    missing: [COURSE_NOT_FOUND]
+  savingRelease:
+    from: setLessonRecordingAvailability
+    gone: [LESSON_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+  starting:
+    from: startRecordingUpload
+    notConfigured: [BUNNY_STREAM_NOT_CONFIGURED]
+    unavailable: [BUNNY_STREAM_UNAVAILABLE]
+    exists: [RECORDING_EXISTS]
+    gone: [LESSON_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+  resigning:
+    from: resignRecordingUpload
+    closed: [RECORDING_UPLOAD_CLOSED, RECORDING_UPLOAD_NOT_FOUND]
+    notConfigured: [BUNNY_STREAM_NOT_CONFIGURED]
+    gone: [LESSON_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+  resuming:
+    from: resignRecordingUpload
+    closed: [RECORDING_UPLOAD_CLOSED, RECORDING_UPLOAD_NOT_FOUND]
+    notConfigured: [BUNNY_STREAM_NOT_CONFIGURED]
+    gone: [LESSON_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+
+# The story the page tells first: the müderris adds a recording to a celse that has none, picks a video, the upload is signed and sent, and
+# the poll settles it.
+main:
+  given: { can: both, held: nothing, file: video, stored: none, resign: signs }
+  events: [DONE, ADD, CHOOSE_FILE, SUBMIT, DONE, SENT, POLL_READY]
+
+initial: opened
+
+states:
+  opened:
+    title: Ders kayıtları is read
+    description: >-
+      The page reads the course, the caller's permissions in it (GET /courses/:id/my-permissions), the course's recordings (GET
+      /courses/:id/recordings) and, for a holder of recording.manage and session.live_link, its live streams. It opens for a holder of
+      recording.manage or recording.upload; a person with neither is shown "Bu sayfaya izniniz yok" (state forbidden) though the list
+      read itself succeeded. A course that is not there is the 404 page. A read that fails otherwise is a retry state, not drawn here.
+    invoke: { action: listCourseRecordings }
+    on:
+      DONE:
+        - { guard: "can == 'neither'", target: forbidden, source: apps/nazar/features/recordings/components/recordings-page.tsx:57 }
+        - { target: listed }
+      FAIL.missing: not_found
+    source: apps/nazar/features/recordings/components/recordings-page.tsx:43
+
+  forbidden:
+    title: The page is refused
+    description: >-
+      The header stays and a neutral Alert says "Bu sayfaya izniniz yok" under it (a status, not an alert); no upload note, no table.
+      This is a ders nazırı granted neither recording code.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/recordings-page.tsx:95
+
+  listed:
+    title: The recordings of the course are listed
+    description: >-
+      The h1 "Ders kayıtları", the subtitle, a note (a holder of recording.upload is told the file goes straight to Bunny and that
+      "Hazırlanıyor" stands while it is processed; a holder of recording.manage alone, "Burada yükleme yoktur"), a summary line, and for each
+      week a table of its celses with the recording each holds. A row with no recording offers "Kayıt ekle" to a holder of either code; a
+      row with one offers "Düzenle" (recording.manage, or recording.upload: the upload replaces the link or the video) and, for a holder of
+      recording.upload on a Bunny recording that is PROCESSING, "Devam et". A cancelled celse is listed only if it already holds a
+      recording (upload-on-cancelled-session). While any Bunny recording is PROCESSING the page reads itself again every 10 seconds and,
+      when tedrisat's poll has settled it, shows it READY or no longer shows it (POLL_READY, POLL_FAILED). Findings read here:
+      F-C-course-a-21 (the flip is not announced), F-C-course-a-29 (the dash cells), UPLOAD-2 ("Devam et" on an upload
+      that is only being encoded), upload-on-cancelled-session, focus-not-set.
+    by: human
+    goal: true
+    on:
+      ADD:
+        - { guard: "held == 'nothing' and can == 'manageOnly'", target: linkForm, effect: [dialogAdd], say: "she presses Kayıt ekle; with recording.manage alone the dialog is the paste form", source: apps/nazar/features/recordings/components/recording-dialog.tsx:171 }
+        - { guard: "held == 'nothing'", target: choosing, effect: [dialogAdd], say: "she presses Kayıt ekle: the dialog opens on the upload tab", source: apps/nazar/features/recordings/components/recording-dialog.tsx:170 }
+      EDIT:
+        - { guard: "held != 'nothing' and can in ['both', 'manageOnly']", target: linkForm, effect: [dialogEdit], say: "she presses Düzenle: the dialog opens on the paste tab, or on the paste form alone", source: apps/nazar/features/recordings/components/recording-dialog.tsx:173 }
+        - { guard: "held != 'nothing'", target: choosing, effect: [dialogEdit], say: "she presses Düzenle with recording.upload alone: the upload form, with its warning", source: apps/nazar/features/recordings/components/recording-dialog.tsx:167 }
+      RESUME: { guard: "held == 'encoding' and can in ['both', 'uploadOnly']", target: choosing, effect: [dialogResume], say: "she presses Devam et on a Bunny upload still PROCESSING", source: apps/nazar/features/recordings/components/recordings-table.tsx:322 }
+      POLL_READY: { guard: "held == 'encoding'", target: encoded, say: "tedrisat's poll settles the upload READY and the page reads itself again", source: apps/tedrisat/src/course/recording-encoding.poller.ts:148 }
+      POLL_FAILED: { guard: "held == 'encoding'", target: vanished, say: "tedrisat's poll settles it FAILED (Bunny's error, or 24 hours with no file) and the page reads itself again", source: apps/tedrisat/src/course/recording-encoding.poller.ts:162 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:393
+
+  linkForm:
+    title: The dialog shows the paste tab
+    description: >-
+      The same dialog on its paste tab ("Bağlantı yapıştır") or, with recording.manage alone, as the paste form alone: a link field, the
+      title, "Herkese açık" and the release fields, and "Kaydı ekle" or "Kaydet". "Düzenle" opens a holder of both codes here, on the link
+      the recording holds, so the upload is one press of a tab away. The form's own story is nazar.recordings.add's; here it is drawn so
+      that the tabs make sense, and its submit leaves for that flow.
+    by: human
+    on:
+      TAKE_UPLOAD_TAB: { guard: "can == 'both'", target: choosing, say: "she takes the tab Bunny’ye yükle", source: apps/nazar/features/recordings/components/recording-dialog.tsx:596 }
+      CANCEL: { target: listed, say: "she presses Vazgeç" }
+      CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      SUBMIT_LINK: { target: handed_over.add, say: "she presses Kaydı ekle or Kaydet" }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: linkForm, say: "she takes the tab Bağlantı yapıştır: it is the tab already shown, nothing changes", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      CHANGE_RELEASE: { guard: "can == 'both' and mode != 'resume'", target: linkForm, effect: [releaseChanged], say: "she chooses another time for talebe to watch it, and gives a valid one", source: apps/nazar/features/recordings/components/release-fields.tsx:22 }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:593
+
+  choosing:
+    title: The dialog asks for a video file
+    description: >-
+      The upload tab (or the upload form alone, for recording.upload alone and for "Devam et"): "Video dosyası" with its help ("En çok 10 GB.
+      Bağlantı koparsa yükleme kaldığı yerden sürer."), the title, "Herkese açık" and, for recording.manage, the release choice. From
+      "Düzenle" a warning says the video takes the link's, or the current video's, place once the upload starts (and stops an upload still
+      going). A file is checked at once: not a video, empty, over 10 GB mark the field invalid with its sentence, and the form is not
+      submitted while it is, so nothing is asked of tedrisat. "Yükle" with nothing chosen shows "Bir video dosyası seçin." Findings read here:
+      F-C-course-a-01 (the field error is not announced), F-C-course-a-07 (required is not announced), F-C-course-a-25 (focus on close),
+      UPLOAD-4 (a locked tab is not disabled). The replay cannot set a file input, so CHOOSE_FILE and what follows are not walked.
+    by: human
+    on:
+      CHOOSE_FILE:
+        - { guard: "file == 'video'", target: choosing, effect: [chooseGood], say: "she picks a video", source: apps/nazar/features/recordings/components/recording-dialog.tsx:237 }
+        - { guard: "file == 'notVideo'", target: choosing, effect: [chooseNotVideo], say: "she picks a file that is not a video", source: apps/nazar/features/recordings/bunny-upload.ts:163 }
+        - { guard: "file == 'tooBig'", target: choosing, effect: [chooseTooBig], say: "she picks a video over 10 GB", source: apps/nazar/features/recordings/bunny-upload.ts:165 }
+        - { guard: "file == 'zeroBytes'", target: choosing, effect: [chooseZeroBytes], say: "she picks an empty file", source: apps/nazar/features/recordings/bunny-upload.ts:164 }
+      CHANGE_RELEASE: { guard: "can == 'both' and mode != 'resume'", target: choosing, effect: [releaseChanged], say: "she chooses another time for talebe to watch it, and gives a valid one", source: apps/nazar/features/recordings/components/recording-dialog.tsx:206 }
+      SUBMIT:
+        - { guard: "chosen == 'nothing' or chosen == 'nothingTried'", target: choosing, effect: [triedNothing], say: "she presses Yükle (or Devam et) with no file", source: apps/nazar/features/recordings/components/recording-dialog.tsx:250 }
+        - { guard: "chosen == 'good'", target: beginsUpload, say: "she presses Yükle (or Devam et) with a good file", source: apps/nazar/features/recordings/components/recording-dialog.tsx:254 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: linkForm, say: "she takes the tab Bağlantı yapıştır", source: apps/nazar/features/recordings/components/recording-dialog.tsx:596 }
+      CANCEL: { target: listed, say: "she presses Vazgeç" }
+      CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: choosing, say: "she takes the tab Bunny’ye yükle: it is the tab already shown, nothing changes", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:409
+
+  beginsUpload:
+    title: The upload begins
+    description: >-
+      What the dialog does with a good file: the release time first, when its choice changed, then the signing. An earlier upload of the same
+      file to the same celse in this browser's tus storage is signed again and continued; with none, "Devam et" has nothing to continue
+      (UPLOAD_NOT_FOUND, said with no call) and any other dialog starts a new upload.
+    always:
+      - { guard: "release == 'changed'", target: savingRelease, source: apps/nazar/features/recordings/components/recording-dialog.tsx:260 }
+      - { guard: "stored == 'kept'", target: resigning, source: apps/nazar/features/recordings/bunny-upload.ts:331 }
+      - { guard: "mode == 'resume'", target: failed, effect: [whyNotFound], source: apps/nazar/features/recordings/bunny-upload.ts:343 }
+      - { target: starting }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:248
+
+  savingRelease:
+    title: The release time is written first
+    description: >-
+      PUT /lessons/:id/recording-availability, so the video is never open to talebe before its time while Bunny prepares it. The dialog says
+      "Yükleme hazırlanıyor…" and shows "İptal", which does nothing yet (no upload object exists). A refusal ends the attempt with the alert
+      "Kayıt erişimi kaydedilemedi" and nothing uploaded; a success is written silently, and stays written if the upload is then refused
+      (UPLOAD-3). Findings read here: UPLOAD-3, F-C-course-a-26.
+    invoke: { action: setLessonRecordingAvailability }
+    on:
+      DONE: { target: beginsUpload, effect: [releaseWritten] }
+      FAIL.gone: { target: failed, effect: [whyReleaseGone] }
+      FAIL.forbidden: { target: failed, effect: [whyReleaseForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: savingRelease, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: savingRelease, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: savingRelease, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      STOP: { target: savingRelease, say: "she presses İptal while the release time is written: no upload exists yet, so it does nothing, and the upload follows", source: apps/nazar/features/recordings/components/recording-dialog.tsx:383 }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:263
+
+  starting:
+    title: tedrisat makes the video and signs its upload
+    description: >-
+      POST /lessons/:id/recordings/uploads with the title, the visibility, the celse's time as when it was recorded and, from "Düzenle" of a
+      Bunny recording, replaceVideo. tedrisat asks the permission first (403), then that the celse exists, that the library is configured (503),
+      that the celse is not archived (404) and that its recording may be replaced (a Bunny video PROCESSING or READY without replaceVideo:
+      409), then creates an empty video in Bunny, writes the
+      recording as PROCESSING in place of a link or a FAILED upload (or of the video when replaceVideo says so, which is then queued for
+      deletion from Bunny), and returns the TUS values, valid 24 hours. Locally the library is not configured and this answers 503
+      BUNNY_STREAM_NOT_CONFIGURED before anything is written. The dialog says "Yükleme hazırlanıyor…" and shows only "İptal". Findings read
+      here: upload-on-cancelled-session (no check of cancelled_at), UPLOAD-1 (the video is created before the write that can refuse).
+    invoke: { action: startRecordingUpload }
+    on:
+      DONE: sending
+      FAIL.notConfigured: { target: failed, effect: [whyNotConfigured] }
+      FAIL.unavailable: { target: failed, effect: [whyUnavailable] }
+      FAIL.exists: { target: failed, effect: [whyExists] }
+      FAIL.gone: { target: failed, effect: [whyGone] }
+      FAIL.forbidden: { target: failed, effect: [whyForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: starting, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: starting, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: starting, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+    source: apps/tedrisat/src/course/recording-upload.service.ts:73
+
+  resigning:
+    title: An earlier upload is signed again
+    description: >-
+      POST /lessons/:id/recordings/uploads/:videoId/signature for the video id this browser kept. tedrisat signs the same video with its
+      original expiry (no call to Bunny, nothing written) while the recording is PROCESSING and the 24 hours have not passed. When it
+      refuses with RECORDING_UPLOAD_CLOSED or _NOT_FOUND, the stored upload is forgotten: "Devam et" says so, and "Yükle" and "Düzenle"
+      go on to start a new upload.
+    invoke: { action: resignRecordingUpload }
+    on:
+      DONE: { guard: "resign == 'signs'", target: sending }
+      FAIL.closed:
+        - { guard: "mode == 'resume' and resign == 'expired'", target: failed, effect: [whyExpired], source: apps/nazar/features/recordings/recordings.ts:704 }
+        - { guard: "mode == 'resume' and resign == 'closed'", target: failed, effect: [whyClosed], source: apps/nazar/features/recordings/recordings.ts:703 }
+        - { guard: "resign != 'signs'", target: starting, source: apps/nazar/features/recordings/bunny-upload.ts:339 }
+      FAIL.notConfigured: { target: failed, effect: [whyNotConfigured] }
+      FAIL.gone: { target: failed, effect: [whyGone] }
+      FAIL.forbidden: { target: failed, effect: [whyForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: resigning, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: resigning, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: resigning, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+    source: apps/nazar/features/recordings/bunny-upload.ts:331
+
+  resuming:
+    title: The same video is signed again
+    description: >-
+      The second run of one upload (after İptal, or a dropped connection): the same video's signature again, and a refusal ends it for good
+      (no new upload is started from here). The dialog says "Yükleme hazırlanıyor…" and shows "İptal".
+    invoke: { action: resignRecordingUpload }
+    on:
+      DONE: { guard: "resign == 'signs'", target: sending }
+      FAIL.closed:
+        - { guard: "resign == 'expired'", target: failedHalfway, effect: [whyExpired], source: apps/nazar/features/recordings/recordings.ts:704 }
+        - { guard: "resign == 'closed'", target: failedHalfway, effect: [whyClosed], source: apps/nazar/features/recordings/recordings.ts:703 }
+      FAIL.notConfigured: { target: failedHalfway, effect: [whyNotConfigured] }
+      FAIL.gone: { target: failedHalfway, effect: [whyGone] }
+      FAIL.forbidden: { target: failedHalfway, effect: [whyForbidden] }
+      # While the upload is busy the dialog drops every way of closing (recording-dialog.tsx:556) and the tabs ignore a press
+      # (:597): the press changes nothing and the step runs on. Written as transitions back to this state, as a transition here
+      # always names a target.
+      CLOSE: { target: resuming, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: resuming, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: resuming, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+    source: apps/nazar/features/recordings/bunny-upload.ts:330
+
+  sending:
+    title: The browser sends the file to Bunny
+    description: >-
+      The file goes from the browser to Bunny over TUS, in chunks of 50 MiB, never through tedrisat; the progress bar says "Yükleniyor" and
+      its percent, with "{sent} / {total}" under it, and "İptal" is the only button. The title, the file, the tabs and the release fields are
+      locked, Esc and the close icon do nothing (F-C-course-a-26), and leaving the page asks the browser's own question. A dropped connection
+      is retried for about two minutes before it is an error; Bunny's 401 or 403 is not retried. The events are the browser's and Bunny's.
+    by: human
+    on:
+      STOP: { target: stopped, say: "she presses İptal: the upload stops and Bunny keeps what it got", source: apps/nazar/features/recordings/bunny-upload.ts:314 }
+      SENT: { target: processing, say: "Bunny has the whole file: the dialog closes with a toast and the page is read again", source: apps/nazar/features/recordings/bunny-upload.ts:396 }
+      NETWORK_DROPS: { target: failedHalfway, effect: [whyNetwork], say: "the connection drops and the retries run out", source: apps/nazar/features/recordings/bunny-upload.ts:209 }
+      BUNNY_REFUSES: { target: failedHalfway, effect: [whyRefused], say: "Bunny answers 401 or 403", source: apps/nazar/features/recordings/bunny-upload.ts:208 }
+      BUNNY_BREAKS: { target: failedHalfway, effect: [whyFailed], say: "Bunny answers with another error", source: apps/nazar/features/recordings/bunny-upload.ts:210 }
+      CLOSE: { target: sending, say: "the close icon, or Esc, while the upload is busy: nothing happens and nothing says so (F-C-course-a-26)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:556 }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: sending, say: "she takes the tab Bunny’ye yükle: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: sending, say: "she takes the tab Bağlantı yapıştır: a press is ignored while the upload is busy or its video exists (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+    source: apps/nazar/features/recordings/bunny-upload.ts:299
+
+  stopped:
+    title: The upload was stopped
+    description: >-
+      An info Alert says "Yükleme durduruldu. Bunny aldığı kısmı saklıyor; “Devam et” ile kaldığı yerden sürdürün." The video exists and is the
+      celse's PROCESSING recording; the file, title and tabs stay locked and the footer offers "Vazgeç" and "Devam et". Closing the dialog
+      reads the page again, which shows the row "Hazırlanıyor" with its own "Devam et".
+    by: human
+    on:
+      SUBMIT: { target: resuming, say: "she presses Devam et", source: apps/nazar/features/recordings/components/recording-dialog.tsx:371 }
+      CANCEL: { target: listed, say: "she presses Vazgeç" }
+      CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: stopped, say: "she takes the tab Bunny’ye yükle: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: stopped, say: "she takes the tab Bağlantı yapıştır: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:302
+
+  failed:
+    title: Nothing was uploaded
+    description: >-
+      An error Alert (role=alert) "Video yüklenemedi", or "Kayıt erişimi kaydedilemedi" when the release time was refused, with the sentence of
+      the cause. No video was made, so the dialog is as it was: the file can be changed and "Yükle" (or "Devam et") starts over. Locally
+      the cause is notConfigured, 'Video kütüphanesi ayarlı değil. Şimdilik kaydın bağlantısını yapıştırın.' The paste tab can still be taken
+      (nazar.recordings.add), and the way back shows this same alert (not drawn). A refusal that means the page is out of date (the
+      recording exists, the celse is gone, the upload is closed) also reads the page again behind the dialog. Findings read here: UPLOAD-3
+      (a written release time stays), F-C-course-a-26.
+    by: human
+    on:
+      SUBMIT: { target: beginsUpload, effect: [clearWhy], say: "she presses Yükle (or Devam et) again", source: apps/nazar/features/recordings/components/recording-dialog.tsx:248 }
+      CHOOSE_FILE: { guard: "file == 'video'", target: choosing, effect: [chooseGood], say: "she picks the video again, or another one", source: apps/nazar/features/recordings/components/recording-dialog.tsx:237 }
+      CANCEL: { target: listed, say: "she presses Vazgeç" }
+      CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: failed, say: "she takes the tab Bunny’ye yükle: it is the tab already shown, nothing changes", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: linkForm, say: "she takes the tab Bağlantı yapıştır: nothing was made, so the tab is free (nazar.recordings.add)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      CHANGE_RELEASE: { guard: "can == 'both' and mode != 'resume'", target: failed, effect: [releaseChanged], say: "she chooses another time for talebe to watch it, and gives a valid one", source: apps/nazar/features/recordings/components/release-fields.tsx:22 }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:306
+
+  failedHalfway:
+    title: The upload broke off after its video was made
+    description: >-
+      The same error Alert, with the progress bar where it stopped. The video exists, so the file, the title and the tabs stay locked. After a
+      dropped connection or Bunny's refusal or error, "Devam et" signs the same video again and sends on (resuming); after a refusal of
+      tedrisat's to sign it again (closed, expired, the celse gone) there is no way on and the footer offers only "Vazgeç" (the "dead" dialog);
+      a dialog opened by "Devam et" shows the button whatever the cause. Closing reads the page again, and the row then says "Hazırlanıyor"
+      until the poll settles it. For an expired upload the page itself says the recording will drop ("Kayıt kısa süre içinde düşer"):
+      MDRS-259, see vanished.
+    by: human
+    on:
+      SUBMIT: { guard: "mode == 'resume' or why in ['network', 'refused', 'failed']", target: resuming, effect: [clearWhy], say: "she presses Devam et", source: apps/nazar/features/recordings/components/recording-dialog.tsx:371 }
+      CANCEL: { target: listed, say: "she presses Vazgeç" }
+      CLOSE: { target: listed, say: "she presses the close icon, or Esc" }
+      TAKE_UPLOAD_TAB: { guard: "can == 'both' and mode != 'resume'", target: failedHalfway, say: "she takes the tab Bunny’ye yükle: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+      TAKE_LINK_TAB: { guard: "can == 'both' and mode != 'resume'", target: failedHalfway, say: "she takes the tab Bağlantı yapıştır: the video exists, so the press is ignored (UPLOAD-4)", source: apps/nazar/features/recordings/components/recording-dialog.tsx:597 }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:378
+
+  processing:
+    title: The row says Hazırlanıyor
+    description: >-
+      The dialog closed with a toast, "Video yüklendi: {celse} celsesinin videosu Bunny’de işleniyor; hazır olunca “Hazır” yazar." The page was
+      read again: the celse's recording is the new Bunny video, PROCESSING, with no link ("Bağlantı yok"), and the page reads itself every
+      10 seconds until tedrisat's poll (every minute) sees Bunny finish or fail. "Devam et" is still offered on the row although only the
+      encoding is left (UPLOAD-2). Findings read here: F-C-course-a-21, F-C-course-a-25 (focus), UPLOAD-2.
+    by: human
+    on:
+      POLL_READY: { target: encoded, say: "tedrisat's poll sees Bunny finish: READY", source: apps/tedrisat/src/course/recording-encoding.poller.ts:148 }
+      POLL_FAILED: { target: vanished, say: "tedrisat's poll sees an error, or the 24 hours pass with no file: FAILED", source: apps/tedrisat/src/course/recording-encoding.poller.ts:162 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:138
+
+  encoded:
+    title: The row says Hazır
+    description: >-
+      The poll set the recording READY; it announces it to the celse's talebe when it is released (now, or at the release time, never before
+      the celse's start). The row's badge says "Hazır" and, where the library is configured, a signed player link "Aç" appears; the stack's
+      library is not configured, so it says "Bağlantı yok" and no link. Nothing on the page says it changed (F-C-course-a-21), and the link's name says nothing of the new tab
+      it opens (F-C-course-a-22).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:148
+
+  vanished:
+    title: The failed upload is gone from the row
+    description: >-
+      The poll set the recording FAILED and the next read leaves it out: a FAILED recording is listed to no one, so the row reads "Kayıt yok"
+      with "Kayıt ekle" again, and nothing says an upload failed or why (MDRS-259, decision D2). "Kayıt ekle" starts a new upload, which
+      replaces the FAILED row and queues its Bunny video for deletion.
+    by: human
+    on:
+      ADD: { guard: "can in ['both', 'uploadOnly']", target: choosing, effect: [dialogAdd], say: "she presses Kayıt ekle again", source: apps/nazar/features/recordings/components/recordings-table.tsx:359 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/tedrisat/src/course/domain/recording.ts:185
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the read is Next's not-found page (lib/tedrisat-read.ts:44)."
+    type: final
+    leavesPage: true
+
+  handed_over.add:
+    title: The paste form takes over
+    description: "The paste tab's submit is nazar.recordings.add's story: the link is checked and written there."
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: upload-needs-recording-upload
+    never: "(state == 'choosing' or state == 'savingRelease' or state == 'starting' or state == 'resigning' or state == 'resuming' or state == 'sending') and can in ['manageOnly', 'neither']"
+    say: Only a holder of recording.upload reaches the upload; recording.manage alone is told there is none here, and neither is refused the page.
+    source: apps/nazar/features/recordings/components/recordings-page.tsx:59
+  - id: release-is-written-first
+    never: "state == 'starting' and release == 'changed'"
+    say: A changed release time is written before the video is made, so the video is never open to talebe before its time.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:259
+  - id: resume-never-starts-a-video
+    never: "state == 'starting' and mode == 'resume'"
+    say: 'Devam et never makes a new video; with nothing to continue it says so.'
+    source: apps/nazar/features/recordings/bunny-upload.ts:341
+  - id: a-file-is-checked-before-anything-is-asked
+    never: "(state == 'savingRelease' or state == 'starting' or state == 'resigning') and chosen != 'good'"
+    say: Nothing is asked of tedrisat for a file that is not a video, is empty or is over 10 GB, or for no file.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:237

@@ -6,6 +6,7 @@ import {
 } from "../shared/account-action";
 import type { AuthErrorCode } from "../shared/auth-error";
 import { AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
+import { DEFAULT_SIGN_IN_LIMIT } from "../shared/sign-in-limit";
 import {
   InvalidLogoutTokenError,
   JTI_TTL_MS,
@@ -61,8 +62,10 @@ const MAX_OPEN_FLOWS = 3;
  * matches, a session cookie the browser keeps refusing, or an API that
  * refuses a token the IdP still accepts cannot turn into an endless redirect.
  */
-export const MAX_STARTS_PER_WINDOW = 5;
-export const STARTS_WINDOW_MS = 5 * 60_000;
+export const MAX_STARTS_PER_WINDOW = DEFAULT_SIGN_IN_LIMIT.max;
+export const STARTS_WINDOW_MS = DEFAULT_SIGN_IN_LIMIT.windowMs;
+// `AuthConfig.signInLimit` (`AUTH_SIGN_IN_LIMIT`) replaces both; see
+// `shared/sign-in-limit.ts`.
 
 /** `state` as openid-client makes it (base64url); anything else is not ours. */
 const STATE_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
@@ -84,14 +87,18 @@ export interface AuthRouteHandlers {
   POST(request: NextRequest): Promise<Response>;
 }
 
-const parseStarts = (value: string | undefined, now: number) => {
+const parseStarts = (
+  value: string | undefined,
+  now: number,
+  windowMs: number
+) => {
   const [count, since] = (value ?? "").split(".").map(Number);
   return typeof count === "number" &&
     typeof since === "number" &&
     Number.isInteger(count) &&
     count >= 0 &&
     since <= now &&
-    now - since < STARTS_WINDOW_MS
+    now - since < windowMs
     ? { count, since }
     : { count: 0, since: now };
 };
@@ -151,11 +158,13 @@ export function createRouteHandlers(
     const requested = params.get(ACCOUNT_ACTION_PARAM);
     const action = !register && isAccountAction(requested) ? requested : null;
 
+    const limit = config.signInLimit;
     const starts = parseStarts(
       request.cookies.get(config.cookies.starts)?.value,
-      now
+      now,
+      limit.windowMs
     );
-    if (starts.count >= MAX_STARTS_PER_WINDOW) {
+    if (starts.count >= limit.max) {
       return redirect(errorPage("SignInLimit", returnTo));
     }
     const countThisVisit = (response: NextResponse) => {
@@ -164,7 +173,7 @@ export function createRouteHandlers(
         `${starts.count + 1}.${starts.since}`,
         cookieAttributes(
           config.secure,
-          Math.ceil((starts.since + STARTS_WINDOW_MS - now) / 1000)
+          Math.ceil((starts.since + limit.windowMs - now) / 1000)
         )
       );
       return response;

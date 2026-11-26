@@ -1,0 +1,228 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.kosks.nazims
+status: proposed
+summary: >-
+  What must exist for a köşk's nazımları to be read and added: the product list of nizam.kosks.nazims, written from the flow's
+  story and its open decisions, never from what the page does today. No replay has been run (the owner's word: replays happen
+  once, after every graph is written), so `walked` names the e2e checks and unit specs that carry a need and no replay scenario;
+  the scenarios bound in binding*.yaml are named in the comments (`adds`, `passive`, `notFound`, `again` in binding.yaml; `exists`
+  in binding.exists.yaml; `nazim`, `medaris` and `stranger` each in a file of its own).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Gaps of this file, for that merge:
+# missing:   the-page-says-a-passive-kosk-is-reopened (KNZ-1, decision D1), a-medaris-nazim-who-may-add-can-add-here (KNZ-2, decision
+# D2), a-person-who-is-a-nazim-already-is-told-at-once (KNZ-5), the-picker-stops-at-ten (KNZ-4); each with `none` (no Linear
+# issue)
+# unwalked:  several-people-in-one-call (the page's half: the e2e adds one person, and the cover of replay `adds` takes a second person
+# into the dialog but no walk presses "Ekle" with two; the API spec holds the all-or-nothing), the-read-failing-is-said-and-retried (the
+# unit spec only; nothing here can make GET /kosks/:id/nazims fail), a-refused-call-names-what-went-wrong (only the 409 of the
+# e2e; the others cannot be made on request), the-directory-is-searched-and-audited (the e2e reads the audit row of the
+# addition, not of the search; replay `adds` checks the search's row)
+
+needs:
+  - id: the-chief-adds-nazims-by-email
+    need: >-
+      The başnazım adds a köşk's nazımları by their e-mail address: each person is found in the realm's directory by the exact
+      address, shown by name before anything is written, and given the post at once. The list then has their rows, who gave the
+      post and when, and every addition is written to the audit log.
+    evidence:
+      - state: listed
+      - state: asking
+      - state: askingReady
+      - state: looking
+      - state: adding
+      - node: addButton
+      - node: nazimField
+      - node: chosenFirst
+      - node: chosenFirstEmail
+      - node: submit
+      - node: toastSaved
+      - node: toastSavedBody
+      - node: rowAddedName
+      - node: rowAddedGiver
+      - node: rowAddedRole
+      - node: rowAddedDate
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:65
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/21 — the başnazım adds a köşk nazımı by e-mail: the dialog, the row, the audit entry, and nothing twice (criteria 1-5)"
+    note: kosks.e2e.ts kosks#12 (a1 to a-last)
+
+  - id: several-people-in-one-call
+    need: >-
+      The başnazım chooses more than one person in the same dialog and adds them all in one call, all or none: if any of them
+      already is a nazım of the köşk nothing is written.
+    evidence:
+      - node: chosenSecond
+      - node: rowMoreName
+      - state: askingReady
+      - state: adding
+      - node: toastExists
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:83
+      - test: apps/tedrisat/test/e2e/kosk-admin.e2e.spec.ts
+    note: "kosk-admin.e2e.spec.ts kosk-admin: refuses the whole call when anyone is a nazım already"
+
+  - id: an-end-date-is-optional-and-ahead
+    need: >-
+      The post may end on a day and time the başnazım types, or last until the nazım is taken away. An end in the past is refused
+      under its field before sending, and by the server if it has passed by then; an end that is kept is shown in the list in
+      place of "Süresiz".
+    evidence:
+      - node: endField
+      - node: endHelp
+      - node: endPast
+      - node: rowAddedNever
+      - node: rowAddedEnd
+      - node: toastEndPassed
+      - node: submit
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+      - source: libs/utils/src/end-instant.ts:141
+      - source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:62
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/21 — an end date is kept and shown, and one in the past cannot be chosen"
+    note: kosks.e2e.ts kosks#13 (a1 to a-last; the end is typed as 12:00 on the browser clock, Europe/Istanbul)
+
+  - id: adding-a-nazim-reopens-a-passive-kosk
+    need: >-
+      A köşk that was taken out of service, with no nazım, is active again as soon as the başnazım adds one: its passive mark is
+      cleared in the same step as the post is given.
+    evidence:
+      - node: emptyLine
+      - state: adding
+      - state: listed
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+      - source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:407
+      - test: apps/tedrisat/test/e2e/kosk-admin.e2e.spec.ts
+    note: >-
+      kosk-admin.e2e.spec.ts kosk-admin: makes a passive köşk active again (the API only; replay `passive` is bound and checks the
+      directory)
+
+  - id: the-page-says-a-passive-kosk-is-reopened
+    need: >-
+      The page says that the köşk is passive, before the başnazım adds anybody, and that adding somebody makes it active again,
+      with its courses; the toast says so when it happened. Reopening what a confirmation closed does not go unsaid (KNZ-1,
+      decision D1).
+    missing: no Linear issue; KNZ-1, decision D1
+    note: >-
+      Drawn on the nodes emptyLine, endHelp and toastSaved, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-nazim-reads-the-list-read-only
+    need: >-
+      A nazım of the köşk reads who runs it, who gave each post, when, and until when, with "Siz" under their own name; the list
+      is the Medaris yönetimi's to change, so there is no button to add and none to remove.
+    evidence:
+      - state: listed
+      - node: rosterTable
+      - node: rowName
+      - node: rowYou
+      - node: rowGiver
+      - node: rowGiverRole
+      - node: rowDate
+      - node: rowNever
+      - node: readOnlyNote
+      - node: removeNever
+      - node: addButton
+      - node: tabGeneral
+      - node: abilitiesHeading
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:297
+      - source: apps/nizam/features/kosks/components/nazims-view.tsx:123
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/25 — the nazım list is read-only: who, who gave the post, when, until when, and 'Siz' (criteria 1-3)"
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/21 — a köşk nazımı gets no 'Köşk nazımı ekle' (criterion 6)"
+    note: kosks.e2e.ts kosks#10 (a1 to a11; the date is the day the walk made the köşk, not a seeded one), kosks#14 (a1)
+
+  - id: another-kosks-nazim-is-refused
+    need: >-
+      A nazım of another köşk cannot read the list: they meet "Bu bölüm için izniniz yok", the same screen as for a köşk that is
+      not there, so the page never tells which köşks exist.
+    evidence:
+      - state: handed_over.no_access
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:297
+      - source: "apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx:36"
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/25 — a köşk nazımı who does not manage the köşk gets the 403 screen (criterion 4)"
+    note: kosks.e2e.ts kosks#11 (a1; a2 is /kosks/<id>/ayarlar, nizam.kosks.editAndHide)
+
+  - id: a-medaris-nazim-who-may-add-can-add-here
+    need: >-
+      A Medaris nazımı who holds platform.kosk_nazim_manage, which the API admits, gets "Köşk nazımı ekle" on this page, and one
+      who holds only platform.kosk_edit reads a note that does not tell them the list is another office's to change (KNZ-2,
+      decision D2).
+    missing: no Linear issue; KNZ-2, decision D2
+    note: >-
+      Drawn on the nodes addButton and readOnlyNote, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-person-who-is-a-nazim-already-is-told-at-once
+    need: >-
+      When the person found already is a nazım of the köşk, the dialog says so beside their name before "Ekle" is pressed, and
+      does not send them; the list is in the page already (KNZ-5).
+    missing: no Linear issue; KNZ-5
+    note: >-
+      Drawn on the nodes chosenFirst and toastExists, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-picker-stops-at-ten
+    need: >-
+      The picker takes no more people than the API does (one to ten) and says so, instead of an eleventh person ending in a
+      generic "Bir şeyler ters gitti" after a full form (KNZ-4).
+    missing: no Linear issue; KNZ-4
+    note: >-
+      Drawn on the nodes chosenSecond and toastGeneric, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-directory-is-searched-and-audited
+    need: >-
+      The address is searched only on the person's own request, and every search is written to the audit log with the address and
+      whether anybody was found, which the help line says. Tabbing through the field does not search (F-W3-14).
+    evidence:
+      - state: looking
+      - node: nazimField
+      - node: nazimHelp
+      - node: pickerNotFound
+      - node: pickerAlertAlready
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:145
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/21 — the başnazım adds a köşk nazımı by e-mail: the dialog, the row, the audit entry, and nothing twice (criteria 1-5)"
+    note: kosks.e2e.ts kosks#12 (the address no account has, then a real one; the audit row of the search is not read)
+
+  - id: the-read-failing-is-said-and-retried
+    need: >-
+      When the list cannot be read the page still draws, says so in an alert with "Yeniden dene", and reads again when it is
+      pressed; the başnazım is never offered a dialog about a list that did not load without the page saying so.
+    evidence:
+      - state: listFailed
+      - node: failAlert
+      - node: failText
+      - node: retry
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:297
+      - source: apps/nizam/features/kosks/components/nazims-view.tsx:181
+      - test: apps/nizam/test/kosk-views.spec.tsx
+    note: kosk-views.spec.tsx kosk-views#NazimsView (unit spec of the component; no browser run reads it)
+
+  - id: a-refused-call-names-what-went-wrong
+    need: >-
+      A refusal of the call is one toast that names the cause in plain words: someone is a nazım already, an account is not in
+      Medaris, the end has passed, the köşk is gone, no right. Whatever else is said as such, not as "something went wrong".
+    evidence:
+      - node: toastFailed
+      - node: toastExists
+      - node: toastUnknownAccount
+      - node: toastEndPassed
+      - node: toastGone
+      - node: toastForbidden
+      - node: toastGeneric
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+      - source: apps/nizam/features/kosks/admin-present.ts:431
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/21 — the başnazım adds a köşk nazımı by e-mail: the dialog, the row, the audit entry, and nothing twice (criteria 1-5)"
+    note: "kosks.e2e.ts kosks#12 (a-last: only the 409 is read; replay `exists` is bound)"

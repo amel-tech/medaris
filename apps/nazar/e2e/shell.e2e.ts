@@ -44,7 +44,6 @@ const MEDRESE_ITEMS = [
   "Yasaklamalar",
   "İtirazlar",
   "Arşiv",
-  "Kabul kuralları",
   "Medrese ayarları",
 ];
 const DERS_ITEMS = [
@@ -197,19 +196,16 @@ test("a menu entry whose screen is not built opens the shared placeholder under 
   const page = await as("MEDRESE_BASMUDERRIS");
   await page.setViewportSize(desktop);
   await page.goto(`/medrese/${fixture?.madrasah.id}`);
-  await page
-    .locator("aside")
-    .getByRole("link", { name: "Kabul kuralları" })
-    .click();
-  await page.waitForURL("**/kabul-kurallari");
+  await page.locator("aside").getByRole("link", { name: "İtirazlar" }).click();
+  await page.waitForURL("**/itirazlar");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Kabul kuralları" })
+    page.getByRole("heading", { level: 1, name: "İtirazlar" })
   ).toBeVisible();
   await expect(
     page.getByText("Bu sayfa henüz hazır değil.").filter({ visible: true })
   ).toBeVisible();
   await expect(
-    page.locator("aside").getByRole("link", { name: "Kabul kuralları" })
+    page.locator("aside").getByRole("link", { name: "İtirazlar" })
   ).toHaveAttribute("aria-current", "page");
 });
 

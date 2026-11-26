@@ -1,0 +1,29 @@
+# nizam.kosks.nazims, opened by a nazım of another köşk: the seeded köşk nazımı (Cemal Köşk Nazımı), who manages the seed's two köşks and
+# not the walk's own, opens /kosks/<the walk's köşk>/ayarlar/nazimlar by its address (kosks.e2e.ts#11, first half). tedrisat answers 403
+# AUTHZ_FORBIDDEN (read with helpers/api.mjs as a spare talebe who holds no post in the seeded köşk: the same check, kosk.manage on that
+# köşk and none held; the pair "a nazım of one köşk at another's list" was not read, it needs the walk's köşk) and the page calls
+# forbidden(): "Bu bölüm için izniniz yok", in the shell. The face is nizam.shell.noAccessAndNotFound's; here it is the exit handed_over.no_access,
+# checked by its address and its sentence. The seeded köşk nazımı is never added to the walk's köşk.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/nazims \
+#     --bind graphs/nizam/kosks/nazims/binding.stranger.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml). No `enter`: the settings page is refused to him too, so no entry of the nav graph leads from it. A file of its
+# own: the refusal is the one transition this scenario adds, and it is the only one it can walk.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.nazims
+
+scenarios:
+  stranger:
+    given: { viewer: stranger, read: ok, lookup: found, answer: added }
+    as: koskNazim
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar/nazimlar'
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up]
+        expect: 'nznazims up'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: '{nz.add.email}'
+      anotherEmail: '{nz.more.email}'

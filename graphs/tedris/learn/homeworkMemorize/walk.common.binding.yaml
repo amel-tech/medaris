@@ -1,0 +1,77 @@
+# What every walk of tedris.learn.homeworkMemorize shares (graphs/README.md, "The stack and the bindings"): the throwaway course's ids as
+# data, the events a person types or reloads with and the one the hoca causes, the places the walk finds nodes by, and the checks of what
+# the API holds. The scenarios are in binding.yaml (the main story) and in one file for each other case, because a scenario whose steps
+# are the same as another's is walked only from a file of its own (`--to` and `--cover` take the shortest way from the first scenario
+# that reaches the state):
+#   binding.yaml             waits       Bekliyor, the hoca marks, a reload, "Tam" and the note (the main story)
+#   binding.marked.yaml      marked      the mark is there before the card reads (what nazar.evaluation.markRecited starts)
+#   binding.incomplete.yaml  incomplete  "Eksik", no note
+#   binding.absent.yaml      absent      "Vermedi" and a note
+#   binding.note.yaml        note        Bekliyor, and a note the talebe handed in before the switch (MEMO-3)
+#   binding.reviewed.yaml    reviewed    Bekliyor, that note, and the review the course team sent on it
+# Not bound, with the reason: the failed read (`mark: unreadable`, state loadFailed): nothing on the stack makes the read answer 404, 403 or
+# nothing (the homework would have to be switched back to a file homework between the page's render and the card's read); an ended session
+# (sent_to_sign_in); the files of the list of earlier work and the hoca's own files (a file cannot be stored locally: 503); and evaluation#3's
+# upload (409 SUBMISSION_FILES_NOT_TAKEN), which needs a multipart POST that helpers/api.mjs cannot send.
+#
+# Data. Every scenario makes its own course (helpers/course.mjs make memorize ...), as the one `--talebe` account takes a seat in it, sets
+# the first celse's homework as "Ezber" and, where the case needs a mark, has the müderris save it; and removes the course
+# (course.mjs remove memorize: the course, its celses, the homework, the marks, the hand-in, the review, the seat's mail and the
+# notifications that point at the course). The talebe is `applicantD`, a spare man with a full profile, no seat and no notification, who is
+# left that way: `teardown` also clears his mailbox and his notifications. The seeded courses, the seeded homework and every other account
+# are never touched. course.mjs writes graphs/.local/made/memorize.json, read here as {made.course} and {made.lessons.N}.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learn.homeworkMemorize
+
+browser: { width: 1280, height: 900 }
+
+data:
+  made: { json: ../.local/made/memorize.json }
+
+events:
+  # the page is read anew: the card reads the mark again
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+  # the hoca, in nazar, saves the mark (nazar.evaluation.markRecited): here as the müderris, through tedrisat. The page the talebe has open
+  # does not change (MEMO-1), which is what the step after it checks.
+  HOCA_MARKS:
+    - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{lesson}/evaluations/{secret.E2E_APPLICANT_D_SUB}', '{markBody}']
+      expect: '"status":"{markStatus}"'
+
+states:
+  left: { url: '{tedris}/home' }
+
+nodes:
+  # the page's one <main>; the block that says to recite is what tells it from the page a walk leaves for
+  celsePage: { css: main, hasText: Ezberini hocana dinlet }
+  homeworkRegion: { role: region, name: Ödev }
+  # the badge is one element with four words; the test id is the app's own (the unit spec reads it too)
+  badgePending: { testId: memorize-state, hasText: Bekliyor }
+  badgeFull: { testId: memorize-state, hasText: Tam }
+  badgeIncomplete: { testId: memorize-state, hasText: Eksik }
+  badgeAbsent: { testId: memorize-state, hasText: Vermedi }
+  description: { testId: assignment-description }
+  # the label and the note are two elements of one paragraph in the block
+  markNoteLabel: { css: '[data-testid=memorize-homework] .mds-label' }
+  markNote: { css: '[data-testid=memorize-homework] bdi' }
+  loadFailedAlert: { role: alert, hasText: Ezber durumun şu an okunamadı. }
+  # the earlier work and its review are blocks of their own, with the app's test ids
+  earlierHeading: { css: '[data-testid=memorize-earlier] h3' }
+  earlierNoteLabel: { css: '[data-testid=memorize-earlier] .mds-label' }
+  earlierNote: { css: '[data-testid=memorize-earlier] bdi' }
+  reviewHeading: { css: '[data-testid=homework-review] h3' }
+  reviewedBadge: { css: '[data-testid=homework-review] .mds-badge', hasText: Değerlendirildi }
+  reviewBy: { css: '[data-testid=homework-review] p.mds-caption' }
+  reviewNote: { testId: review-note }
+
+effects:
+  # evaluation#1's last step, which reads the talebe's own mark by the API: after the hoca has saved it, the API gives it to the talebe
+  hocaMarked:
+    - run: [node, helpers/api.mjs, applicantD, GET, '/lessons/{lesson}/evaluation']
+      expect: '"status":"{markStatus}"'
+  # evaluation#3: a talebe cannot save a mark, themselves included (403 before anything is written)
+  getMyEvaluation:
+    - run: [node, helpers/api.mjs, applicantD, PUT, '/lessons/{lesson}/evaluations/{secret.E2E_APPLICANT_D_SUB}', '{"status":"FULL"}', --any]
+      expect: 'HTTP 403'

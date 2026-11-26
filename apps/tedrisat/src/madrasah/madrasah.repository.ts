@@ -1058,6 +1058,7 @@ export class MadrasahRepository {
             inArray(courses.madrasahId, ids),
             eq(courses.status, CourseStatus.PUBLISHED),
             isNull(courses.archivedAt),
+            eq(courses.isUnlisted, false),
             eq(kosks.isPrivate, false),
             isNull(kosks.archivedAt)
           )
@@ -1168,6 +1169,7 @@ export class MadrasahRepository {
           eq(courses.madrasahId, madrasahId),
           eq(courses.status, CourseStatus.PUBLISHED),
           isNull(courses.archivedAt),
+          eq(courses.isUnlisted, false),
           isNull(kosks.archivedAt),
           eq(kosks.isPrivate, false)
         )

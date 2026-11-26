@@ -167,6 +167,22 @@ describe("Programım (design tedris/21)", () => {
     expect(html).toContain('data-menu="Takvime ekle: Mehmûz fiiller"');
   });
 
+  it("writes the müderris's note on the cancelled row, on one line, the title not struck through (MDRS-248)", async () => {
+    const html = await render([
+      s({
+        id: "a",
+        status: "CANCELLED",
+        meetingUrl: null,
+        cancelReason: "Bu hafta ders yapılmayacak.",
+      }),
+    ]);
+    expect(html).toContain(">İptal edildi<");
+    expect(html).toContain("Hocanın notu: Bu hafta ders yapılmayacak.");
+    expect(html).not.toContain("Bu celse iptal edildi.");
+    expect(html).toContain('data-testid="cancel-note"');
+    expect(html).not.toContain("line-through");
+  });
+
   it("marks a running session Şu an canlı with the way in, and a finished one Sona erdi (tedris/21)", async () => {
     const live = s({
       id: "a",
@@ -182,6 +198,21 @@ describe("Programım (design tedris/21)", () => {
     expect(html).not.toContain('data-menu="Takvime ekle');
     expect(html).toContain('href="https://zoom.us/j/9"');
     expect(html).toContain("Celseye katıl");
+  });
+
+  it("leads an online exam to its exam page, says it is open, and claims no meeting (MDRS-299)", async () => {
+    const open = s({
+      id: "e1",
+      startsAt: new Date("2026-10-01T06:50:00Z"),
+      isExam: true,
+      isOnlineExam: true,
+    } as Partial<ScheduleSessionResponse>);
+    const html = await render([open]);
+    expect(html).toContain('href="/courses/c1/lessons/e1/sinav"');
+    expect(html).toContain("Sınav açık");
+    expect(html).toContain("Sınava gir");
+    expect(html).not.toContain("Toplantı bağlantısı henüz eklenmedi");
+    expect(html).not.toContain("Şu an canlı");
   });
 
   it("offers the next seven days, and the way back once it has moved on", async () => {

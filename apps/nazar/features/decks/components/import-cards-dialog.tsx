@@ -9,7 +9,7 @@ import { Select } from "@medaris/ui/mds/select";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useRef, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { importCards } from "../actions";
@@ -44,6 +44,12 @@ export function ImportCardsDialog({
   const [sent, setSent] = useState(false);
   const [rows, setRows] = useState<ImportRowProblem[]>([]);
   const [failed, setFailed] = useState(false);
+  // a send outlives a dialog closed under it: its success then closes nothing
+  const closed = useRef(false);
+  const close = () => {
+    closed.current = true;
+    onClose();
+  };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -63,7 +69,7 @@ export function ImportCardsDialog({
           title: words("Decks.importDone", { count: outcome.data.count }),
         });
         router.refresh();
-        onClose();
+        if (!closed.current) close();
         return;
       }
       if (outcome.rows.length > 0) setRows(outcome.rows);
@@ -75,7 +81,7 @@ export function ImportCardsDialog({
     <Dialog
       open
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (!next) close();
       }}
       form
       onSubmit={submit}
@@ -101,6 +107,7 @@ export function ImportCardsDialog({
                 label: deck.title,
               }))}
               onChange={setDeckId}
+              disabled={pending}
             />
           </Field>
         ) : null}

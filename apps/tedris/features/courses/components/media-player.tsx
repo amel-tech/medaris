@@ -13,8 +13,11 @@ const BUNNY_FRAME = {
   allow: "autoplay; encrypted-media; picture-in-picture; fullscreen",
   allowFullScreen: true,
 };
+// `autoplay` lets "Kaldığın yerden devam et" (MDRS-248) start the video from
+// the page's button: without it the player refuses a start it was not clicked
+// for. It plays nothing on its own; the frames carry no `autoplay=1`.
 const SANDBOXED_FRAME = {
-  allow: "encrypted-media; picture-in-picture; fullscreen",
+  allow: "autoplay; encrypted-media; picture-in-picture; fullscreen",
   sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups",
 };
 

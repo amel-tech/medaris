@@ -1,0 +1,141 @@
+# What every binding of nazar.sessions.plan shares: the data a walk reads, how a node that role and name cannot find is found, the typed steps
+# (`events`), what each write leaves outside the screen (`effects`), and the addresses of the states. `binding.yaml` and
+# `binding.forbiddenWrite.yaml` extend it and add their scenarios.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator here is from the code and unverified until the walk phase.
+# The bindings load (`replay <dir> --bind <file> --emit-spec --out <dir>`, read-only: it writes a spec and walks nothing).
+#
+# The stack, as these bindings see it: nazar-web on :4002 and the hoca "Hamdi Müderris" (MUDERRIS) signed in through Keycloak's form. The walk's
+# course is its own, "Deneme dersi planWk" (helpers/course.mjs make planWk --weeks 1 --lessons 1: one week, one celse from tomorrow, MUDERRIS the
+# hoca, in the seed's second köşk), so the seeded courses are never planned into. `setup` makes it and dates.mjs writes the dates the form is typed
+# (a Tuesday two to three weeks ahead and so on, worked out from today); `teardown` deletes the course with everything under it and the dates.
+#
+# Typed fields are found by their name attribute (`input[name=startDate]`), as exam#1 finds them: a date or time input has no role in the
+# accessibility tree and its label carries a hidden star, so neither role nor exact label finds it.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.sessions.plan
+
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/planWk.json }
+  when: { json: ../.local/made/planWk.dates.json }
+
+# `previewing` holds no server call: the preview is a Next server action that answers 200 on the page's own address, and it is asked 250 ms after
+# the last key, so the replay simply waits for the screen it expects. `creating` holds the write, which is the one place the button is busy.
+states:
+  form: { url: '{nazar}/ders/*/celseler/planla' }
+  previewing: { url: '{nazar}/ders/*/celseler/planla' }
+  formReady: { url: '{nazar}/ders/*/celseler/planla' }
+  previewFailed: { url: '{nazar}/ders/*/celseler/planla' }
+  creating: { call: '{nazar}/ders/*/celseler/planla' }
+  forbidden: { url: '{nazar}/ders/*/celseler/planla' }
+  landed: { url: '{nazar}/ders/*/celseler' }
+  sessions_opened: { url: '{nazar}/ders/*/celseler' }
+  not_found: { url: '{nazar}/ders/*/celseler/planla', text: Sayfa bulunamadı }
+  left: { url: '{nazar}/hesap' }
+
+nodes:
+  # --- the page: a bare <main> is also the page a walk leaves for, so each is told apart by what is inside it -----------------------------------
+  planPage: { role: main, hasText: '/Önizleme/' }
+  problemPage: { role: main, hasText: '/izniniz yok|okunamadı/' }
+  landedPage: { role: main, hasText: '/Yaklaşan celseler|Bu derste henüz celse yok/' }
+  # the sentence is "<course> için tek celse ya da haftalık tekrar planlayın." and the course's name is the walk's own
+  planIntro: { css: 'form[data-testid=session-plan] header p', hasText: '/için tek celse ya da haftalık tekrar planlayın\.$/' }
+  # the sidebar has a link "Celseler" too, and the h1 says "Celse planla" as the current page does
+  breadcrumbRoot: { role: link, name: Celseler, within: { role: navigation, name: Sayfa yolu } }
+  breadcrumbCurrent: { css: '[aria-current=page]', hasText: Celse planla, within: { role: navigation, name: Sayfa yolu } }
+
+  # --- the fields: found by label (no role) or by their name attribute ---------------------------------------------------------------------
+  startTimeField: { label: '/^Başlangıç saati/' }
+  startDateField: { label: '/^Başlangıç tarihi/' }
+  dateField: { label: '/^Tarih/' }
+  endDateField: { label: '/^Bitiş tarihi/' }
+  # a Base UI Select: its trigger is the one combobox of the form; how it is named is not verified
+  zoneField: { css: 'button[role=combobox]' }
+  dayChip: { role: button, name: '/^(Pzt|Sal|Çar|Per|Cum|Cmt|Paz)$/', count: 7 }
+
+  # --- radios: the words are the label's, beside the control, so they are found by role and name, not by what they contain ---------------------
+  endByDate: { role: radio, name: Bir tarihte }
+  endByCount: { role: radio, name: Belirli sayıda celseden sonra }
+  linksEmptyRadio: { role: radio, name: Boş bırak }
+  linksFirstRadio: { role: radio, name: Yalnız ilk celseye ekle }
+  placeOnline: { role: radio, name: Çevrimiçi }
+  placeInPerson: { role: radio, name: Yüz yüze }
+
+  # --- the exam's details toggle carries its summary in its name while folded ---------------------------------------------------------------------
+  detailsToggle: { role: button, name: '/^Sınav ayrıntıları/' }
+  detailsSummary: { css: '[data-testid=plan-exam-details-toggle] .mds-caption', hasText: '/ · \d+ puan$/' }
+
+  # --- the buttons: the count is in the name -------------------------------------------------------------------------------------------------
+  submitOff: { role: button, name: 0 celse oluştur }
+  submitOn: { role: button, name: '/^[1-9]\d* celse oluştur$/' }
+
+  # --- the preview, an <aside data-testid=plan-preview>: the sentences are built with numbers and dates, so they are matched by their shape ------
+  previewZero: { css: '[data-testid=plan-preview] .mds-badge', hasText: '/^0 celse$/' }
+  previewCount: { css: '[data-testid=plan-preview] .mds-badge', hasText: '/^[1-9]\d* celse$/' }
+  previewList: { css: '[data-testid=plan-preview] ul' }
+  previewRow: { css: '[data-testid=plan-preview] li', count: '{planned}' }
+  previewRowCaption: { css: '[data-testid=plan-preview] li .mds-caption', hasText: '/^Hafta \d+ · \d+ dk · Bağlantı (var|boş)$/', count: '{planned}' }
+  previewFoot: { css: '[data-testid=plan-preview] p.mds-caption', hasText: '/saatiyle\.$/' }
+
+  # --- the refusal, a neutral Alert: a status that names no one ----------------------------------------------------------------------------------
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+
+  # --- not walkable locally: nothing makes the course read fail --------------------------------------------------------------------------------------
+  failedRegion: { skip: 'the read of the course cannot be made to fail on the local stack' }
+  failedHeading: { skip: 'the read of the course cannot be made to fail on the local stack' }
+  failedText: { skip: 'the read of the course cannot be made to fail on the local stack' }
+  retryButton: { skip: 'the read of the course cannot be made to fail on the local stack' }
+
+events:
+  # chips and typed fields have no node that sends an event: the binding presses and fills them. Three vars say which: dayA and dayB, the two
+  # weekdays chosen, startDate, endDate, titleText.
+  FILL_IN_WEEKLY:
+    - click: { role: button, name: '{dayA}', within: { role: group, name: 'Günler *' } }
+    - click: { role: button, name: '{dayB}', within: { role: group, name: 'Günler *' } }
+    - fill: { css: 'input[name=startDate]', value: '{startDate}' }
+    - fill: { css: 'input[name=endDate]', value: '{endDate}' }
+    - fill: { css: 'input[name=title]', value: '{titleText}' }
+  # a refused pattern changed and asked again (REFILL): the end date moved to the start date, which a pattern on Monday and Saturday over one Tuesday still gives no celse for
+  REFILL:
+    - fill: { css: 'input[name=endDate]', value: '{refillEnd}' }
+  FILL_IN_COUNT:
+    - click: { role: button, name: '{dayA}', within: { role: group, name: 'Günler *' } }
+    - click: { role: button, name: '{dayB}', within: { role: group, name: 'Günler *' } }
+    - fill: { css: 'input[name=startDate]', value: '{startDate}' }
+    - fill: { css: 'input[name=count]', value: '{howMany}' }
+    - fill: { css: 'input[name=title]', value: '{titleText}' }
+  FILL_IN_SINGLE:
+    - fill: { css: 'input[name=startDate]', value: '{singleDate}' }
+    - fill: { css: 'input[name=title]', value: '{titleText}' }
+  # exam#1: the exam's date, and nothing else (the title is "Ara sınav", out of 100, written, online)
+  FILL_IN_EXAM:
+    - fill: { css: 'input[name=startDate]', value: '{examDate}' }
+  FILL_DETAILS:
+    - fill: { css: 'input[name=maxScore]', value: '{score}' }
+    - fill: { css: 'textarea[name=examTopics]', value: '{topics}' }
+  # "Yalnız ilk celseye ekle" opens the link field, which the walk fills at once
+  LINKS_FIRST:
+    - click: { role: radio, name: Yalnız ilk celseye ekle }
+    - fill: { css: 'input[name=meetingUrl]', value: '{firstUrl}' }
+  # the field the page said was wrong, put right: fixField is its name attribute and fixValue what it holds then
+  FIX:
+    - fill: { css: 'input[name={fixField}]', value: '{fixValue}' }
+  NAVIGATE:
+    - goto: '{nazar}/hesap'
+
+# What a write leaves outside the screen, read through the database as the stack's own Postgres holds it.
+effects:
+  # the preview is a POST that writes nothing: the walk's course still has its one celse
+  previewSessionBatch:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":1'
+  # the celses of the pattern are in the course under the title the walk typed, and an exam has its lesson_exams row (exam#1 a4)
+  createSessionBatch:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.title = '{createdTitle}'"]
+      expect: '"n":{planned}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lesson_exams x join lessons l on l.id = x.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":{exams}'

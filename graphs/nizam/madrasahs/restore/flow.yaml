@@ -1,0 +1,190 @@
+# Restoring a hidden medrese: "Geri al" on the Medreseler page of nizam-web (/medreseler), for the Medaris başnazım and a Medaris nazımı
+# who holds platform.madrasah_edit. Read from the code of PR #394's branch on 15 Nov 2026 (apps/nizam/features/madrasahs/components/
+# madrasahs-view.tsx, present.ts, actions.ts; apps/nizam/app/medreseler/page.tsx; tedrisat's MadrasahController.restore and
+# directory, apps/tedrisat/src/madrasah/madrasah.controller.ts; archive/hide-level.ts). Sibling of nazar.archive.hideMedrese, which hides
+# the medrese from the başmüderris's side and brings it back there. Nothing below was opened in a browser; where it rests on the code
+# alone it says so.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - a hidden medrese is a row of the table with "Gizli" and "{date}'den beri"; its last cell holds "Geri al: {name}" when the viewer may
+#     restore it. The press calls POST /madrasahs/:id/restore (one transaction: the medrese and the courses hidden at its own instant come
+#     back, a course hidden earlier on its own stays hidden, a medrese that is passive as well comes back Pasif); on success a toast says
+#     "Geri alındı", the page is read again, and the row leaves the Gizli tab (or, on Tümü, becomes Etkin with its buttons).
+#   - the "kademe" lock caption ("Bunu {level} gizledi; yalnız o kademe ya da üstü geri alabilir.") stands where the button would be, for a
+#     viewer the page thinks may restore but the API says may not. No such viewer exists for a real person: a medrese is hidden at the
+#     platform level (the başnazım, a Medaris nazımı with platform.madrasah_edit) or the medrese level (its başmüderris), and every viewer
+#     who is offered the cell (`can.restore`, platform.madrasah_edit) acts at the platform level, the top one, so the API always lets
+#     them restore. The caption can only be drawn when the page could not read the viewer's roles or permissions (every ability is then
+#     on, F-W2-2). It is drawn here for what the code says; the walk cannot reach it (RESTORE-1).
+#   - a Medaris nazımı who may read the table by another code (the seeded one holds platform.madrasah_create) and not platform.madrasah_edit
+#     sees a hidden row with an empty last cell and no word of why (RESTORE-2).
+#   - a refusal (someone else restored it first, it is gone) is told in a sticky toast; the page is not read again, so the row keeps
+#     its button and the same press is refused again (RESTORE-4). After a success the button that had the focus is gone (F-W2-10).
+#   - the busy button's hidden word "Yükleniyor" is not in the catalog (RESTORE-3).
+schema: delurio-graph/0
+kind: flow
+id: nizam.madrasahs.restore
+status: captured
+domain: medaris.api
+ui: nizam.madrasahs.restore
+title: Restore a hidden medrese
+summary: >-
+  The başnazım (or a Medaris nazımı holding platform.madrasah_edit) reads a hidden medrese in the table of Medreseler, on the Gizli tab or
+  on Tümü, and presses "Geri al: {name}". The button is busy while the call runs; then a toast says "Geri alındı", the page is read again
+  and the medrese is listed again (it leaves the Gizli tab; on Tümü it reads Etkin and gets its buttons), with the courses that were hidden
+  with it. A Medaris nazımı who may open the page by another permission sees the hidden row with no button and no word of why; one whose
+  roles could not be read is shown a sentence about the kademe in place of the button. If someone else restored or deleted the medrese
+  while the page was open, the press is refused in a sticky toast and the row stays as it was.
+
+scope:
+  shows: the hidden row of the Medreseler table on the Gizli tab and on Tümü, its "Geri al" and the answer of the server
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the tabs' and the search's own behaviour, the passive warning, 'Medrese aç', the 'Arşiv' link and the buttons of active and passive rows: nizam.madrasahs.browse, open, headMuderris and passivate"
+    - "how the medrese came to be hidden: its başmüderris hides it from Nazar (nazar.archive.hideMedrese); the platform's own archive lists it too (nizam.moderation.restoreArchived)"
+    - "an ended session: the call sends the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "a Medaris nazımı holding platform.madrasah_edit: they are offered the same button (can.restore) and the same toasts, and the API admits them at the platform level; no stack account holds the code, so the walk does not drive them"
+    - "ARCHIVE_RESTORE_LEVEL (403): the page has words for it ('Bunu daha üst bir kademe gizlemiş...'), but no viewer who is offered the button can cause it, so it has no transition here (RESTORE-1)"
+    - "AUTHZ_FORBIDDEN and any other failure of the call (a permission taken away while the page was open, a server that does not answer): drawn as their toasts, not driven"
+
+context:
+  viewer:
+    values: [chief, nazimEdit, nazimNoEdit, nazimUnread]
+    initial: any
+    say:
+      chief: "the Medaris başnazım: every ability is on and the API lets her restore anything"
+      nazimEdit: "a Medaris nazımı who holds platform.madrasah_edit: offered the button, and the API lets them restore anything"
+      nazimNoEdit: "a Medaris nazımı who opens the page by another code (platform.madrasah_create, as the seeded one does) and does not hold platform.madrasah_edit: offered nothing on a hidden row"
+      nazimUnread: "a Medaris nazımı without platform.madrasah_edit whose roles or permissions the page could not read: every ability is switched on, and the API says they may not restore"
+  tab:
+    values: [hidden, all]
+    initial: any
+    say:
+      hidden: "they are on the Gizli tab (/medreseler?durum=gizli)"
+      all: "they are on Tümü (/medreseler), where the hidden medrese is one row among the others"
+  elsewhere:
+    values: [untouched, restored, deleted]
+    initial: untouched
+    say:
+      untouched: "nobody else has touched the medrese since the page was read"
+      restored: "its başmüderris brought it back, in Nazar, while this page showed it hidden"
+      deleted: "the başnazım deleted the medrese while this page showed it hidden"
+  last:
+    values: [nothing, restored, notHidden, gone, forbidden, failed]
+    initial: nothing
+    say:
+      nothing: "no answer is on the screen"
+      restored: "the medrese was just brought back by this person"
+      notHidden: "the API said the medrese was not hidden any more"
+      gone: "the API said the medrese is not there any more"
+      forbidden: "the API refused for lack of permission"
+      failed: "the API refused for another reason, or did not answer"
+
+guards:
+  # `can.restore && m.canRestore` of madrasahs-view.tsx:238: for a chief or a Medaris nazımı who holds platform.madrasah_edit both hold
+  mayPress: "viewer == 'chief' or viewer == 'nazimEdit'"
+  untouched: "elsewhere == 'untouched'"
+  # on the Gizli tab the restored medrese leaves the table; on Tümü its row stays (Etkin)
+  rowListed: "tab == 'all' or state != 'restored'"
+  # an error toast of an earlier refusal stands until it is closed (sonner, duration Infinity: madrasahs-view.tsx:124)
+  errorToast: "last != 'nothing' and last != 'restored'"
+
+effects:
+  elsewhereRestored: { set: { elsewhere: restored } }
+  elsewhereDeleted: { set: { elsewhere: deleted } }
+  clearToast: { set: { last: nothing } }
+  restored: { set: { last: restored } }
+  notHidden: { set: { last: notHidden } }
+  gone: { set: { last: gone } }
+  forbidden: { set: { last: forbidden } }
+  failed: { set: { last: failed } }
+
+failures:
+  restoring:
+    from: restoreMadrasah
+    notHidden: [MADRASAH_NOT_HIDDEN]
+    gone: [MADRASAH_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    level: [ARCHIVE_RESTORE_LEVEL]
+    failed: []
+
+# The story the page tells first: the başnazım reads the Gizli tab, presses "Geri al" and the medrese is listed again.
+main:
+  given: { viewer: chief, tab: hidden }
+  events: [RESTORE, DONE]
+
+initial: list
+
+states:
+  list:
+    title: A hidden medrese in the table of Medreseler
+    description: >-
+      The page is Medreseler, read on the server (GET /madrasahs/directory?status=HIDDEN or ALL, up to 50 rows, with each row's
+      canRestore, by the hide ladder), drawn in the shell with the title, the intro, the section "Bütün medreseler", the tabs with their
+      counts, the search and the table. The hidden medrese's row says "Gizli" with "{date}'den beri" under it, its başmüderris, its
+      course count (0: its courses are hidden with it) and, in the last cell, one of three things by who looks (`viewer`): the button
+      "Geri al: {name}" (chief, nazimEdit), nothing at all (nazimNoEdit: RESTORE-2) or the caption "Bunu {level} gizledi; yalnız o kademe
+      ya da üstü geri alabilir." (nazimUnread: the page could not read the viewer's permissions and switched every ability on, F-W2-2;
+      it is the only way to see the caption, RESTORE-1). On the Gizli tab the table is "Gizli medreseler"; on Tümü it is "Bütün
+      medreseler". The page sets no focus of its own. A sticky error toast of an earlier refusal may stand over it (`last`): its text is
+      the code's ("Bu medrese zaten gizli değil.", "Bu medrese artık yok.", "Bunu yapma izniniz yok.", "Bir şeyler ters gitti.") and its
+      close button is "Kapat". Someone else may bring the medrese back, or delete it, while this page is open, which it cannot know
+      (ELSEWHERE_RESTORES, ELSEWHERE_DELETES): the row and its button stay.
+    by: human
+    goal: true
+    on:
+      RESTORE: { guard: mayPress, target: restoring, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:245, say: "they press 'Geri al: {name}'" }
+      ELSEWHERE_RESTORES: { guard: untouched, target: list, effect: [elsewhereRestored], source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577, say: "the başmüderris brings the medrese back, in Nazar (she hid it); this page does not know" }
+      ELSEWHERE_DELETES: { guard: untouched, target: list, effect: [elsewhereDeleted], source: apps/tedrisat/src/madrasah/madrasah.controller.ts:691, say: "the başnazım deletes the medrese; this page does not know" }
+      CLOSE_TOAST: { guard: errorToast, target: list, effect: [clearToast], source: libs/ui/src/components/sonner.tsx:62, say: "they close the error toast with its 'Kapat'" }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:236
+
+  restoring:
+    title: The medrese is on its way back
+    description: >-
+      restoreMadrasah (a server action) calls POST /madrasahs/:id/restore with no body. In one transaction the medrese is shown again and
+      so are the courses whose hiding carries the medrese's own instant (version + 1); a course hidden earlier on its own stays
+      hidden; a medrese that is passive as well comes back Pasif; one audit row `madrasah.restore` is written. The row's button is busy
+      (aria-busy, aria-disabled) and a hidden <output> beside it says "Yükleniyor" (RESTORE-3); the rest of the page stays live. An
+      ended session sends the person to sign in with no toast (not drawn). The press is refused with 409 MADRASAH_NOT_HIDDEN when
+      someone else restored it first, 404 MADRASAH_NOT_FOUND when it is gone, 403 AUTHZ_FORBIDDEN when the permission was taken away;
+      each is told by an error toast "Geri alınamadı" that stays until it is closed, and the page is not read again (RESTORE-4).
+      ARCHIVE_RESTORE_LEVEL (403) is mapped to a sentence too, but no viewer who has the button can cause it (RESTORE-1).
+    invoke: { action: restoreMadrasah }
+    on:
+      DONE: { guard: untouched, target: restored, effect: [restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:128, say: "the medrese and its courses are back; a toast says so and the page is read again" }
+      FAIL.notHidden: { guard: "elsewhere == 'restored'", target: list, effect: [notHidden], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:121, say: "somebody brought it back first: the toast says it is not hidden; the row keeps its button" }
+      FAIL.gone: { guard: "elsewhere == 'deleted'", target: list, effect: [gone], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:121, say: "it was deleted meanwhile: the toast says it is no more; the row stays" }
+      FAIL.forbidden: { target: list, effect: [forbidden], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:121, say: "the permission was taken away while the page was open: the toast says they may not" }
+      FAIL.failed: { target: list, effect: [failed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:121, say: "any other refusal, or no answer: the generic toast" }
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:116
+
+  restored:
+    title: The medrese is listed again
+    description: >-
+      The toast "Geri alındı" with "{name} yeniden listelerde." stands for six seconds, and the page is read again (router.refresh). On
+      the Gizli tab the row is gone (the tab's count is one less; "Bu durumda medrese yok." stands if it was the last hidden one) and
+      the focus, which was on the button that was pressed, is on nothing (F-W2-10, F-X-7: from the code, not seen in a browser). On Tümü the row is still there and reads
+      "Etkin" (a medrese that was passive as well reads "Pasif"), its course count is back, and its last cell holds the buttons of an
+      active row: "Nazar'da aç" (a link, for the başnazım), "Başmüderrisi değiştir" (for the başnazım) and "Pasife al" (platform.madrasah_edit).
+      Nothing here moves the focus. The medrese can be hidden again by its başmüderris or by Medaris yönetimi.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:128
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: restore-starts-from-a-button
+    never: "state == 'restoring' and not mayPress"
+    say: A viewer who is offered no button (nothing, or the kademe sentence) never starts a restore.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:238
+  - id: a-success-is-this-persons-own
+    never: "state == 'restored' and elsewhere != 'untouched'"
+    say: The toast "Geri alındı" is told only for a restore this person made; when someone else restored or deleted the medrese first the press is refused.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:128

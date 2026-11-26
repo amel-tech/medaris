@@ -1,0 +1,303 @@
+# The screens of nizam.grants.appoint: "İzinler" (/kosks/<id>/izinler) with its table and the three dialogs that open over it, "Ders nazırı ata",
+# "İzinleri düzenle" and "Görevden al", with the toasts of each write and the title of the refusal. Read from the code of PR #394 on 16 Nov 2026
+# (apps/nizam/app/kosks/[id]/izinler/page.tsx, features/grants/components/{grants-view,grant-dialog,revoke-dialog}.tsx,
+# features/grants/{present,actions,reads}.ts, features/madrasahs/components/head-picker.tsx, features/permissions/components/permission-boxes.tsx and
+# libs/ui/src/mds (app-shell, dialog, field, select, input, checkbox, alert, table, button), libs/ui/src/components/sonner.tsx); the words are copied from
+# libs/i18n/src/locales/tr/nizam.json (namespaces KoskGrantsPage, KoskGrantDialog, KoskRevokeDialog, HeadPicker, PermissionCatalog, NoAccess), key for key,
+# by script. Nothing was walked in a browser: every behaviour is "from the code" until the walk phase; the unit specs apps/nizam/test/kosk-grants.spec.tsx
+# and the e2e apps/nizam/e2e/grants.e2e.ts (named in needs.yaml) are the only runs.
+#
+# The page behind a dialog is drawn only where the dialog is closed: the dialog is modal, so the page is inert while it is open. The table's rows are data:
+# the nodes marked `repeat` stand for one item per post, and the replay finds them through the binding. The graph draws one row (two for the köşk
+# whose first ders nazırı has appointed another; the binding scopes a row's nodes to the person's own row).
+#
+# What the graph draws of a form of 21 boxes. The dialog draws the course's whole catalog (21 codes, in the API's order, in one section "Ders izinleri"); the
+# graph draws three: "Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir" and "Başvuruyu onayla ya da reddet" (the two the e2e ticks, grants#4),
+# and "Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir" (the one the walk adds when it edits). The other eighteen are boxes like them; `world: open`
+# leaves them out. No box has a help line (PermissionCatalog holds none for a course code).
+#
+# Composed text (built in code, in no i18n file), each a value the page puts where no message of its own is:
+#   composed.GrantsPage.person       a person's name: the row header (grants-view.tsx:96)
+#   composed.GrantsPage.address      their address, a <bdi dir=ltr> (grants-view.tsx:100)
+#   composed.GrantsPage.course       the course's title (grants-view.tsx:112)
+#   composed.GrantsPage.permissionNames   the short names of the codes held, in the API's order, joined with ", " with a capital first letter (grants-view.tsx:71-74, 127)
+#   composed.GrantsPage.endDate      the day of the end, as formatDay writes it in the viewer's zone (grants-view.tsx:148, features/permissions/present.ts:34)
+#   composed.GrantsPage.giver        the giver's name, and " (siz)" after it when the viewer gave (grants-view.tsx:160-163)
+#   composed.GrantsPage.giverDay     the day it was given (grants-view.tsx:165)
+#   composed.GrantDialog.person      a person's name: the chosen block (head-picker.tsx:140) and the post's card (grant-dialog.tsx:169)
+#   composed.GrantDialog.address     their address (head-picker.tsx:145, grant-dialog.tsx:172)
+#   composed.RevokeDialog.eyebrow    the course's title above the title of "Görevden al" (revoke-dialog.tsx:79)
+#   composed.Button.loading          "Yükleniyor": the word the kit's Button writes in its hidden status while it is busy, `loadingLabel`'s default
+#                                    (libs/ui/src/mds/button.tsx:62); none of these buttons passes one
+# `changes` is the app's own sentence, KoskGrantDialog.chosenNote, which says what "Kaydet" does: "Kaydedince bu derste ders nazırı olur ve seçtiğiniz izinleri alır.".
+# The success toasts of an edit and of a dismissal say what changed too ("{name} için izinler güncellendi.", "{name} artık {course} dersinin ders nazırı değil.").
+#
+# Samples are what the page prints for the person the walk appoints; the binding gives its own where a person, a course or a day is the walk's.
+schema: delurio-graph/0
+kind: ui
+id: nizam.grants.appoint
+flow: nizam.grants.appoint
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: KoskGrantDialog.chosenNote }
+samples:
+  course: Deneme dersi nzgrants
+  title: Deneme dersi nzgrants
+  name: Esma Başvuran
+  email: e2e-basvuran-c@medaris.test
+  giver: Cemal Köşk Nazımı
+  by: Cemal Köşk Nazımı
+  date: 16 Kasım 2026
+  endDate: 16 Aralık 2026
+  count: "2"
+  list: Celseler, başvurular
+  courses: Bina ve İzhar Şerhi ve İsâgûcî ile Mantığa Giriş
+
+# The page sets no focus of its own when it opens (nothing in features/grants or in app/kosks/[id]/izinler does), so the page has no `initialFocus` and no
+# `focus`. The dialogs "Ders nazırı ata" and "İzinleri düzenle" are opened with no `initialFocus` (grant-dialog.tsx:139-159 passes none), so Base UI's default,
+# the first thing the dialog can focus, is the close icon in its header; "Görevden al" gives it to "Vazgeç" (revoke-dialog.tsx:82).
+nodes:
+  # ---- the page, the dialogs closed -----------------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [listed, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">, with no name; the page's own root is <div data-testid=grants>
+  title: { type: text, component: Heading, role: heading, text: { key: KoskGrantsPage.title }, in: [listed, loadFailed], source: apps/nizam/features/grants/components/grants-view.tsx:213 } # h1
+  intro: { type: text, component: Text, text: { key: KoskGrantsPage.intro }, in: [listed, loadFailed], source: apps/nizam/features/grants/components/grants-view.tsx:214 }
+  assignButton: { type: action, component: Button, role: button, intent: confirm, text: { key: KoskGrantsPage.assign }, in: [listed, loadFailed], disabledIn: [loadFailed], emits: OPEN_ASSIGN, source: apps/nizam/features/grants/components/grants-view.tsx:216 } # primary, with a plus icon; natively disabled when the read failed; it outlives the refresh, so the focus has somewhere to return
+  madrasahNote: { type: alert, component: Alert, role: status, text: { key: KoskGrantsPage.madrasahNote, params: { courses: medrese.courses } }, in: [listed], when: "start == 'note'", source: apps/nizam/features/grants/components/grants-view.tsx:226 } # neutral tone: a status; drawn only when the köşk has courses that belong to a medrese; data-testid=madrasah-note
+
+  listRegion: { type: page, component: Page, role: region, name: { labelledBy: listHeading }, in: [listed, loadFailed], source: apps/nizam/features/grants/components/grants-view.tsx:237 } # <section aria-labelledby="grants-heading">
+  listHeading: { type: text, component: Heading, role: heading, text: { key: KoskGrantsPage.heading }, in: [listed, loadFailed], source: apps/nizam/features/grants/components/grants-view.tsx:239 } # h2
+  count: { type: text, component: Text, text: { key: KoskGrantsPage.count, params: { count: posts.count } }, in: [listed], source: apps/nizam/features/grants/components/grants-view.tsx:243 } # data-testid=grant-count: "{n} kişi", counted over the rows; left out when the read failed
+
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: KoskGrantsPage.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/grants/components/grants-view.tsx:249 } # an error Alert: announced; no table is drawn
+  loadFailedText: { type: text, component: Text, text: { key: KoskGrantsPage.loadFailed }, in: [loadFailed], source: apps/nizam/features/grants/components/grants-view.tsx:250 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskGrantsPage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/grants/components/grants-view.tsx:251 }
+
+  # the table: named by its caption, which is visually hidden; the empty line or a row per post
+  rosterTable: { type: list, component: List, role: table, name: { key: KoskGrantsPage.caption }, in: [listed], source: apps/nizam/features/grants/components/grants-view.tsx:257 }
+  emptyLine: { type: text, component: Text, text: { key: KoskGrantsPage.empty }, in: [listed], when: "row == 'none'", source: apps/nizam/features/grants/components/grants-view.tsx:261 } # a cell spanning the columns
+  rowPerson: { type: text, component: Text, role: rowheader, text: { key: composed.GrantsPage.person, params: { name: post.name } }, in: [listed], when: "row != 'none'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:96 }
+  rowAddress: { type: text, component: Text, text: { key: composed.GrantsPage.address, params: { email: post.email } }, in: [listed], when: "row != 'none'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:100 }
+  rowCourse: { type: text, component: Text, text: { key: composed.GrantsPage.course, params: { title: post.course } }, in: [listed], when: "row != 'none'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:112 }
+  rowCount: { type: text, component: Text, text: { key: KoskGrantsPage.permissionCount, params: { count: post.count } }, in: [listed], when: "row != 'none'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:122 } # data-testid=permission-count: "2 izin", "3 izin", and "0 izin" for a post that holds none (GRANTS-4)
+  rowNames: { type: text, component: Text, text: { key: composed.GrantsPage.permissionNames, params: { list: post.list } }, in: [listed], when: "row != 'none'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:126 } # data-testid=permission-names: "Celseler, başvurular" (e2e grants#1 a5 reads three of them)
+  rowNever: { type: text, component: Text, text: { key: KoskGrantsPage.never }, in: [listed], when: "row != 'none' and ends == 'open'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:144 } # "Süresiz"
+  rowEnd: { type: text, component: Text, text: { key: composed.GrantsPage.endDate, params: { endDate: post.endDate } }, in: [listed], when: "row != 'none' and ends == 'set'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:148 } # the day only, never the hour the access ends (CNP-2)
+  rowSameDay: { type: text, component: Text, text: { key: KoskGrantsPage.sameDay }, in: [listed], when: "row != 'none' and ends == 'set'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:149 } # "Görev ve izinler aynı gün biter."
+  rowGiver: { type: text, component: Text, text: { key: composed.GrantsPage.giver, params: { giver: giver.name } }, in: [listed], when: "row != 'none'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:160 } # the giver's name and " (siz)" when the viewer gave (e2e grants#1 a8)
+  rowGiverDay: { type: text, component: Text, text: { key: composed.GrantsPage.giverDay, params: { date: giver.date } }, in: [listed], when: "row != 'none'", repeat: posts.items, source: apps/nizam/features/grants/components/grants-view.tsx:165 }
+  editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: KoskGrantsPage.editLabel, params: { name: post.name } }, text: { key: KoskGrantsPage.edit }, in: [listed], when: "row == 'other' or (row == 'own' and start == 'chiefOwn')", repeat: posts.items, emits: EDIT_PERMISSIONS, source: apps/nizam/features/grants/components/grants-view.tsx:184 } # outline, small; left out of the viewer's own row unless the viewer is the başnazım (the API refuses it with SELF_GRANT_REFUSED, MDRS-108); the name adds the person's
+  revokeButton: { type: action, component: Button, role: button, intent: dismiss, name: { key: KoskGrantsPage.revokeLabel, params: { name: post.name } }, text: { key: KoskGrantsPage.revoke }, in: [listed], when: "row != 'none'", repeat: posts.items, emits: REVOKE, source: apps/nizam/features/grants/components/grants-view.tsx:193 } # ghost, small; on every row, the viewer's own too, with no date gate (e2e grants#7)
+
+  # the toasts of a success (sonner: no role of its own), in the notifications region over the page; they close by themselves after 6 seconds
+  toastAssignedTitle: { type: status, component: Status, text: { key: KoskGrantDialog.assigned }, in: [listed], when: "toast == 'assigned'", source: apps/nizam/features/grants/components/grant-dialog.tsx:131 }
+  toastAssignedBody: { type: status, component: Status, text: { key: KoskGrantDialog.assignedBody, params: { name: person.name } }, in: [listed], when: "toast == 'assigned'", source: apps/nizam/features/grants/components/grant-dialog.tsx:132 }
+  toastEditedTitle: { type: status, component: Status, text: { key: KoskGrantDialog.saved }, in: [listed], when: "toast == 'edited'", source: apps/nizam/features/grants/components/grant-dialog.tsx:131 }
+  toastEditedBody: { type: status, component: Status, text: { key: KoskGrantDialog.savedBody, params: { name: person.name } }, in: [listed], when: "toast == 'edited'", source: apps/nizam/features/grants/components/grant-dialog.tsx:132 }
+  toastRevokedTitle: { type: status, component: Status, text: { key: KoskRevokeDialog.revoked }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/grants/components/revoke-dialog.tsx:60 }
+  toastRevokedBody: { type: status, component: Status, text: { key: KoskRevokeDialog.revokedBody, params: { name: person.name, course: course.title } }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/grants/components/revoke-dialog.tsx:61 }
+
+  # ---- the dialog "Ders nazırı ata" and the dialog "İzinleri düzenle": one component, two modes ------------------------------------
+  assignDialog: { type: page, component: Page, role: dialog, name: { labelledBy: assignTitle }, in: [asking, searching, picked, ready, appointing], initialFocus: closeIcon, source: apps/nizam/features/grants/components/grant-dialog.tsx:139 } # a form dialog; the scrim does not close it; its whole body is its description (F-UI-W1-1); it opens on the close icon (F-W2-12)
+  editDialog: { type: page, component: Page, role: dialog, name: { labelledBy: editTitle }, in: [editReady, editNone, editPast, saving], initialFocus: closeIcon, source: apps/nizam/features/grants/components/grant-dialog.tsx:139 }
+  dialogEyebrow: { type: text, component: Text, text: { key: KoskGrantDialog.eyebrow }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:147 } # "Köşk", above the title
+  assignTitle: { type: text, component: Heading, role: heading, text: { key: KoskGrantDialog.titleAssign }, in: [asking, searching, picked, ready, appointing], source: apps/nizam/features/grants/components/grant-dialog.tsx:148 } # h2
+  editTitle: { type: text, component: Heading, role: heading, text: { key: KoskGrantDialog.titleEdit }, in: [editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:148 }
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: KoskGrantDialog.close }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], emits: CANCEL, source: apps/nizam/features/grants/components/grant-dialog.tsx:149 } # an icon button named by aria-label; closing is ignored while the save is on its way and nothing marks it (CAPPOINT-1)
+
+  # the person, in the assignment: the e-mail field stays above the chosen block, empty, and searches again
+  emailField: { type: field, component: TextField, role: textbox, text: { key: KoskGrantDialog.personLabel }, value: { literal: "" }, in: [asking, searching, picked, ready, appointing], disabledIn: [searching, appointing], source: apps/nizam/features/madrasahs/components/head-picker.tsx:103 } # type=email; the "*" is aria-hidden and the input has no `required` (F-W2-open-8); disabled and aria-busy while it searches, so it loses the focus (F-W2-3)
+  emailHelp: { type: text, component: Text, text: { key: HeadPicker.help }, in: [asking, searching, picked, ready, appointing], when: "note == 'none'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:100 } # says that every search is written to the audit log; the error replaces it
+  emailNobody: { type: text, component: Text, text: { key: HeadPicker.notFound }, in: [asking], when: "note == 'nobody'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:90 } # the Field's error: no role, no live region; hidden as soon as somebody is chosen (HEAD-3)
+  emailDown: { type: text, component: Text, text: { key: HeadPicker.failed }, in: [asking], when: "note == 'down'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:92 }
+  searchingStatus: { type: status, component: Status, role: status, text: { key: HeadPicker.searching }, in: [searching], source: apps/nizam/features/madrasahs/components/head-picker.tsx:124 } # the hidden <output>; empty when nothing is searched
+
+  # the person chosen
+  chosenRegion: { type: page, component: Page, role: region, name: { labelledBy: chosenTitle }, in: [picked, ready, appointing], source: apps/nizam/features/madrasahs/components/head-picker.tsx:129 } # <section aria-labelledby data-testid=chosen-head>
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: KoskGrantDialog.chosenTitle }, in: [picked, ready, appointing], source: apps/nizam/features/madrasahs/components/head-picker.tsx:134 } # h3 "Seçilen ders nazırı"
+  chosenName: { type: text, component: Text, text: { key: composed.GrantDialog.person, params: { name: person.name } }, in: [picked, ready, appointing], source: apps/nizam/features/madrasahs/components/head-picker.tsx:140 }
+  chosenAddress: { type: text, component: Text, text: { key: composed.GrantDialog.address, params: { email: person.email } }, in: [picked, ready, appointing], source: apps/nizam/features/madrasahs/components/head-picker.tsx:145 } # left out when the person has no address or it is their name
+  chosenAnnounce: { type: status, component: Status, role: status, text: { key: HeadPicker.chosen, params: { name: person.name } }, in: [picked, ready, appointing], source: apps/nizam/features/madrasahs/components/head-picker.tsx:148 } # the hidden <output> beside the name: nothing moves the focus, this is the only word
+  removePerson: { type: action, component: Button, role: button, intent: secondary, name: { key: HeadPicker.remove, params: { name: person.name } }, in: [picked, ready, appointing], disabledIn: [appointing], emits: REMOVE, source: apps/nizam/features/madrasahs/components/head-picker.tsx:152 } # an icon button; no confirmation, and the focus is not moved
+  chosenNote: { type: text, component: Text, text: { key: KoskGrantDialog.chosenNote }, in: [picked, ready, appointing], source: apps/nizam/features/madrasahs/components/head-picker.tsx:162 } # the sentence of the flow's `changes`
+
+  # the course, in the assignment: a Base UI select of the köşk's courses that belong to no medrese
+  courseField: { type: field, component: TextField, role: combobox, text: { key: KoskGrantDialog.courseLabel }, in: [asking, searching, picked, ready, appointing], disabledIn: [appointing], source: apps/nizam/features/grants/components/grant-dialog.tsx:197 } # "Ders seçin" until one is chosen, then the course's title; the "*" is aria-hidden and the select carries no `required` (F-W2-open-8); the list is a popup of options the replay opens through the event
+  courseHelp: { type: text, component: Text, text: { key: KoskGrantDialog.courseHelp }, in: [asking, searching, picked, ready, appointing], source: apps/nizam/features/grants/components/grant-dialog.tsx:196 } # "Yalnız medrese dışı dersler listelenir."
+
+  # the post, in the edit: a card instead of the picker and the select
+  cardName: { type: text, component: Text, text: { key: composed.GrantDialog.person, params: { name: person.name } }, in: [editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:168 } # data-testid=grant-card
+  cardAddress: { type: text, component: Text, text: { key: composed.GrantDialog.address, params: { email: person.email } }, in: [editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:171 }
+  cardLine: { type: text, component: Text, text: { key: KoskGrantDialog.cardLine, params: { course: course.title, by: giver.name, date: giver.date } }, in: [editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:176 } # "Ders nazırı · {course} · Veren: {by} · {date}"
+
+  # the permissions: a section of 21 boxes, three are drawn; the nazım may give every code the API lists as `grantable`
+  permissionsHeading: { type: text, component: Heading, role: heading, text: { key: KoskGrantDialog.permissionsHeading }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:209 } # h3 "İzinler"
+  permissionsRegion: { type: page, component: Page, role: region, name: { labelledBy: permissionsSection }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:53 } # <section aria-labelledby="perm-section-course">
+  permissionsSection: { type: text, component: Heading, role: heading, text: { key: PermissionCatalog.sections.course }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:59 } # h4 "Ders izinleri"
+  permSession: { type: field, component: TextField, role: checkbox, text: { key: PermissionCatalog.course.session_manage }, checked: "boxes != 'zero'", in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], disabledIn: [appointing, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:65 } # a box the caller may not give is off; the nazım may give all 21
+  permEnrollment: { type: field, component: TextField, role: checkbox, text: { key: PermissionCatalog.course.enrollment_decide }, checked: "boxes != 'zero'", in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], disabledIn: [appointing, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:65 }
+  permRecording: { type: field, component: TextField, role: checkbox, text: { key: PermissionCatalog.course.recording_manage }, checked: "boxes == 'three'", in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], disabledIn: [appointing, saving], source: apps/nizam/features/permissions/components/permission-boxes.tsx:65 }
+
+  # the end
+  endField: { type: field, native: datetime-local, component: TextField, text: { key: KoskGrantDialog.endLabel }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], disabledIn: [appointing, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:227 } # <input type=datetime-local name=end>: it has no role in the accessibility tree, so it is found by its label; its value is not a graph check, since an empty and a filled field are one control
+  endHelp: { type: text, component: Text, text: { key: KoskGrantDialog.endHelp }, in: [asking, searching, picked, ready, appointing, editReady, editNone, saving], when: "until != 'past'", source: apps/nizam/features/grants/components/grant-dialog.tsx:219 } # the error replaces the help line
+  endError: { type: text, component: Text, text: { key: KoskGrantDialog.endPast }, in: [picked, editPast], when: "until == 'past'", source: apps/nizam/features/grants/components/grant-dialog.tsx:222 } # a Field error: no role, not live; shown as soon as the field holds a past moment, and the focus is not moved
+  auditNote: { type: text, component: Text, text: { key: KoskGrantDialog.auditNote }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:239 } # a caption: "Verdiğiniz izin, kendi izinlerinizi aşamaz. Verilen ve geri alınan her izin denetim kaydına yazılır."
+
+  # the footer: the count of what is ticked, and the buttons
+  summary: { type: text, component: Text, text: { key: KoskGrantDialog.summary, params: { count: boxes.count } }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], source: apps/nizam/features/grants/components/grant-dialog.tsx:150 } # a <p class=mds-dialog__meta>, not a live region (CAPPOINT-3, CNP-4); it has no "none" sentence: "0 izin seçili"
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskGrantDialog.cancel }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], emits: CANCEL, source: apps/nizam/features/grants/components/grant-dialog.tsx:153 } # on while the save is on its way, and does nothing then (CAPPOINT-1)
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: KoskGrantDialog.save }, in: [asking, searching, picked, ready, appointing, editReady, editNone, editPast, saving], disabledIn: [asking, searching, picked, appointing, editNone, editPast, saving], emits: SAVE, source: apps/nizam/features/grants/components/grant-dialog.tsx:154 } # natively disabled until `canSaveGrant`, and nothing says why (F-X-3, CAPPOINT-2); busy in `appointing` and `saving`
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [appointing, saving, dismissing], source: libs/ui/src/mds/button.tsx:62 } # the hidden word of the busy button: neither dialog passes a loadingLabel
+
+  # a refusal: an error toast over the dialog, which stays open; it stays until it is closed. One title for each dialog, one sentence for each code the page words
+  toastAssignFailed: { type: status, component: Status, text: { key: KoskGrantDialog.assignFailed }, in: [ready], when: "toast in ['exists', 'refused']", source: apps/nizam/features/grants/components/grant-dialog.tsx:124 }
+  toastEditFailed: { type: status, component: Status, text: { key: KoskGrantDialog.failed }, in: [editReady], when: "toast in ['gone', 'refused']", source: apps/nizam/features/grants/components/grant-dialog.tsx:124 }
+  toastRevokeFailed: { type: status, component: Status, text: { key: KoskRevokeDialog.failed }, in: [revoking], when: "toast in ['gone', 'handedOn', 'refused']", source: apps/nizam/features/grants/components/revoke-dialog.tsx:54 }
+  toastExists: { type: status, component: Status, text: { key: KoskGrantsPage.errors.exists }, in: [ready], when: "toast == 'exists'", source: apps/nizam/features/grants/present.ts:90 } # COURSE_NAZIR_EXISTS
+  toastGone: { type: status, component: Status, text: { key: KoskGrantsPage.errors.notFound }, in: [editReady, revoking], when: "toast == 'gone'", source: apps/nizam/features/grants/present.ts:91 } # COURSE_NAZIR_NOT_FOUND
+  toastHandedOn: { type: status, component: Status, text: { key: KoskGrantsPage.errors.handedOn }, in: [revoking], when: "toast == 'handedOn'", source: apps/nizam/features/grants/present.ts:95 } # DISMISS_SEAT_HANDED_ON
+  toastRefused: { type: status, component: Status, text: { oneOf: [KoskGrantsPage.errors.exceeds, KoskGrantsPage.errors.unknownPermission, KoskGrantsPage.errors.courseInvalid, KoskGrantsPage.errors.expiryInvalid, KoskGrantsPage.errors.unknownAccount, KoskGrantsPage.errors.forbidden, KoskGrantsPage.errors.generic] }, in: [ready, editReady, revoking], when: "toast == 'refused'", source: apps/nizam/features/grants/present.ts:99 } # which sentence depends on the code (grantErrorKey); SELF_GRANT_REFUSED is the generic one (GRANTS-1); the binding gives them as one pattern
+
+  # ---- the dialog "Görevden al" ----------------------------------------------------------------------------------------------------------
+  revokeDialog: { type: page, component: Page, role: dialog, name: { labelledBy: revokeTitle }, in: [revoking, dismissing], initialFocus: revokeCancel, source: apps/nizam/features/grants/components/revoke-dialog.tsx:71 } # a form dialog (CNDIS-1), size sm; the scrim does not close it; the focus starts on "Vazgeç" (e2e grants#8 a1)
+  revokeEyebrow: { type: text, component: Text, text: { key: composed.RevokeDialog.eyebrow, params: { title: course.title } }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:79 } # the course's title above the title (data, not a message)
+  revokeTitle: { type: text, component: Heading, role: heading, text: { key: KoskRevokeDialog.title }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:80 } # h2
+  revokeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: KoskRevokeDialog.close }, in: [revoking, dismissing], emits: CANCEL, source: apps/nizam/features/grants/components/revoke-dialog.tsx:81 } # ignored while the call is on and nothing marks it (CNDIS-3)
+  revokeIntro: { type: text, component: Text, text: { key: KoskRevokeDialog.intro, params: { name: person.name, course: course.title } }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:94 }
+  revokeEffect: { type: text, component: Text, text: { key: KoskRevokeDialog.effect }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:99 } # a caption
+  revokeMeta: { type: text, component: Text, text: { key: KoskRevokeDialog.auditNote }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:83 } # the footer's <p class=mds-dialog__meta>
+  revokeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskRevokeDialog.cancel }, in: [revoking, dismissing], emits: CANCEL, source: apps/nizam/features/grants/components/revoke-dialog.tsx:86 } # the focus starts here; while the call is on it does nothing and does not look off (CNDIS-3)
+  confirmRevoke: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskRevokeDialog.submit }, in: [revoking, dismissing], disabledIn: [dismissing], emits: CONFIRM, source: apps/nizam/features/grants/components/revoke-dialog.tsx:87 } # "Görevden al", busy in `dismissing`
+
+  # ---- the refusal: the title of the app's own screen, which nizam.shell.noAccessAndNotFound draws whole ------------------------------
+  refusalPage: { type: page, component: Page, role: main, in: [refused, not_found], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's <main>; the face is a section inside it
+  refusalTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [refused, not_found], source: libs/ui/src/mds/system-state.tsx:43 } # h1 "Bu bölüm için izniniz yok": the same words for the 403 and the 404 (app/not-found.tsx:6)
+
+edges:
+  - { labelledBy: [listRegion, listHeading] }
+  - { labelledBy: [assignDialog, assignTitle] }
+  - { labelledBy: [editDialog, editTitle] }
+  - { labelledBy: [revokeDialog, revokeTitle] }
+  - { labelledBy: [chosenRegion, chosenTitle] }
+  - { labelledBy: [permissionsRegion, permissionsSection] }
+  - { triggers: [assignButton, asking] }
+  - { triggers: [editButton, editReady] }
+  - { triggers: [revokeButton, revoking] }
+  - { triggers: [save, appointing] }
+  - { triggers: [save, saving] }
+  - { triggers: [confirmRevoke, dismissing] }
+  - { returnsFocus: [assignDialog, assignButton] } # Base UI returns the focus to the element that had it when the dialog opened: the header button, which outlives the refresh (not verified in a browser)
+  - { returnsFocus: [editDialog, editButton] } # the row's button; after a save the list is read again and the row's button is a new element, so the focus may fall to the page (F-W2-10 is the same shape); not verified
+  - { returnsFocus: [revokeDialog, revokeButton] } # a dismissed row's button is gone after the refresh, so the focus has nowhere to go (F-D2c-8 of nazar's table); not verified
+
+rules:
+  - id: focus-not-set
+    rule: >-
+      Nothing in features/grants moves the focus when the page opens or when a toast shows. The two dialogs "Ders nazırı ata" and "İzinleri düzenle" are opened with no
+      `initialFocus` (grant-dialog.tsx:139-159, libs/ui/src/mds/dialog.tsx:145 gives Base UI `undefined` for a form), so the focus is on the close icon, not the e-mail field:
+      the same as F-W2-12 of nizam.madrasahs.headMuderris. Only "Görevden al" names its first stop, "Vazgeç" (revoke-dialog.tsx:82; e2e grants#8 a1). Not verified in a browser.
+  - id: F-W2-12
+    rule: >-
+      The assignment and the edit open on the header's close icon, one stop before the field a keyboard or screen-reader user came for (grant-dialog.tsx:139, libs/ui/src/mds/dialog.tsx:145).
+      The graph draws `initialFocus: closeIcon`, from the code. Fix: pass the picker's input as `initialFocus` in the assignment and the first box in the edit.
+  - id: F-W4-17
+    rule: >-
+      The tab's <title> is "İzinler" (generateMetadata, page.tsx:11-14), the same for every köşk: it names neither the köşk nor, once a dialog is open, what is being done, so
+      two köşks' İzinler are two tabs and two history entries with one title. Fix: put the köşk's name in the title and, with the h1, in the line under it.
+  - id: F-X-20
+    rule: >-
+      Two of the e2e checks cannot be carried as written. grants#1 asserts "31 Aralık 2026" for a post the seed makes with an end of 2026-12-31 (grants-seed.ts:117-123), which lapses
+      after that day and leaves the list empty. grants#5 types 2026-11-15T12:00 as the new end (grants.e2e.ts:234-236) and expects "15 Kasım 2026": the clock is not fixed in that test,
+      so from 15 Nov 2026 12:00 (Istanbul) the dialog refuses the end ("Bitiş zamanı şu andan sonra olmalı.", state `editPast`) and the test fails; today is 16 Nov. The graph carries the code's
+      behaviour: the walk types an end computed from now (30 days ahead, 18:00), and the seed's post is not used.
+  - id: F-X-3
+    rule: >-
+      "Kaydet" is natively disabled (grant-dialog.tsx:154: `disabled={!canSave}`) while a person, a course or a permission is missing and while the end is wrong, and nothing names the
+      step: no line says "Önce bir kişi bulun", a keyboard user's Tab skips the button, and Enter in the form cannot send it. The same as CAPPOINT-2 of the hoca's dialog (decision D3). Fix: keep it
+      enabled and name what is missing when it is pressed, or tie the reason to it with aria-describedby.
+  - id: CAPPOINT-1
+    rule: >-
+      While a call is on, "Vazgeç", the close icon and Esc do nothing (`onOpenChange` ignores a close while `saving`, grant-dialog.tsx:141-143 and revoke-dialog.tsx:73-75), and are neither disabled nor
+      marked; only "Kaydet" / "Görevden al" look busy and the boxes, the select and the end field are disabled. The same as CAPPOINT-1 and CNDIS-3. Fix: disable them with aria-disabled while it is pending.
+  - id: CAPPOINT-3
+    rule: >-
+      The footer's "{n} izin seçili" is a plain <p class=mds-dialog__meta> (libs/ui/src/mds/dialog.tsx:118-120), not a live region: ticking a box changes it and a reader of the screen is told nothing
+      (CAPPOINT-3, CNP-4). Here it also says "0 izin seçili" with no sentence for none, where the hoca's dialog says "İzin seçilmedi". Fix: role=status on it.
+  - id: F-W2-open-8
+    rule: >-
+      The "*" of "Ders nazırı" and of "Ders" is drawn and aria-hidden (libs/ui/src/mds/field.tsx:42-45) and neither control carries `required` (head-picker.tsx:103-122, grant-dialog.tsx:196-204: the Field is
+      `required` but the Select receives no `required`), so a reader of the screen is never told that a person and a course are needed. Fix: required and aria-required on both controls.
+  - id: F-W2-3
+    rule: >-
+      The search has no button: it runs on Enter and when the field is left and the text is an address (head-picker.tsx:74-79, :121), the input is `disabled` while it searches so the focus it had drops
+      (:112), and tedrisat writes every search to the audit log (F-X-14), which the help line says. A keyboard user who tabs through the field with an address in it, or presses "Vazgeç" (the blur comes first),
+      writes an audit row nobody asked for. Fix: search on Enter or a button only; keep the input enabled with aria-busy; announce the result.
+  - id: HEAD-3
+    rule: >-
+      A second search that finds nobody, or fails, while a person is chosen says nothing: the picker's message is the Field's `error`, dropped once `value` is set (head-picker.tsx:101), and no alert takes
+      its place. The person stays chosen and the field keeps the typed address. Same picker as nizam.madrasahs.headMuderris.
+  - id: F-UI-W1-1
+    rule: >-
+      Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so the dialog's description is the picker, the select, 21 boxes and the end field (F-D2c-16 of the
+      hoca's dialog). Fix: describe the dialog by the line above its first field only.
+  - id: CNP-2
+    rule: >-
+      The "Bitiş" cell prints the day only ("16 Aralık 2026", formatDay, grants-view.tsx:148) and the caption "Görev ve izinler aynı gün biter." says the permissions end that day, while the dialog edits the day and
+      the hour and the access ends at that hour (grant-dialog.tsx:75, :86-93). A post that ends today at 14:00 reads as ending today; the hour is visible only in the edit dialog. Fix: print the hour too.
+  - id: CNP-3
+    rule: >-
+      Not verified. An error toast of a refused write is raised while the modal dialog is open and the dialog stays open (grant-dialog.tsx:123-128 with `duration: Infinity`). Whether Base UI's modal makes the toast
+      region inert, so that the accessibility tree does not expose it, is not known from the code. The graph draws the toast in the dialog's state; the replay's `exposed` check will say.
+  - id: CNDIS-1
+    rule: >-
+      The confirmation "Görevden al" is a `Dialog form`, so it is a role dialog; the kit says a confirmation that waits for an answer is an AlertDialog (libs/ui/src/mds/dialog.tsx:51-52). A reader of the screen
+      is not told it is a confirmation. e2e grants#8 finds it as a dialog. Fix: AlertDialog with a busy confirm button, as nazar's Pano does.
+  - id: GRANTS-1
+    rule: >-
+      New. SELF_GRANT_REFUSED, and every other code the page does not word, is "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." (grantErrorKey, present.ts:86-105: the nine codes it names are not SELF_GRANT_REFUSED,
+      VALIDATION_ERROR, KEYCLOAK_ADMIN_UNAVAILABLE or KOSK_NOT_FOUND). The nazım who types his own address is shown himself as "Seçilen ders nazırı" with no warning (HeadPicker knows no viewer; nazar's dialog warns before
+      sending, "Kendinizi ders nazırı yapamazsınız."), picks a course and boxes, presses "Kaydet" and is told to try again later, when the server has refused him for good (kosk-grants.controller.ts:98-104) and written an
+      audit row `permission.self_grant_refused`. The başnazım may do it (SYSTEM_ADMIN is not asked, self-grant.guard.ts:67). Fix: compare the person's id with `viewerId`, which the page has, and warn beside the person;
+      give SELF_GRANT_REFUSED its own sentence (decision D1; HEAD-4 is the same habit on the medrese's pages).
+  - id: GRANTS-2
+    rule: >-
+      New. A refused write re-reads nothing. On any failure each dialog shows a toast and returns (grant-dialog.tsx:123-129, revoke-dialog.tsx:53-58), with no `onSaved`, so the list stays as the page had it.
+      COURSE_NAZIR_NOT_FOUND (a post that was ended elsewhere) leaves the dialog open on a row that is gone, and "Görevden al" can be pressed again with the same answer for ever; COURSE_NAZIR_EXISTS leaves the
+      person off a list that does not show the post made elsewhere. nazar's page closes the dialog and reads the list again on both codes (CNP-1, CNDIS-4). Fix: on those two codes call `onSaved` and close, and
+      keep the toast (decision D2).
+  - id: GRANTS-3
+    rule: >-
+      New. Text that is no address does nothing and says nothing: HeadPicker.search returns when `isEmailLike` fails (head-picker.tsx:55; the pattern is features/madrasahs/present.ts:249, no space, one @,
+      a dot and two letters after it), and Enter on an empty field is the same. "Kaydet" stays off and no line names the step. nazar's dialog says "Geçerli bir e-posta adresi yazın." on Enter (CAPPOINT-4 is the
+      blur it does not say it on). Same picker as nizam.madrasahs.open and .headMuderris. Fix: say it on Enter and on blur.
+  - id: GRANTS-4
+    rule: >-
+      New, from the code, not seen. A post that holds no permission (the hoca can make one from nazar's page, and tedrisat allows it) is listed as "0 izin" with nothing under it (grants-view.tsx:122-129:
+      the count is always written, the names line is left out when empty), where the hoca's own page says "İzin yok"; and this page can edit it to something but never back to nothing (canSaveGrant needs one
+      permission). Not reachable from nizam's own dialog. Fix: say "İzin yok" for 0, as nazar does.
+  - id: GRANTS-5
+    rule: >-
+      New. "Görevden al" is on for a person who has appointed others (a ders nazırı who holds `course_nazir.assign`), and the refusal comes only after the nazım has confirmed: "Bu ders nazırının atadığı kişiler hâlâ görevde;
+      önce onları görevden alın." (DISMISS_SEAT_HANDED_ON, revoke-dialog.tsx:53-58, present.ts:95), without naming them. nazar's table disables the button and counts them (CNDIS-2, with its own finding that a disabled button
+      leaves the tab order). The list does show the appointees as rows with the giver's name, so the nazım can find them. Fix: mark the row, or name the appointees in the toast.
+  - id: GRANTS-6
+    rule: >-
+      New, for the owner (security; ledger/security.md has the köşk nazımlar route's order, the other way round). The order of the server's checks on POST, PATCH and DELETE /kosks/:id/grants, read from the code and not run:
+      (1) AuthGuard (401), then AuthzGuard (`@Authz(course_nazir.assign_kosk, byExistingKosk)`, kosk-grants.controller.ts:70, :90, :119, :154): the resolver answers 404 KOSK_NOT_FOUND for an unknown or malformed id before
+      any permission is read (kosk.controller.ts:82-91), `assertOpen` 404s a hidden köşk to those who may not open it, then 403 AUTHZ_FORBIDDEN (libs/common/src/authz/authz.guard.ts:84-98); (2) the pipes: ParseUUIDPipe and the
+      body, 400; (3) POST: the self-grant check on the person named, `always` (:98-104): for anyone but SYSTEM_ADMIN, 403 SELF_GRANT_REFUSED and an audit row `permission.self_grant_refused` (libs/common/src/authz/self-grant.guard.ts:67-95);
+      PATCH: `holderOf` reads the post's holder first and the same check runs on him (:129-137), an unknown post being the service's 404; DELETE: no self-grant check; (4) the service: `grantable` (AUTHZ_FORBIDDEN unless the
+      caller is SYSTEM_ADMIN or holds a KOSK_NAZIM seat in this köşk, kosk-grants.service.ts:71-86), PERMISSION_UNKNOWN, GRANT_EXCEEDS_GIVER (:163-176), GRANT_EXPIRY_INVALID (:178-184), the account (:236-242:
+      KOSK_NAZIM_UNKNOWN_ACCOUNT or 503), then in the transaction GRANT_COURSE_INVALID and COURSE_NAZIR_EXISTS (kosk-grants.repository.ts:297-311) or COURSE_NAZIR_NOT_FOUND (:241) or DISMISS_SEAT_HANDED_ON.
+      Consequences: unlike POST /kosks/:id/nazims (self-grant before permission, so anyone signed in can write the audit row) a caller with no right to this köşk writes no audit row here; a nazım naming himself is refused before the service
+      asks whether he holds a seat or the codes, so SELF_GRANT_REFUSED can mask AUTHZ_FORBIDDEN for a caller who passes the guard without a seat; the başnazım may seat himself, edit his own post and end it, and a nazım may end his own
+      post (no check on DELETE) but not widen or lengthen it (the API's own e2e, self-grant.e2e.spec.ts:613).
+  - id: label-in-name
+    rule: >-
+      A row button's visible text is contained in its accessible name: "İzinleri düzenle" in "İzinleri düzenle: {name}" and "Görevden al" in "Görevden al: {name}" (WCAG 2.5.3). The close icons, named "Kapat", have no visible text. Holds.
+  - id: hours-only-in-the-dialog
+    rule: >-
+      Not a finding. The dialog reads the clock once, when it opens (`setNow(new Date())`, grant-dialog.tsx:77), so an end that becomes past while the dialog stays open is caught only by the server (GRANT_EXPIRY_INVALID,
+      the toast "Bitiş tarihi geçmişte."); the graph draws the page's own rule (`editPast`, `picked`) and the server's class `refused`.

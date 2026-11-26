@@ -1,4 +1,5 @@
 import { INestApplication } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
@@ -445,6 +446,114 @@ describe("Public köşk, medrese and course pages (MDRS-122, e2e)", () => {
         .set("Authorization", as(STRANGER_ID))
         .expect(201);
       expect(listed.body.status).toBe(EnrollmentStatus.ENROLLED);
+    });
+  });
+
+  describe("an unlisted course (MDRS-248) opens by its link only", () => {
+    let unlistedOwnCourseId: string;
+    const titles = (body: { title: string }[]) => body.map((c) => c.title);
+
+    beforeEach(async () => {
+      unlistedOwnCourseId = await insertCourse(listedKoskId, "Linkli Ders", {
+        isUnlisted: true,
+        requiresApproval: false,
+      });
+    });
+
+    it("is on no shelf of its listed köşk but its manager's, nor in the köşk's course count", async () => {
+      const anonymous = await http()
+        .get(`/kosks/${listedKoskId}/courses`)
+        .expect(200);
+      expect(titles(anonymous.body)).toEqual(["Bina Şerhi"]);
+
+      const stranger = await http()
+        .get(`/kosks/${listedKoskId}/courses`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(200);
+      expect(titles(stranger.body)).toEqual(["Bina Şerhi"]);
+
+      const manager = await http()
+        .get(`/kosks/${listedKoskId}/courses`)
+        .set("Authorization", as(MANAGER_ID))
+        .expect(200);
+      expect(titles(manager.body)).toContain("Linkli Ders");
+
+      const list = await http().get("/kosks").expect(200);
+      expect(list.body.items[0]).toMatchObject({
+        id: listedKoskId,
+        courseCount: 1,
+      });
+    });
+
+    it("is not on its medrese's page, nor on a follower's shelf", async () => {
+      await db()
+        .update(courses)
+        .set({ madrasahId })
+        .where(eq(courses.koskId, listedKoskId));
+      const page = await http()
+        .get(`/madrasahs/${madrasahId}/overview`)
+        .expect(200);
+      expect(titles(page.body.courses)).toEqual(["Bina Şerhi"]);
+
+      await http()
+        .post(`/kosks/${listedKoskId}/follow`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(201);
+      const shelf = await http()
+        .get("/kosks/followed/courses?limit=10")
+        .set("Authorization", as(STRANGER_ID))
+        .expect(200);
+      expect(titles(shelf.body)).toEqual(["Bina Şerhi"]);
+    });
+
+    it("answers a caller with no token as not found, as a missing course", async () => {
+      const absent = await http().get(`/courses/${ABSENT_ID}`);
+      const res = await http().get(`/courses/${unlistedOwnCourseId}`);
+      expect(res.status).toBe(404);
+      expect(res.body.code).toBe(absent.body.code);
+    });
+
+    it("opens to a signed-in caller by its link, still without content", async () => {
+      const res = await http()
+        .get(`/courses/${unlistedOwnCourseId}`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(200);
+      expect(res.body).toMatchObject({
+        isUnlisted: true,
+        contentLocked: true,
+      });
+      expectNoContent(res.body);
+    });
+
+    it("puts every enrollment on hold, whatever the course's own setting", async () => {
+      const res = await http()
+        .post(`/courses/${unlistedOwnCourseId}/enroll`)
+        .set("Authorization", as(STRANGER_ID))
+        .expect(201);
+      expect(res.body.status).toBe(EnrollmentStatus.PENDING);
+    });
+
+    it("is listed and unlisted by its köşk manager, and by no stranger", async () => {
+      await http()
+        .patch(`/courses/${publishedCourseId}`)
+        .set("Authorization", as(STRANGER_ID))
+        .send({ isUnlisted: true })
+        .expect(403);
+
+      const unlisted = await http()
+        .patch(`/courses/${publishedCourseId}`)
+        .set("Authorization", as(MANAGER_ID))
+        .send({ isUnlisted: true })
+        .expect(200);
+      expect(unlisted.body.isUnlisted).toBe(true);
+      await http().get(`/courses/${publishedCourseId}`).expect(404);
+
+      await http()
+        .patch(`/courses/${publishedCourseId}`)
+        .set("Authorization", as(MANAGER_ID))
+        .send({ isUnlisted: false })
+        .expect(200);
+      await http().get(`/courses/${publishedCourseId}`).expect(200);
     });
   });
 

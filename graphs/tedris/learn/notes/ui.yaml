@@ -1,0 +1,97 @@
+# The screens of tedris.learn.notes: the panel "Notlarım" of the celse page (/courses/<c>/lessons/<l>) and of the watch page
+# (.../izle), drawn once for both. The words are copied letter for letter from libs/i18n/src/locales/tr/tedris-learn.json
+# (`tedrisLearn.LessonNotes.*`, root removed). `Changes.note` is the one message of this catalog that is not the app's: the app
+# has none that says what a note does to the person's data, so one short, factual Turkish sentence is authored here (what is
+# kept, who sees it, what cannot be undone). Everything else on the two pages is another flow's (flow.yaml scope.outOfView).
+# The kit draws the page the same on both surfaces; the nodes that differ (the time field's name, the line under it, "Şimdiki an",
+# the seek button) say so in `when`.
+schema: delurio-graph/0
+kind: ui
+id: tedris.learn.notes
+flow: tedris.learn.notes
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples: { time: "1:05" }
+changes: { key: Changes.note }
+
+# Nothing on either page moves the focus on load or into the panel, so there is no `initialFocus` and no `focus` here.
+nodes:
+
+  # --- the page and the panel: a region named by its h2 (celse-page: session-page.tsx:134, watch page: watch-view.tsx:315)
+  celsePage: { type: page, component: Page, role: main, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/session-page.tsx:337 } # the page's one <main>, on the celse page and on the watch page; it has no name, and nothing moves the focus into it or into the panel (focus-not-set)
+  notesRegion: { type: page, component: Page, role: region, name: { labelledBy: notesTitle }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/lesson-notes.tsx:154 } # a <section aria-labelledby>
+  notesTitle: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/lesson-notes.tsx:160 } # h2, with a note icon
+  privateNote: { type: text, component: Text, text: { key: LessonNotes.private }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/lesson-notes.tsx:164 } # the caption on the same line: who reads the notes
+
+  # --- the create form: always drawn, whatever the list is doing (a <form noValidate> with no name)
+  noteBody: { type: field, component: TextField, role: textbox, text: { key: LessonNotes.bodyLabel }, value: { literal: "" }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], source: apps/tedris/features/courses/components/lesson-notes.tsx:241 } # aria-label "Not" and the placeholder "Notunu yaz…" (LessonNotes.bodyPlaceholder, not drawn as a node), no visible label (WRT-14); 4000 characters at most; never disabled, and read-only while a note is sent (lesson-notes.tsx:367): the success empties the form, so text typed then would be wiped
+  timeFieldCelse: { type: field, component: TextField, role: textbox, text: { key: LessonNotes.timeLabelSession }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], when: onCelse, source: apps/tedris/features/courses/components/lesson-notes.tsx:283 } # the time of the celse; placeholder "dk:sn"; empty or filled by the clock on the first focus of "Not", so no `value` is held; read-only while a note is sent (lesson-notes.tsx:381), as "Not" is
+  timeFieldVideo: { type: field, component: TextField, role: textbox, text: { key: LessonNotes.timeLabel }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], when: "not onCelse", source: apps/tedris/features/courses/components/lesson-notes.tsx:283 } # the time of the video on the watch page; read-only while a note is sent, as the celse's
+  hintSession: { type: text, component: Text, text: { key: LessonNotes.timeHelpSession }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], when: "surface == 'celseLater'", source: apps/tedris/features/courses/components/lesson-notes.tsx:424 } # the line the time field points at (aria-describedby), visible; the edit row has a visually hidden copy of the same words
+  hintClock: { type: text, component: Text, text: { key: LessonNotes.timeHelpClock }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], when: "surface == 'celseLive'", source: apps/tedris/features/courses/components/lesson-notes.tsx:424 }
+  hintManual: { type: text, component: Text, text: { key: LessonNotes.timeHelpManual }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], when: "surface == 'watchTyped'", source: apps/tedris/features/courses/components/lesson-notes.tsx:424 }
+  hintPlayer: { type: text, component: Text, text: { key: LessonNotes.timeHelpPlayer }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], when: "surface == 'watchPlayer'", source: apps/tedris/features/courses/components/lesson-notes.tsx:401 } # visually hidden: the page shows no line under the field when a player gives the time
+  useCurrent: { type: action, component: Button, role: button, intent: secondary, text: { key: LessonNotes.useCurrent }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], when: hasSource, disabledIn: [adding], emits: USE_CURRENT, duringStep: true, source: apps/tedris/features/courses/components/lesson-notes.tsx:389 } # only where a player or a live clock gives a position; disabled while a note is sent (lesson-notes.tsx:392), as the create call's success empties the form and would wipe the moment without a word; live while a row's change or delete runs, when it fills the create form's time
+  bodyHint: { type: text, component: Text, text: { key: LessonNotes.bodyHint }, in: [drafting, adding, addRefused], when: "typing != 'noBody'", source: apps/tedris/features/courses/components/lesson-notes.tsx:233 } # the field's help line, there from the first character; from 3600 characters it adds the count
+  addButton: { type: action, component: Button, role: button, intent: confirm, text: { key: LessonNotes.add }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused, loadFailed], disabledIn: [adding], emits: SUBMIT, duringStep: true, source: apps/tedris/features/courses/components/lesson-notes.tsx:407 } # type=submit; busy while the note is sent: aria-disabled, aria-busy (the kit's click guard, button.tsx:83); live while a row's change or delete runs, where it checks the create form alone
+  savingStatus: { type: status, component: Status, role: status, text: { key: LessonNotes.saving }, in: [adding, saving], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the busy button: the create form's while a note is sent, the row's while a change is
+
+  # --- what the panel says about the list
+  loadingStatus: { type: status, component: Status, role: status, text: { key: LessonNotes.loading }, in: [reading], source: apps/tedris/features/courses/components/lesson-notes.tsx:176 } # a hidden <output> where the list will be; the walk passes this state without stopping
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: LessonNotes.loadFailed }, in: [loadFailed], source: apps/tedris/features/courses/components/lesson-notes.tsx:178 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: LessonNotes.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/courses/components/lesson-notes.tsx:181 }
+  emptyNote: { type: text, component: Text, text: { key: LessonNotes.empty }, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused], when: "held == 'none'", source: apps/tedris/features/courses/components/lesson-notes.tsx:187 }
+  notesList: { type: list, component: List, role: list, in: [panel, drafting, adding, addRefused, editing, saving, editRefused, confirming, deleting, deleteRefused], when: listed, source: apps/tedris/features/courses/components/lesson-notes.tsx:189 } # a <ul> with no accessible name; one <li> a note
+
+  # --- a note in view mode (NoteItem, view branch), one item per note
+  editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: LessonNotes.editLabel, params: { time: note.time } }, in: [panel, drafting, adding, addRefused], when: listed, repeat: notes, emits: EDIT, duringStep: true, source: apps/tedris/features/courses/components/lesson-notes.tsx:594 } # an icon button; its name carries the note's time only (WRT-04); live while a note is sent
+  deleteButton: { type: action, component: Button, role: button, intent: secondary, name: { key: LessonNotes.deleteLabel, params: { time: note.time } }, in: [panel, drafting, adding, addRefused], when: listed, repeat: notes, emits: DELETE, duringStep: true, source: apps/tedris/features/courses/components/lesson-notes.tsx:602 } # live while a note is sent
+  seekButton: { type: action, component: Button, role: button, intent: secondary, name: { key: LessonNotes.seekLabel, params: { time: note.time } }, in: [panel, drafting, adding, addRefused], when: "hasPlayer and listed", repeat: notes, emits: SEEK, duringStep: true, source: apps/tedris/features/courses/components/lesson-notes.tsx:571 } # the note's time as a button, only beside a YouTube frame and only for a note that has a time; its visible text is the time; live while a note is sent
+  otherEdit: { type: action, component: Button, role: button, intent: secondary, name: { key: LessonNotes.editLabel, params: { time: note.time } }, in: [editing, saving, editRefused, confirming, deleting, deleteRefused], when: "held == 'two'", source: apps/tedris/features/courses/components/lesson-notes.tsx:594 } # the other note's buttons, while one row is being changed or asked about
+  otherDelete: { type: action, component: Button, role: button, intent: secondary, name: { key: LessonNotes.deleteLabel, params: { time: note.time } }, in: [editing, saving, editRefused, confirming, deleting, deleteRefused], when: "held == 'two'", source: apps/tedris/features/courses/components/lesson-notes.tsx:602 }
+
+  # --- a note in edit mode (NoteItem, edit branch): not a form (WRT-11)
+  editBody: { type: field, component: TextField, role: textbox, text: { key: LessonNotes.bodyLabel }, in: [editing, saving, editRefused], source: apps/tedris/features/courses/components/lesson-notes.tsx:529 } # holds the note's text; no placeholder
+  editTimeCelse: { type: field, component: TextField, role: textbox, text: { key: LessonNotes.timeLabelSession }, in: [editing, saving, editRefused], when: onCelse, source: apps/tedris/features/courses/components/lesson-notes.tsx:534 } # holds the note's time, or nothing
+  editTimeVideo: { type: field, component: TextField, role: textbox, text: { key: LessonNotes.timeLabel }, in: [editing, saving, editRefused], when: "not onCelse", source: apps/tedris/features/courses/components/lesson-notes.tsx:534 }
+  editBodyHint: { type: text, component: Text, text: { key: LessonNotes.bodyHint }, in: [editing, saving, editRefused], source: apps/tedris/features/courses/components/lesson-notes.tsx:233 } # the edit text area has text, so its help line shows
+  saveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: LessonNotes.save }, in: [editing, saving, editRefused], disabledIn: [saving], emits: SAVE, source: apps/tedris/features/courses/components/lesson-notes.tsx:543 } # a plain button, not a submit (WRT-11)
+  cancelEdit: { type: action, component: Button, role: button, intent: dismiss, text: { key: LessonNotes.cancel }, in: [editing, saving, editRefused], disabledIn: [saving], emits: CANCEL_EDIT, source: apps/tedris/features/courses/components/lesson-notes.tsx:551 }  # a plain ghost button; disabled while the change is sent (lesson-notes.tsx:554): the call would go on and save the change the talebe called off
+
+  # --- the question before a delete (inline in the row: no dialog)
+  deleteAsk: { type: text, component: Text, text: { key: LessonNotes.deleteAsk }, in: [confirming, deleting, deleteRefused], source: apps/tedris/features/courses/components/lesson-notes.tsx:614 }
+  confirmDelete: { type: action, component: Button, role: button, intent: confirm, text: { key: LessonNotes.delete }, in: [confirming, deleting, deleteRefused], disabledIn: [deleting], emits: CONFIRM, source: apps/tedris/features/courses/components/lesson-notes.tsx:615 } # destructive; busy while the delete runs
+  cancelDelete: { type: action, component: Button, role: button, intent: dismiss, text: { key: LessonNotes.cancel }, in: [confirming, deleting, deleteRefused], disabledIn: [deleting], emits: CANCEL_DELETE, source: apps/tedris/features/courses/components/lesson-notes.tsx:624 }  # disabled while the delete runs (lesson-notes.tsx:627): the call would go on and delete the note the talebe kept
+  deletingStatus: { type: status, component: Status, role: status, text: { key: LessonNotes.deleting }, in: [deleting], source: libs/ui/src/mds/button.tsx:114 }
+
+  # --- the error lines: paragraphs with role alert, under the form or under the row, tied to no field (WRT-03)
+  problemInvalidTime: { type: alert, component: Alert, role: alert, text: { key: LessonNotes.invalidTime }, in: [addRefused, editRefused], when: "problem == 'invalidTime'", source: apps/tedris/features/courses/components/lesson-notes.tsx:435 } # checked before the text
+  problemBodyRequired: { type: alert, component: Alert, role: alert, text: { key: LessonNotes.bodyRequired }, in: [addRefused, editRefused], when: "problem == 'bodyRequired'", source: apps/tedris/features/courses/components/lesson-notes.tsx:435 }
+  problemForbidden: { type: alert, component: Alert, role: alert, text: { key: LessonNotes.forbidden }, in: [addRefused, editRefused], when: "problem == 'forbidden'", source: apps/tedris/features/courses/components/lesson-notes.tsx:435 } # 403: no active seat any more
+  problemSaveFailed: { type: alert, component: Alert, role: alert, text: { key: LessonNotes.saveFailed }, in: [addRefused, editRefused], when: "problem == 'saveFailed'", source: apps/tedris/features/courses/components/lesson-notes.tsx:435 } # any other refusal, or a call that throws
+  deleteFailedAlert: { type: alert, component: Alert, role: alert, text: { key: LessonNotes.deleteFailed }, in: [deleteRefused], source: apps/tedris/features/courses/components/lesson-notes.tsx:520 } # every refusal of a delete, a 404 included (WRT-05)
+
+edges:
+  - { labelledBy: [notesRegion, notesTitle] }
+  - { triggers: [addButton, adding] }
+  - { triggers: [saveButton, saving] }
+  - { triggers: [confirmDelete, deleting] }
+  - { triggers: [editButton, editing] }
+  - { triggers: [deleteButton, confirming] }
+  - { triggers: [retry, reading] }
+
+rules:
+  - { id: focus-not-set, rule: "The panel sets no focus: opening the page leaves it at the document's start, and no code in lesson-notes.tsx calls .focus() or sets autoFocus (grep verified). The graph draws no initialFocus and no focus." }
+  - { id: WRT-01, rule: "lesson-notes.tsx:472-479, 592-633: every inline step unmounts the button that had the focus (the pencil, the trash, Vazgeç, Kaydet, Sil) and nothing moves it: entering edit mode does not focus the text field, and a deleted row leaves the focus on the document. Fix: focus the field on entering edit, the question's first button on confirm, and the row's trigger or the list heading on the way out. Not verified in a browser; the graph says nothing of the focus in these states." }
+  - { id: WRT-02, rule: "lesson-notes.tsx:341-344: after \"Notu ekle\" succeeds the field empties and a row is inserted, and no live region says so (the homework panel does announce). A screen-reader user cannot tell the write worked. Fix: a visually hidden <output aria-live=polite> with a catalog text (\"Not eklendi.\")." }
+  - { id: WRT-03, rule: "lesson-notes.tsx:330-331, 435-439: the refusals are role=alert paragraphs after the form, announced but not tied to the field: the time input is not aria-invalid and does not point at the invalidTime text. Fix: pass the text as the Field's `error`." }
+  - { id: WRT-04, rule: "lesson-notes.tsx:597-603: a row's icon buttons are named by the note's time only (\"Notu düzenle, 12:34\", \"Notu sil, Zamansız\"), so two notes at one time, or two with none, cannot be told apart by name. Fix: add a snippet of the text to the name." }
+  - { id: WRT-05, rule: "lesson-notes.tsx:506-518: deleting or saving a note that no longer exists (404, for example deleted in another tab) says \"Not silinemedi\" / \"Not kaydedilemedi\" for good and the row cannot be cleared; questions and files treat 404 as gone. Fix: treat 404 as already deleted and call onDeleted." }
+  - { id: WRT-11, rule: "lesson-notes.tsx:526-562: edit mode is not a <form>: Enter in the time field saves nothing, while the create form submits on Enter. Fix: wrap the row in a <form onSubmit> with \"Kaydet\" as its submit button." }
+  - { id: WRT-13, rule: "lesson-notes.tsx:312, 329-353: no draft is kept anywhere: a reload, a failed-download redirect, the sign-in round trip after a session ended, or leaving the page loses what was typed, with no warning. The graph draws RELOAD and NAVIGATE from the typing states. Fix: keep drafts per celse in sessionStorage, or warn on leave." }
+  - { id: WRT-14, rule: "lesson-notes.tsx:240-253: the text area has only an aria-label (\"Not\") and a placeholder, no visible label, so a sighted person loses the prompt once typing starts; the accessible name is present. Fix: a visible Field label, as the homework note has." }
+  - { id: NOTES-1, rule: "new, provisional id, read from the code and not walked: after a refused save or a refused delete the row's error line is kept in state, and \"Vazgeç\" only sets the mode back to view (lesson-notes.tsx:551, 624), so the line (\"Not silinemedi...\", \"Not kaydedilemedi...\") stays under a row that was not touched until the next press of its pencil or trash, which clears it (:465, :589). The graph does not draw the residue." }
+  - { id: private-by-design, rule: "The caption \"Yalnızca sen görürsün.\" is true of the API: no route reads another person's note, and the başnazım, the müderris and the köşk nazımı see none (tedris.learn.writingGating draws the refusals; domain rule writing-stays-with-its-reader). Holds." }
+  - { id: label-in-name, rule: "The visible text of \"Notu ekle\", \"Kaydet\", \"Sil\", \"Vazgeç\" and \"Şimdiki an\" is their whole name. The seek button's visible text is the time and its name is \"Videoyu 1:05 anına götür\", which contains it (WCAG 2.5.3). Holds." }

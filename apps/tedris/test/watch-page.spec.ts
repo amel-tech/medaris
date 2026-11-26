@@ -51,6 +51,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("~/features/courses/actions", () => ({ getCourse: mocks.getCourse }));
 vi.mock("~/features/courses/public-reads", () => ({
   getSession: mocks.getSession,
+  getMyLessonViews: async () => [],
 }));
 vi.mock("~/lib/auth", () => ({ auth: mocks.auth }));
 // The client half has its own spec; here only what it is given.
@@ -200,6 +201,9 @@ describe("WatchPage: what plays for this viewer", () => {
       bunny: false,
       facts: "Ders kaydı · 3 Ekim 2026 · 58 dk",
       reportsPosition: true,
+      // MDRS-248: the counter listens to it, from where the talebe stopped.
+      tracked: "youtube",
+      view: null,
     });
   });
 
@@ -214,7 +218,7 @@ describe("WatchPage: what plays for this viewer", () => {
     });
   });
 
-  it("plays a Bunny recording in the link signed for this viewer; it reports no position", async () => {
+  it("plays a Bunny recording in the link signed for this viewer; the notes get no position, the counter listens", async () => {
     const props = await watch(course(), session(), {
       kind: "recording",
       recording: recording({
@@ -232,6 +236,8 @@ describe("WatchPage: what plays for this viewer", () => {
       bunny: true,
       facts: "Ders kaydı",
       reportsPosition: false,
+      tracked: "bunny",
+      view: null,
     });
   });
 });

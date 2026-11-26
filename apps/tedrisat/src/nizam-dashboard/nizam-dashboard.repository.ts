@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { isHeld } from "../database/role-assignments";
+import { appeals } from "../database/schema/appeal.schema";
 import { flashcards } from "../database/schema/flashcard.schema";
 import { decks } from "../database/schema/flashcard-deck.schema";
 import { koskApplications } from "../database/schema/kosk-application.schema";
@@ -52,6 +53,15 @@ export class NizamDashboardRepository {
       )
       .limit(1);
     return rows.length > 0;
+  }
+
+  /** Medrese appeals waiting for a decision (İtirazlar). */
+  async pendingAppeals(): Promise<number> {
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)`.mapWith(Number) })
+      .from(appeals)
+      .where(eq(appeals.status, "PENDING"));
+    return row?.n ?? 0;
   }
 
   /** Köşk applications still waiting, and the newest of them (the card lists three). */

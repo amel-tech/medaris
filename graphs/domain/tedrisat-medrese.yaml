@@ -1,0 +1,1807 @@
+# The medrese's actions: the medrese layer itself (a madrasah, "medrese"), the courses a medrese opens in the köşks that host it, its
+# portal (the talebe list and the Pano) and the course requests it sends to a köşk. Written from the code as it is
+# (apps/tedrisat/src/madrasah/, madrasah/course/, madrasah/portal/, course-request/), from inventory/domain.md lines 3055-3389.
+#
+# Handlers: 30, actions: 30. MadrasahController 18, MadrasahCourseController 6, MadrasahPortalController 2, CourseRequestController 4.
+# There are no background jobs, no webhooks and no notifications in this area (a refusal of a course request sends the medrese nothing).
+#
+# Names. The controller method in camelCase, with its resource where the method name is generic: findAll is listMadrasahs, findById is
+# getMadrasah, create is createMadrasah, update is updateMadrasah, delete is deleteMadrasah, hide, restore and deactivate carry the
+# medrese (hideMadrasah, restoreMadrasah, deactivateMadrasah), and so on; the course side is named after the operation id the API
+# itself publishes (openMadrasahCourse, hideMadrasahCourse, requestOffsiteCourse). The course-request routes are createCourseRequest,
+# listCourseRequests, acceptCourseRequest and rejectCourseRequest.
+#
+# How to read an action.
+#  - route: {id}, {courseId} are path parameters. `source` is the line of the route decorator of the handler.
+#  - needs: the guards, the @Authz call and who holds it. Every handler here sits on AuthGuard and AuthzGuard, except the four
+#    course-request routes: AuthGuard alone, the service decides (CourseRequestService). A request with no token is 401 on every route
+#    that is not @AuthzPublic, and a bad token is 401 on all of them; those 401s and the 429 throttle belong to the pipeline
+#    (invariants access-token-only and rate-limit-before-auth) and are not repeated per action.
+#  - refusals: every code the handler can really answer. HTTP_400 is a path or query pipe (ParseIntPipe, ParseEnumPipe,
+#    ParseUUIDPipe); VALIDATION_ERROR is the body DTO. MADRASAH_NOT_FOUND on a /madrasahs/{id} route is the guard's resolver
+#    (byExistingMadrasah, madrasah.controller.ts:104-113), which runs before the UUID pipe: a malformed id is 404, never 400.
+#    The call-graph draft over-reports; where the code cannot give a refusal the draft lists, the action's note says so.
+#  - result: `returns: <Entity>` says the response is that entity's record (the properties listed are what the response adds or
+#    masks), and `type: array` a list of them. A response that is a view over several entities is written out as a schema and its
+#    id fields carry `references`. A user id in a response is the Keycloak sub and carries no `references` (a user column is no foreign key).
+#  - description says what the route does and writes; note is the author's own words (findings, what was not verified). Every claim was read
+#    from the code and none was run.
+#  - sideEffects: audit rows by their action key, Keycloak reads. A read with no side effect has none listed.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+actions:
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  # MadrasahController (apps/tedrisat/src/madrasah/madrasah.controller.ts): public reads
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  listMadrasahs: # MadrasahController.findAll
+    route: GET /madrasahs
+    summary: The medreses, a page at a time, hidden ones left out
+    description: >-
+      Every medrese whose archivedAt is null, by name then id, each with nazirIds (the held MEDRESE_BASMUDERRIS). Open to a caller with
+      no token (MDRS-122); for such a caller createdBy is null and nazirIds is [] on every item (anonymous-mask, MDRS-160). Writes nothing.
+    needs: "No token needed. AuthGuard + AuthzGuard, @Authz(madrasah.view, anyMadrasah) @AuthzPublic. madrasah.view is held by the relations PUBLIC and ANONYMOUS, so every caller passes"
+    query:
+      type: object
+      properties:
+        page: { type: integer, default: 1, note: "below 1 reads as 1" }
+        limit: { type: integer, default: 12, minimum: 1, maximum: 50, note: "clamped to 1..50, never refused" }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, handle, name, description, coverHue, createdBy, nazirIds, createdAt, updatedAt]
+            properties:
+              id: { type: string, format: uuid, references: Madrasah }
+              handle: { type: string }
+              name: { type: string }
+              description: { type: [string, "null"] }
+              coverHue: { type: integer }
+              createdBy: { type: [string, "null"], format: uuid, note: "Keycloak sub of the person who opened it; null for a caller with no token" }
+              nazirIds: { type: array, items: { type: string, format: uuid }, note: "the held MEDRESE_BASMUDERRIS holders, oldest first (the API's old name for the head); [] for a caller with no token" }
+              createdAt: { type: string, format: date-time }
+              updatedAt: { type: string, format: date-time }
+        total: { type: integer, note: "the medreses that are not hidden" }
+        page: { type: integer }
+        limit: { type: integer }
+    refusals:
+      HTTP_400: { status: 400, note: "page or limit is not an integer (ParseIntPipe)" }
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:204
+
+  exploreMadrasahs: # MadrasahController.explore
+    route: GET /madrasahs/explore
+    summary: The medreses Keşfet lists, each with its listed courses
+    description: >-
+      Each medrese with its başmüderris's name and its listed courses, by name then id; not paginated (MDRS-159). A course is listed when it
+      is PUBLISHED, not hidden, and in a köşk that is neither unlisted (isPrivate) nor hidden. level and field keep the medreses with at
+      least one listed course in a köşk of exactly that level or ilim alanı (the web app sends neither); q keeps those where every whitespace-separated word occurs, case-
+      insensitively, in the name, handle, description or the başmüderris's name. Writes nothing.
+    needs: "No token needed. AuthGuard + AuthzGuard, @Authz(madrasah.view, anyMadrasah) @AuthzPublic. Every caller passes"
+    query:
+      type: object
+      properties:
+        q: { type: string, maxLength: 100, note: "cut to 100 characters, not refused; a repeated key arrives as an array and is read as no search" }
+        level: { enum: [ALL, BEGINNER, INTERMEDIATE, ADVANCED], note: "keeps the medreses with a listed course in a köşk whose level is exactly this; ALL is a level a köşk can declare (kosk-field-rules.ts:25), not 'no filter'; absent is no filter" }
+        field: { type: string, note: "the ilim alanı of the köşk, trimmed; blank is no filter" }
+        madrasahId: { type: string, format: uuid, references: Madrasah }
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [id, handle, name, headMuderrisName, courseCount, courses]
+        properties:
+          id: { type: string, format: uuid, references: Madrasah }
+          handle: { type: string }
+          name: { type: string }
+          headMuderrisName: { type: [string, "null"], note: "null with none, or while that person has never signed in" }
+          courseCount: { type: integer, note: "the listed courses" }
+          courses:
+            type: array
+            items:
+              type: object
+              required: [id, title, coverHue]
+              properties:
+                id: { type: string, format: uuid, references: Course }
+                title: { type: string }
+                coverHue: { type: integer }
+    refusals:
+      HTTP_400: { status: 400, note: "level is not one of the four values, or madrasahId is not a uuid (ParseEnumPipe, ParseUUIDPipe)" }
+    note: >-
+      The inventory reads level ALL as no filter; the code does not (the repository compares the köşk's level with the value as it is).
+      Finding explore-lists-hidden: the query has no archivedAt filter on madrasahs (madrasah.repository.ts:1030-1056) while GET /madrasahs and the
+      page leave a hidden medrese out. A hidden medrese's courses are hidden with it, so it appears here with courseCount 0 and its name and handle
+      (and level or field filters drop it, because it has no listed course). Not pinned by discover.e2e.spec.ts. Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:241
+
+  getMadrasah: # MadrasahController.findById
+    route: GET /madrasahs/{id}
+    summary: One medrese
+    description: >-
+      The medrese and its nazirIds. Open to a caller with no token, who gets createdBy null and nazirIds []. A hidden medrese (archivedAt set)
+      answers 404 to everyone except a signed-in caller who holds madrasah.hide or platform.madrasah_edit on it (mayOpenHidden). Writes nothing.
+    needs: "No token needed. AuthGuard + AuthzGuard, @Authz(madrasah.view, byExistingMadrasah) @AuthzPublic. Every caller passes the guard; a hidden medrese is closed by the service"
+    result:
+      status: 200
+      returns: Madrasah
+      type: object
+      description: "MadrasahResponse: the Madrasah row without its passive and archive columns, plus nazirIds"
+      properties:
+        createdBy: { type: [string, "null"], format: uuid, note: "null for a caller with no token" }
+        nazirIds: { type: array, items: { type: string, format: uuid }, note: "the held MEDRESE_BASMUDERRIS holders, oldest first; [] for a caller with no token" }
+    refusals:
+      MADRASAH_NOT_FOUND:
+        status: 404
+        note: "no such medrese or the id is not a uuid (byExistingMadrasah); or the medrese is hidden and the caller may not open it (madrasah.service.ts:98)"
+        source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:333
+
+  getMadrasahOverview: # MadrasahController.findOverview
+    route: GET /madrasahs/{id}/overview
+    summary: What a medrese's page shows
+    description: >-
+      The medrese's PUBLISHED, not hidden courses in köşks that are neither unlisted nor hidden, each with its müderrisler, the caller's own
+      enrollment status (null with no token) and the next session still ahead (never the meeting link); the köşks those courses are in; and the
+      oldest held başmüderris with the number of listed courses they teach. A hidden medrese is 404 to everyone but the people above it, as in
+      getMadrasah. Writes nothing.
+    needs: "No token needed. AuthGuard + AuthzGuard, @Authz(madrasah.view, byExistingMadrasah) @AuthzPublic. Every caller passes the guard; a hidden medrese is closed by the service"
+    result:
+      status: 200
+      type: object
+      required: [headMuderris, courses, kosks]
+      properties:
+        headMuderris:
+          type: [object, "null"]
+          required: [id, name, courseCount]
+          properties:
+            id: { type: string, format: uuid, note: "Keycloak sub of the başmüderris; returned to a caller with no token as well (finding overview-exposes-head-id)" }
+            name: { type: [string, "null"], note: "null while that person has never signed in" }
+            courseCount: { type: integer, note: "how many of the medrese's listed courses they teach" }
+        courses:
+          type: array
+          items:
+            type: object
+            required: [id, title, category, coverHue, inPerson, koskId, koskName, muderris, enrollmentStatus, nextSessionAt]
+            properties:
+              id: { type: string, format: uuid, references: Course }
+              title: { type: string }
+              category: { type: [string, "null"] }
+              coverHue: { type: integer }
+              inPerson: { type: boolean, note: "yüz yüze (MDRS-283): the sessions are held in person; a public label" }
+              koskId: { type: string, format: uuid, references: Kosk }
+              koskName: { type: string }
+              muderris:
+                type: array
+                items:
+                  type: object
+                  required: [name, title, unvan, isImam]
+                  properties:
+                    name: { type: string }
+                    title: { type: [string, "null"] }
+                    unvan: { enum: [PROF_DR, DOC_DR, DR, MUDERRIS, MOLLA, MUFTU, SEYH, HAFIZ, null] }
+                    isImam: { type: boolean }
+              enrollmentStatus: { enum: [PENDING, ENROLLED, COMPLETED, null], note: "the caller's own; null with no token or no enrollment" }
+              nextSessionAt: { type: [string, "null"], format: date-time, note: "the earliest session still ahead; never the meeting link" }
+        kosks:
+          type: array
+          note: "only the köşks the medrese has a listed course in"
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              name: { type: string }
+    refusals:
+      MADRASAH_NOT_FOUND:
+        status: 404
+        note: "no such medrese or the id is not a uuid (byExistingMadrasah); or the medrese is hidden and the caller may not open it (madrasah.service.ts:114-117)"
+        source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110
+    note: >-
+      Finding overview-exposes-head-id (not in the inventory): the controller does not apply the anonymous mask to this response, so headMuderris.id,
+      the başmüderris's Keycloak sub, reaches a caller with no token, although GET /madrasahs/{id} hides nazirIds from that caller for the reason
+      that "a person's id is not for the public" (MDRS-160; the köşk page has a test for it, public-pages.e2e.spec.ts:274, the medrese overview has none).
+      Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:355
+
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  # MadrasahController: the portal's own reads and the platform's management of medreses
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  getMadrasahBadgeCounts: # MadrasahController.getBadgeCounts
+    route: GET /madrasahs/{id}/badge-counts
+    summary: The counts behind the nazır portal's menu badges
+    description: >-
+      The PENDING enrollments across the medrese's courses that are not hidden (drafts counted, the köşk's hidden state not asked), and how
+      many courses hold one. Figures about the medrese's own applicants, so it asks madrasah.students_view and not madrasah.view. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.students_view, byExistingMadrasah). Held by the başmüderris by role default, by a nazır only when granted, and by SYSTEM_ADMIN"
+    result:
+      status: 200
+      type: object
+      required: [pendingApplications, coursesWithPendingApplications]
+      properties:
+        pendingApplications: { type: integer }
+        coursesWithPendingApplications: { type: integer }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.students_view on the medrese" }
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:382
+
+  getMadrasahDirectory: # MadrasahController.directory
+    route: GET /madrasahs/directory
+    summary: Every medrese for the platform's table, hidden and passive ones too
+    description: >-
+      nizam's Medreseler table: every medrese with its oldest held başmüderris, its course count (courses that are not hidden), its hosting köşks
+      (unrevoked, köşk not hidden), the per-status counts the tabs show and the passive medreses the page's warning names. Each item says
+      whether the caller may bring it back (canRestore, by the hide ladder). Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz([platform.madrasah_create, platform.madrasah_edit, platform.head_muderris_manage], anyMadrasah): any one of the three opens it. Held by SYSTEM_ADMIN and by a Medaris nazımı granted at least one; platform.madrasah_nazir_grant alone opens nothing"
+    query:
+      type: object
+      properties:
+        status: { enum: [ALL, ACTIVE, PASSIVE, HIDDEN], default: ALL }
+        q: { type: string, maxLength: 100, note: "matches name, handle or the başmüderris's name, case-insensitively; cut to 100; a repeated key is read as no search" }
+        page: { type: integer, default: 1, note: "below 1 reads as 1" }
+        limit: { type: integer, default: 25, minimum: 1, maximum: 50, note: "clamped to 1..50" }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit, counts, passive]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, handle, name, coverHue, status, since, hiddenLevel, canRestore, headMuderris, courseCount, hostingKosks]
+            properties:
+              id: { type: string, format: uuid, references: Madrasah }
+              handle: { type: string }
+              name: { type: string }
+              coverHue: { type: integer }
+              status: { enum: [ACTIVE, PASSIVE, HIDDEN], note: "HIDDEN wins over PASSIVE wins over ACTIVE" }
+              since: { type: [string, "null"], format: date-time, note: "archivedAt when hidden, else passiveSince; null while active" }
+              hiddenLevel: { enum: [course, madrasah, kosk, platform, null], note: "the level that hid it; madrasah for a row hidden before levels were recorded; null while it is not hidden" }
+              canRestore: { type: boolean, note: "hidden, and the caller holds madrasah.hide or platform.madrasah_edit and acts at the level that hid it or above" }
+              headMuderris:
+                type: [object, "null"]
+                required: [id, name]
+                properties:
+                  id: { type: string, format: uuid, note: "Keycloak sub" }
+                  name: { type: [string, "null"], note: "null until that person has signed in once" }
+                note: "the oldest held MEDRESE_BASMUDERRIS; null when there is none"
+              courseCount: { type: integer, note: "courses that are not hidden" }
+              hostingKosks:
+                type: array
+                items:
+                  type: object
+                  required: [id, name]
+                  properties:
+                    id: { type: string, format: uuid, references: Kosk }
+                    name: { type: string }
+                note: "the köşks holding an unrevoked hosting right for it, hidden köşks left out, by name"
+        total: { type: integer, note: "the rows matching the status and the search" }
+        page: { type: integer }
+        limit: { type: integer }
+        counts:
+          type: object
+          required: [all, active, passive, hidden]
+          properties:
+            all: { type: integer }
+            active: { type: integer }
+            passive: { type: integer }
+            hidden: { type: integer }
+          note: "every medrese by status, whatever the filter and the search: the tabs' numbers"
+        passive:
+          type: array
+          note: "the passive medreses the page's warning names, oldest first"
+          items:
+            type: object
+            required: [id, name, since]
+            properties:
+              id: { type: string, format: uuid, references: Madrasah }
+              name: { type: string }
+              since: { type: string, format: date-time }
+    refusals:
+      HTTP_400: { status: 400, note: "status is not one of the four values, or page or limit is not an integer" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds none of the three codes: a başmüderris is refused here too" }
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:283
+
+  createMadrasah: # MadrasahController.create
+    route: POST /madrasahs
+    summary: Open a medrese with its başmüderris
+    description: >-
+      One transaction writes the Madrasah (created_by the caller), the MEDRESE_BASMUDERRIS role assignment of headMuderrisUserId (no end,
+      granted_by the caller) and the audit row madrasah.create. Without a handle one is made from the name (Turkish letters transliterated,
+      lower-case ASCII, hyphens, at most 60 characters, falling back to "medrese") and numbered -2, -3, ... until free; a handle the caller
+      supplies is theirs to get right. A Medaris nazımı may not name themselves head, whatever they hold (SelfGrantGuard, always); SYSTEM_ADMIN may.
+    needs: "AuthGuard + AuthzGuard, @Authz(platform.madrasah_create, anyMadrasah). Held by SYSTEM_ADMIN and by a Medaris nazımı granted it; the resolver reads a non-existent id as PUBLIC, which holds nothing that creates"
+    body:
+      type: object
+      required: [name, headMuderrisUserId]
+      additionalProperties: false
+      properties:
+        handle: { type: string, pattern: "^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])$", note: "2 to 60 characters: lower-case letters, digits, inner hyphens" }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        description: { type: string, maxLength: 1000 }
+        coverHue: { type: integer, minimum: 0, maximum: 360 }
+        headMuderrisUserId: { type: string, format: uuid, note: "the account that becomes the başmüderris; not checked against the users table or the realm (finding head-account-not-checked)" }
+    result:
+      status: 201
+      returns: Madrasah
+      type: object
+      description: "MadrasahResponse, re-read after the write: nazirIds is [headMuderrisUserId]"
+      properties:
+        nazirIds: { type: array, items: { type: string, format: uuid } }
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403, note: "a caller who is not SYSTEM_ADMIN names themselves head (SelfGrantGuard always: true, route madrasah.create.head)", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      MADRASAH_HANDLE_TAKEN:
+        status: 409
+        note: "an explicit handle is taken (madrasah.service.ts:182); or a concurrent create won the unique index (:193); or three races in a row for a generated handle (:196)"
+        source: apps/tedrisat/src/madrasah/madrasah.service.ts:182
+      VALIDATION_ERROR: { status: 400, note: "handle pattern, name length 2..120, description over 1000, coverHue outside 0..360, headMuderrisUserId missing or not a uuid, an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold platform.madrasah_create" }
+    sideEffects:
+      - audit:madrasah.create
+      - audit:permission.self_grant_refused (when a refused self-naming is written)
+    note: >-
+      Finding head-account-not-checked: neither this route nor setMadrasahHeadMuderris asks the users table or the realm whether the named account
+      exists (role_assignments.user_id is no foreign key and MadrasahService.open has no directory call), while openMadrasahCourse answers 404
+      MUDERRIS_UNKNOWN_USER and the köşk nazım routes check too. Read from the code, not run. The call-graph draft's 404 MADRASAH_NOT_FOUND on this
+      route is only the post-insert re-read, not a refusal.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+
+  getMadrasahHeadDelegations: # MadrasahController.headDelegations
+    route: GET /madrasahs/{id}/head-muderris/delegations
+    summary: What the sitting başmüderris handed on
+    description: >-
+      The nazır roles and permission grants the sitting başmüderris gave in this medrese and its courses that are still held, whoever holds
+      them (roles MEDRESE_NAZIR, and course seats MUDERRIS and DERS_NAZIR; grants single or by group). The incoming başmüderris's own rows are included:
+      a head change decides every row. Names come from users, the missing ones from the realm (failures swallowed with a warning). Empty when
+      there is no başmüderris or nothing was handed on. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz(platform.head_muderris_manage, byExistingMadrasah). Held by SYSTEM_ADMIN and by a Medaris nazımı granted it"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [kind, id, role, permission, groupName, scopeType, scopeId, courseTitle, to, grantedAt, expiresAt]
+        properties:
+          kind: { enum: [ROLE, GRANT] }
+          id: { type: string, format: uuid, note: "a RoleAssignment id for a ROLE, a PermissionGrant id for a GRANT" }
+          role: { type: [string, "null"], note: "for a ROLE: MEDRESE_NAZIR in the medrese, or a course seat (MUDERRIS, DERS_NAZIR) in one of its courses" }
+          permission: { type: [string, "null"], note: "the permission code, for a single-permission GRANT" }
+          groupName: { type: [string, "null"], note: "for a group GRANT" }
+          scopeType: { enum: [madrasah, course] }
+          scopeId: { type: [string, "null"], format: uuid }
+          courseTitle: { type: [string, "null"], note: "for a row held in a course" }
+          to:
+            type: object
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, note: "Keycloak sub of the holder" }
+              name: { type: [string, "null"] }
+              email: { type: [string, "null"], sensitivity: personal }
+          grantedAt: { type: string, format: date-time }
+          expiresAt: { type: [string, "null"], format: date-time }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold platform.head_muderris_manage" }
+    sideEffects:
+      - "Keycloak admin GET by id, for the holders the users table does not know (failures swallowed: the route is never 503)"
+    note: >-
+      The call-graph draft attributes 503 KEYCLOAK_ADMIN_UNAVAILABLE to this route; MadrasahService.headDelegations reads the directory through
+      Promise.allSettled (madrasah.service.ts:278), so the directory being down leaves names null and is no refusal here.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:427
+
+  setMadrasahHeadMuderris: # MadrasahController.setHeadMuderris
+    route: PUT /madrasahs/{id}/head-muderris
+    summary: Make a user the medrese's başmüderris
+    description: >-
+      One transaction, the medrese row locked FOR NO KEY UPDATE. When the head is being replaced (some held head is another person) every item
+      getMadrasahHeadDelegations lists must be answered exactly once and nothing else: TAKE_OVER sets granted_by to the caller, DROP revokes the
+      role or grant, and a seat answered DROP also revokes what its holder was given in that scope and nothing else covers. The outgoing heads
+      are revoked, the new head is seated (expires_at = endsAt), passiveSince and passiveReason are cleared (a passive medrese is active again),
+      and the audit row is written. Naming the person who already heads it asks nothing and changes nothing but the audit row. SYSTEM_ADMIN
+      may seat themselves; nobody else may, nor take over a row given to themselves (two SelfGrantGuard calls, both always).
+    needs: "AuthGuard + AuthzGuard, @Authz(platform.head_muderris_manage, byExistingMadrasah). Held by SYSTEM_ADMIN and by a Medaris nazımı granted it"
+    body:
+      type: object
+      required: [userId]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, note: "the account that becomes the başmüderris; not checked against the users table or the realm" }
+        endsAt: { type: string, format: date-time, note: "the new head's Görev bitişi; omitted means until taken away; in the past is refused" }
+        delegations:
+          type: array
+          maxItems: 500
+          note: "one answer per item getMadrasahHeadDelegations lists, when the head is replaced"
+          items:
+            type: object
+            required: [kind, id, action]
+            additionalProperties: false
+            properties:
+              kind: { enum: [ROLE, GRANT] }
+              id: { type: string, format: uuid }
+              action: { enum: [TAKE_OVER, DROP] }
+    result:
+      status: 200
+      description: "MadrasahDirectoryItemResponse of the medrese, as getMadrasahDirectory lists it, with canRestore: the new head is in headMuderris and the medrese is no longer passive"
+      type: object
+      required: [id, handle, name, coverHue, status, since, hiddenLevel, canRestore, headMuderris, courseCount, hostingKosks]
+      properties:
+        id: { type: string, format: uuid, references: Madrasah }
+        handle: { type: string }
+        name: { type: string }
+        coverHue: { type: integer }
+        status: { enum: [ACTIVE, PASSIVE, HIDDEN], note: "HIDDEN wins over PASSIVE wins over ACTIVE" }
+        since: { type: [string, "null"], format: date-time, note: "archivedAt when hidden, else passiveSince; null while active" }
+        hiddenLevel: { enum: [course, madrasah, kosk, platform, null], note: "the level that hid it; madrasah for a row hidden before levels were recorded; null while it is not hidden" }
+        canRestore: { type: boolean, note: "hidden, and the caller holds madrasah.hide or platform.madrasah_edit and acts at the level that hid it or above" }
+        headMuderris:
+          type: [object, "null"]
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid, note: "Keycloak sub" }
+            name: { type: [string, "null"], note: "null until that person has signed in once" }
+          note: "the oldest held MEDRESE_BASMUDERRIS; null when there is none"
+        courseCount: { type: integer, note: "courses that are not hidden" }
+        hostingKosks:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              name: { type: string }
+          note: "the köşks holding an unrevoked hosting right for it, hidden köşks left out, by name"
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403, note: "the caller is not SYSTEM_ADMIN and names themselves head (route madrasah.head_muderris.set) or takes over a hand-on given to themselves (madrasah.head_muderris.take_over); both always: true", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "The end date is in the past", source: apps/tedrisat/src/madrasah/madrasah.service.ts:232 }
+      DISMISS_DECISIONS_INCOMPLETE: { status: 400, note: "a hand-on is unanswered, answered twice, or an answer names nothing handed on: Decide every permission and role this person handed on, and nothing else", source: apps/tedrisat/src/madrasah/madrasah.repository.ts:535 }
+      DISMISS_TAKE_OVER_WITHOUT_SEAT: { status: 400, note: "a grant answered TAKE_OVER would go with a seat answered DROP in the same change: A grant taken over cannot outlast the seat dropped beside it", source: apps/tedrisat/src/madrasah/madrasah.repository.ts:611 }
+      DISMISS_SEAT_HANDED_ON: { status: 409, note: "a seat answered DROP still has something its holder handed on under it: Dismiss <ids> first", source: apps/tedrisat/src/assignment/admin/orphaned-grants.ts:321 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah); or it vanished under the lock (madrasah.service.ts:242)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      VALIDATION_ERROR: { status: 400, note: "userId or an id is not a uuid, endsAt is not an ISO-8601 time, delegations has over 500 items or an answer outside the two kinds and two actions, an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold platform.head_muderris_manage" }
+    sideEffects:
+      - audit:madrasah.head_muderris.set
+      - audit:permission.self_grant_refused (when a refused self-naming is written)
+    note: >-
+      Finding head-account-not-checked (see createMadrasah): userId is not looked up. A medrese with no head and one whose head is the same
+      person ask for no delegations.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:448
+
+  hideMadrasah: # MadrasahController.hide
+    route: POST /madrasahs/{id}/hide
+    summary: Hide a medrese, with its courses
+    description: >-
+      One transaction, the medrese row locked. Sets archivedAt, archivedBy and archivedLevel on the medrese and the same three (and version + 1)
+      on every course of it not already hidden, and writes one audit row with the number of courses. Nothing is deleted and the hosting köşks stay.
+      The level is the highest rung of the medrese ladder the caller holds: platform for platform.madrasah_edit (SYSTEM_ADMIN counts as platform),
+      else medrese for madrasah.hide. A nazır given "change the medrese settings" cannot hide it: madrasah.hide is a role default no grant carries.
+    needs: "AuthGuard + AuthzGuard, @Authz([madrasah.hide, platform.madrasah_edit], byExistingMadrasah) @HttpCode(200). Held by the başmüderris (madrasah.hide), SYSTEM_ADMIN and a Medaris nazımı granted platform.madrasah_edit"
+    result:
+      status: 200
+      description: "MadrasahDirectoryItemResponse as getMadrasahDirectory lists it: status HIDDEN, hiddenLevel the level the caller acted at (platform or madrasah)"
+      type: object
+      required: [id, handle, name, coverHue, status, since, hiddenLevel, canRestore, headMuderris, courseCount, hostingKosks]
+      properties:
+        id: { type: string, format: uuid, references: Madrasah }
+        handle: { type: string }
+        name: { type: string }
+        coverHue: { type: integer }
+        status: { enum: [ACTIVE, PASSIVE, HIDDEN], note: "HIDDEN wins over PASSIVE wins over ACTIVE" }
+        since: { type: [string, "null"], format: date-time, note: "archivedAt when hidden, else passiveSince; null while active" }
+        hiddenLevel: { enum: [course, madrasah, kosk, platform, null], note: "the level that hid it; madrasah for a row hidden before levels were recorded; null while it is not hidden" }
+        canRestore: { type: boolean, note: "hidden, and the caller holds madrasah.hide or platform.madrasah_edit and acts at the level that hid it or above" }
+        headMuderris:
+          type: [object, "null"]
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid, note: "Keycloak sub" }
+            name: { type: [string, "null"], note: "null until that person has signed in once" }
+          note: "the oldest held MEDRESE_BASMUDERRIS; null when there is none"
+        courseCount: { type: integer, note: "courses that are not hidden" }
+        hostingKosks:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              name: { type: string }
+          note: "the köşks holding an unrevoked hosting right for it, hidden köşks left out, by name"
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      MADRASAH_ALREADY_HIDDEN: { status: 409, note: "Medrese <id> is already hidden", source: apps/tedrisat/src/madrasah/madrasah.service.ts:323 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds neither madrasah.hide nor platform.madrasah_edit on the medrese" }
+    sideEffects:
+      - audit:madrasah.hide
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:495
+
+  getMadrasahDeactivationPreview: # MadrasahController.deactivationPreview
+    route: GET /madrasahs/{id}/deactivation-preview
+    summary: What taking a medrese out of service takes along
+    description: >-
+      Measures the impact of passivating the medrese (PassivationImpactRepository.measure): the courses below it in every köşk and how many have
+      a müderris in the post, the talebe enrolled, the live sessions in the next days and the başmüderris who would leave; with the confirmation
+      token to post to deactivateMadrasah. Answers 200 with alreadyPassive true when it is passive already. The başmüderris cannot passivate
+      their own medrese. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz(platform.madrasah_edit, byExistingMadrasah). Held by SYSTEM_ADMIN and by a Medaris nazımı granted it"
+    result:
+      status: 200
+      type: object
+      required: [scope, alreadyPassive, closesContent, staffLeaving, courses, students, sessions, confirmation]
+      properties:
+        scope:
+          type: object
+          required: [type, id, name]
+          properties:
+            type: { enum: [KOSK, MADRASAH], note: "MADRASAH here" }
+            id: { type: string, format: uuid, references: Madrasah }
+            name: { type: string }
+        alreadyPassive: { type: boolean, note: "true when it is passive already; the preview still answers 200" }
+        closesContent: { type: boolean, note: "false when the scope never had a manager: the engine treats it as new, so passivating it closes no course" }
+        staffLeaving: { type: integer, note: "the başmüderris who would leave the post" }
+        courses:
+          type: object
+          required: [total, published, draft, withLiveMuderris, items, truncated]
+          properties:
+            total: { type: integer }
+            published: { type: integer }
+            draft: { type: integer }
+            withLiveMuderris: { type: integer, note: "how many have a müderris in the post now" }
+            items:
+              type: array
+              note: "the first 50, the most enrolled first; a hidden course is not counted"
+              items:
+                type: object
+                required: [id, title, koskName, status, liveMuderris, enrolled, completed]
+                properties:
+                  id: { type: string, format: uuid, references: Course }
+                  title: { type: string }
+                  koskName: { type: string }
+                  status: { enum: [DRAFT, PUBLISHED] }
+                  liveMuderris: { type: boolean }
+                  enrolled: { type: integer }
+                  completed: { type: integer }
+            truncated: { type: boolean, note: "items is shorter than total; the confirmation covers every course" }
+        students:
+          type: object
+          required: [enrolled, completed]
+          properties:
+            enrolled: { type: integer, note: "distinct talebe enrolled in those courses" }
+            completed: { type: integer, note: "distinct talebe who finished one of them" }
+        sessions:
+          type: object
+          required: [windowDays, count, next]
+          properties:
+            windowDays: { type: integer, note: "how many days ahead are counted" }
+            count: { type: integer, note: "live, not cancelled sessions of published courses that start inside the window" }
+            next:
+              type: array
+              note: "the first five"
+              items:
+                type: object
+                required: [id, title, courseTitle, scheduledAt]
+                properties:
+                  id: { type: string, format: uuid, references: Lesson }
+                  title: { type: string }
+                  courseTitle: { type: string }
+                  scheduledAt: { type: string, format: date-time }
+        confirmation: { type: string, minLength: 64, maxLength: 64, note: "a token bound to exactly these numbers and to the caller; post it back to deactivate" }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah); or the impact cannot be measured (madrasah.service.ts:341)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold platform.madrasah_edit" }
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:527
+
+  deactivateMadrasah: # MadrasahController.deactivate
+    route: POST /madrasahs/{id}/deactivate
+    summary: Take a medrese out of service
+    description: >-
+      One transaction, the medrese row locked. The impact is measured again under the lock and must match the confirmation for this caller. Every
+      held MEDRESE_BASMUDERRIS row is revoked, passiveSince is set and passiveReason becomes DEACTIVATED_BY_ADMIN, and the audit row carries the
+      heads removed and the impact confirmed. The nazırs and every grant stay, nothing is hidden or deleted, and every course below it closes in
+      every köşk (a passive scope closes its content). Appointing a başmüderris (setMadrasahHeadMuderris) opens it again.
+    needs: "AuthGuard + AuthzGuard, @Authz(platform.madrasah_edit, byExistingMadrasah) @HttpCode(200). Held by SYSTEM_ADMIN and by a Medaris nazımı granted it"
+    body:
+      type: object
+      required: [confirmation]
+      additionalProperties: false
+      properties:
+        confirmation: { type: string, minLength: 64, maxLength: 64, note: "the confirmation of the preview the person read" }
+    result:
+      status: 200
+      description: "MadrasahDirectoryItemResponse as getMadrasahDirectory lists it: status PASSIVE (HIDDEN when it is hidden as well), headMuderris null because the heads were revoked"
+      type: object
+      required: [id, handle, name, coverHue, status, since, hiddenLevel, canRestore, headMuderris, courseCount, hostingKosks]
+      properties:
+        id: { type: string, format: uuid, references: Madrasah }
+        handle: { type: string }
+        name: { type: string }
+        coverHue: { type: integer }
+        status: { enum: [ACTIVE, PASSIVE, HIDDEN], note: "HIDDEN wins over PASSIVE wins over ACTIVE" }
+        since: { type: [string, "null"], format: date-time, note: "archivedAt when hidden, else passiveSince; null while active" }
+        hiddenLevel: { enum: [course, madrasah, kosk, platform, null], note: "the level that hid it; madrasah for a row hidden before levels were recorded; null while it is not hidden" }
+        canRestore: { type: boolean, note: "hidden, and the caller holds madrasah.hide or platform.madrasah_edit and acts at the level that hid it or above" }
+        headMuderris:
+          type: [object, "null"]
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid, note: "Keycloak sub" }
+            name: { type: [string, "null"], note: "null until that person has signed in once" }
+          note: "the oldest held MEDRESE_BASMUDERRIS; null when there is none"
+        courseCount: { type: integer, note: "courses that are not hidden" }
+        hostingKosks:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              name: { type: string }
+          note: "the köşks holding an unrevoked hosting right for it, hidden köşks left out, by name"
+    refusals:
+      PASSIVATION_IMPACT_CHANGED:
+        status: 409
+        note: "What passivating takes along changed since the preview; read it again and confirm again. Nothing is written. The fresh preview is in context.impact"
+        body:
+          type: object
+          properties:
+            context:
+              type: object
+              properties:
+                impact: { type: object, note: "the same shape getMadrasahDeactivationPreview answers, with a new confirmation" }
+        source: apps/tedrisat/src/passivation/passivation-impact.repository.ts:182
+      MADRASAH_ALREADY_PASSIVE: { status: 409, note: "Medrese <id> is passive already (checked before the confirmation)", source: apps/tedrisat/src/madrasah/madrasah.service.ts:358 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      VALIDATION_ERROR: { status: 400, note: "confirmation is missing, not a string or not exactly 64 characters, or an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold platform.madrasah_edit" }
+    sideEffects:
+      - audit:madrasah.deactivate
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:549
+
+  restoreMadrasah: # MadrasahController.restore
+    route: POST /madrasahs/{id}/restore
+    summary: Bring a hidden medrese back
+    description: >-
+      One transaction. Allowed at the level that hid it or above (platform over medrese; a medrese hidden before levels were recorded counts as
+      hidden at the medrese level): the başmüderris restores what was hidden at medrese level, platform management restores anything, and the
+      başmüderris cannot restore what the platform hid. Clears archivedAt, archivedBy and archivedLevel, and brings back the courses whose archivedAt
+      equals the medrese's own instant (version + 1); a course hidden earlier on its own stays hidden. A medrese that is both hidden and passive
+      comes back passive.
+    needs: "AuthGuard + AuthzGuard, @Authz([madrasah.hide, platform.madrasah_edit], byExistingMadrasah) @HttpCode(200). Held by the başmüderris, SYSTEM_ADMIN and a Medaris nazımı granted platform.madrasah_edit"
+    result:
+      status: 200
+      description: "MadrasahDirectoryItemResponse as getMadrasahDirectory lists it: status ACTIVE, or PASSIVE when it is passive as well; hiddenLevel null"
+      type: object
+      required: [id, handle, name, coverHue, status, since, hiddenLevel, canRestore, headMuderris, courseCount, hostingKosks]
+      properties:
+        id: { type: string, format: uuid, references: Madrasah }
+        handle: { type: string }
+        name: { type: string }
+        coverHue: { type: integer }
+        status: { enum: [ACTIVE, PASSIVE, HIDDEN], note: "HIDDEN wins over PASSIVE wins over ACTIVE" }
+        since: { type: [string, "null"], format: date-time, note: "archivedAt when hidden, else passiveSince; null while active" }
+        hiddenLevel: { enum: [course, madrasah, kosk, platform, null], note: "the level that hid it; madrasah for a row hidden before levels were recorded; null while it is not hidden" }
+        canRestore: { type: boolean, note: "hidden, and the caller holds madrasah.hide or platform.madrasah_edit and acts at the level that hid it or above" }
+        headMuderris:
+          type: [object, "null"]
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid, note: "Keycloak sub" }
+            name: { type: [string, "null"], note: "null until that person has signed in once" }
+          note: "the oldest held MEDRESE_BASMUDERRIS; null when there is none"
+        courseCount: { type: integer, note: "courses that are not hidden" }
+        hostingKosks:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              name: { type: string }
+          note: "the köşks holding an unrevoked hosting right for it, hidden köşks left out, by name"
+    refusals:
+      ARCHIVE_RESTORE_LEVEL:
+        status: 403
+        note: "This was hidden at the <hidden> level; only that level or above brings it back (you act at the <yours> level). context carries hiddenAt and yourLevel"
+        source: apps/tedrisat/src/madrasah/madrasah.repository.ts:797
+      MADRASAH_NOT_HIDDEN: { status: 409, note: "Medrese <id> is not hidden", source: apps/tedrisat/src/madrasah/madrasah.service.ts:371 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds neither madrasah.hide nor platform.madrasah_edit on the medrese" }
+    sideEffects:
+      - audit:madrasah.restore
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:577
+
+  updateMadrasah: # MadrasahController.update
+    route: PATCH /madrasahs/{id}
+    summary: Update a medrese's name, description, handle or cover colour
+    description: >-
+      Writes the fields sent and updated_at, whether or not the medrese is hidden or passive. No audit row. The medrese's settings screen
+      saves name and description through updateMadrasahSettings instead; the two routes overlap on those two fields.
+    needs: "AuthGuard + AuthzGuard, @Authz([madrasah.settings_edit, platform.madrasah_edit], byExistingMadrasah). Held by the başmüderris, a nazır granted madrasah.settings_edit, SYSTEM_ADMIN, and a Medaris nazımı granted platform.madrasah_edit"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        handle: { type: string, pattern: "^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])$" }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        description: { type: string, maxLength: 1000 }
+        coverHue: { type: integer, minimum: 0, maximum: 360 }
+    result:
+      status: 200
+      returns: Madrasah
+      type: object
+      description: "MadrasahResponse, re-read after the write"
+      properties:
+        nazirIds: { type: array, items: { type: string, format: uuid } }
+    refusals:
+      MADRASAH_HANDLE_TAKEN: { status: 409, note: "another medrese holds the handle (madrasah.service.ts:389, excluding itself) or the unique index refused it (:397)", source: apps/tedrisat/src/madrasah/madrasah.service.ts:389 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      VALIDATION_ERROR: { status: 400, note: "handle pattern, name length, description over 1000, coverHue outside 0..360, an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds neither madrasah.settings_edit nor platform.madrasah_edit on the medrese" }
+    note: >-
+      Finding patch-madrasah-unaudited: this route can change the name, the description and the public handle with no audit_log row, while
+      updateMadrasahSettings (the same name and description) writes madrasah.settings.update and stamps MadrasahSettings.updatedBy.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:605
+
+  getMadrasahSettings: # MadrasahController.getSettings
+    route: GET /madrasahs/{id}/settings
+    summary: The medrese's settings
+    description: >-
+      The medrese's name and description, its three policies (all off until the first save: a medrese never saved has no MadrasahSettings row)
+      and who saved last. Not part of the public read. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.settings_edit, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN. A Medaris nazımı with only platform.madrasah_edit is refused"
+    result:
+      status: 200
+      type: object
+      required: [name, description, policies, updatedAt, updatedBy]
+      properties:
+        name: { type: string }
+        description: { type: [string, "null"] }
+        policies:
+          type: object
+          required: [closedCourseRequired, alwaysApproval, noPublicRecordings]
+          properties:
+            closedCourseRequired: { type: boolean }
+            alwaysApproval: { type: boolean }
+            noPublicRecordings: { type: boolean, note: "stored and shown, and read by nothing that decides (invariant madrasah-no-public-recordings-closes-recordings)" }
+          note: "all three read false until the first save: no MadrasahSettings row yet"
+        updatedAt: { type: [string, "null"], format: date-time, note: "the last save of the settings; null until the first one" }
+        updatedBy:
+          type: [object, "null"]
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, note: "Keycloak sub" }
+            name: { type: [string, "null"] }
+            email: { type: [string, "null"], sensitivity: personal }
+          note: "who saved last; null until the first save"
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.settings_edit on the medrese" }
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:626
+
+  updateMadrasahSettings: # MadrasahController.updateSettings
+    route: PATCH /madrasahs/{id}/settings
+    summary: Save the medrese's settings
+    description: >-
+      One transaction, the medrese row locked, planned by planSettingsUpdate: text is trimmed, a blank or null description clears it, and a field
+      sent with the value it already has changes nothing. When nothing changes nothing is written (no audit row, updatedAt and updatedBy untouched).
+      Otherwise the Madrasah's name, description and updatedAt (when those changed), an upsert of all three MadrasahSettings policy columns with
+      updatedAt = now() and updatedBy = the caller, and the audit row with the changes. alwaysApproval takes effect at once: every new enrollment
+      in the medrese's courses waits for approval from then on (CourseService.enroll via CourseRepository.forcesApproval, and it closes
+      setting.approval_off). closedCourseRequired is applied when the medrese opens a course and refuses a save that opens it again.
+      noPublicRecordings is stored and nothing reads it.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.settings_edit, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN. A Medaris nazımı with only platform.madrasah_edit is refused"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120, note: "not blank" }
+        description: { type: [string, "null"], maxLength: 1000, note: "blank or null clears it" }
+        policies:
+          type: object
+          additionalProperties: false
+          properties:
+            closedCourseRequired: { type: boolean }
+            alwaysApproval: { type: boolean }
+            noPublicRecordings: { type: boolean }
+          note: "only the policies sent change"
+    result:
+      status: 200
+      type: object
+      required: [name, description, policies, updatedAt, updatedBy]
+      properties:
+        name: { type: string }
+        description: { type: [string, "null"] }
+        policies:
+          type: object
+          required: [closedCourseRequired, alwaysApproval, noPublicRecordings]
+          properties:
+            closedCourseRequired: { type: boolean }
+            alwaysApproval: { type: boolean }
+            noPublicRecordings: { type: boolean, note: "stored and shown, and read by nothing that decides (invariant madrasah-no-public-recordings-closes-recordings)" }
+          note: "all three read false until the first save: no MadrasahSettings row yet"
+        updatedAt: { type: [string, "null"], format: date-time, note: "the last save of the settings; null until the first one" }
+        updatedBy:
+          type: [object, "null"]
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, note: "Keycloak sub" }
+            name: { type: [string, "null"] }
+            email: { type: [string, "null"], sensitivity: personal }
+          note: "who saved last; null until the first save"
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      VALIDATION_ERROR: { status: 400, note: "name shorter than 2, blank or over 120 characters, description over 1000, a policy that is not a boolean, an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.settings_edit on the medrese" }
+    sideEffects:
+      - audit:madrasah.settings.update (only when something changed)
+    note: >-
+      The DTO and schema comments (madrasah-settings.dto.ts, madrasah.schema.ts:47-54) still say nothing enforces closedCourseRequired; it is
+      enforced (openMadrasahCourse, and the course save at course.service.ts:1010-1016 answers 409 PLATFORM_POLICY_LOCKED). There is no
+      admission-rule feature behind the madrasah.admission_rules permission (finding no-admission-rules; the code gates nothing, MDRS-208 in
+      domain.yaml). Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:643
+
+  listMadrasahCourses: # MadrasahController.findCourses
+    route: GET /madrasahs/{id}/courses
+    summary: The medrese's courses, for its nazırs
+    description: >-
+      The medrese's DRAFT and PUBLISHED courses that are not hidden, in köşks that are not hidden (an unlisted köşk is fine), by title then id,
+      each with its enrolled and pending counts (a COMPLETED enrollment counts as neither) and its müderrisler with the account's e-mail and the
+      imam marked. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz([madrasah.course_open, madrasah.course_hide, madrasah.muderris_manage], byExistingMadrasah): any one of the three. Held by the başmüderris, a nazır granted any of them, and SYSTEM_ADMIN"
+    query:
+      type: object
+      properties:
+        koskId: { type: string, format: uuid, references: Kosk }
+        status: { enum: [DRAFT, PUBLISHED] }
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [id, title, koskId, koskName, status, requiresApproval, closed, createdAt, studentCount, pendingCount, muderris]
+        properties:
+          id: { type: string, format: uuid, references: Course }
+          title: { type: string }
+          koskId: { type: string, format: uuid, references: Kosk }
+          koskName: { type: string }
+          status: { enum: [DRAFT, PUBLISHED] }
+          requiresApproval: { type: boolean, note: "as stored, after the medrese's policy" }
+          closed: { type: boolean, note: "kapalı ders, as stored, after the medrese's policy" }
+          createdAt: { type: string, format: date-time }
+          studentCount: { type: integer, note: "ENROLLED enrollments only: a PENDING or COMPLETED one is not counted" }
+          pendingCount: { type: integer, note: "PENDING enrollments" }
+          muderris:
+            type: array
+            note: "the course's müderrisler in list order, the imam marked"
+            items:
+              type: object
+              required: [userId, name, title, unvan, email, isImam]
+              properties:
+                userId: { type: [string, "null"], format: uuid, note: "null for a müderris shown by name alone, with no account" }
+                name: { type: string }
+                title: { type: [string, "null"] }
+                unvan: { enum: [PROF_DR, DOC_DR, DR, MUDERRIS, MOLLA, MUFTU, SEYH, HAFIZ, null] }
+                email: { type: [string, "null"], sensitivity: personal, note: "null until that person has signed in once" }
+                isImam: { type: boolean }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      HTTP_400: { status: 400, note: "koskId is not a uuid or status is not DRAFT or PUBLISHED" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller holds none of the three codes on the medrese" }
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:664
+
+  deleteMadrasah: # MadrasahController.delete
+    route: DELETE /madrasahs/{id}
+    summary: Delete a medrese for real
+    description: >-
+      One transaction, the medrese row locked. Deletes the madrasahs row (its settings, hosting rights, course requests, appeals and legacy off-site requests go by cascade; a
+      deck's madrasah_id is set null), deletes every role assignment of scope madrasah, history included (scope_id is no foreign key), and writes
+      the audit row with the name, handle, the former nazırs and the number of courses kept. The courses stay in their köşks with madrasah_id null. Only SYSTEM_ADMIN:
+      madrasah.delete is an implicit code that no role, grant or relationship holds.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.delete, byExistingMadrasah). Held by SYSTEM_ADMIN alone, through the realm bypass; the başmüderris and the nazırs are refused (MDRS-124)"
+    result:
+      status: 200
+      type: boolean
+      description: "true"
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah); or it vanished under the lock (madrasah.service.ts:436)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "anyone but SYSTEM_ADMIN" }
+    sideEffects:
+      - audit:madrasah.delete
+    note: >-
+      Not verified: whether PermissionGrant and PermissionGroup rows scoped to the deleted medrese are removed. This path does not touch them and
+      permission.schema.ts has no foreign key to madrasahs; the role assignments their holders needed are deleted, so by
+      permission-never-outlasts-its-role the grants stop counting. Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:691
+
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  # MadrasahCourseController (madrasah/course/madrasah-course.controller.ts): the courses a medrese opens in the köşks that host it,
+  # and its requests for a course outside it
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  listMadrasahHostingKosks: # MadrasahCourseController.hostingKosks
+    route: GET /madrasahs/{id}/hosting-kosks
+    summary: The köşks the medrese may open courses in
+    description: >-
+      The köşks holding an unrevoked hosting right for the medrese, hidden köşks left out, by name, each with its ilim alanı and how many of
+      the medrese's courses that are not hidden (drafts included) it has there. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.course_open, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [id, name, field, courseCount]
+        properties:
+          id: { type: string, format: uuid, references: Kosk }
+          name: { type: string }
+          field: { type: [string, "null"], note: "the köşk's ilim alanı" }
+          courseCount: { type: integer }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.course_open on the medrese" }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:82
+
+  openMadrasahCourse: # MadrasahCourseController.open
+    route: POST /madrasahs/{id}/courses
+    summary: Open a course of the medrese in a köşk that hosts it
+    description: >-
+      The team is planned first (ids lower-cased, no duplicates; a lone müderris is the imam, with several imamUserId is required and must be
+      listed; each unvan must belong to a listed account, once), then every account must exist in the users table or the realm
+      (UserDirectoryService.findUnknownAccounts), then one transaction: the medrese row read FOR NO KEY UPDATE and shown (archivedAt null), a hosting
+      right read FOR SHARE and the köşk existing and not hidden, the policies read under the lock, the Course inserted (DRAFT, authorId the caller,
+      requiresApproval = requested or the alwaysApproval policy, isClosed = requested or the closedCourseRequired policy), the CourseMuderris rows
+      (name from users or the realm, unvan, order), the MUDERRIS role assignments (syncMuderrisAssignments), the one imam row, and the audit row.
+      Naming oneself müderris works only for someone who already holds every course code in the medrese (the başmüderris), not for a grantee
+      (SelfGrantGuard, role MUDERRIS).
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.course_open, byExistingMadrasah). Held by the başmüderris, a nazır granted it (a grant held in a köşk that gave the medrese no hosting right does not help), and SYSTEM_ADMIN. A köşk's nazım is refused"
+    body:
+      type: object
+      required: [koskId, title, muderrisUserIds]
+      additionalProperties: false
+      properties:
+        koskId: { type: string, format: uuid, references: Kosk, note: "a köşk the medrese holds a hosting right in" }
+        title: { type: string, minLength: 2, maxLength: 200, note: "trimmed first" }
+        muderrisUserIds: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid }, note: "found with lookupUser (GET /users/lookup), in the order they are shown" }
+        imamUserId: { type: string, format: uuid, note: "one of muderrisUserIds; left out, a lone müderris is the imam, with several it is required" }
+        muderrisUnvans:
+          type: array
+          maxItems: 20
+          note: "the unvan each müderris carries in the new course; one left out has none"
+          items:
+            type: object
+            required: [userId, unvan]
+            additionalProperties: false
+            properties:
+              userId: { type: string, format: uuid, note: "one of muderrisUserIds, named once" }
+              unvan: { enum: [PROF_DR, DOC_DR, DR, MUDERRIS, MOLLA, MUFTU, SEYH, HAFIZ, null], note: "the key must be sent; null is no unvan" }
+        closedCourse: { type: boolean, note: "forced on when the closedCourseRequired policy is on" }
+        requiresApproval: { type: boolean, note: "forced on when the alwaysApproval policy is on" }
+    result:
+      status: 201
+      description: "MadrasahCourseListItemResponse: the new course as listMadrasahCourses lists it"
+      type: object
+      required: [id, title, koskId, koskName, status, requiresApproval, closed, createdAt, studentCount, pendingCount, muderris]
+      properties:
+        id: { type: string, format: uuid, references: Course }
+        title: { type: string }
+        koskId: { type: string, format: uuid, references: Kosk }
+        koskName: { type: string }
+        status: { enum: [DRAFT, PUBLISHED] }
+        requiresApproval: { type: boolean, note: "as stored, after the medrese's policy" }
+        closed: { type: boolean, note: "kapalı ders, as stored, after the medrese's policy" }
+        createdAt: { type: string, format: date-time }
+        studentCount: { type: integer, note: "ENROLLED enrollments only: a PENDING or COMPLETED one is not counted" }
+        pendingCount: { type: integer, note: "PENDING enrollments" }
+        muderris:
+          type: array
+          note: "the course's müderrisler in list order, the imam marked"
+          items:
+            type: object
+            required: [userId, name, title, unvan, email, isImam]
+            properties:
+              userId: { type: [string, "null"], format: uuid, note: "null for a müderris shown by name alone, with no account" }
+              name: { type: string }
+              title: { type: [string, "null"] }
+              unvan: { enum: [PROF_DR, DOC_DR, DR, MUDERRIS, MOLLA, MUFTU, SEYH, HAFIZ, null] }
+              email: { type: [string, "null"], sensitivity: personal, note: "null until that person has signed in once" }
+              isImam: { type: boolean }
+    refusals:
+      HOSTING_RIGHT_REQUIRED:
+        status: 403
+        note: "Medrese <m> holds no hosting right in köşk <k>. Also answered for a köşk that does not exist or is hidden, never 404"
+        source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:110
+      SELF_GRANT_REFUSED: { status: 403, note: "the caller names themselves müderris without holding every course code in the medrese (route madrasah.course.open)", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      MADRASAH_NOT_FOUND:
+        status: 404
+        note: "no such medrese or the id is not a uuid (byExistingMadrasah); or the medrese is hidden (madrasah-course.service.ts:107)"
+        source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110
+      MUDERRIS_UNKNOWN_USER:
+        status: 404
+        note: "No account <id> in the app or the realm; it cannot be made a müderris. With the directory not configured every account missing from users is unknown"
+        source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:222
+      COURSE_IMAM_REQUIRED: { status: 400, note: "With more than one müderris, the imam must be named", source: apps/tedrisat/src/madrasah/course/course-team.ts:27 }
+      COURSE_IMAM_NOT_LISTED: { status: 400, note: "the imam is not among the müderrisler", source: apps/tedrisat/src/madrasah/course/course-team.ts:30 }
+      MUDERRIS_DUPLICATE_USER: { status: 400, note: "an account is listed twice", source: apps/tedrisat/src/madrasah/course/course-team.ts:23 }
+      MUDERRIS_LIST_INVALID: { status: 400, note: "an unvan is given to an account that is not listed (madrasah-course.service.ts:48), or twice to one (:53)", source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:48 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "an account missing from users is looked up in the realm and the directory does not answer (transport, HTTP or parse); never read as unknown", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+      VALIDATION_ERROR: { status: 400, note: "title length outside 2..200, no or over 20 müderris, a value that is not a uuid, an unvan outside the eight codes, a non-boolean flag, an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.course_open on the medrese" }
+    sideEffects:
+      - audit:course.open
+      - audit:permission.self_grant_refused (when a refused self-naming is written)
+      - "Keycloak admin GET by id, for the accounts the users table does not know"
+    note: >-
+      Finding open-course-hidden-köşk-is-403: a köşk that does not exist or is hidden answers 403 HOSTING_RIGHT_REQUIRED, not 404 (the
+      repository returns no-hosting-right for both). The inventory's 503 KEYCLOAK_ADMIN_NOT_CONFIGURED is not given here: findUnknownAccounts
+      checks isConfigured first, so an unconfigured directory yields 404 MUDERRIS_UNKNOWN_USER instead.
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+
+  setMadrasahCourseMuderris: # MadrasahCourseController.setMuderris
+    route: PUT /madrasahs/{id}/courses/{courseId}/muderrises
+    summary: Replace a course's müderrisler
+    description: >-
+      The listed müderrisler become the course's müderrisler and imamUserId its imam. assertOpen first (a hidden köşk closes its course to the
+      medrese: a medrese is not above a köşk), then SelfGrantGuard only for accounts the save would newly seat. In one transaction with the
+      course row locked: the course must be the medrese's and not hidden; when the list and the imam equal the stored ones nothing is written and
+      the answer is 200; otherwise the CourseMuderris rows of dropped accounts are deleted, new ones inserted (name from the directory, looked up
+      only for accounts not listed before) and ordered, a müderris shown by name alone with no account is left as it is, courses.version + 1, the
+      MUDERRIS role rows are synced (leavers lose the role) and the imam row set, and the audit row is written.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.muderris_manage, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN. A köşk's nazım is refused"
+    body:
+      type: object
+      required: [muderrisUserIds]
+      additionalProperties: false
+      properties:
+        muderrisUserIds: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid }, note: "every müderris the course is to have, in the order shown; the last one cannot be left out" }
+        imamUserId: { type: string, format: uuid, note: "one of muderrisUserIds; left out, a lone müderris is the imam, with several it is required" }
+    result:
+      status: 200
+      description: "MadrasahCourseListItemResponse: the course as listMadrasahCourses lists it"
+      type: object
+      required: [id, title, koskId, koskName, status, requiresApproval, closed, createdAt, studentCount, pendingCount, muderris]
+      properties:
+        id: { type: string, format: uuid, references: Course }
+        title: { type: string }
+        koskId: { type: string, format: uuid, references: Kosk }
+        koskName: { type: string }
+        status: { enum: [DRAFT, PUBLISHED] }
+        requiresApproval: { type: boolean, note: "as stored, after the medrese's policy" }
+        closed: { type: boolean, note: "kapalı ders, as stored, after the medrese's policy" }
+        createdAt: { type: string, format: date-time }
+        studentCount: { type: integer, note: "ENROLLED enrollments only: a PENDING or COMPLETED one is not counted" }
+        pendingCount: { type: integer, note: "PENDING enrollments" }
+        muderris:
+          type: array
+          note: "the course's müderrisler in list order, the imam marked"
+          items:
+            type: object
+            required: [userId, name, title, unvan, email, isImam]
+            properties:
+              userId: { type: [string, "null"], format: uuid, note: "null for a müderris shown by name alone, with no account" }
+              name: { type: string }
+              title: { type: [string, "null"] }
+              unvan: { enum: [PROF_DR, DOC_DR, DR, MUDERRIS, MOLLA, MUFTU, SEYH, HAFIZ, null] }
+              email: { type: [string, "null"], sensitivity: personal, note: "null until that person has signed in once" }
+              isImam: { type: boolean }
+    refusals:
+      MADRASAH_COURSE_NOT_FOUND:
+        status: 404
+        note: "Medrese <m> has no course <c>: not this medrese's, hidden, or not found (madrasah-course.service.ts:142, :159, :241)"
+        source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:142
+      COURSE_NOT_FOUND: { status: 404, note: "the course's köşk is hidden and the caller holds neither course.hide nor platform.kosk_edit on it (assertOpen)", source: libs/common/src/authz/authz.service.ts:135 }
+      MUDERRIS_UNKNOWN_USER: { status: 404, note: "a newly listed account is in neither the users table nor the realm", source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:222 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      COURSE_IMAM_REQUIRED: { status: 400, note: "With more than one müderris, the imam must be named", source: apps/tedrisat/src/madrasah/course/course-team.ts:27 }
+      COURSE_IMAM_NOT_LISTED: { status: 400, note: "the imam is not among the müderrisler", source: apps/tedrisat/src/madrasah/course/course-team.ts:30 }
+      MUDERRIS_DUPLICATE_USER: { status: 400, note: "an account is listed twice", source: apps/tedrisat/src/madrasah/course/course-team.ts:23 }
+      SELF_GRANT_REFUSED: { status: 403, note: "the caller newly seats themselves as müderris without holding every course code in the medrese (route madrasah.course.muderris)", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "a newly listed account missing from users is looked up in the realm and the directory does not answer", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+      HTTP_400: { status: 400, note: "courseId is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "no or over 20 müderris, a value that is not a uuid, an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.muderris_manage on the medrese" }
+    sideEffects:
+      - audit:course.muderris.update (only when the list or the imam changed)
+      - audit:permission.self_grant_refused (when a refused self-naming is written)
+      - "Keycloak admin GET by id, for newly listed accounts the users table does not know"
+    note: >-
+      The course's version moves, so an editor that opened the course earlier gets 409 on its next save (COURSE_VERSION_CONFLICT, S19).
+      This route sets no unvan: a newly listed müderris has none and a kept one keeps theirs; unvans are changed in Ders ayarları.
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
+
+  hideMadrasahCourse: # MadrasahCourseController.hide
+    route: POST /madrasahs/{id}/courses/{courseId}/hide
+    summary: Hide a course of the medrese
+    description: >-
+      assertOpen first, as in setMadrasahCourseMuderris. The level is the highest rung of the course ladder the caller holds (platform:
+      platform.course_hide; köşk: course.hide; medrese: madrasah.course_hide), falling back to medrese when the course does not exist (the
+      404 then comes from the medrese). In one transaction with the course row locked: the course must be the medrese's; archivedAt, archivedBy
+      and archivedLevel are stamped (the first hider's stamp is never overwritten, because a hidden course is refused) and version + 1; the audit
+      row is written. Nothing is deleted. The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search, and is
+      listed in the medrese's archive, where restoreArchiveItem (POST /archive/course/{id}/restore) brings it back by level.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.course_hide, byExistingMadrasah) @HttpCode(204). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN"
+    result:
+      status: 204
+    refusals:
+      MADRASAH_COURSE_NOT_FOUND: { status: 404, note: "Medrese <m> has no course <c>: not this medrese's, or it does not exist", source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:206 }
+      MADRASAH_COURSE_ALREADY_HIDDEN: { status: 409, note: "Course <id> is already hidden", source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:209 }
+      COURSE_NOT_FOUND: { status: 404, note: "the course's köşk is hidden and the caller holds neither course.hide nor platform.kosk_edit on it (assertOpen)", source: libs/common/src/authz/authz.service.ts:135 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      HTTP_400: { status: 400, note: "courseId is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.course_hide on the medrese" }
+    sideEffects:
+      - audit:course.hide
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:177
+
+  requestOffsiteCourse: # MadrasahCourseController.requestOffsite
+    route: POST /madrasahs/{id}/offsite-course-requests
+    summary: Ask a köşk to open a course outside the medrese
+    description: >-
+      In one transaction: the medrese must exist and be shown, the köşk must exist and be shown (any köşk that is not hidden: the medrese's hosting
+      rights are neither required nor looked at); a CourseRequest is inserted (status PENDING, requestedBy the caller) and the audit row is
+      written. No course is created and nothing is added to the medrese's list. The köşk's nazım finds the request by listing (listCourseRequests)
+      and answers it with acceptCourseRequest or rejectCourseRequest; no notification or mail is sent.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.offsite_course_request, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN. A stranger, another medrese's head and a nazır without the grant are refused"
+    body:
+      type: object
+      required: [koskId, title, reason]
+      additionalProperties: false
+      properties:
+        koskId: { type: string, format: uuid, references: Kosk }
+        title: { type: string, minLength: 2, maxLength: 200, note: "the suggested name; trimmed first" }
+        reason: { type: string, minLength: 1, maxLength: 2000, note: "why the course should open outside the medrese, and the müderrisler proposed; trimmed first, so blank is refused" }
+    result:
+      status: 201
+      description: "OffsiteCourseRequestResponse"
+      type: object
+      required: [id, madrasahId, koskId, koskName, title, reason, status, requestedById, requestedByName, createdAt]
+      properties:
+        id: { type: string, format: uuid, references: CourseRequest }
+        madrasahId: { type: string, format: uuid, references: Madrasah }
+        koskId: { type: string, format: uuid, references: Kosk }
+        koskName: { type: string }
+        title: { type: string }
+        reason: { type: string }
+        status: { enum: [PENDING, ACCEPTED, REJECTED] }
+        requestedById: { type: string, format: uuid, note: "Keycloak sub of the sender" }
+        requestedByName: { type: [string, "null"], note: "null when the account never signed in to tedrisat" }
+        createdAt: { type: string, format: date-time }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah); or the medrese is hidden (madrasah-course.service.ts:179)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      KOSK_NOT_FOUND: { status: 404, note: "Köşk with id <k> not found: unknown or hidden", source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:182 }
+      VALIDATION_ERROR: { status: 400, note: "koskId is not a uuid, title outside 2..200, reason blank or over 2000, an unknown property" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.offsite_course_request on the medrese" }
+    sideEffects:
+      - audit:course_request.create
+    note: >-
+      Finding two-course-request-routes: this route and createCourseRequest both insert CourseRequest, with different gates and effects (see
+      invariant course-request-routes-agree). Since migration 0067 this route writes course_requests, not the legacy offsite_course_requests.
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:220
+
+  listOffsiteCourseRequests: # MadrasahCourseController.offsiteRequests
+    route: GET /madrasahs/{id}/offsite-course-requests
+    summary: The medrese's requests for a course outside it
+    description: >-
+      Every CourseRequest of the medrese, of any status, newest first, each with its köşk and its sender. The köşk's own list of the requests it
+      received is listCourseRequests. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.offsite_course_request, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [id, madrasahId, koskId, koskName, title, reason, status, requestedById, requestedByName, createdAt]
+        properties:
+          id: { type: string, format: uuid, references: CourseRequest }
+          madrasahId: { type: string, format: uuid, references: Madrasah }
+          koskId: { type: string, format: uuid, references: Kosk }
+          koskName: { type: string }
+          title: { type: string }
+          reason: { type: string }
+          status: { enum: [PENDING, ACCEPTED, REJECTED] }
+          requestedById: { type: string, format: uuid, note: "Keycloak sub of the sender" }
+          requestedByName: { type: [string, "null"], note: "null when the account never signed in to tedrisat" }
+          createdAt: { type: string, format: date-time }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.offsite_course_request on the medrese" }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:239
+
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  # MadrasahPortalController (madrasah/portal/madrasah-portal.controller.ts): the talebe list and the Pano
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  listMadrasahStudents: # MadrasahPortalController.students
+    route: GET /madrasahs/{id}/students
+    summary: The medrese's talebe, a page at a time
+    description: >-
+      A talebe of the medrese is anyone with an ENROLLED or COMPLETED enrollment in one of its courses that is not hidden, derived on every
+      read and never stored. Newest first by first enrollment; each row lists all the talebe's seats in the medrese by title. The filters pick
+      the talebe on one seat each: a course and a state together, not a course here and a state there. q matches the given or family name, the
+      enrollment's student name, or the e-mail address, case-insensitively, with % and _ literal. Writes nothing, and writes no audit row.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.students_view, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN"
+    query:
+      type: object
+      properties:
+        page: { type: integer, default: 1, note: "below 1 reads as 1" }
+        limit: { type: integer, default: 10, minimum: 1, maximum: 50, note: "clamped to 1..50" }
+        q: { type: string, maxLength: 100, note: "cut to 100; a repeated key is read as no search" }
+        courseId: { type: string, format: uuid, references: Course }
+        status: { enum: [ENROLLED, COMPLETED] }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [userId, name, email, firstEnrolledAt, ongoingCourses, completedCourses]
+            properties:
+              userId: { type: string, format: uuid, note: "Keycloak sub" }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], sensitivity: personal }
+              firstEnrolledAt: { type: string, format: date-time, note: "the earliest enrollment in any course of the medrese" }
+              ongoingCourses:
+                type: array
+                note: "the courses of the medrese they are enrolled in, by title"
+                items:
+                  type: object
+                  required: [id, title, completedAt]
+                  properties:
+                    id: { type: string, format: uuid, references: Course }
+                    title: { type: string }
+                    completedAt: { type: "null" }
+              completedCourses:
+                type: array
+                note: "the courses of the medrese they completed, by title"
+                items:
+                  type: object
+                  required: [id, title, completedAt]
+                  properties:
+                    id: { type: string, format: uuid, references: Course }
+                    title: { type: string }
+                    completedAt: { type: [string, "null"], format: date-time, note: "null for a completion recorded before the date was kept" }
+        total: { type: integer, note: "the talebe matching the filters, over every page" }
+        page: { type: integer }
+        limit: { type: integer }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      HTTP_400: { status: 400, note: "page or limit is not an integer, courseId is not a uuid, or status is not ENROLLED or COMPLETED" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.students_view on the medrese" }
+    note: >-
+      Finding students-read-unaudited: the names and e-mail addresses of the whole medrese's talebe are returned with no audit row, while a
+      course roster read writes course.roster_read (invariant madrasah-students-read-is-audited). Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+
+  getMadrasahDashboard: # MadrasahPortalController.dashboard
+    route: GET /madrasahs/{id}/dashboard
+    summary: What the medrese's Pano shows
+    description: >-
+      Counts of the nazırs (MEDRESE_NAZIR holders; the başmüderris is not counted) and of the courses (not hidden, köşk not hidden, drafts
+      included); the hosting köşks (as listMadrasahHostingKosks); the live sessions of PUBLISHED courses in the next 7 days, soonest first (a
+      hidden course, week or session, a hidden köşk and a draft are left out; a cancelled session stays, with its badge and note); and the pending
+      applications across the medrese's courses that are not hidden (newest 50, with the whole count), each saying whether the caller may decide it.
+      For a course in a passive scope (its müderris, köşk nazım or medrese başmüderris gone) the content is closed to the caller, so its session
+      rows carry meetingHost, hasLiveStream and withoutAccess null and no cancel note; the in-person mark stays. Writes nothing.
+    needs: "AuthGuard + AuthzGuard, @Authz(madrasah.students_view, byExistingMadrasah). Held by the başmüderris, a nazır granted it, and SYSTEM_ADMIN"
+    result:
+      status: 200
+      type: object
+      required: [nazirCount, courseCount, hostingKosks, upcomingSessions, pendingApplicationCount, pendingCourseCount, pendingApplications]
+      properties:
+        nazirCount: { type: integer, note: "the nazırs held; the başmüderris is not among them" }
+        courseCount: { type: integer, note: "the medrese's courses that are not hidden, drafts included, in köşks that are not hidden" }
+        hostingKosks:
+          type: array
+          items:
+            type: object
+            required: [id, name, field, courseCount]
+            properties:
+              id: { type: string, format: uuid, references: Kosk }
+              name: { type: string }
+              field: { type: [string, "null"] }
+              courseCount: { type: integer }
+        upcomingSessions:
+          type: array
+          note: "the live sessions of the next 7 days, soonest first"
+          items:
+            type: object
+            required: [lessonId, courseId, courseTitle, courseCoverHue, koskId, koskName, weekNumber, scheduledAt, meetingHost, inPerson, hasLiveStream, withoutAccess, cancelled, cancelReason]
+            properties:
+              lessonId: { type: string, format: uuid, references: Lesson }
+              courseId: { type: string, format: uuid, references: Course }
+              courseTitle: { type: string }
+              courseCoverHue: { type: integer }
+              koskId: { type: string, format: uuid, references: Kosk }
+              koskName: { type: string }
+              weekNumber: { type: integer }
+              scheduledAt: { type: string, format: date-time }
+              meetingHost: { type: [string, "null"], note: "the host of the meeting link, never the link; null with no link, or when the course is in a passive scope" }
+              inPerson: { type: boolean, note: "the session's own mark, else the course's (MDRS-283); a public label that stays in a passive scope" }
+              hasLiveStream: { type: [boolean, "null"], note: "a live stream is set, never the link; null in a passive scope" }
+              withoutAccess: { type: [boolean, "null"], note: "nobody can attend it as it stands: no meeting link, no live stream and not in person; false for a cancelled session; null in a passive scope" }
+              cancelled: { type: boolean, note: "a cancelled celse stays in the list with its badge (MDRS-248)" }
+              cancelReason: { type: [string, "null"], note: "the müderris's note on a cancelled celse; null when not cancelled, no note, or a passive scope" }
+        pendingApplicationCount: { type: integer, note: "every PENDING enrollment across the medrese's courses that are not hidden" }
+        pendingCourseCount: { type: integer, note: "in how many courses they wait" }
+        pendingApplications:
+          type: array
+          note: "newest first, at most 50; the count above is the true number when there are more"
+          items:
+            type: object
+            required: [courseId, courseTitle, userId, studentName, studentEmail, appliedAt, viewerMayDecide]
+            properties:
+              courseId: { type: string, format: uuid, references: Course }
+              courseTitle: { type: string }
+              userId: { type: string, format: uuid, note: "Keycloak sub of the applicant" }
+              studentName: { type: [string, "null"], sensitivity: personal }
+              studentEmail: { type: [string, "null"], sensitivity: personal }
+              appliedAt: { type: string, format: date-time }
+              viewerMayDecide: { type: boolean, note: "true only for SYSTEM_ADMIN, a held MUDERRIS of that course or a held KOSK_NAZIM of its köşk (the routes approveEnrollment and rejectEnrollment; invariant madrasah-pano-decides-like-the-course-routes)" }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.students_view on the medrese" }
+    note: >-
+      Finding viewer-may-decide-skips-head: viewerMayDecide ignores the başmüderris, although the catalogue gives MEDRESE_BASMUDERRIS
+      enrollment.decide by role default in its medrese's courses and approveEnrollment asks enrollment.decide, and a grant of it to a nazır is
+      ignored too (madrasah-portal.repository.ts:362-391, decidingScopes). The Pano and the approve route can disagree. Stale text: the
+      DTO of upcomingSessions and the docblock of findUpcomingSessions say a cancelled session is left out, while the query keeps it
+      (madrasah-portal.repository.ts, "A cancelled celse stays on the Pano"). Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:117
+
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  # CourseRequestController (course-request/course-request.controller.ts): the köşk side of a course request, and the older
+  # medrese route. AuthGuard only: CourseRequestService decides (the engine has no entity for a request).
+  # ---------------------------------------------------------------------------------------------------------------------------------
+  createCourseRequest: # CourseRequestController.create
+    route: POST /kosks/{id}/course-requests
+    summary: Ask a köşk to open a course for a medrese
+    description: >-
+      Checks in this order: the köşk exists (KoskService.exists, with no archivedAt filter, so a hidden köşk is accepted), the medrese exists, and
+      the caller holds the MEDRESE_BASMUDERRIS role of that medrese. Then inserts a CourseRequest (status PENDING, requestedBy the caller). No
+      audit row, no notification.
+    needs: "AuthGuard only, no @Authz: CourseRequestService. A held MEDRESE_BASMUDERRIS of the medrese named in the body; not a nazır with the madrasah.offsite_course_request grant, not SYSTEM_ADMIN"
+    body:
+      type: object
+      required: [madrasahId, title, reason]
+      additionalProperties: false
+      properties:
+        madrasahId: { type: string, format: uuid, references: Madrasah, note: "the medrese the request is sent from" }
+        title: { type: string, minLength: 1, maxLength: 200, note: "trimmed first, not empty" }
+        reason: { type: string, minLength: 1, maxLength: 2000, note: "trimmed first, not empty" }
+    result:
+      status: 201
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid, references: CourseRequest }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, note: "no köşk with that id (a hidden one still exists here)", source: apps/tedrisat/src/course-request/course-request.service.ts:110 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "no medrese with the id in the body (a hidden one still exists here)", source: apps/tedrisat/src/course-request/course-request.service.ts:113 }
+      COURSE_REQUEST_FORBIDDEN: { status: 403, note: "Only the başmüderris of the medrese may send its course requests", source: apps/tedrisat/src/course-request/course-request.service.ts:116 }
+      HTTP_400: { status: 400, note: "the köşk id in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "madrasahId is not a uuid, title or reason blank or too long, an unknown property" }
+    note: >-
+      Finding two-course-request-routes: no audit row here, a hidden köşk is accepted, and a grant of madrasah.offsite_course_request does not
+      pass; requestOffsiteCourse requires the permission, refuses hidden köşks and writes course_request.create.
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:63
+
+  listCourseRequests: # CourseRequestController.list
+    route: GET /kosks/{id}/course-requests
+    summary: The course requests a köşk received
+    description: >-
+      The köşk must exist, and the caller must be SYSTEM_ADMIN or hold a KOSK_NAZIM role row of that köşk (KoskService.isManager): a Medaris nazımı
+      and a başmüderris are refused. PENDING lists the waiting requests oldest first, DECIDED every other status newest decision first; at most
+      100, and both tab counts. Writes nothing.
+    needs: "AuthGuard only, no @Authz: CourseRequestService.assertKoskNazim. A held KOSK_NAZIM of the köşk, or SYSTEM_ADMIN"
+    query:
+      type: object
+      properties:
+        status: { enum: [PENDING, DECIDED], default: PENDING }
+    result:
+      status: 200
+      type: object
+      required: [items, pendingCount, decidedCount]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            required: [id, title, reason, status, kosk, madrasah, requestedBy, createdAt, decidedAt, rejectReason, courseId]
+            properties:
+              id: { type: string, format: uuid, references: CourseRequest }
+              title: { type: string }
+              reason: { type: string }
+              status: { enum: [PENDING, ACCEPTED, REJECTED] }
+              kosk:
+                type: object
+                required: [id, name]
+                properties:
+                  id: { type: string, format: uuid, references: Kosk }
+                  name: { type: string }
+              madrasah:
+                type: object
+                required: [id, name]
+                properties:
+                  id: { type: string, format: uuid, references: Madrasah }
+                  name: { type: string }
+              requestedBy:
+                type: object
+                required: [id, name]
+                properties:
+                  id: { type: string, format: uuid, note: "Keycloak sub of the sender" }
+                  name: { type: [string, "null"], note: "the user's name, else the e-mail address, else null" }
+              createdAt: { type: string, format: date-time }
+              decidedAt: { type: [string, "null"], format: date-time }
+              rejectReason: { type: [string, "null"] }
+              courseId: { type: [string, "null"], format: uuid, references: Course, note: "the course the köşk opened by accepting" }
+        pendingCount: { type: integer, note: "the Bekleyen tab's count" }
+        decidedCount: { type: integer, note: "the Karara bağlanan tab's count" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      KOSK_NOT_FOUND: { status: 404, note: "no köşk with that id", source: apps/tedrisat/src/course-request/course-request.service.ts:210 }
+      COURSE_REQUEST_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/course-request/course-request.service.ts:214 }
+      HTTP_400: { status: 400, note: "the köşk id is not a uuid, or status is not PENDING or DECIDED" }
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:86
+
+  acceptCourseRequest: # CourseRequestController.accept
+    route: POST /course-requests/{id}/accept
+    summary: Accept a course request with the course opened from it
+    description: >-
+      The köşk's nazım opens the course first (the "Ders aç" form, filled in from the request); this marks the request accepted. Checks in this
+      order: the request exists, the caller is SYSTEM_ADMIN or a held KOSK_NAZIM of the request's köşk, the request is PENDING, the course is a
+      course of the request's köşk, the course answers no other request. Then one conditional update (only where status is PENDING) sets status
+      ACCEPTED, decidedBy, decidedAt = now() and courseId, with the audit row in the same transaction. The course's madrasah_id is not touched:
+      it stays a köşk course. No notification reaches the medrese.
+    needs: "AuthGuard only, no @Authz: CourseRequestService.assertKoskNazim. A held KOSK_NAZIM of the request's köşk, or SYSTEM_ADMIN"
+    body:
+      type: object
+      required: [courseId]
+      additionalProperties: false
+      properties:
+        courseId: { type: string, format: uuid, references: Course, note: "the course opened from the request in this köşk" }
+    result:
+      status: 204
+    refusals:
+      COURSE_REQUEST_NOT_FOUND: { status: 404, note: "No course request <id>", source: apps/tedrisat/src/course-request/course-request.service.ts:201 }
+      COURSE_REQUEST_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/course-request/course-request.service.ts:214 }
+      COURSE_REQUEST_NOT_PENDING: { status: 409, note: "Course request <id> has been answered already; checked up front (:155) and again when the conditional update finds no pending row (:196)", source: apps/tedrisat/src/course-request/course-request.service.ts:155 }
+      COURSE_REQUEST_COURSE_NOT_FOUND: { status: 404, note: "Course <c> is not a course of the request's köşk", source: apps/tedrisat/src/course-request/course-request.service.ts:158 }
+      COURSE_REQUEST_COURSE_TAKEN: { status: 409, note: "Course <c> already answers another course request", source: apps/tedrisat/src/course-request/course-request.service.ts:161 }
+      HTTP_400: { status: 400, note: "the request id in the path is not a uuid" }
+      VALIDATION_ERROR: { status: 400, note: "courseId missing or not a uuid, an unknown property" }
+    sideEffects:
+      - audit:course_request.accept
+    note: >-
+      KOSK_NOT_FOUND (course-request.service.ts:210) is not listed: the request is read through an inner join on kosks, so a request whose köşk is gone
+      is COURSE_REQUEST_NOT_FOUND, and the köşk check can fail only if the köşk is deleted between the two reads.
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:113
+
+  rejectCourseRequest: # CourseRequestController.reject
+    route: POST /course-requests/{id}/reject
+    summary: Refuse a course request
+    description: >-
+      As acceptCourseRequest up to the köşk check, with no check of the status up front: the same conditional update, with status REJECTED and the
+      trimmed reason as rejectReason, and the audit row in the same transaction. A refused request can be appealed (createMadrasahAppeal).
+    needs: "AuthGuard only, no @Authz: CourseRequestService.assertKoskNazim. A held KOSK_NAZIM of the request's köşk, or SYSTEM_ADMIN"
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 1000, pattern: "\\S", note: "required and not blank; the DTO is shared with deck review (RejectReasonDto); stored trimmed" }
+    result:
+      status: 204
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      COURSE_REQUEST_NOT_FOUND: { status: 404, note: "No course request <id>", source: apps/tedrisat/src/course-request/course-request.service.ts:201 }
+      COURSE_REQUEST_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/course-request/course-request.service.ts:214 }
+      COURSE_REQUEST_NOT_PENDING: { status: 409, note: "Course request <id> has been answered already: the conditional update found no pending row", source: apps/tedrisat/src/course-request/course-request.service.ts:196 }
+      HTTP_400: { status: 400, note: "the request id in the path is not a uuid" }
+      VALIDATION_ERROR: { status: 400, note: "reason missing, blank, over 1000 characters, or an unknown property" }
+    sideEffects:
+      - audit:course_request.reject
+    note: >-
+      KOSK_NOT_FOUND is not listed here either, for the reason given on acceptCourseRequest. The status is not checked up front, so a request
+      answered before is 409 only through the conditional update.
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:132
+
+# The medrese's invariants (domain.md section 12, this area). The ids are specific to the medrese and the course request; none repeats an id of
+# domain.yaml. A rule the code breaks is holds: false with the finding that reports it (the inventory's finding id).
+policies:
+  - actor: medrese-reader
+    needs: 'nothing: no token (madrasah.view is held by the relations ANONYMOUS and PUBLIC)'
+    where: >-
+      Every caller passes the guard; a hidden medrese is closed by the service, so a stranger reads it as absent. Nothing here writes.
+    read: [Madrasah]
+    do: [listMadrasahs, exploreMadrasahs, getMadrasah, getMadrasahOverview]
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:204
+  - actor: medrese-head
+    needs: the role MEDRESE_BASMUDERRIS in the medrese (the başmüderris)
+    where: >-
+      Holds by role default every medrese code: madrasah.hide, settings_edit, course_open, course_hide, muderris_manage, offsite_course_request and students_view.
+      createCourseRequest is the head's alone: a nazır holding madrasah.offsite_course_request and the SYSTEM_ADMIN are refused (the service checks a held
+      MEDRESE_BASMUDERRIS of the medrese named in the body). The SYSTEM_ADMIN passes the other decisions through the realm bypass.
+    do: [getMadrasahBadgeCounts, hideMadrasah, restoreMadrasah, updateMadrasah, getMadrasahSettings, updateMadrasahSettings, listMadrasahCourses, listMadrasahHostingKosks,
+      openMadrasahCourse, setMadrasahCourseMuderris, hideMadrasahCourse, requestOffsiteCourse, listOffsiteCourseRequests, listMadrasahStudents, getMadrasahDashboard,
+      createCourseRequest]
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:382
+  - actor: medrese-nazir-with-grant
+    needs: the role MEDRESE_NAZIR in the medrese, and the medrese code granted to them there
+    where: >-
+      Holds nothing by default, and only the code that was granted. students_view opens getMadrasahBadgeCounts, listMadrasahStudents and getMadrasahDashboard;
+      settings_edit opens updateMadrasah, getMadrasahSettings and updateMadrasahSettings; course_open opens openMadrasahCourse and listMadrasahHostingKosks
+      (a grant held in a köşk that gave the medrese no hosting right does not help); muderris_manage opens setMadrasahCourseMuderris; course_hide opens hideMadrasahCourse;
+      any one of course_open, course_hide and muderris_manage opens listMadrasahCourses; offsite_course_request opens requestOffsiteCourse and listOffsiteCourseRequests.
+      A nazır never hides, restores or deletes the medrese and never sends a course request.
+    do: [getMadrasahBadgeCounts, listMadrasahStudents, getMadrasahDashboard, updateMadrasah, getMadrasahSettings, updateMadrasahSettings, openMadrasahCourse,
+      listMadrasahHostingKosks, setMadrasahCourseMuderris, hideMadrasahCourse, listMadrasahCourses, requestOffsiteCourse, listOffsiteCourseRequests]
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:382
+  - actor: medaris-nazim-over-medreses
+    needs: the role MEDARIS_NAZIM in the platform scope, and the platform code granted to them
+    where: >-
+      Holds nothing by default, and only the code that was granted: platform.madrasah_create opens createMadrasah; platform.madrasah_edit opens updateMadrasah,
+      hideMadrasah, restoreMadrasah, getMadrasahDeactivationPreview and deactivateMadrasah; platform.head_muderris_manage opens getMadrasahHeadDelegations
+      and setMadrasahHeadMuderris; any one of the three opens getMadrasahDirectory (platform.madrasah_nazir_grant alone opens nothing). It holds none of the
+      medrese's own codes: a Medaris nazımı with only platform.madrasah_edit is refused on the settings routes.
+    do: [getMadrasahDirectory, createMadrasah, getMadrasahHeadDelegations, setMadrasahHeadMuderris, updateMadrasah, hideMadrasah, restoreMadrasah, getMadrasahDeactivationPreview,
+      deactivateMadrasah]
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:283
+  - actor: medrese-deleter
+    needs: the realm role SYSTEM_ADMIN in the access token
+    where: >-
+      madrasah.delete is an implicit code held by no role, grant or relationship (MDRS-124): the başmüderris and the nazırs are refused, and only the SYSTEM_ADMIN
+      deletes for real (invariant deleting-for-real-is-the-basnazims).
+    do: [deleteMadrasah]
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:691
+  - actor: kosk-nazim-over-course-requests
+    needs: >-
+      the role KOSK_NAZIM of the köşk the request is addressed to, or the SYSTEM_ADMIN: decided inside CourseRequestService, since these routes carry AuthGuard
+      alone and no @Authz
+    where: >-
+      The köşk's nazım lists the course requests sent to the köşk and accepts or rejects them; a medrese's head sends one (createCourseRequest, under medrese-head).
+    do: [listCourseRequests, acceptCourseRequest, rejectCourseRequest]
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:86
+
+invariants:
+  - id: madrasah-handle-unique
+    rule: >-
+      A medrese's handle is unique (the database constraint madrasahs_handle_unique) and is 2 to 60 characters of lower-case letters, digits and
+      inner hyphens. A handle made from the name is numbered -2, -3, ... until free; one the caller chose that is taken is 409
+      MADRASAH_HANDLE_TAKEN, and so is losing the race on the unique index.
+    source: apps/tedrisat/src/madrasah/dto/create-madrasah.dto.ts:15
+
+  - id: madrasah-opens-with-its-head
+    rule: >-
+      A medrese never exists without its başmüderris and its audit row: the Madrasah, the MEDRESE_BASMUDERRIS role assignment (no end, granted_by
+      the opener) and the row madrasah.create are written in one transaction, so a refused handle writes none of them.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:265
+
+  - id: madrasah-single-head-in-code
+    rule: >-
+      A medrese has at most one held başmüderris, because setting the head revokes every other holder. The database has no constraint for it
+      (only one held row per user, role and scope, and a CHECK that MEDRESE_BASMUDERRIS has scope type madrasah); the directory and the overview show
+      the earliest held.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:491
+
+  - id: madrasah-head-change-answers-every-hand-on
+    rule: >-
+      Replacing a head needs one TAKE_OVER or DROP per item the outgoing head handed on (roles in the medrese and its courses, grants, groups): no
+      more, no fewer. A taken-over grant cannot sit under a seat dropped in the same change, and a dropped seat that still has hand-ons held under
+      it blocks the change. Naming the sitting head again, or appointing into an empty seat, asks nothing.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:535
+
+  - id: madrasah-head-end-not-past
+    rule: The new head's endsAt must not be in the past (400 GRANT_EXPIRY_INVALID).
+    source: apps/tedrisat/src/madrasah/madrasah.service.ts:231
+
+  - id: madrasah-head-is-never-named-by-themselves
+    rule: >-
+      Anyone but SYSTEM_ADMIN is refused (403 SELF_GRANT_REFUSED, and the audit row permission.self_grant_refused) when they name themselves head of a
+      medrese or take over a hand-on given to themselves, whatever they hold (always). Naming oneself müderris of a medrese course is allowed only
+      to someone who already holds every course code in the medrese, the başmüderris.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:405
+
+  - id: madrasah-head-is-a-known-account
+    rule: >-
+      A person named head of a medrese is a known account, in the users table or the realm, as a müderris of a course (404 MUDERRIS_UNKNOWN_USER) or a
+      köşk nazım must be.
+    holds: false
+    finding: head-account-not-checked
+    note: >-
+      Neither POST /madrasahs nor PUT /madrasahs/{id}/head-muderris asks the users table or the realm whether the named account exists
+      (role_assignments.user_id is no foreign key; MadrasahService.open has no directory call). Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.service.ts:168
+
+  - id: madrasah-hide-cascades-with-one-instant
+    rule: >-
+      Hiding a medrese hides all its shown courses with the medrese's own instant and level (and bumps their version); restoring brings back exactly
+      the courses stamped with that instant. A course hidden earlier on its own stays hidden.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:650
+
+  - id: madrasah-hide-and-restore-by-ladder
+    rule: >-
+      Hiding a medrese is by platform.madrasah_edit (the platform level) or madrasah.hide (the medrese level), the highest rung held. Restoring needs
+      the level that hid it or above (ranks course, medrese, köşk, platform); a medrese hidden before levels were recorded counts as hidden at the
+      medrese level. A nazır given "change the settings" cannot hide it: madrasah.hide is a role default no grant carries.
+    source: apps/tedrisat/src/archive/hide-level.ts:101
+
+  - id: madrasah-hidden-is-closed-to-the-public
+    rule: >-
+      A hidden medrese answers 404 MADRASAH_NOT_FOUND on its page and its overview to everyone except holders of madrasah.hide or
+      platform.madrasah_edit, and is left out of the public list, the course list and the hosting list; its directory row stays for the platform.
+    holds: false
+    finding: explore-lists-hidden
+    note: >-
+      GET /madrasahs/explore has no archivedAt filter on madrasahs (madrasah.repository.ts:1030), so a hidden medrese is listed there with courseCount 0,
+      its name and handle. Not pinned by discover.e2e.spec.ts. Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.service.ts:92
+
+  - id: madrasah-status-precedence
+    rule: >-
+      In the directory HIDDEN wins over PASSIVE wins over ACTIVE, and since is the hide time before the passive time. Restoring a medrese that is both
+      hidden and passive returns it passive.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:847
+
+  - id: madrasah-passivation-is-confirmed
+    rule: >-
+      Deactivating needs the confirmation of a preview read by the same caller. The impact is measured again under the medrese lock and any change is 409
+      PASSIVATION_IMPACT_CHANGED with the fresh preview and no write. The başmüderris is taken off the post, the nazırs and every grant stay, the
+      courses close in every köşk, and appointing a head makes it active again.
+    source: apps/tedrisat/src/passivation/passivation-impact.repository.ts:172
+
+  - id: madrasah-settings-save-noop
+    rule: >-
+      A settings save that changes nothing writes nothing: no updatedBy, no updatedAt, no audit row. Otherwise one transaction writes the medrese row,
+      the MadrasahSettings upsert and the audit row madrasah.settings.update with the changes.
+    source: apps/tedrisat/src/madrasah/madrasah-settings.ts:30
+
+  - id: madrasah-update-is-audited
+    rule: >-
+      Changing a medrese's name, description or public handle writes an audit row, whichever route does it.
+    holds: false
+    finding: patch-madrasah-unaudited
+    note: >-
+      PATCH /madrasahs/{id} writes no audit row, while PATCH /madrasahs/{id}/settings (the same name and description) writes madrasah.settings.update.
+      Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:189
+
+  - id: madrasah-always-approval-reaches-enrollment
+    rule: >-
+      With alwaysApproval on, every new enrollment in a course of the medrese is PENDING whatever the course's own requiresApproval says; courses the
+      medrese opens also get requiresApproval true; and setting.approval_off is closed in its courses, except to a person with a grant from above the
+      medrese (the platform).
+    source: apps/tedrisat/src/course/course.service.ts:1571
+
+  - id: madrasah-closed-course-required
+    rule: >-
+      With closedCourseRequired on, a course the medrese opens is created closed (isClosed true), and a course save that sets isClosed false is
+      409 PLATFORM_POLICY_LOCKED (CLOSED_COURSE_REQUIRED) unless the caller holds setting.course_open through a grant from above.
+    note: "No test pins the medrese-level lock specifically (platform-admin.e2e.spec.ts covers the approval lock only)."
+    source: apps/tedrisat/src/course/course.service.ts:1010
+
+  - id: madrasah-no-public-recordings-closes-recordings
+    rule: >-
+      With noPublicRecordings on, no recording of the medrese's courses is shown to someone who cannot read the course's content.
+    holds: false
+    finding: policy-no-public-recordings-inert
+    note: >-
+      The policy is stored and loaded as one that would close setting.recordings_public, but no handler asks that code and
+      CourseService.publicRecordingsAllowed reads only the platform and the köşk flags (course.service.ts:861-871), so the switch has no effect.
+      policyNoPublicRecordings appears only in madrasah.repository.ts, madrasah-settings.ts, the schema, the DTOs and tedrisat-authz-context.service.ts.
+    source: apps/tedrisat/src/course/course.service.ts:861
+
+  - id: madrasah-opens-courses-only-with-a-hosting-right
+    rule: >-
+      A medrese opens a course only in a köşk that holds an unrevoked hosting right for it and is not hidden, and only while the medrese itself is
+      shown. The course starts as a DRAFT authored by the caller with 1 to 20 müderrisler (unique, all known accounts, one imam: the lone one by
+      default, else named and listed). The policies are applied under the medrese's lock, so a policy saved a moment ago cannot be missed.
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:148
+
+  - id: madrasah-course-has-one-imam
+    rule: >-
+      A course has exactly one held imam: a partial unique index (role_assignments_one_imam_per_course_idx) and a CHECK that the imam is a MUDERRIS;
+      replacing the müderrisler keeps it.
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:100
+
+  - id: madrasah-is-not-above-the-kosk
+    rule: >-
+      A medrese's routes on a course stop at a hidden köşk (404 COURSE_NOT_FOUND, before anything is written) and never reach what belongs to the
+      köşk; the course list and the hosting list leave out hidden köşks.
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:147
+
+  - id: madrasah-course-hide-keeps-first-hider
+    rule: >-
+      A course already hidden cannot be hidden again (409 MADRASAH_COURSE_ALREADY_HIDDEN), so the first hider's archivedBy and archivedLevel are the ones
+      the restore rule judges.
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:344
+
+  - id: madrasah-talebe-are-derived
+    rule: >-
+      A medrese's talebe are never stored: they are everyone with an ENROLLED or COMPLETED enrollment in one of its courses that is not hidden. A REVOKED
+      or PENDING enrollment does not count.
+    note: >-
+      MadrasahRepository.findTalebeIds, which nothing calls, does not leave out hidden courses; the students list (the code that is used) does.
+    source: apps/tedrisat/src/madrasah/portal/madrasah-portal.repository.ts:81
+
+  - id: madrasah-list-limits
+    rule: >-
+      limit is clamped to 1..50 and page to at least 1 on the public list, the directory and the students list, and a search text is cut to 100
+      characters, never refused; a repeated query key is read as absent.
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:212
+
+  - id: madrasah-anonymous-mask
+    rule: >-
+      For a request with no token the medrese list and page carry createdBy null and nazirIds [].
+    source: apps/tedrisat/src/madrasah/anonymous-mask.ts:9
+
+  - id: madrasah-head-id-is-not-public
+    rule: >-
+      A person's id is not for the public: a caller with no token learns who heads a medrese by name only, never by id, on every route.
+    holds: false
+    finding: overview-exposes-head-id
+    note: >-
+      GET /madrasahs/{id}/overview returns headMuderris.id to a caller with no token; only the page and the list are masked. Not in the inventory;
+      found while writing. Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:1222
+
+  - id: madrasah-delete-keeps-its-courses
+    rule: >-
+      A medrese deleted for real (SYSTEM_ADMIN only) takes its role assignments, settings, hosting rights, course requests and appeals with it, and its
+      courses stay in their köşks with madrasah_id null; the audit row madrasah.delete names the caller and the number of courses kept.
+    source: apps/tedrisat/src/madrasah/madrasah.repository.ts:205
+
+  - id: madrasah-students-read-is-audited
+    rule: >-
+      Reading the names and e-mail addresses of a medrese's talebe writes an audit row, as reading a course roster does (course.roster_read).
+    holds: false
+    finding: students-read-unaudited
+    note: >-
+      GET /madrasahs/{id}/students returns them for the whole medrese with no audit row. Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+
+  - id: madrasah-pano-decides-like-the-course-routes
+    rule: >-
+      A pending application shows the buttons of deciding it to exactly the callers the approve and reject routes accept.
+    holds: false
+    finding: viewer-may-decide-skips-head
+    note: >-
+      viewerMayDecide is true only for SYSTEM_ADMIN, a held MUDERRIS of the course or a held KOSK_NAZIM of its köşk (madrasah-portal.repository.ts:362),
+      while the catalogue gives MEDRESE_BASMUDERRIS enrollment.decide by role default in its medrese's courses and approveEnrollment asks
+      enrollment.decide; a grant of it to a nazır is ignored too. Read from the code, not run.
+    source: apps/tedrisat/src/madrasah/portal/madrasah-portal.repository.ts:362
+
+  - id: course-request-answered-once
+    rule: >-
+      A course request is PENDING and becomes ACCEPTED or REJECTED once: the update is conditional on status PENDING, so a race is 409
+      COURSE_REQUEST_NOT_PENDING. A course answers at most one request, an accepted request names a course of its own köşk, and a rejection needs a
+      reason of at most 1000 characters. (An accepted appeal puts a rejected request back to PENDING.)
+    source: apps/tedrisat/src/course-request/course-request.repository.ts:216
+
+  - id: course-request-who-sends-and-answers
+    rule: >-
+      Sending through POST /kosks/{id}/course-requests takes the held MEDRESE_BASMUDERRIS role of the medrese; sending through
+      POST /madrasahs/{id}/offsite-course-requests takes the permission madrasah.offsite_course_request on it. Answering and listing take a held
+      KOSK_NAZIM of the köşk or SYSTEM_ADMIN: not a Medaris nazımı, not a başmüderris, not a nazır with grants such as course.manage_all.
+    source: apps/tedrisat/src/course-request/course-request.service.ts:205
+
+  - id: course-request-routes-agree
+    rule: >-
+      The two routes that send a course request take the same callers, refuse the same köşks and leave the same audit row.
+    holds: false
+    finding: two-course-request-routes
+    note: >-
+      POST /kosks/{id}/course-requests needs the role itself (a grant of madrasah.offsite_course_request does not pass), checks only that the köşk
+      exists (KoskRepository.exists has no archivedAt filter, kosk.repository.ts:474), so a hidden köşk is accepted, and writes no audit row;
+      POST /madrasahs/{id}/offsite-course-requests needs the permission, refuses hidden köşks and writes course_request.create. Read from the code, not run.
+    source: apps/tedrisat/src/course-request/course-request.service.ts:104

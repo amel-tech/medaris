@@ -1,0 +1,188 @@
+# The screens of nizam.account.settings: nizam-web's Hesap ve ayarlar (/hesap, app/hesap/page.tsx) with its three cards and its
+# aside, the two time-zone lists, the toasts of a save, the imam star's bubble, and the page that takes the cards' place when a read
+# fails. Read from apps/nizam/features/account (account-page, assignments-table, permissions-list, time-zone-form, account-view) and
+# the kit's Select, Table, Toast, Alert and ImamStar (libs/ui/src/mds) on 15 Nov 2026; the words are copied from
+# libs/i18n/src/locales/tr/nizam.json (namespace AccountPage) and common.json (imamStar). The frame around the page (the sidebar, the
+# phone bar, the person row that links here) is nizam.shell.menuPerPersona's and is not drawn.
+#
+# Words that are in no i18n file are `composed.*`, with the line of the code that makes each:
+#   composed.AccountPage.scope, scopeMeta, scopeMetaKosk, grantor, grantedAt   values the API gives, shown as they are
+#                                      (assignments-table.tsx:65, 82, 93, 97; account-view.ts:59-64; scopeMeta joins the köşk and the medrese with " · ")
+#   composed.AccountPage.groupTitle    "<scope> · <role in lower case>" (permissions-list.tsx:34, 89)
+#   composed.AccountPage.personName / roleLine / email   the profile's name (or the session's), the roles held joined by " · ", and the
+#                                      address (account-page.tsx:116-118, 226, 233)
+#   composed.AccountPage.listedZone    a zone of the second list: its id with the underscores as spaces, "Asia/Tokyo" (time-zone-form.tsx:106)
+#   composed.Toast.close               the toast's close button, a literal of the kit (libs/ui/src/mds/toast.tsx:97; F-UI-W1-3)
+# `changes` is the app's own help line under the first list: what the choice sets, and that it is saved at that moment. No message was
+# authored for this catalog. AccountPage.language and AccountPage.languageHelp are in the app's file and are used by nothing (F-W1-9b): not copied.
+# Samples are invented and neutral; the binding gives each scenario the real person's name, roles and e-mail.
+schema: delurio-graph/0
+kind: ui
+id: nizam.account.settings
+flow: nizam.account.settings
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: AccountPage.zoneHelp }
+samples:
+  scope: Örnek köşk
+  kosk: Örnek köşk
+  madrasah: Örnek medrese
+  grantor: Örnek kişi
+  granted: 3 Kasım 2026
+  date: 3 Aralık 2026
+  role: köşk nazımı
+  names: Örnek köşk ve Başka köşk
+  name: Örnek Kişi
+  roles: Köşk nazımı
+  email: kisi@ornek.test
+  zone: Asia/Tokyo
+
+# Hesap sets no focus of its own (nothing in features/account calls focus() or sets autoFocus), so the page node has no `initialFocus`
+# and there is no `focus` here: after a pick the focus is Base UI's and was not seen (rule focus-not-set).
+nodes:
+  # --- the page ------------------------------------------------------------------------------------------------------------------
+  accountPage: { type: page, component: Page, role: main, in: [settings, savingZone, starOpen], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.pageTitle }, in: [settings, savingZone, starOpen, loadFailed], source: apps/nizam/features/account/components/account-page.tsx:128 } # h1; the page that says a read failed has the same one (app/hesap/page.tsx:33)
+  pageSubtitle: { type: text, component: Text, text: { key: AccountPage.pageSubtitle }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:129 }
+
+  # --- "Görevleriniz": the roles held ---------------------------------------------------------------------------------------------
+  tasksRegion: { type: page, component: Page, role: region, name: { labelledBy: tasksTitle }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:133 }
+  tasksTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.tasksTitle }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:138 } # h2
+  tasksIntro: { type: text, component: Text, text: { key: AccountPage.tasksIntro }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:141 }
+  noTasks: { type: text, component: Text, text: { key: AccountPage.noTasks }, in: [settings, savingZone, starOpen], when: "holds == 'none'", source: apps/nizam/features/account/components/account-page.tsx:156 } # a person who holds no role: a sentence in place of the table, and no permissions card at all
+  tasksTable: { type: list, component: List, role: table, name: { key: AccountPage.tasksTitle }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/assignments-table.tsx:116 } # named by the kit Table's hidden caption, the card's title again
+  columnRole: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.role }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/assignments-table.tsx:44 }
+  columnScope: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.scope }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/assignments-table.tsx:59 }
+  columnGrantor: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.grantor }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/assignments-table.tsx:89 }
+  columnExpires: { type: text, component: Text, role: columnheader, text: { key: AccountPage.columns.expires }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/assignments-table.tsx:104 }
+  # the başnazım's own row: no assignment, drawn first when the profile says systemAdmin (account-page.tsx:67-81); e2e account#8
+  chiefRole: { type: text, component: Text, text: { key: AccountPage.roles.chief }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/account-page.tsx:71 }
+  chiefScope: { type: text, component: Text, text: { key: AccountPage.chiefScope }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/account-page.tsx:73 }
+  chiefGrantor: { type: text, component: Text, text: { key: AccountPage.chiefGrantor }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/account-page.tsx:76 } # no date beside it: the row has no grantedAt
+  chiefExpires: { type: text, component: Text, text: { key: AccountPage.noExpiry }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/account-page.tsx:78 }
+  # one row for each assignment, in the order the API gives them
+  rowRole: { type: text, component: Text, text: { oneOf: [AccountPage.roles.MEDARIS_NAZIM, AccountPage.roles.KOSK_NAZIM, AccountPage.roles.MEDRESE_BASMUDERRIS, AccountPage.roles.MEDRESE_NAZIR, AccountPage.roles.MUDERRIS, AccountPage.roles.DERS_NAZIR] }, in: [settings, savingZone, starOpen], when: assigned, repeat: assignments, source: apps/nizam/features/account/components/assignments-table.tsx:47 } # the role in the Görev cell; the seed's people show three of the six
+  imamStar: { type: action, component: Button, role: button, intent: secondary, name: { key: common.imamStar.title }, in: [settings, savingZone, starOpen], when: isImam, emits: OPEN_STAR, duringStep: true, source: libs/ui/src/mds/imam-star.tsx:67 } # after the role, only on a course with more than one hoca where the person is the imam (showsImamStar)
+  rowScope: { type: text, component: Text, text: { oneOf: [composed.AccountPage.scope, AccountPage.chiefScope] }, in: [settings, savingZone, starOpen], when: assigned, repeat: assignments, source: apps/nizam/features/account/components/assignments-table.tsx:65 } # the köşk's or the course's name; "Platform" for the Medaris nazımı, whose scope has no name (account-page.tsx:89)
+  rowBadge: { type: text, component: Text, text: { oneOf: [AccountPage.courseBadge.published, AccountPage.courseBadge.draft, AccountPage.courseBadge.hidden] }, in: [settings, savingZone, starOpen], when: courseRows, repeat: assignments, source: apps/nizam/features/account/components/assignments-table.tsx:71 } # a course's state; hidden wins over published and draft (account-view.ts:50-56); a köşk has none
+  rowMeta: { type: text, component: Text, text: { oneOf: [composed.AccountPage.scopeMeta, composed.AccountPage.scopeMetaKosk] }, in: [settings, savingZone, starOpen], when: courseRows, repeat: assignments, source: apps/nizam/features/account/components/assignments-table.tsx:82 } # the köşk, then the medrese when the course has one
+  rowGrantor: { type: text, component: Text, text: { oneOf: [composed.AccountPage.grantor, AccountPage.self, AccountPage.unknownPerson] }, in: [settings, savingZone, starOpen], when: assigned, repeat: assignments, source: apps/nizam/features/account/components/assignments-table.tsx:93 } # the giver's name, "Kendiniz" when the person gave it to themself, "Bilinmiyor" when the giver has no name
+  rowGranted: { type: text, component: Text, text: { key: composed.AccountPage.grantedAt, params: { granted: assignment.grantedAt } }, in: [settings, savingZone, starOpen], when: assigned, repeat: assignments, source: apps/nizam/features/account/components/assignments-table.tsx:97 } # a <time>, the long date in the zone the cookie holds
+  rowExpires: { type: text, component: Text, text: { oneOf: [AccountPage.noExpiry, AccountPage.until] }, in: [settings, savingZone, starOpen], when: assigned, repeat: assignments, source: apps/nizam/features/account/components/assignments-table.tsx:107 } # "Süresiz", or "{date} tarihine kadar"; the seed gives no role an end
+
+  # --- "Etkin izinleriniz": what the roles give, in sentences; drawn only for a person who holds at least one row --------------------
+  permissionsRegion: { type: page, component: Page, role: region, name: { labelledBy: permissionsTitle }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/account-page.tsx:161 }
+  permissionsTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.permissionsTitle }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/account-page.tsx:166 } # h2
+  permissionsIntroChief: { type: text, component: Text, text: { key: AccountPage.permissionsIntroChief }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/account-page.tsx:169 }
+  permissionsIntroKosk: { type: text, component: Text, text: { key: AccountPage.permissionsIntro }, in: [settings, savingZone, starOpen], when: "holds == 'koskNazim'", source: apps/nizam/features/account/components/account-page.tsx:169 } # the sentence about giving on a köşk nazımlığı's permissions, for a person who holds one
+  permissionsIntroOther: { type: text, component: Text, text: { key: AccountPage.permissionsIntroMedaris }, in: [settings, savingZone, starOpen], when: "holds == 'medarisNazim' or holds == 'hoca' or holds == 'hocaImam'", source: apps/nizam/features/account/components/account-page.tsx:169 } # the one for everybody who is neither the başnazım nor a köşk nazımı, a hoca included, though the key says Medaris
+  permissionsEmpty: { type: text, component: Text, text: { key: AccountPage.permissionsEmpty }, in: [settings, savingZone, starOpen], when: noSentences, source: apps/nizam/features/account/components/account-page.tsx:172 } # data-testid=permissions-empty; NIZSET-2
+  chiefGroup: { type: page, component: Page, role: region, name: { labelledBy: chiefGroupTitle }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/permissions-list.tsx:83 } # a landmark for the group (NIZSET-3)
+  chiefGroupTitle: { type: text, component: Heading, role: heading, text: { key: composed.AccountPage.groupTitle, params: { scope: chief.scope, role: chief.role } }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/permissions-list.tsx:88 } # h4: "Platform · medaris başnazımı" (F-W1-9)
+  chiefPermissions: { type: text, component: Text, text: { key: AccountPage.chiefPermissions }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: apps/nizam/features/account/components/permissions-list.tsx:91 } # "Bütün izinler, her kapsamda. ..." (e2e account#8)
+  permissionGroup: { type: page, component: Page, role: region, name: { labelledBy: groupTitle }, in: [settings, savingZone, starOpen], when: listsGroups, repeat: permissions.groups, source: apps/nizam/features/account/components/permissions-list.tsx:106 } # a landmark for every group (NIZSET-3)
+  groupTitle: { type: text, component: Heading, role: heading, text: { oneOf: [composed.AccountPage.groupTitle, AccountPage.roles.MEDARIS_NAZIM, AccountPage.roles.KOSK_NAZIM, AccountPage.roles.MEDRESE_BASMUDERRIS, AccountPage.roles.MEDRESE_NAZIR, AccountPage.roles.MUDERRIS, AccountPage.roles.DERS_NAZIR, AccountPage.grantedRole] }, in: [settings, savingZone, starOpen], when: listsGroups, repeat: permissions.groups, source: apps/nizam/features/account/components/permissions-list.tsx:111 } # h4, under an h2 (F-W1-9): "<scope> · <role>" for a role in one named scope, the role alone for several scopes, "Verilen izinler" for a grant no role covers
+  groupScopeLine: { type: text, component: Text, text: { oneOf: [AccountPage.eachScope.MUDERRIS, AccountPage.eachScope.default] }, in: [settings, savingZone, starOpen], when: listsGroups, repeat: permissions.groups, source: apps/nizam/features/account/components/permissions-list.tsx:114 } # names the köşks or courses a role of several holds in; every group the seed makes has several scopes
+  permissionLine: { type: text, component: Text, role: listitem, text: { oneOf: [AccountPage.permissions.kosk_manage, AccountPage.permissions.kosk_hosting, AccountPage.permissions.course_open_standalone, AccountPage.permissions.course_manage_all, AccountPage.permissions.ban_manage_kosk, AccountPage.permissions.deck_manage_kosk, AccountPage.permissions.course_nazir_assign_kosk, AccountPage.permissions.course_partner_codes, AccountPage.permissions.user_lookup, AccountPage.permissions.course_edit, AccountPage.permissions.session_manage, AccountPage.permissions.session_live_link, AccountPage.permissions.week_hide, AccountPage.permissions.course_settings, AccountPage.permissions.course_publish, AccountPage.permissions.course_view_unpublished, AccountPage.permissions.enrollment_decide, AccountPage.permissions.enrollment_remove, AccountPage.permissions.enrollment_complete, AccountPage.permissions.recording_manage, AccountPage.permissions.recording_upload, AccountPage.permissions.recording_watch_restricted, AccountPage.permissions.session_view_content, AccountPage.permissions.question_answer, AccountPage.permissions.submission_read, AccountPage.permissions.ban_course, AccountPage.permissions.ban_lift_course, AccountPage.permissions.deck_manage_course, AccountPage.permissions.deck_propose_kosk, AccountPage.permissions.course_nazir_assign, AccountPage.permissions.permission_group_define] }, in: [settings, savingZone, starOpen], when: listsGroups, repeat: permissions.codes, source: apps/nizam/features/account/components/permissions-list.tsx:117 } # a code with no sentence is left out, and so is a group that has none (visibleGroups): every platform.* code is left out (NIZSET-2)
+  permissionKoskManage: { type: text, component: Text, role: listitem, text: { key: AccountPage.permissions.kosk_manage }, in: [settings, savingZone, starOpen], when: "holds == 'koskNazim'", source: apps/nizam/features/account/components/permissions-list.tsx:117 } # the sentence e2e account#2 a2 names, in the köşk nazımı's group
+  permissionUserLookup: { type: text, component: Text, role: listitem, text: { key: AccountPage.permissions.user_lookup }, in: [settings, savingZone, starOpen], when: "holds == 'koskNazim'", source: apps/nizam/features/account/components/permissions-list.tsx:117 } # e2e account#2 a3
+  permissionNote: { type: text, component: Text, text: { oneOf: [AccountPage.permissionNotes.ban_lift_course, AccountPage.permissionNotes.course_manage_all, AccountPage.permissionNotes.course_nazir_assign_kosk, AccountPage.permissionNotes.user_lookup] }, in: [settings, savingZone, starOpen], when: listsGroups, repeat: permissions.noted, source: apps/nizam/features/account/components/permissions-list.tsx:127 } # a second, smaller line under four codes' sentences; "Her arama denetim kaydına yazılır." is e2e account#2 a4
+  defaultsNote: { type: text, component: Text, text: { oneOf: [AccountPage.defaultsNote.KOSK_NAZIM, AccountPage.defaultsNote.MUDERRIS] }, in: [settings, savingZone, starOpen], when: listsGroups, repeat: permissions.groups, source: apps/nizam/features/account/components/permissions-list.tsx:138 } # under the köşk nazımı's and the hoca's lists
+  expiryLine: { type: text, component: Text, text: { oneOf: [AccountPage.indefinite.KOSK_NAZIM, AccountPage.indefinite.MUDERRIS] }, in: [settings, savingZone, starOpen], when: listsGroups, repeat: permissions.groups, source: apps/nizam/features/account/components/permissions-list.tsx:141 } # data-testid=expiry-note: "Süresiz: ..." for every role the seed gives (e2e account#2 a5); a role that ends says endsNote, which no seeded person meets
+
+  # --- "Saat dilimi": the zone the celse times are shown in ------------------------------------------------------------------------
+  timeRegion: { type: page, component: Page, role: region, name: { labelledBy: timeTitle }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:187 }
+  timeTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.zoneTitle }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:191 } # h2; the first list has the same words for its label
+  zoneField: { type: field, component: TextField, role: combobox, text: { key: AccountPage.zone }, in: [settings, savingZone, starOpen], disabledIn: [savingZone], emits: OPEN_ZONES, source: apps/nizam/features/account/components/time-zone-form.tsx:85 } # the kit's Select, role combobox, named by aria-label (time-zone-form.tsx:98) and by its Field label; disabled while a save is out (F-W1-7)
+  zoneHelp: { type: text, component: Text, text: { key: AccountPage.zoneHelp }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/time-zone-form.tsx:84 }
+  zoneReadsIstanbul: { type: text, component: Text, text: { key: AccountPage.zones.Europe/Istanbul }, in: [settings, starOpen], when: "box == 'hidden' and zone == 'istanbul'", source: apps/nizam/features/account/components/time-zone-form.tsx:87 } # the first list's own words: the zone it holds
+  zoneReadsBerlin: { type: text, component: Text, text: { key: AccountPage.zones.Europe/Berlin }, in: [settings, starOpen], when: "box == 'hidden' and zone == 'berlin'", source: apps/nizam/features/account/components/time-zone-form.tsx:87 }
+  zoneReadsOther: { type: text, component: Text, text: { key: AccountPage.zoneOther }, in: [settings, starOpen], when: "box == 'shown'", source: apps/nizam/features/account/components/time-zone-form.tsx:87 } # "Diğer…" while the second list is drawn
+  zoneOtherField: { type: field, component: TextField, role: combobox, text: { key: AccountPage.allZones }, in: [settings, savingZone, starOpen], when: "box == 'shown'", disabledIn: [savingZone], emits: OPEN_LISTED, source: apps/nizam/features/account/components/time-zone-form.tsx:103 } # drawn under the first list with no announcement and no move of focus (ACC-20's twin: tedris.account.profile)
+  zoneOtherHelp: { type: text, component: Text, text: { key: AccountPage.allZonesHelp }, in: [settings, savingZone, starOpen], when: "box == 'shown'", source: apps/nizam/features/account/components/time-zone-form.tsx:102 }
+  zoneOtherReads: { type: text, component: Text, text: { key: composed.AccountPage.listedZone, params: { zone: zone } }, in: [settings, starOpen], when: "box == 'shown'", source: apps/nizam/features/account/components/time-zone-form.tsx:106 } # the second list shows the zone held, as its id: "Europe/Istanbul" the first time it opens, "Asia/Tokyo" once that is held (e2e account#4 a3)
+
+  # --- the toasts of a save: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays ------------------------------------
+  toastZoneSaved: { type: status, component: Status, role: dialog, name: { labelledBy: toastSavedTitle }, in: [settings, starOpen], when: "toast == 'saved'", source: apps/nizam/features/account/components/time-zone-form.tsx:59 } # closes by itself after six seconds
+  toastSavedTitle: { type: text, component: Text, text: { key: AccountPage.zoneSavedTitle }, in: [settings, starOpen], when: "toast == 'saved'", source: apps/nizam/features/account/components/time-zone-form.tsx:61 } # a <p>; e2e account#3 a2 reads it
+  toastSavedText: { type: text, component: Text, text: { key: AccountPage.zoneSavedText }, in: [settings, starOpen], when: "toast == 'saved'", source: apps/nizam/features/account/components/time-zone-form.tsx:62 }
+  toastZoneFailed: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: toastFailedTitle }, in: [settings, savingZone, starOpen], when: alerting, source: apps/nizam/features/account/components/time-zone-form.tsx:67 } # Base UI gives a high-priority toast the role alertdialog; it stays until closed
+  toastFailedTitle: { type: text, component: Text, text: { key: AccountPage.zoneFailedTitle }, in: [settings, savingZone, starOpen], when: alerting, source: apps/nizam/features/account/components/time-zone-form.tsx:69 }
+  toastFailedText: { type: text, component: Text, text: { key: AccountPage.zoneFailedText }, in: [settings, savingZone, starOpen], when: alerting, source: apps/nizam/features/account/components/time-zone-form.tsx:70 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [settings, savingZone, starOpen], when: alerting, emits: CLOSE_ALERT, duringStep: true, source: libs/ui/src/mds/toast.tsx:95 } # an icon button named only by a literal aria-label of the kit (F-UI-W1-3)
+
+  # --- the first list, open: nine options; the page behind it is inert ------------------------------------------------------------------------------
+  zoneList: { type: list, component: List, role: listbox, in: [choosingZone], source: libs/ui/src/mds/select.tsx:80 } # no name of its own
+  optIstanbul: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.Europe/Istanbul }, in: [choosingZone], emits: PICK_ISTANBUL, source: apps/nizam/features/account/account-view.ts:128 }
+  optBerlin: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.Europe/Berlin }, in: [choosingZone], emits: PICK_BERLIN, source: apps/nizam/features/account/account-view.ts:128 }
+  optAmsterdam: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.Europe/Amsterdam }, in: [choosingZone], source: apps/nizam/features/account/account-view.ts:128 }
+  optBrussels: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.Europe/Brussels }, in: [choosingZone], source: apps/nizam/features/account/account-view.ts:128 }
+  optParis: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.Europe/Paris }, in: [choosingZone], source: apps/nizam/features/account/account-view.ts:128 }
+  optVienna: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.Europe/Vienna }, in: [choosingZone], source: apps/nizam/features/account/account-view.ts:128 }
+  optLondon: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.Europe/London }, in: [choosingZone], source: apps/nizam/features/account/account-view.ts:128 }
+  optNewYork: { type: field, component: ListItem, role: option, text: { key: AccountPage.zones.America/New_York }, in: [choosingZone], source: apps/nizam/features/account/account-view.ts:128 }
+  optOther: { type: field, component: ListItem, role: option, text: { key: AccountPage.zoneOther }, in: [choosingZone], emits: PICK_OTHER, source: apps/nizam/features/account/components/time-zone-form.tsx:79 } # the ninth: it saves nothing
+
+  # --- the second list, open: every zone the runtime lists (about four hundred); one is drawn, the one the e2e chooses ---------------------------------------
+  listedZones: { type: list, component: List, role: listbox, in: [choosingListed], source: libs/ui/src/mds/select.tsx:80 }
+  optTokyo: { type: field, component: ListItem, role: option, text: { key: composed.AccountPage.listedZone, params: { zone: zone } }, in: [choosingListed], emits: PICK_TOKYO, source: apps/nizam/features/account/components/time-zone-form.tsx:104 }
+
+  # --- the aside: the person and the e-mail the account is signed in with --------------------------------------------------------------------------------
+  accountAside: { type: page, component: Page, role: complementary, name: { key: AccountPage.accountTitle }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:212 } # <aside aria-label="Hesap">; the card inside it is a plain <section>, so it is no region
+  accountTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.accountTitle }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:217 } # h2, in the class of an h3
+  personName: { type: text, component: Text, text: { key: composed.AccountPage.personName, params: { name: person.name } }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:222 } # data-testid=account-name: the profile's names, else the session's
+  roleLine: { type: text, component: Text, text: { key: composed.AccountPage.roleLine, params: { roles: person.roles } }, in: [settings, savingZone, starOpen], when: hasRows, source: apps/nizam/features/account/components/account-page.tsx:226 } # the roles held, widest first, the rest in lower case; no line for a person who holds none
+  emailField: { type: field, component: TextField, role: textbox, text: { key: AccountPage.email }, value: { key: composed.AccountPage.email, params: { email: person.email } }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:232 } # readOnly, in the mono face, data-testid=account-email (e2e account#5 a1)
+  emailHelp: { type: text, component: Text, text: { key: AccountPage.emailHelp }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:231 }
+
+  # --- "Hocalık": only for a person who holds a hoca's role ---------------------------------------------------------------------------------------------------------
+  teachingTitle: { type: text, component: Heading, role: heading, text: { key: AccountPage.teachingTitle }, in: [settings, savingZone, starOpen], when: teaches, source: apps/nizam/features/account/components/account-page.tsx:243 } # h2, in a section with no name
+  teachingText: { type: text, component: Text, text: { key: AccountPage.teachingText }, in: [settings, savingZone, starOpen], when: teaches, source: apps/nizam/features/account/components/account-page.tsx:244 }
+  openNazar: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: AccountPage.openNazar }, in: [settings, savingZone, starOpen], when: teaches, emits: OPEN_NAZAR, duringStep: true, source: apps/nizam/features/account/components/account-page.tsx:247 } # an <a> to NAZAR_URL with target=_blank and rel=noopener; nothing says it opens a tab (F-W1-14); drawn only when NIZAM__NAZAR_URL is set (the stack sets it)
+
+  # --- the way out: a sentence and a link to the confirmation page --------------------------------------------------------------------------------------------------
+  signOutNote: { type: text, component: Text, text: { key: AccountPage.signOutText }, in: [settings, savingZone, starOpen], source: apps/nizam/features/account/components/account-page.tsx:262 }
+  signOutLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: AccountPage.signOut }, in: [settings, savingZone, starOpen], emits: SIGN_OUT, duringStep: true, source: apps/nizam/features/account/components/account-page.tsx:264 } # an <a> to /auth/signout, same tab: the confirmation page; nothing ends here (e2e account#6)
+
+  # --- the star's bubble (non-modal) -------------------------------------------------------------------------------------------------------------------------------------
+  starBubble: { type: page, component: Page, role: dialog, name: { labelledBy: starBubbleTitle }, in: [starOpen], source: libs/ui/src/mds/imam-star.tsx:99 } # Base UI Popover.Popup; the focus does not move into it (initialFocus false) and does not return (finalFocus false)
+  starBubbleTitle: { type: text, component: Text, text: { key: common.imamStar.title }, in: [starOpen], source: libs/ui/src/mds/imam-star.tsx:105 }
+  starBubbleBody: { type: text, component: Text, text: { key: common.imamStar.body }, in: [starOpen], source: libs/ui/src/mds/imam-star.tsx:108 }
+
+  # --- when a read fails: the page keeps its title and says so, with nothing else ----------------------------------------------------------------------------------
+  failedPage: { type: page, component: Page, role: main, in: [loadFailed], source: apps/nizam/app/hesap/page.tsx:32 }
+  failedAlert: { type: alert, component: Alert, role: alert, name: { key: AccountPage.loadFailedTitle }, text: { key: AccountPage.loadFailed }, in: [loadFailed], source: apps/nizam/app/hesap/page.tsx:34 } # one alert for any of the three reads; the roles, the zone and the sign-out card are gone with it (NIZSET-4)
+  retry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: AccountPage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/app/hesap/page.tsx:36 } # an <a> to /hesap
+
+edges:
+  - { labelledBy: [tasksRegion, tasksTitle] }
+  - { labelledBy: [permissionsRegion, permissionsTitle] }
+  - { labelledBy: [chiefGroup, chiefGroupTitle] }
+  - { labelledBy: [permissionGroup, groupTitle] }
+  - { labelledBy: [timeRegion, timeTitle] }
+  - { labelledBy: [toastZoneSaved, toastSavedTitle] }
+  - { labelledBy: [toastZoneFailed, toastFailedTitle] }
+  - { labelledBy: [starBubble, starBubbleTitle] }
+  - { triggers: [zoneField, choosingZone] }
+  - { triggers: [zoneOtherField, choosingListed] }
+  - { triggers: [imamStar, starOpen] }
+  - { triggers: [optIstanbul, savingZone] }
+  - { triggers: [optBerlin, savingZone] }
+  - { triggers: [optTokyo, savingZone] }
+
+rules:
+  - { id: F-W1-7, rule: "Both time-zone selects are `disabled={busy}` while PATCH /me runs (time-zone-form.tsx:88, 109), so the combobox that holds the focus is disabled in the middle of the interaction and the focus is lost; nothing says 'saving' until the toast. The graph draws the lists disabled in savingZone (disabledIn). From the code, not seen in a browser. Fix: keep the select enabled with aria-busy, or give the focus back when the save ends, and add a status line." }
+  - { id: F-W1-8, rule: "app/hesap/loading.tsx:8 is an aria-busy <div> whose only children are aria-hidden skeletons: a screen-reader user hears nothing while the page loads. Not drawn in this graph (a skeleton is no state of the flow). Fix: a visually hidden role=status 'Yükleniyor' with a catalog key." }
+  - { id: F-W1-9, rule: "The permission groups are h4 under the h2 'Etkin izinleriniz' (permissions-list.tsx:88, 111): a level is skipped. The graph says the level in comments on chiefGroupTitle and groupTitle. Fix: h3 with the mds-h6 class." }
+  - { id: F-W1-9b, rule: "e2e account#5 a4 to a6 expect a read-only field 'Dil' = 'Türkçe' and the sentence 'Medaris şimdilik yalnız Türkçe görünür.'; the page has neither (a grep of features/account finds no language field), and AccountPage.language and languageHelp are in the catalog and used by nothing. Those three assertions are STALE and are not carried; a1 to a3 (the address and its help line) hold. Fix: delete a4 to a6 and the two dead keys." }
+  - { id: F-W1-14, rule: "'Nazar’da aç' opens a new tab (target=_blank, account-page.tsx:247-251) and nothing says so: its icon is decorative and its name is the words alone. Drawn only for a person who holds a hoca's role. Fix: a visually hidden '(yeni sekmede açılır)' from the catalog." }
+  - { id: F-UI-W1-3, rule: "The toast's close button is named by the literal aria-label 'Kapat' (libs/ui/src/mds/toast.tsx:97) and its region by the literal 'Bildirimler' (:127), not by the catalog, so neither can follow another locale. Cross-cutting. Fix: accept the labels from the catalog." }
+  - { id: NIZSET-1, rule: "A refused save of a choice made in the FIRST list, when the zone held is outside the eight and the second list was open, leaves the page inconsistent: onChange hides the second list before the save (`setFull(false)`, time-zone-form.tsx:95) and the rollback puts the zone back (:66) but not the list, so the second list is gone and the first list holds a zone that none of its nine options names (Base UI Select shows whatever it shows for a value no item carries; not seen). A reload draws the second list again (needsFullList). Tedris's Hesap draws its lists from one state and does not have this. From the code; no way to make the save refuse on the stack. Fix: derive the second list's presence from the zone held (needsFullList(confirmed)) after a refusal, or set it back with the zone. New finding, proposed id." }
+  - { id: NIZSET-2, rule: "A Medaris nazımı reads 'Size ayrıca verilmiş bir izin grubu yok.' under 'Etkin izinleriniz' and no sentence at all, although GET /me/effective-permissions answers the group MEDARIS_NAZIM with five codes for the seeded one (platform.kosk_create, kosk_edit, course_hide, madrasah_create, audit_read) and the Medaris home lists permissions in words: the catalog has no sentence for any platform.* code, so visibleGroups drops the group (account-view.ts:114-125) and the card empties itself. test/account.spec.tsx:365 pins the empty card as the design; the sentence still tells a person who holds permissions that they hold none. Seen on the stack as data (a GET), not in a browser. Fix: write the sentences for the platform.* codes, or word the empty card as 'listed on Ana sayfa'. New finding, proposed id; product wording." }
+  - { id: NIZSET-3, rule: "Every permission group is a <section aria-labelledby> (permissions-list.tsx:83-86, 106-110), that is a region landmark; with several roles the page gets as many regions as groups next to the cards' own. The same shape as nazar's F-E-19. Fix: a div with the heading, and keep landmarks for the cards. New finding for nizam, proposed id." }
+  - { id: NIZSET-4, rule: "When any one of the three reads fails, getAccountData answers null (reads.ts:34-38) and the page keeps only its title, one alert and 'Yeniden dene' (app/hesap/page.tsx:30-42): the time-zone card, the e-mail and the sign-out card go with it, though none of them needs the failed read, and the sign-out link on this page is the only link to /auth/signout in nizam (grep of apps/nizam), so a person whose read fails can leave only by typing the address. The same shape as tedris's HESAP-1. Not seen: the stack cannot make a read fail. Fix: draw the sign-out card outside the null branch. New finding, proposed id." }
+  - { id: focus-not-set, rule: "Hesap sets no initial focus (no autoFocus and no focus() in features/account), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens; after a pick, after the toast and after the star's bubble closes the focus is Base UI's (the list's button, the star) and was not seen. Recorded so the silence is not read as an omission." }
+  - { id: saves-at-once, rule: "There is no Kaydet on this page: a zone chosen from either list is saved at that moment (e2e account#4: no Kaydet is looked for, and the help line says 'Seçtiğiniz an kaydedilir.'). The toast and that line are the only words about it; the graph carries the rule by sending every pick straight to savingZone." }
+  - { id: label-in-name, rule: "Where a control's visible text is part of its name, the name contains it (WCAG 2.5.3): 'Çıkış yap', 'Nazar’da aç', 'Yeniden dene' and 'Kapat' are their own names, and the star's name is its words 'Dersin imamı'. Holds." }

@@ -1,0 +1,34 @@
+# tedris.learning.schedule as a talebe (the medrese nazırı, who holds no seat anywhere and is in no other tedris flow) whose course holds every look a Programım row has: a celse over, one on air now with a
+# Zoom link, a cancelled one with the müderris's note and one without, an exam, an in-person one, and plain ones with and without a
+# meeting link, in this week and in the next. Same states and locators as binding.yaml (see its header); the scenario is the only
+# difference.
+#   node apps/engine/src/cli.ts replay graphs/tedris/learning/schedule --bind graphs/tedris/learning/schedule/binding.mixed.yaml \
+#     --to week --out <dir>
+#
+# NOT RUN: the walk phase runs it. Its nodes were counted once by hand on the page, as `applicantC` with the same data, and all were
+# found where the graph says (the page also held another flow's celses for that account, which is why this binding uses `medreseNazir`,
+# who is in no other tedris flow); they were not counted as `medreseNazir`.
+# Data. The seeded courses hold only celses still to come and no walk may change them, so schedule-data.mjs (this folder) writes a
+# private köşk, a course and fourteen celses of its own (fixed ids 5c4ed000-0000-4000-8000-0000000000NN, days counted from today in
+# Istanbul) and a seat for `medreseNazir` in it, and `down` removes all of it. It uses SQL on tedrisat's database, where tedrisat's API
+# could make the course, for the reasons in its header (a private köşk no list shows; a celse on air now and one over today).
+# `up` begins with `down`, so a walk that crashed leaves nothing in the way. The rows hold from 00:06 to 23:59 Istanbul: in the first
+# minutes after midnight the celse made "five minutes ago" falls on the day before and the "over" one is still on air.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.learning.schedule
+
+scenarios:
+  mixed:
+    given: { answer: listed, following: listed, rows: mixed }
+    as: medreseNazir
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->schedule' }
+    setup:
+      - run: [node, ../tedris/learning/schedule/schedule-data.mjs, up, medreseNazir]
+        expect: 'schedule-data up MEDRESE_NAZIR'
+    teardown:
+      - run: [node, ../tedris/learning/schedule/schedule-data.mjs, down, medreseNazir]
+        expect: 'schedule-data down MEDRESE_NAZIR'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

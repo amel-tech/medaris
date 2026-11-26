@@ -14,7 +14,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { Tabs } from "@medaris/ui/mds/tabs";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   approveDeckRequest,
@@ -96,9 +96,16 @@ export function DeckRequestsView({
   const selected = items.find((r) => r.id === selectedId) ?? null;
   // Every request of the tab, not the page: more are left while fewer are shown.
   const total = tab === "PENDING" ? counts.pending : counts.decided;
+  // A read answers for the tab it was asked for: once another tab is shown, a
+  // late answer must not select one of its requests under the tab on the screen.
+  const ticket = useRef(0);
+  // The cards on the screen belong to one selection: "Bütün kartlar" asked for
+  // another request answers for that request only.
+  const cardsTicket = useRef(0);
 
   const load = useCallback(
     async (next: Tab) => {
+      const mine = ++ticket.current;
       setLoading(true);
       let result: Awaited<ReturnType<typeof loadDeckRequests>> | null = null;
       try {
@@ -106,6 +113,7 @@ export function DeckRequestsView({
       } catch {
         result = null;
       }
+      if (mine !== ticket.current) return;
       setLoading(false);
       if (redirectIfUnauthenticated(result)) return;
       if (!result?.success) {
@@ -157,6 +165,8 @@ export function DeckRequestsView({
   };
 
   const changeTab = (next: Tab) => {
+    ticket.current++;
+    setLoading(false);
     setTab(next);
     setSelectedId((lists[next] ?? [])[0]?.id ?? null);
     if (lists[next] === undefined) void load(next);
@@ -164,6 +174,7 @@ export function DeckRequestsView({
 
   // The sample cards of the selected waiting request; reading them is audited.
   useEffect(() => {
+    cardsTicket.current++;
     setShowAll(false);
     if (tab !== "PENDING" || !selectedId) {
       setCards(null);
@@ -187,8 +198,10 @@ export function DeckRequestsView({
 
   const readAll = async () => {
     if (!selectedId) return;
+    const mine = ++cardsTicket.current;
     setCards({ state: "loading" });
     const result = await loadRequestCards(selectedId, true);
+    if (mine !== cardsTicket.current) return;
     if (redirectIfUnauthenticated(result)) return;
     setShowAll(result.success);
     setCards(

@@ -1,0 +1,201 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.celse.attend
+status: proposed
+summary: >-
+  What a talebe needs from the celse page of tedris-web while they attend (tedris.celse.attend), and where the code stands.
+  Written 15 Nov 2026 from the story of the flow, planned.md and the findings the flow records; the product list is `need`, never
+  what the page does today. `walked` names an e2e check that carries the need (inventory numbering). No replay has been run in
+  this phase (the owner's word: replays are run once, at the end), so no `replay:` entry is claimed anywhere below: every replay
+  is "walk phase".
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For graphs/needs.gaps.yaml (the orchestrator merges it):
+# missing (code does not do it; all `missing: none`, defects of a built need unless said):
+# the-meeting-link-waits-for-the-window (CLS-17), the-stream-card-says-in-person (ATT-1), the-page-says-when-it-changes (CLS-15),
+# the-page-has-its-own-title (CLS-03), a-failed-read-is-not-a-missing-celse (CLS-01), an-in-person-celse-names-its-place (no issue),
+# a-seat-at-an-in-person-celse-is-per-gender (MDRS-284: planned, kontenjan per gender, gender always required)
+# unwalked (code, no e2e and no replay yet): the-agenda-marks-the-step-now, the-kaynak-and-resources-are-listed, the-exam-is-read,
+# the-date-card-says-in-person, a-finished-celse-says-it-has-no-recording (and a-running-celse-says-so-and-leads-to-its-stream is
+# walked only by celse-states#1, whose a8 frame assertion is stale and is tedris.celse.watchStream's)
+
+needs:
+  - id: the-meeting-opens-inside-its-window
+    need: >-
+      From ten minutes before the start until the celse ends, a talebe with a seat finds "Toplantıya katıl" on the celse's page
+      and it opens the course's own meeting in a new tab, with the platform named and the address one press away. Before the
+      window the page says when it opens.
+    evidence:
+      - state: opening
+      - state: ahead
+      - node: joinLink
+      - node: joinReveal
+      - node: meetingAddress
+      - node: platformChip
+      - node: joinOpens
+      - state: meeting_opened
+      - source: apps/tedris/features/courses/components/session-action-card.tsx:177
+      - source: apps/tedrisat/src/course/lesson.controller.ts:230
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "sees the date, the length, the platform, the agenda and the link inside the join window"
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "keeps the join closed more than ten minutes before the start"
+
+  - id: the-meeting-link-waits-for-the-window
+    need: >-
+      The meeting's address is not in the page before the join window opens, if the ten minutes are meant as more than a display
+      rule.
+    missing: >-
+      no Linear issue; CLS-17, decision D3 of the flow: the address is in the HTML from the first render (measured); the product
+      has not said whether it must wait
+    note: >-
+      Drawn on the state ahead and on the nodes joinOpens and joinLink, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-date-and-how-it-is-attended-are-told
+    need: >-
+      The page says on the course's clock when the celse is, how long it lasts and who teaches it, and how it is attended (the
+      meeting link, a stream, in person), or that no link has been added yet, in the person's own words.
+    evidence:
+      - node: metaWhen
+      - node: metaLength
+      - node: metaHoca
+      - node: dateWeekday
+      - node: dateDay
+      - node: dateClock
+      - node: headingLink
+      - node: headingStream
+      - node: headingInPersonStream
+      - node: headingInPerson
+      - node: headingNone
+      - source: apps/tedris/features/courses/session-model.ts:331
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "sees the date, the length, the platform, the agenda and the link inside the join window"
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "shows a notice and no join button when the session has no link"
+
+  - id: a-running-celse-says-so-and-leads-to-its-stream
+    need: >-
+      While the celse runs the page says so ("Canlı · n dk"), keeps the meeting link, and, when there is a stream, offers "Yayını
+      izle" to the watch page.
+    evidence:
+      - state: live
+      - node: badgeLive
+      - node: dateElapsed
+      - node: headingStreamLive
+      - node: posterLink
+      - node: watchStream
+      - node: joinLink
+      - source: apps/tedris/features/courses/components/session-action-card.tsx:233
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/16: a session on air says so, opens the meeting in a new tab, and leads to the stream on its watch page (MDRS-285)"
+
+  - id: the-date-card-says-in-person
+    need: A celse held face to face is called so on the date card, with the room's way of attending in the heading.
+    evidence:
+      - node: eyebrowInPerson
+      - node: headingInPerson
+      - node: headingInPersonStream
+      - source: apps/tedris/features/courses/components/session-action-card.tsx:339
+
+  - id: the-stream-card-says-in-person
+    need: A celse held face to face and streamed is called "Yüz yüze" on its stream card too, as on its date card.
+    missing: "no Linear issue; ATT-1 (and Ana sayfa's HOME-2): the stream card's eyebrow is always \"Canlı ders\""
+    note: >-
+      Drawn on the nodes eyebrowLive, inPersonStreamLiveText and headingStreamLive, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-in-person-celse-names-its-place
+    need: >-
+      A celse held face to face tells the talebe where it is held, not only that it is: today the one place the page can name is
+      an exam's location.
+    missing: "no decision and no issue: `inPerson` is a boolean and the page has no field for a place"
+    note: >-
+      Drawn on the nodes eyebrowInPerson, headingInPerson and examPlace, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-seat-at-an-in-person-celse-is-per-gender
+    need: >-
+      Registering for a seat at an in-person celse is offered from its page, with kontenjan counted separately for women and for
+      men and the person's gender always required. Nothing on today's page decides a seat; the page only says the celse is held
+      face to face.
+    missing: "MDRS-284; planned: tedris.session.registerInPerson; the attendance path MDRS-283 (the labels) is what this page has"
+    note: >-
+      Drawn on the nodes eyebrowInPerson and headingInPerson, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-page-says-when-it-changes
+    need: >-
+      A person who stays on the page is told once, politely, when the join window has opened, when the celse has begun and when it
+      has ended, instead of the text changing silently every half minute.
+    missing: no Linear issue; CLS-15, decision D2 of the flow
+    note: >-
+      Drawn on the states ahead, opening, live and over and on the nodes badgeCountdown, badgeLive, badgeEnded and joinLink, which
+      the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
+
+  - id: the-page-has-its-own-title
+    need: A tab and a screen reader name the celse, not the app, and the watch page says so too.
+    missing: "no Linear issue; CLS-03: \"Medaris Tedris\" on every celse (measured)"
+    note: >-
+      Drawn on the node title, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-failed-read-is-not-a-missing-celse
+    need: A tedrisat outage on a celse is told as an outage, with a way to try again, and not as "Sayfa bulunamadı".
+    missing: no Linear issue; CLS-01
+    note: >-
+      Drawn on the states reading and not_found, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-agenda-marks-the-step-now
+    need: >-
+      While the celse runs the agenda marks the step whose time has come, on the course's clock, in words and not by colour alone.
+    evidence:
+      - node: agendaCard
+      - node: agendaStep
+      - node: agendaNow
+      - source: apps/tedris/features/courses/components/session-agenda.tsx:62
+      - source: apps/tedris/features/courses/session-model.ts:169
+
+  - id: the-kaynak-and-resources-are-listed
+    need: The page lists the place to read and the celse's own links, each opening in a new tab and saying so.
+    evidence:
+      - node: resourcesCard
+      - node: kaynakLine
+      - node: resourceRow
+      - source: apps/tedris/features/courses/components/session-resources.tsx:76
+
+  - id: the-exam-is-read
+    need: An exam celse says that it is an exam, its form, its score, its place and its topics.
+    evidence:
+      - node: examCard
+      - node: examFormat
+      - node: examScore
+      - node: examPlace
+      - node: examTopics
+      - source: apps/tedris/features/courses/components/session-exam.tsx:22
+
+  - id: a-finished-celse-says-it-has-no-recording
+    need: >-
+      After the end a celse with no recording says so and offers no way in, while the recording flows take over when one exists.
+    evidence:
+      - state: over
+      - node: headingNoRecording
+      - node: eyebrowRecording
+      - node: dateEnded
+      - node: badgeEnded
+      - source: apps/tedris/features/courses/components/session-action-card.tsx:355
+
+  - id: the-pager-leads-to-the-neighbours
+    need: The previous and the next celse of the programme are one link away, and the Müfredat opens from the same row.
+    evidence:
+      - node: pager
+      - node: previousLink
+      - node: nextLink
+      - node: curriculumButton
+      - source: apps/tedris/features/courses/components/session-pager.tsx:200
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "lists the previous and the next session, the cancelled one skipped, and follows a card"

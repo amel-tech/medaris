@@ -1,0 +1,158 @@
+# The screens of nizam.courseRequests.decide: "Ders talepleri" of a köşk (/kosks/<id>/ders-talepleri) with its two tabs, the list and the card
+# of a request, the reject dialog and the toasts of an answer, and the screen that says "Bu bölüm için izniniz yok". Read from
+# apps/nizam/features/platform-admin/components/course-requests-view.tsx, apps/nizam/features/deck-review/components/reject-dialog.tsx and
+# apps/nizam/components/errors/no-access.tsx on 16 Nov 2026; the words are copied from libs/i18n/src/locales/tr/nizam.json (namespaces
+# CourseRequestsPage, DeckReject, NoAccess) and common.json (toast.close). Nothing was looked at in a browser: every node is "from the code".
+#
+# Text the page builds in code, in no i18n file, is `composed.CourseRequestsPage.<name>` (a single placeholder: the request's title, the köşk's,
+# the medrese's and the sender's names, the date, the reason, a tab's count) and `composed.Button.loading` (the hidden <output> of a busy
+# button, "Yükleniyor", libs/ui/src/mds/button.tsx:113: a hard-coded default).
+#
+# The `changes` message is the page's own `CourseRequestsPage.answerNote`: it says what the two buttons do and who reads the reason.
+#
+# The frame (the sidebar, the köşk picker, the bell) is outside this view (scope.outOfView), so no node of it is drawn. While the reject dialog is
+# open the page behind it is inert, so no page node is `in` a dialog state; the toasts live in their own portal and are.
+schema: delurio-graph/0
+kind: ui
+id: nizam.courseRequests.decide
+flow: nizam.courseRequests.decide
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: CourseRequestsPage.answerNote }
+samples:
+  title: Hadis usûlü okumaları
+  kosk: Örnek Köşk
+  madrasah: Örnek Medrese
+  sender: Nazlı Müderris
+  date: 16 Kasım 2026 10:30
+  reason: Medresemizde bu dersi okutacak yer yok.
+  n: "1"
+  name: Örnek Nazım
+
+nodes:
+  # ---- the page ------------------------------------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [listed, empty, loadingDecided, decidedList, decidedEmpty, decidedFailed, retryingDecided, unreadable, retrying, noAccess], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name and nothing moves the focus when the page opens (rule focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: CourseRequestsPage.title }, in: [listed, empty, loadingDecided, decidedList, decidedEmpty, decidedFailed, retryingDecided, unreadable, retrying], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:265 } # h1; the same for every köşk (F-W3-9)
+  pageIntro: { type: text, component: Text, text: { key: CourseRequestsPage.intro }, in: [listed, empty, loadingDecided, decidedList, decidedEmpty, decidedFailed, retryingDecided, unreadable, retrying], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:266 }
+
+  # ---- the two tabs --------------------------------------------------------------------------------------------------------------
+  # A tab already open does nothing when it is pressed (the Tabs' onChange fires on a change only). 'Karara bağlanan' pressed while its own
+  # list is read is `duringStep`: once the read is over it is the open tab, and the press is still nothing.
+  tabs: { type: list, component: List, role: tablist, name: { key: CourseRequestsPage.tabsLabel }, in: [listed, empty, loadingDecided, decidedList, decidedEmpty], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278 } # Tabs mode="tabs" with no TabsPanel (F-W3-5)
+  tabPending: { type: list, component: ListItem, role: tab, text: { key: CourseRequestsPage.tabs.PENDING }, in: [listed, empty, loadingDecided, decidedList, decidedEmpty], emits: OPEN_PENDING, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:284 } # its name is the word and the count; selected in listed and empty (aria-selected, which the graph does not say); a tab of the kit activates on focus
+  tabDecided: { type: list, component: ListItem, role: tab, text: { key: CourseRequestsPage.tabs.DECIDED }, in: [listed, empty, loadingDecided, decidedList, decidedEmpty], emits: OPEN_DECIDED, duringStep: true, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:289 }
+  pendingCount: { type: text, component: Text, text: { key: composed.CourseRequestsPage.count, params: { n: counts.pending } }, in: [listed, empty, loadingDecided, decidedList, decidedEmpty], source: libs/ui/src/mds/tabs.tsx:67 } # `.mds-tab__count` inside the tab; the API's pendingCount, drawn at once and moved by a decision before the page reads again (settle)
+  decidedCount: { type: text, component: Text, text: { key: composed.CourseRequestsPage.count, params: { n: counts.decided } }, in: [listed, empty, loadingDecided, decidedList, decidedEmpty], source: libs/ui/src/mds/tabs.tsx:67 } # the API's decidedCount; a decision adds one (CREQ-5)
+
+  # ---- the Bekleyen tab: the list, the empty line and the card -------------------------------------------------------------------
+  waitingList: { type: list, component: List, role: list, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:306 } # a `ul` with no name of its own
+  waitingItem: { type: action, component: Button, role: button, text: { key: composed.CourseRequestsPage.itemTitle, params: { title: request.title } }, in: [listed], repeat: requests.items, emits: PICK, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:146 } # one button per request, also naming the medrese, the sender and the day; the selected one has aria-current="true"
+  emptyWaiting: { type: text, component: Text, text: { key: CourseRequestsPage.empty.PENDING }, in: [empty], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303 } # an EmptyState
+
+  waitingCard: { type: page, component: Page, role: region, name: { labelledBy: waitingCardTitle }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:180 } # <section aria-labelledby="course-request-title">; the page's own id, shared with the other tab's card
+  waitingEyebrow: { type: text, component: Text, text: { key: CourseRequestsPage.detailEyebrow }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:187 }
+  waitingCardTitle: { type: text, component: Heading, role: heading, text: { key: composed.CourseRequestsPage.requestTitle, params: { title: request.title } }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:188 } # h2
+  waitingBadge: { type: text, component: Text, text: { key: CourseRequestsPage.status.PENDING }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:192 }
+  waitingKoskTerm: { type: text, component: Text, text: { key: CourseRequestsPage.kosk }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:206 }
+  waitingKosk: { type: text, component: Text, text: { key: composed.CourseRequestsPage.koskValue, params: { kosk: request.kosk } }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:207 }
+  waitingMadrasahTerm: { type: text, component: Text, text: { key: CourseRequestsPage.madrasah }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:212 }
+  waitingMadrasah: { type: text, component: Text, text: { key: composed.CourseRequestsPage.madrasahValue, params: { madrasah: request.madrasah } }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:213 }
+  waitingSentTerm: { type: text, component: Text, text: { key: CourseRequestsPage.sentAt }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:218 }
+  waitingSent: { type: text, component: Text, text: { key: composed.CourseRequestsPage.sentAtValue, params: { date: request.createdAt } }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:219 } # longDateTime in the page's zone
+  waitingSenderTerm: { type: text, component: Text, text: { key: CourseRequestsPage.sender }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:222 }
+  waitingSender: { type: text, component: Text, text: { key: composed.CourseRequestsPage.senderValue, params: { sender: request.sender } }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:225 } # the sender's name, or "Adı bilinmeyen üye" when the API has none
+  waitingReasonTerm: { type: text, component: Text, text: { key: CourseRequestsPage.reason }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:230 }
+  waitingReason: { type: text, component: Text, text: { key: composed.CourseRequestsPage.reasonValue, params: { reason: request.reason } }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:232 }
+  answerNote: { type: text, component: Text, text: { key: CourseRequestsPage.answerNote }, in: [listed], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:238 } # a caption, the only word that "Kabul et" does not accept the request (CREQ-4)
+  accept: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseRequestsPage.accept }, in: [listed], emits: ACCEPT, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:240 } # a <button> that calls router.push, not a link
+  reject: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseRequestsPage.reject }, in: [listed], emits: REJECT, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:245 } # an outline button; it opens the dialog, nothing is sent yet
+
+  # ---- the Karara bağlanan tab -------------------------------------------------------------------------------------------------------
+  decidedListNode: { type: list, component: List, role: list, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:306 }
+  decidedItem: { type: action, component: Button, role: button, text: { key: composed.CourseRequestsPage.itemTitle, params: { title: request.title } }, in: [decidedList], repeat: requests.items, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:146 } # after the day and a dot, the outcome word ("Reddedildi", "Kabul edildi"); selecting needs no event here
+  decidedOutcomeRejected: { type: text, component: Text, text: { key: CourseRequestsPage.outcome.REJECTED }, in: [decidedList], when: firstRejected, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:167 }
+  decidedOutcomeAccepted: { type: text, component: Text, text: { key: CourseRequestsPage.outcome.ACCEPTED }, in: [decidedList], when: firstAccepted, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:167 }
+  emptyDecided: { type: text, component: Text, text: { key: CourseRequestsPage.empty.DECIDED }, in: [decidedEmpty], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303 }
+
+  decidedCard: { type: page, component: Page, role: region, name: { labelledBy: decidedCardTitle }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:180 }
+  decidedEyebrow: { type: text, component: Text, text: { key: CourseRequestsPage.detailEyebrow }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:187 }
+  decidedCardTitle: { type: text, component: Heading, role: heading, text: { key: composed.CourseRequestsPage.requestTitle, params: { title: request.title } }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:188 }
+  decidedBadgeRejected: { type: text, component: Text, text: { key: CourseRequestsPage.status.REJECTED }, in: [decidedList], when: firstRejected, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:192 }
+  decidedBadgeAccepted: { type: text, component: Text, text: { key: CourseRequestsPage.status.ACCEPTED }, in: [decidedList], when: firstAccepted, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:192 }
+  decidedKoskTerm: { type: text, component: Text, text: { key: CourseRequestsPage.kosk }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:206 }
+  decidedKosk: { type: text, component: Text, text: { key: composed.CourseRequestsPage.koskValue, params: { kosk: request.kosk } }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:207 }
+  decidedMadrasahTerm: { type: text, component: Text, text: { key: CourseRequestsPage.madrasah }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:212 }
+  decidedMadrasah: { type: text, component: Text, text: { key: composed.CourseRequestsPage.madrasahValue, params: { madrasah: request.madrasah } }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:213 }
+  decidedSenderTerm: { type: text, component: Text, text: { key: CourseRequestsPage.sender }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:222 }
+  decidedSender: { type: text, component: Text, text: { key: composed.CourseRequestsPage.senderValue, params: { sender: request.sender } }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:225 }
+  decidedReasonTerm: { type: text, component: Text, text: { key: CourseRequestsPage.reason }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:230 }
+  decidedReason: { type: text, component: Text, text: { key: composed.CourseRequestsPage.reasonValue, params: { reason: request.reason } }, in: [decidedList], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:232 }
+  rejectReasonAlert: { type: alert, component: Alert, role: status, name: { key: CourseRequestsPage.rejectReasonTitle }, text: { key: composed.CourseRequestsPage.reasonValue, params: { reason: request.rejectReason } }, in: [decidedList], when: firstRejected, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:251 } # a neutral Alert is a status, with the title as a paragraph, not a heading; only a refusal that has a reason has it (an accepted one shows no course, CREQ-6)
+
+  # ---- a read that failed: the Alert takes the place of the tabs --------------------------------------------------------------
+  loadAlert: { type: alert, component: Alert, role: alert, name: { key: CourseRequestsPage.loadFailedTitle }, text: { key: CourseRequestsPage.loadFailed }, in: [unreadable, retrying, decidedFailed, retryingDecided], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:270 } # an error Alert is announced when it appears
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseRequestsPage.retry }, in: [unreadable, retrying], emits: RETRY, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272 } # not busy while the read runs
+  retryDecided: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseRequestsPage.retry }, in: [decidedFailed, retryingDecided], emits: RETRY_DECIDED, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272 }
+
+  # ---- the screen that says no (nizam.shell.noAccessAndNotFound draws it for every way in) ---------------------------------
+  noAccessSection: { type: page, component: Page, role: region, name: { labelledBy: noAccessTitle }, in: [noAccess], source: libs/ui/src/mds/system-state.tsx:33 } # <section aria-labelledby> inside the shell
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:30 } # h1
+  noAccessBody: { type: text, component: Text, text: { oneOf: [NoAccess.body, NoAccess.bodyGeneric] }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:44 } # names the başnazım when the directory knows them, else the general sentence
+  noAccessAccount: { type: text, component: Text, text: { key: NoAccess.account }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:34 } # followed, in the same paragraph, by the account's e-mail in <code>
+  noAccessBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NoAccess.back }, in: [noAccess], emits: BACK, source: apps/nizam/components/errors/no-access.tsx:38 }
+
+  # ---- Reddet asks for the reason: a modal form dialog (the page behind is inert) -----------------------------------------------
+  rejectDialog: { type: page, component: Page, role: dialog, name: { labelledBy: rejectTitle }, in: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting], initialFocus: reasonField, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:78 } # the scrim does not close it; described by its whole body (F-UI-W1-1)
+  rejectEyebrow: { type: text, component: Text, text: { key: composed.CourseRequestsPage.requestTitle, params: { title: request.title } }, in: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:85 } # above the title: the request's title
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: DeckReject.courseRequest.title }, in: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:86 }
+  rejectClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: DeckReject.close }, in: [confirmReject, confirmRejectTouched, confirmRejectReady], emits: CANCEL, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:87 } # an icon button named only by aria-label; it stays on and does nothing while the refusal is sent (reject-dialog.tsx:81)
+  rejectBody: { type: text, component: Text, text: { key: DeckReject.courseRequest.body }, in: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:98 }
+  requiredNote: { type: text, component: Text, text: { key: DeckReject.requiredNote }, in: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:99 } # drawn as "* zorunlu alan"
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: DeckReject.reasonLabel }, value: { literal: "" }, in: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:106 } # a textarea of four rows, required, at most 1000 characters; the asterisk of its label is hidden from the name
+  reasonHelp: { type: text, component: Text, text: { key: DeckReject.courseRequest.help }, in: [confirmReject, confirmRejectReady, rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:103 } # the error replaces it
+  reasonRequired: { type: text, component: Text, text: { key: DeckReject.reasonRequired }, in: [confirmRejectTouched], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:104 } # after the empty field was left; not a live region and the focus does not move (F-X-2)
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: DeckReject.cancel }, in: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting], emits: CANCEL, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:91 } # not held back while the refusal is sent either: it does nothing then (`if (!saving)`, reject-dialog.tsx:80-82); it is not disabled in the DOM
+  rejectSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: DeckReject.submit }, in: [confirmReject, confirmRejectTouched, confirmRejectReady], disabledIn: [confirmReject, confirmRejectTouched], emits: SUBMIT, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92 } # natively disabled while the reason is blank; the help line is the only hint
+  rejectSubmitBusy: { type: action, component: Button, role: button, intent: confirm, text: { key: DeckReject.submit }, in: [rejecting], disabledIn: [rejecting], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92 } # aria-disabled and aria-busy while the call runs
+  submitBusyStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [rejecting], source: libs/ui/src/mds/button.tsx:113 } # the hidden <output> beside the busy button
+
+  # ---- the toasts (sonner, in their own portal: no role; the error ones stay until closed) --------------------------------------
+  toastRejected: { type: status, component: Status, text: { key: CourseRequestsPage.rejected }, in: [listed, empty], when: "last == 'rejected'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:132 } # the title; the description is `rejectedBody` below; it closes by itself after 6 seconds
+  toastRejectedBody: { type: status, component: Status, text: { key: CourseRequestsPage.rejectedBody, params: { title: request.title } }, in: [listed, empty], when: "last == 'rejected'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:133 } # says the reason was conveyed to the başmüderris; nothing is sent to her (CREQ-1)
+  toastErrorTitle: { type: status, component: Status, text: { key: CourseRequestsPage.answerFailed }, in: [listed, empty, confirmRejectReady], when: "last == 'answered' or last == 'gone' or last == 'forbidden' or last == 'failed'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:126 } # the one title of the four error toasts
+  toastAnswered: { type: status, component: Status, text: { key: CourseRequestsPage.errors.answered }, in: [listed, empty], when: "last == 'answered'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:127 } # the dialog closed and the row left the list
+  toastGone: { type: status, component: Status, text: { key: CourseRequestsPage.errors.gone }, in: [listed, empty], when: "last == 'gone'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:127 }
+  toastForbidden: { type: status, component: Status, text: { key: CourseRequestsPage.errors.forbidden }, in: [confirmRejectReady], when: "last == 'forbidden'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:127 } # over the dialog, which stays open
+  toastFailed: { type: status, component: Status, text: { key: CourseRequestsPage.errors.generic }, in: [confirmRejectReady], when: "last == 'failed'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:127 }
+  toastLoadFailedTitle: { type: status, component: Status, text: { key: CourseRequestsPage.loadFailedTitle }, in: [unreadable, decidedFailed], when: "last == 'loadFailed'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:84 } # a sticky error toast, beside the Alert that says the same
+  toastLoadFailed: { type: status, component: Status, text: { key: CourseRequestsPage.loadFailed }, in: [unreadable, decidedFailed], when: "last == 'loadFailed'", source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:85 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: common.toast.close }, in: [listed, empty, confirmRejectReady, unreadable, decidedFailed], when: "last != 'nothing'", source: libs/ui/src/components/sonner.tsx:62 } # the toaster's close button (closeButton); named in common.json
+
+edges:
+  - { labelledBy: [waitingCard, waitingCardTitle] }
+  - { labelledBy: [decidedCard, decidedCardTitle] }
+  - { labelledBy: [noAccessSection, noAccessTitle] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { triggers: [reject, confirmReject] }
+  - { triggers: [rejectSubmit, rejecting] }
+  - { triggers: [accept, acceptHandOver] }
+  - { returnsFocus: [rejectDialog, reject] } # Vazgeç, Esc or the close icon: the card's Reddet is still there; after an answer that empties the list it is gone with the card (CREQ-2); not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "No code of this page moves the focus: not when it opens, not after a tab is chosen or a row selected (F-W3-5), and not after a decision. The page node has no `initialFocus` on purpose." }
+  - { id: F-W3-5, rule: "course-requests-view.tsx:278-297: Tabs mode=tabs with no TabsPanel children, so the tabs control no panel (aria-controls points at nothing); the list and the card below are plain regions; a tab switch or a row selection changes the page with no announcement and no focus move; the selected row is shown with aria-current on a button. Fix: TabsPanel around the list, a polite status line '{n} talep', and a name for the list." }
+  - { id: F-X-1, rule: "The same family as F-W3-5 across nizam's pages that draw Tabs without TabsPanel (libs/ui/src/mds/tabs.tsx:68-80 lets a caller leave the panel out)." }
+  - { id: F-W3-9, rule: "ders-talepleri/page.tsx:10-13 and the view's h1: the tab title and the heading say 'Ders talepleri' for every köşk; for a nazım of several köşks only the card's 'Açılması istenen köşk' (once a request is selected) and the scope picker say which. Fix: put the köşk's name in the title and an eyebrow." }
+  - { id: F-X-2, rule: "libs/ui/src/mds/field.tsx: the reason's error 'Bir gerekçe yazın.' is a Base UI Field.Error with no live region and no focus move, and the dialog's button is natively disabled while the reason is blank, so a keyboard or screen-reader user hears nothing about why. Fix: keep the button on and say the error in a role=alert line on press, or announce it." }
+  - { id: F-UI-W1-1, rule: "libs/ui/src/mds/dialog.tsx:107: the dialog's description is its whole body (BaseDialog.Description wraps the paragraphs and the field), so a screen reader reads all of it as the description." }
+  - { id: CREQ-1, rule: "The toast says 'gerekçe başmüderrise iletildi' and the dialog 'Gerekçeyi medresenin başmüderrisi görür', but rejectCourseRequest writes an audit row and sends no notification or mail (apps/tedrisat/src/course-request/course-request.service.ts:166-197): the başmüderris finds the refusal only by opening İtirazlar. Fix: notify her and the nazırs who may ask (decision D1), or word the toast 'gerekçe kaydedildi'." }
+  - { id: CREQ-2, rule: "After the last waiting request is answered, the card (and the 'Reddet' that the dialog gives the focus back to) leaves the page with the list (settle, course-requests-view.tsx:110-118), so the focus falls to the document; with other requests waiting the next one is selected and the card is kept. The only word is a toast of 6 seconds. Not verified in a browser. Fix: move the focus to the tab, the empty line or the next row, and keep a status line." }
+  - { id: CREQ-3, rule: "course-requests-view.tsx:269: when reading the Karara bağlanan tab fails, `failed` is true and that tab has no list, so the Alert replaces the whole block including the tabs: the Bekleyen list that was read cannot be reached again (no tab to press) until the page is reloaded, and 'Tekrar dene' retries the tab that failed. Fix: draw the Alert under the tabs." }
+  - { id: CREQ-4, rule: "'Kabul et' accepts nothing: it is a <button> that calls router.push to the Ders aç form (course-requests-view.tsx:241), and the request is accepted only when a course is made from it (nizam.courses.open); leaving the form leaves the request waiting, and the only word is the caption under the card. It cannot be opened in a new tab either. Fix: name it after what it does or make it a link, and say on the form that the request is not yet accepted (decision D2)." }
+  - { id: CREQ-5, rule: "settle (course-requests-view.tsx:110-118) counts every request that leaves the waiting list as decided: after COURSE_REQUEST_NOT_FOUND (a request that is gone, answered by nobody) the Karara bağlanan tab's number is one too high until that tab is read again. Fix: add one only for a request that was answered." }
+  - { id: CREQ-6, rule: "The card of an accepted request names no course: the API sends `courseId` (listCourseRequests) and the view never reads it (course-requests-view.tsx:176-257), so the nazım cannot go from an accepted request to the course made from it. Fix: link the course on the card." }
+  - { id: confirm-before-rejecting, rule: "Reddet asks first, in a form dialog whose reason is required and whose button stays off until one is written (the API also requires it: RejectReasonDto, `\\S`); Kabul et needs no question because it writes nothing (CREQ-4)." }
+  - { id: toast-is-the-only-word, rule: "The result of a refusal is said by a sonner toast (a list item in the Toaster's live region): 'Talep reddedildi' closes by itself after 6 seconds, an error toast stays until it is closed. The page itself says nothing but the row leaving and the counts moving." }
+  - { id: busy-label-not-in-the-catalog, rule: "The dialog's busy button passes no loadingLabel, so its hidden status says 'Yükleniyor' from a hard-coded default (libs/ui/src/mds/button.tsx:103)." }

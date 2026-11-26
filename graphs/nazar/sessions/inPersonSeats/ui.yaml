@@ -1,0 +1,108 @@
+# The screens of nazar.sessions.inPersonSeats: the new button on Celseler (/ders/<id>/celseler) and the page of one celse's in-person seats.
+# PLANNED, NOT BUILT (MDRS-284): the button, the page, its two lists and its toasts do not exist; they carry no `source`. Celseler does, and
+# so do the nodes of it that the button sits beside (the page, its heading, the table, the "Yüz yüze" in the "Katılım" cell and the button
+# "Yüz yüze ayarı"): they carry the real `source` that nazar.sessions.manage gives them, and are drawn here only so the new button has its place.
+#
+# The page is a sub-page of Celseler, like "Celse planla" (decision D1): a breadcrumb "Celseler / Yüz yüze kontenjan", an h1, the counts, the
+# form of two numbers and, under "Başvurular", one list for women and one for men. Each list is a table in the order the talebe applied; the
+# position is counted per list, because the seats are. The words of the page are `planned.InPersonSeats.*` (Turkish only, for review) and the
+# app's own where they exist: Sessions.* (title, "Kaydet", the error toast's title), SessionPlan.* (the breadcrumb), Pano.applications.*
+# ("Onayla" and its name, the toast for an application that is gone), CourseStudents.empty.applications, Problems.*. `Changes.note` is the one
+# authored message (no app message says what these writes change). "Kadın" and "Erkek" exist as PublicProfile.female and .male in tedris-account.json,
+# a file nazar does not load, so here they are planned keys.
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nazar.sessions.inPersonSeats
+flow: nazar.sessions.inPersonSeats
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  when: 17 Kas Sal 21:00
+  gender: Kadın
+  femaleGiven: "18"
+  femaleSeats: "25"
+  maleGiven: "30"
+  maleSeats: "40"
+  position: "1"
+  name: Aylin Örnek
+  applied: 14 Kas 10:02
+
+nodes:
+  # --- Celseler, which exists, only as far as the new button sits beside it ------------------------------------------------------------
+  celselerPage: { type: page, component: Page, role: main, in: [listed], source: apps/nazar/features/sessions/components/sessions-page.tsx:70 } # exists; the shell's one <main>, no name, no initial focus
+  celselerTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.title }, in: [listed], source: apps/nazar/features/sessions/components/sessions-page.tsx:75 } # exists; h1
+  upcomingTable: { type: list, component: List, role: table, name: { key: Sessions.upcomingTitle }, in: [listed], source: apps/nazar/features/sessions/components/sessions-table.tsx:586 } # exists; named by a caption only the screen reader reads
+  rowInPerson: { type: text, component: Text, text: { key: Sessions.attendance.inPerson }, in: [listed], repeat: sessions.upcoming, source: apps/nazar/features/sessions/components/attendance-cell.tsx:33 } # exists; "Yüz yüze" in the Katılım cell of a celse held in person (its own mark, else the course's)
+  inPersonButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Sessions.inPerson.buttonLabel, params: { when: when } }, text: { key: Sessions.inPerson.button }, in: [listed], when: seatsHeld, repeat: sessions.upcoming, source: apps/nazar/features/sessions/components/sessions-table.tsx:478 } # exists; opens the inline form of the in-person MARK (nazar.sessions.manage); the new button sits beside it
+  seatsButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.InPersonSeats.buttonLabel, params: { when: when } }, text: { key: planned.InPersonSeats.button }, in: [listed], when: seatsHeld, repeat: sessions.upcoming, emits: OPEN_SEATS } # NEW: only on a row of a celse held in person, only for a holder of session.manage; to the celse's own page (decision D1)
+
+  # --- the new page --------------------------------------------------------------------------------------------------------------------
+  seatsPage: { type: page, component: Page, role: main, in: [unset, applications, saving, approving, forbidden] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
+  crumbs: { type: list, component: List, role: navigation, name: { key: SessionPlan.breadcrumbLabel }, in: [unset, applications, saving, approving, forbidden] } # the same breadcrumb as "Celse planla"
+  crumbRoot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SessionPlan.breadcrumbRoot }, in: [unset, applications, saving, approving, forbidden], emits: BREADCRUMB, duringStep: true } # to Celseler; a link, live while a call runs, as "Celse planla"'s is: the page goes at once, the call runs on, and the flow takes the press where its answer leads
+  crumbCurrent: { type: text, component: Text, text: { key: planned.InPersonSeats.title }, in: [unset, applications, saving, approving, forbidden] } # aria-current=page, not a link
+  seatsTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPersonSeats.title }, in: [unset, applications, saving, approving, forbidden] } # h1
+  seatsIntro: { type: text, component: Text, text: { key: planned.InPersonSeats.intro, params: { when: when } }, in: [unset, applications, saving, approving] }
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden] } # as the page's own PageProblem draws it: a neutral Alert is a status
+  counts: { type: text, component: Text, text: { key: planned.InPersonSeats.counts, params: { femaleGiven: counts.femaleGiven, femaleSeats: counts.femaleSeats, maleGiven: counts.maleGiven, maleSeats: counts.maleSeats } }, in: [applications, saving, approving] } # two counts, given against seats, one per gender; never a total
+
+  # --- the seats ---------------------------------------------------------------------------------------------------------------------------
+  seatsRegion: { type: page, component: Page, role: region, name: { labelledBy: seatsFormTitle }, in: [unset, applications, saving, approving] }
+  seatsFormTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPersonSeats.formTitle }, in: [unset, applications, saving, approving] } # h2
+  femaleSeats: { type: field, component: TextField, role: spinbutton, text: { key: planned.InPersonSeats.femaleLabel }, in: [unset, applications, saving, approving], disabledIn: [saving] } # a whole number from 0; empty before the first save
+  maleSeats: { type: field, component: TextField, role: spinbutton, text: { key: planned.InPersonSeats.maleLabel }, in: [unset, applications, saving, approving], disabledIn: [saving] } # a count of its own: there is no field for a total
+  saveSeats: { type: action, component: Button, role: button, intent: confirm, text: { key: Sessions.formSave }, in: [unset, applications, saving, approving], disabledIn: [saving, approving], emits: SAVE_SEATS } # the word the other forms of Celseler use; off while a seat is given too, so the page sends one call at a time, as Celseler's forms share one busy flag (sessions-table.tsx:149). Not decided with the owner
+  unsetNote: { type: text, component: Text, text: { key: planned.InPersonSeats.unset }, in: [unset, saving], when: isUnset }
+
+  # --- the applications, in order --------------------------------------------------------------------------------------------------------
+  applicationsRegion: { type: page, component: Page, role: region, name: { labelledBy: applicationsTitle }, in: [applications, saving, approving] }
+  applicationsTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPersonSeats.applicationsTitle }, in: [applications, saving, approving] } # h2
+
+  womenTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPersonSeats.womenTitle }, in: [applications, saving, approving] } # h3
+  womenTable: { type: list, component: List, role: table, name: { labelledBy: womenTitle }, in: [applications, saving, approving] } # oldest application first
+  womenPosition: { type: text, component: Text, text: { key: planned.InPersonSeats.position, params: { position: row.position } }, in: [applications, saving, approving], repeat: registrations.women } # counted in this list only
+  womenName: { type: text, component: Text, text: { key: composed.InPersonSeats.name, params: { name: row.name } }, in: [applications, saving, approving], repeat: registrations.women }
+  womenApplied: { type: text, component: Text, text: { key: composed.InPersonSeats.applied, params: { applied: row.applied } }, in: [applications, saving, approving], repeat: registrations.women }
+  womenStatus: { type: text, component: Text, text: { oneOf: [planned.InPersonSeats.statusPending, planned.InPersonSeats.statusApproved] }, in: [applications, saving, approving], repeat: registrations.women } # "Onay bekliyor" until a seat is given, then "Yer verildi"
+  approveFemale: { type: action, component: Button, role: button, intent: confirm, name: { key: Pano.applications.approveLabel, params: { name: row.name } }, text: { key: Pano.applications.approve }, in: [applications], when: femaleWaits, repeat: registrations.women.waiting, emits: APPROVE_FEMALE } # the app's own "Onayla" and its name; one per waiting row; stays on when the women's seats are all given (decision D5)
+  rowApproveFemale: { type: action, component: Button, role: button, intent: confirm, name: { key: Pano.applications.approveLabel, params: { name: row.name } }, text: { key: Pano.applications.approve }, in: [approving], when: "picked == 'female'", disabledIn: [approving] } # the row in flight, busy; the other rows stay live as on the Pano
+  emptyWomen: { type: text, component: Text, text: { key: CourseStudents.empty.applications }, in: [applications, saving, approving], when: "not femaleWaits" } # the app's own "Onay bekleyen başvuru yok"; given seats may still be listed above it
+
+  menTitle: { type: text, component: Heading, role: heading, text: { key: planned.InPersonSeats.menTitle }, in: [applications, saving, approving] } # h3
+  menTable: { type: list, component: List, role: table, name: { labelledBy: menTitle }, in: [applications, saving, approving] }
+  menPosition: { type: text, component: Text, text: { key: planned.InPersonSeats.position, params: { position: row.position } }, in: [applications, saving, approving], repeat: registrations.men }
+  menName: { type: text, component: Text, text: { key: composed.InPersonSeats.name, params: { name: row.name } }, in: [applications, saving, approving], repeat: registrations.men }
+  menApplied: { type: text, component: Text, text: { key: composed.InPersonSeats.applied, params: { applied: row.applied } }, in: [applications, saving, approving], repeat: registrations.men }
+  menStatus: { type: text, component: Text, text: { oneOf: [planned.InPersonSeats.statusPending, planned.InPersonSeats.statusApproved] }, in: [applications, saving, approving], repeat: registrations.men }
+  approveMale: { type: action, component: Button, role: button, intent: confirm, name: { key: Pano.applications.approveLabel, params: { name: row.name } }, text: { key: Pano.applications.approve }, in: [applications], when: maleWaits, repeat: registrations.men.waiting, emits: APPROVE_MALE }
+  rowApproveMale: { type: action, component: Button, role: button, intent: confirm, name: { key: Pano.applications.approveLabel, params: { name: row.name } }, text: { key: Pano.applications.approve }, in: [approving], when: "picked == 'male'", disabledIn: [approving] }
+  emptyMen: { type: text, component: Text, text: { key: CourseStudents.empty.applications }, in: [applications, saving, approving], when: "not maleWaits" }
+
+  # --- the toasts: a success is a status, a refusal an alert dialog that stays until closed (as Celseler's own failures are) -----------------
+  toastSeatsSaved: { type: status, component: Status, text: { key: planned.InPersonSeats.saved }, in: [applications], when: "toast == 'seatsSaved'" }
+  toastFull: { type: alert, component: Alert, role: alertdialog, name: { key: Sessions.failed }, text: { key: planned.InPersonSeats.quotaFull, params: { gender: row.gender } }, in: [applications], when: "toast == 'full'" } # the refused row's gender; the other gender's rows are not touched
+  toastGone: { type: status, component: Status, text: { key: Pano.applications.errors.gone }, in: [applications], when: "toast == 'gone'" } # the app's own words for an application that is no longer there
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { key: Sessions.failed }, text: { key: Problems.actionForbidden }, in: [unset, applications], when: "toast == 'refused'" }
+  toastNotInPerson: { type: alert, component: Alert, role: alertdialog, name: { key: Sessions.failed }, text: { key: planned.InPersonSeats.notInPerson }, in: [unset, applications], when: "toast == 'notInPerson'" }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Sessions.failed }, text: { key: Problems.actionGeneric }, in: [unset, applications], when: "toast == 'failed'" }
+
+edges:
+  - { labelledBy: [seatsRegion, seatsFormTitle] }
+  - { labelledBy: [applicationsRegion, applicationsTitle] }
+  - { labelledBy: [womenTable, womenTitle] }
+  - { labelledBy: [menTable, menTitle] }
+  - { triggers: [seatsButton, reading] }
+  - { triggers: [saveSeats, saving] }
+  - { triggers: [approveFemale, approving] }
+  - { triggers: [approveMale, approving] }
+  - { triggers: [crumbRoot, sessions_opened] }
+
+rules:
+  - { id: focus-not-set, rule: "Celseler keeps no focus of its own on load, and none of its inline forms moves it (nazar.sessions.manage, F-C-course-a-08): nothing in apps/nazar/features/sessions gives the focus a place. The existing page nodes carry no `initialFocus`." }
+  - { id: focus-not-decided, rule: "Proposal, not drawn: the new page opens on its heading or on the first count field, a refused approval leaves the focus on the button that was pressed, and a given seat moves it to the next waiting row. The graph says nothing of the focus here because nothing is built." }
+  - { id: two-counts-never-one-total, rule: "Gender separation is given: the form has two fields and the counts line two numbers, one per gender. No total is drawn or written, and a seat of one gender is never counted against the other's count. The approval is counted against the row's own gender (assertion a-seat-never-goes-past-its-gender-quota)." }
+  - { id: planned-words, rule: "Every key `planned.InPersonSeats.*` and `Changes.note` is a proposal for the owner to review; Sessions.*, SessionPlan.*, Pano.applications.*, CourseStudents.empty.applications and Problems.* are the app's own." }

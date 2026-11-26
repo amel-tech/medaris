@@ -89,8 +89,9 @@ import { ResourceFileService } from "./resource-file.service";
   // repository is what is exported here. The service is the lesson notes'
   // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
   // `BulkEnrollmentService` seats a partner application's registrations as it
-  // seats the team's list (partner enrollments). `CourseNotifier` is the
-  // lesson questions' (MDRS-248): an answer is news to the talebe who asked.
+  // seats the team's list (partner enrollments).
+  // `CourseNotifier` tells talebe of an exam's reminder and results, and of
+  // an answer to their question (MDRS-248).
   exports: [
     CourseRepository,
     CourseService,

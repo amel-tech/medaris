@@ -1,0 +1,17 @@
+# nazar.access.noAccess for a talebe who opens Hesap (/hesap), an address outside any scope: the layout finds no scope, asks GET /me, learns
+# the caller is not the başnazım and redirects here, so the person lands on the verdict and not on a 404 (e2e access#3 a2). The first
+# scenario of binding.yaml, talebeAsksScope, takes the same transitions with a medrese's address; this file is the other address.
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/noAccess --bind graphs/nazar/access/noAccess/binding.hesap.yaml --to verdict \
+#     --absent --out <dir>
+# NOT RUN: written without a replay. Nothing is made or removed.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.access.noAccess
+
+scenarios:
+  talebeAsksHesap:
+    given: { who: noRole, entry: outside, read: ok }
+    as: talebe
+    open: '{nazar}/hesap'
+    vars: { acct: TALEBE, held: '"assignments":[]', chief: 'false' }

@@ -1,0 +1,24 @@
+# The local stack as nazar-web's bindings see it: everything local.base.binding.yaml shares, with nazar-web as the
+# first app, where a navigation replay opens its pages. Mailpit's API is `mail`, for the `effects` that read a mail.
+schema: delurio-graph/0
+kind: binding
+extends: local.base.binding.yaml
+
+apps:
+  nazar: http://localhost:4002
+  tedris: http://localhost:4000
+  nizam: http://localhost:4001
+  landing: http://localhost:4003
+  keycloak: http://localhost:8080
+  mail: http://localhost:8025
+
+# Every persona signs in here, at nazar-web, whatever app they usually work in, so a nazar flow can walk as any of
+# them. A step another person takes in another app (`as:` on an action) starts with that app's own /auth/signin, which
+# Keycloak's session answers without a form.
+signIn:
+  - goto: '{nazar}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{nazar}/**'

@@ -1,0 +1,349 @@
+# The celse page of tedris-web (/courses/<course>/lessons/<celse>) as a talebe who holds a seat attends it: before the start, in the ten
+# minutes before it when the meeting link opens, while it runs, after it ends, and for a celse held face to face. Written from the code of
+# the branch (captured); nothing here is a plan. What it leaves to the sibling flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   ATT-1   (new, provisional id) the stream card of a running celse says "Canlı ders" even when the celse is held face to face: HOME-2's
+#           twin on this page. The date card says "Yüz yüze"; the stream card does not look at `inPerson`. Measured on the stack.
+#   CLS-17  the join window of ten minutes is a display rule: the meeting link is in the page's own HTML before it opens. Measured.
+#   CLS-15  the card, the badge and the agenda change by their own clock every half minute and nothing says so (no live region).
+#   CLS-07  the poster of the stream card is a second link with the same name as "Yayını izle".
+#   CLS-03  the page sets no title of its own: the tab says "Medaris Tedris". Measured.
+#   CLS-01  a failed read of the celse is the 404 page; CLS-13 the course is read twice per request.
+#   CLS-09  the pager's state line ("Şu an canlı") is computed once on the server and does not tick.
+#   HOME-2  Ana sayfa's own finding (tedris.shell.home): the join card there calls an in-person celse "Canlı ders". On this page the date
+#           card is right ("Yüz yüze"); only the stream card is wrong (ATT-1).
+# E2E carried: session#2 (the date, the length, the platform, the agenda, the link inside the join window, the address behind "Bağlantıyı
+# göster": replay `opening`), session#3 (no link ten minutes out: the `ahead` state, replay `ahead`), session#4 (no link at all:
+# the headings of `headingNone`), celse-states#1 up to the walk's reach (the live card, the join link and the way to the watch page; its
+# a8 frame on the watch page is stale and is tedris.celse.watchStream's). session#5 (the pager) is the nodes `previousLink` and `nextLink`;
+# its Müfredat half is tedris.celse.browseCurriculum's. The e2e seed (session-seed.ts, celse-states-seed.ts) is not used: the walk
+# makes its own data with attend-data.mjs, whose celses sit minutes from now, not days.
+schema: delurio-graph/0
+kind: flow
+id: tedris.celse.attend
+status: captured
+domain: medaris.api
+ui: tedris.celse.attend
+title: Attend a celse, before and while it runs
+summary: >-
+  A talebe who holds a seat opens a celse's page. The header says where the celse stands (a countdown, "Canlı · n dk" or "Sona erdi"),
+  its day and hours on the course's clock, its length and its hoca. One card carries the page's action. Before the start it shows the
+  date and how the celse is attended: by the meeting link, by a stream, in person, or "Toplantı bağlantısı henüz eklenmedi."; the
+  link itself opens ten minutes before the start, and "Takvime ekle" is offered. Once it runs, a celse with a stream turns the card into
+  the stream card ("Yayını izle", "Şu an canlı"), and one without turns it into the same date card with the minutes that have passed;
+  the meeting link stays beside either. After the end the card says there is no recording yet. Under it the exam block, the agenda
+  ("Gündem", with the step that has come marked while it runs), "Kaynaklar", and the row of the previous celse, the Müfredat button
+  and the next celse. "Toplantıya katıl" opens the meeting in a new tab, which is where this flow stops.
+
+scope:
+  shows: the celse page of a seat holder, the one read behind it, the card in each standing, and every link that leaves it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the meeting itself: the link opens the course's own meeting address in a new tab and nothing is written here (no attendance, no join call; grep of features/courses/components/session-*.tsx); the exit stops at the host"
+    - "a cancelled celse and a caller with no seat (pending, revoked, a passive scope): two branches of the same address that tedris.celse.cancelled and tedris.celse.locked draw; here they are the exits `cancelled_shown` and `locked_shown`"
+    - "the recording: the card of a celse with a ready, held or still-prepared recording, \"Kaydı izle\", \"Ders kayıtlarına git\" and the release notes (tedris.celse.watchRecording, tedris.course.recordings); the `over` state is the celse with no recording row"
+    - "the watch page itself (tedris.celse.watchStream) and the Müfredat popup with its keys (tedris.celse.browseCurriculum); the menu \"Takvime ekle\" opens (tedris.learning.addToCalendar)"
+    - "the panels that sit on the page and belong to the writing flows: \"Notlarım\" (tedris.learn.notes), \"Ödev\" and \"Ödevim\" (tedris.learn.homeworkHandIn, .homeworkReview, .homeworkMemorize, .writingGating); the notes panel is drawn on every state without a watch target, the homework section only when the celse has homework or the talebe handed something in"
+    - "a resource that is a stored file (a download through /api/files, tedris.files.download) and the ones of the course (\"Ders geneli\" under \"Kaynaklar\"); the walk's resource is a link"
+    - "the imam's star after a hoca's name (more than one müderris), an Arabic run in an agenda title (set in lang=ar dir=rtl by ArabicText), the viewer's own time \"senin saatinle\" (only when the viewer's zone differs from the course's) and the file-error toast (?fileError=)"
+    - "an oral exam (\"Şifahi\"), a retake (\"Telafi\"), an exam with no place, and a celse with no start time (no card, no badge)"
+    - "the layout below 768 px (the cards stack, the pager wraps) and the loading skeleton (loading.tsx is `aria-busy` with no name)"
+    - "a stream that outlives the celse: tedrisat keeps sending the link up to 24 hours after the end when no recording replaced it (a proposal in the code, domain/recording.ts:207), so `over` with a stream draws \"Yayın hâlâ açık\"; it is drawn here and not walked"
+    - "kontenjan and the gender rule of a seat: nothing on this page decides a seat; in-person registration is planned (MDRS-284)"
+
+decisions:
+  D1:
+    question: >-
+      Should the stream card of a celse held face to face be labelled "Yüz yüze", as the date card is?
+    recommend: >-
+      Yes. The card chooses its eyebrow in two places: the date card by `inPerson` (session-action-card.tsx:339) and the stream card
+      always "Canlı ders" (:297). A celse that is held in a room and streamed says "Canlı ders" over a line that says it is held face
+      to face (ATT-1). The same choice as the date card, and the same fix as Ana sayfa's HOME-2.
+    affects: [live, over]
+  D2:
+    question: >-
+      Should the page tell a person who stays on it when the join link has opened or the celse has begun?
+    recommend: >-
+      Yes, once and politely: a status line for "Katılım açıldı" and "Celse başladı". Today the badge, the card and the agenda change by
+      a 30-second clock and nothing is announced (CLS-15).
+    affects: [ahead, opening, live]
+  D3:
+    question: >-
+      Should the meeting link be kept out of the page until the join window opens?
+    recommend: >-
+      If the ten minutes are meant as a secrecy rule, the API or the server component should hold `meetingUrl` back until then. Today
+      the link is in the HTML from the first render and the window only decides whether it is drawn (CLS-17).
+    affects: [ahead, opening]
+
+context:
+  access:
+    values: [open, locked, cancelled]
+    initial: any
+    say:
+      open: "the caller holds a seat that reads the course and the celse stands: the page below"
+      locked: "the course's content is locked to the caller (no seat, a waiting application, a revoked one, a passive scope): the locked card"
+      cancelled: "the celse is cancelled: the card of tedris.celse.cancelled"
+  standing:
+    values: [ahead, opening, live, over]
+    initial: any
+    say:
+      ahead: "the celse has not begun and its start is more than ten minutes away"
+      opening: "the celse has not begun and its start is within ten minutes: the join window is open"
+      live: "the celse has begun and not ended (its length is 60 minutes when it has none)"
+      over: "the celse has ended and has no recording row: the card says there is none yet"
+  means:
+    values: [none, link, stream, both]
+    initial: any
+    say:
+      none: "the API sends neither a meeting link nor a stream for this celse"
+      link: "the caller's body has a meeting link (meetingUrl), and no stream"
+      stream: "the celse has a live stream (hasLiveStream before the start, liveStreamUrl from it) and no meeting link"
+      both: "a meeting link and a stream"
+  place:
+    values: [online, inPerson]
+    initial: any
+    say:
+      online: "the celse is not marked in person"
+      inPerson: "the celse is marked in person: its own mark, else the course's (a label, not a way in)"
+  agenda:
+    values: [none, listed]
+    initial: any
+    say:
+      none: "the celse has no agenda: no \"Gündem\" card"
+      listed: "the celse has an agenda of steps with a time each, on the course's clock"
+  resources:
+    values: [none, listed]
+    initial: any
+    say:
+      none: "no kaynak and no resource of the celse"
+      listed: "the celse has a kaynak and a resource of its own, which is a link"
+  exam:
+    values: [none, held]
+    initial: any
+    say:
+      none: "the celse is not an exam"
+      held: "the celse is an exam (written, with a score, a place and its topics)"
+  neighbours:
+    values: [none, previous, next, both]
+    initial: any
+    say:
+      none: "no neighbouring celse: the programme has no live celse before or after this one"
+      previous: "a celse stands before this one in the programme, none after"
+      next: "a celse stands after this one, none before"
+      both: "a celse stands on each side"
+  revealed:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "\"Bağlantıyı göster\" is closed"
+      yes: "the address of the meeting is open under \"Bağlantıyı göster\""
+
+guards:
+  open: "access == 'open'"
+  hasLink: "means in ['link', 'both']"
+  hasStream: "means in ['stream', 'both']"
+  isInPerson: "place == 'inPerson'"
+  streamCard: "hasStream and state in ['live', 'over']"
+  dateCard: "not streamCard"
+  byLink: "hasLink"
+  byInPersonStream: "not hasLink and isInPerson and hasStream"
+  byStream: "not hasLink and not isInPerson and hasStream"
+  byInPerson: "not hasLink and isInPerson and not hasStream"
+  byNothing: "not hasLink and not isInPerson and not hasStream"
+  liveEyebrow: "streamCard or (state != 'over' and not isInPerson)"
+  inPersonEyebrow: "isInPerson and not streamCard and state != 'over'"
+  examHeld: "exam == 'held'"
+  agendaListed: "agenda == 'listed'"
+  resourcesListed: "resources == 'listed'"
+  hasPrevious: "neighbours in ['previous', 'both']"
+  hasNext: "neighbours in ['next', 'both']"
+  hasNeighbour: "neighbours != 'none'"
+  addressShown: "hasLink and revealed == 'yes'"
+
+effects:
+  reveal: { set: { revealed: 'yes' } }
+  again: { set: { revealed: 'no' }, havoc: [access, standing, means, place, agenda, resources, exam, neighbours] } # another celse is a new page load, read anew
+
+failures:
+  reading: { from: getSession, missing: [LESSON_NOT_FOUND, COURSE_NOT_FOUND], unreadable: [] }
+# `unreadable` stands for every other answer, which the page cannot tell from a missing celse: `getSession` turns any failure (a 5xx, a
+# network error, a timeout) into `null`, and the layout turns `null` into the 404 page (public-reads.ts:50-56, :93-98; layout.tsx:27, CLS-01).
+# A refused token is `reauthIfRefused`, which is out of view (realm.auth.sessionEnded).
+
+# The main story: a talebe opens the celse that begins in eight minutes, which has a meeting link, an agenda, a kaynak and a resource of
+# its own. The join window is open, so the card offers "Toplantıya katıl"; they open the address under "Bağlantıyı göster" and press the
+# link, which opens the meeting in a new tab.
+main:
+  given: { access: open, standing: opening, means: link, place: online, agenda: listed, resources: listed, exam: none, neighbours: next }
+  events: [DONE, REVEAL, JOIN]
+
+initial: reading
+states:
+  reading:
+    title: Read the celse
+    description: >-
+      The page reads the celse, GET /courses/{courseId}/sessions/{sessionId}, together with the course (GET /courses/{id}) and, after
+      them, the köşk's name for the first crumb. The layout reads the celse and the course first, so a missing celse is settled before the
+      skeleton streams. Any failure of the session read is `null` and `null` is the 404 page, a 5xx included (CLS-01); a failed course or
+      köşk read goes to the error page. The page calls `getCourse` where the layout calls the cached `loadCourse`, so the course is read twice
+      (CLS-13). The page sets no title: the tab says "Medaris Tedris" (CLS-03).
+    includes: ["the course read that gives the Müfredat its rows and the köşk read that gives the first crumb"]
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:19
+    invoke: { action: getSession }
+    on:
+      DONE: landed
+      FAIL.missing: { target: not_found, starts: { flow: tedris.shell.systemPages }, say: "no such celse, or a draft or hidden course: \"Sayfa bulunamadı\"", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27" }
+      FAIL.unreadable: { target: not_found, starts: { flow: tedris.shell.systemPages }, say: "a failed read looks the same as a missing celse (CLS-01)", source: apps/tedris/features/courses/public-reads.ts:50 }
+
+  landed:
+    title: The celse is read
+    description: >-
+      The page decides which of its three faces to draw. A locked course draws `LessonLocked` (page.tsx:29-43) and a cancelled celse the
+      cancellation card (`session.status === "CANCELLED"`, session-page.tsx:75); both are other flows'. Otherwise the page is drawn and its
+      clocks start from the instant the server rendered at: the first client render uses it, so the markup is the same, then the browser's own
+      clock takes over every 30 seconds (use-celse-clock.ts:10-18).
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:29
+    always:
+      - { guard: "access == 'locked'", target: locked_shown, starts: { flow: tedris.celse.locked }, say: "the content is locked: the locked card of tedris.celse.locked", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:31" }
+      - { guard: "access == 'cancelled'", target: cancelled_shown, starts: { flow: tedris.celse.cancelled }, say: "the celse is cancelled: the cancellation card of tedris.celse.cancelled", source: apps/tedris/features/courses/components/session-page.tsx:75 }
+      - { guard: "standing == 'ahead'", target: ahead, say: "more than ten minutes before the start" }
+      - { guard: "standing == 'opening'", target: opening, say: "within ten minutes of the start" }
+      - { guard: "standing == 'live'", target: live, say: "begun and not ended" }
+      - { target: over, say: "ended" }
+
+  ahead:
+    title: Read the celse before its join window
+    by: human
+    description: >-
+      The date card. Left, the date block (weekday, day and month, the hours, and "Başlamasına {time}" in the two largest units). Right, the
+      eyebrow ("Canlı ders", or "Yüz yüze" with a users icon for an in-person celse), the platform chip when there is a meeting link (an
+      unknown host is "Bilinmeyen platform" and its host), the heading that says how the celse is attended (`attendanceOf`: the link wins,
+      then in person with a stream, a stream, in person, nothing), and, with a link, "Katılım, celse başlamadan 10 dakika önce açılır."
+      "Takvime ekle" is offered. The link, its address and "Bağlantıyı göster" are not drawn yet; the address is nevertheless in the page's
+      HTML from the first render (CLS-17). The header badge counts down ("Yarın", "2 gün sonra", "14 dakika sonra"). Nothing is announced
+      when the window opens (CLS-15). The page sets no initial focus (`focus-not-set`).
+    source: apps/tedris/features/courses/components/session-action-card.tsx:376
+    on:
+      CLOCK: { target: opening, say: "the browser's clock passes ten minutes before the start (checked every 30 seconds): the link appears, silently (CLS-15)", source: apps/tedris/features/courses/components/session-action-card.tsx:177 }
+      ADD_TO_CALENDAR: { target: calendar_menu_opened, starts: { flow: tedris.learning.addToCalendar }, say: "\"Takvime ekle\" opens a menu on the card", source: apps/tedris/features/courses/components/session-action-card.tsx:384 }
+      OPEN_KOSK: { target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the first crumb, the köşk's name (dropped when the köşk read fails)", source: apps/tedris/features/courses/session-join-labels.ts:112 }
+      OPEN_COURSE: { target: course_opened, starts: { flow: tedris.course.readProgramme }, say: "the second crumb, the course's title", source: apps/tedris/features/courses/session-join-labels.ts:114 }
+      OPEN_NEIGHBOUR: { guard: hasNeighbour, target: reading, effect: [again], say: "the previous or the next celse: a full page load of another celse, read anew", source: apps/tedris/features/courses/components/session-pager.tsx:80 }
+      OPEN_CURRICULUM: { target: curriculum_opened, starts: { flow: tedris.celse.browseCurriculum }, say: "the Müfredat button opens its popup over this page", source: apps/tedris/features/courses/components/session-pager.tsx:207 }
+      OPEN_RESOURCE: { guard: resourcesListed, target: resource_opened, say: "a row of \"Kaynaklar\": a link opens its address in a new tab, a file is a download (tedris.files.download)", source: apps/tedris/features/courses/components/course-resources.tsx:124 }
+      WRITE_NOTE: { target: notes_started, starts: { flow: tedris.learn.notes }, say: "the \"Notlarım\" panel on this page, drawn while no stream or recording is to be watched", source: apps/tedris/features/courses/components/session-page.tsx:132 }
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  opening:
+    title: Read the celse inside its join window
+    by: human
+    goal: true
+    description: >-
+      The date card with the way in. The start is within ten minutes (the window is `start - now <= 10 min`, session-action-card.tsx:177-180),
+      so "Toplantıya katıl" is drawn as the primary button when the celse has a meeting link: a link with `target="_blank"` and a visually
+      hidden " (yeni sekmede açılır)", the platform chip beside the eyebrow, and "Bağlantıyı göster", a native `details` whose summary opens the
+      raw address. "Takvime ekle" stays. The line "Katılım, celse başlamadan 10 dakika önce açılır." is gone. The header badge still counts
+      down. A celse with no link says how it is attended instead and has no join button. The page sets no initial focus (`focus-not-set`).
+    source: apps/tedris/features/courses/components/session-action-card.tsx:177
+    on:
+      CLOCK: { target: live, say: "the browser's clock passes the start: the badge says \"Canlı · n dk\", the date block counts the minutes and \"Takvime ekle\" leaves, silently (CLS-15)", source: apps/tedris/features/courses/components/session-action-card.tsx:162 }
+      REVEAL: { guard: hasLink, target: opening, effect: [reveal], say: "\"Bağlantıyı göster\" opens the address of the meeting under it; nothing is called", source: apps/tedris/features/courses/components/session-action-card.tsx:207 }
+      JOIN: { guard: hasLink, target: meeting_opened, say: "\"Toplantıya katıl\" opens the meeting's own address in a new tab; this tab stays on the page, and nothing is written on this side", source: apps/tedris/features/courses/components/session-action-card.tsx:195 }
+      ADD_TO_CALENDAR: { target: calendar_menu_opened, starts: { flow: tedris.learning.addToCalendar }, say: "\"Takvime ekle\" opens a menu on the card", source: apps/tedris/features/courses/components/session-action-card.tsx:384 }
+      OPEN_KOSK: { target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the first crumb", source: apps/tedris/features/courses/session-join-labels.ts:112 }
+      OPEN_COURSE: { target: course_opened, starts: { flow: tedris.course.readProgramme }, say: "the second crumb", source: apps/tedris/features/courses/session-join-labels.ts:114 }
+      OPEN_NEIGHBOUR: { guard: hasNeighbour, target: reading, effect: [again], say: "the previous or the next celse: a full page load of another celse, read anew", source: apps/tedris/features/courses/components/session-pager.tsx:80 }
+      OPEN_CURRICULUM: { target: curriculum_opened, starts: { flow: tedris.celse.browseCurriculum }, say: "the Müfredat button opens its popup over this page", source: apps/tedris/features/courses/components/session-pager.tsx:207 }
+      OPEN_RESOURCE: { guard: resourcesListed, target: resource_opened, say: "a row of \"Kaynaklar\"", source: apps/tedris/features/courses/components/course-resources.tsx:124 }
+      WRITE_NOTE: { target: notes_started, starts: { flow: tedris.learn.notes }, say: "the \"Notlarım\" panel on this page", source: apps/tedris/features/courses/components/session-page.tsx:132 }
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  live:
+    title: Read the celse while it runs
+    by: human
+    description: >-
+      The celse has begun. Without a stream the card is still the date card: the date block now says "{n} dakikadır sürüyor", "Takvime ekle"
+      is gone, and the heading still says how the celse is attended; with a link, "Toplantıya katıl" is the primary button. With a stream
+      the card becomes the stream card: a 16:9 poster that is a link ("Şu an canlı", the host "YouTube"), the eyebrow, "Celse şu an
+      sürüyor", the minutes and what to do ("Konuşmak ve soru sormak için toplantıya katıl; yalnız izleyeceksen yayını aç." with a link, else
+      the sentence that says where to ask), "Yayını izle" to the watch page, the meeting link beside it as an outline button, and "Ders kaydı
+      eklenirse burada görünür." The stream card's eyebrow is "Canlı ders" for an in-person celse too, over a line that says it is held
+      face to face (ATT-1, decision D1). The header badge says "Canlı · n dk"; the agenda marks the step whose time has come with "şimdi"
+      and `aria-current="step"`. The poster is a second link with the same name as the button (CLS-07). The "Notlarım" panel is on this page
+      only while there is no stream; with one it lives on the watch page. The pager's state line is read once on the server (CLS-09).
+    source: apps/tedris/features/courses/components/session-action-card.tsx:233
+    on:
+      CLOCK: { target: over, say: "the browser's clock passes the end (the start plus the length, or 60 minutes): the badge says \"Sona erdi\" and the card the recording state, silently (CLS-15)", source: apps/tedris/features/courses/session-model.ts:29 }
+      REVEAL: { guard: hasLink, target: live, effect: [reveal], say: "\"Bağlantıyı göster\" opens the address of the meeting", source: apps/tedris/features/courses/components/session-action-card.tsx:207 }
+      JOIN: { guard: hasLink, target: meeting_opened, say: "\"Toplantıya katıl\" opens the meeting in a new tab; on the stream card it is the outline button beside \"Yayını izle\"", source: apps/tedris/features/courses/components/session-action-card.tsx:195 }
+      OPEN_STREAM: { guard: streamCard, target: stream_opened, starts: { flow: tedris.celse.watchStream }, say: "\"Yayını izle\", or the poster, leads to the watch page", source: apps/tedris/features/courses/components/session-action-card.tsx:270 }
+      OPEN_KOSK: { target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the first crumb", source: apps/tedris/features/courses/session-join-labels.ts:112 }
+      OPEN_COURSE: { target: course_opened, starts: { flow: tedris.course.readProgramme }, say: "the second crumb", source: apps/tedris/features/courses/session-join-labels.ts:114 }
+      OPEN_NEIGHBOUR: { guard: hasNeighbour, target: reading, effect: [again], say: "the previous or the next celse: a full page load of another celse, read anew", source: apps/tedris/features/courses/components/session-pager.tsx:80 }
+      OPEN_CURRICULUM: { target: curriculum_opened, starts: { flow: tedris.celse.browseCurriculum }, say: "the Müfredat button opens its popup over this page", source: apps/tedris/features/courses/components/session-pager.tsx:207 }
+      OPEN_RESOURCE: { guard: resourcesListed, target: resource_opened, say: "a row of \"Kaynaklar\"", source: apps/tedris/features/courses/components/course-resources.tsx:124 }
+      WRITE_NOTE: { guard: "not streamCard", target: notes_started, starts: { flow: tedris.learn.notes }, say: "the \"Notlarım\" panel, which this page draws only while there is no stream to watch", source: apps/tedris/features/courses/components/session-page.tsx:132 }
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  over:
+    title: Read the celse after it ended
+    by: human
+    description: >-
+      The date card of a celse that has ended and has no recording row: the date block says "Sona erdi", the eyebrow is "Ders kaydı" and the
+      heading "Bu celsede henüz ders kaydı yok."; there is no way in, no calendar and no meeting link (the API sends none for a finished celse).
+      The header badge says "Sona erdi" with a check. While tedrisat still sends the stream (up to 24 hours after the end, when no
+      recording replaced it) the card is the stream card again, with "Yayın hâlâ açık" (not walked). The recording flows take over when a row
+      exists: "Kaydı izle" and "Ders kayıtlarına git" are tedris.celse.watchRecording's. The page sets no initial focus (`focus-not-set`).
+    source: apps/tedris/features/courses/components/session-action-card.tsx:355
+    on:
+      OPEN_STREAM: { guard: streamCard, target: stream_opened, starts: { flow: tedris.celse.watchStream }, say: "\"Yayını izle\" while the stream is still sent", source: apps/tedris/features/courses/components/session-action-card.tsx:270 }
+      OPEN_KOSK: { target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the first crumb", source: apps/tedris/features/courses/session-join-labels.ts:112 }
+      OPEN_COURSE: { target: course_opened, starts: { flow: tedris.course.readProgramme }, say: "the second crumb", source: apps/tedris/features/courses/session-join-labels.ts:114 }
+      OPEN_NEIGHBOUR: { guard: hasNeighbour, target: reading, effect: [again], say: "the previous or the next celse: a full page load of another celse, read anew", source: apps/tedris/features/courses/components/session-pager.tsx:80 }
+      OPEN_CURRICULUM: { target: curriculum_opened, starts: { flow: tedris.celse.browseCurriculum }, say: "the Müfredat button opens its popup over this page", source: apps/tedris/features/courses/components/session-pager.tsx:207 }
+      OPEN_RESOURCE: { guard: resourcesListed, target: resource_opened, say: "a row of \"Kaynaklar\"", source: apps/tedris/features/courses/components/course-resources.tsx:124 }
+      WRITE_NOTE: { guard: "not streamCard", target: notes_started, starts: { flow: tedris.learn.notes }, say: "the \"Notlarım\" panel, which stays on this page after the end (a note can still be written)", source: apps/tedris/features/courses/components/session-page.tsx:132 }
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  meeting_opened:
+    type: final
+    title: The meeting opens in a new tab
+    description: >-
+      The link has `target="_blank" rel="noopener noreferrer"`, so the meeting's own host (Zoom, Meet, Jitsi, or any https address the course
+      team pasted) opens in a tab of its own and this one stays on the celse's page. This flow ends where the person leaves for that host:
+      nothing is called, and the app records no attendance. A replay that follows only the first tab cannot check the exit's address (an
+      engine limit, `states.meeting_opened.url` in binding.yaml).
+  stream_opened: { type: final, title: The watch page of the celse is opened }
+  calendar_menu_opened: { type: final, title: The calendar menu of the celse is opened }
+  kosk_opened: { type: final, title: The köşk's page is opened }
+  course_opened: { type: final, title: The course's page is opened }
+  curriculum_opened: { type: final, title: The Müfredat popup is opened }
+  resource_opened: { type: final, title: A resource of the celse is opened }
+  notes_started: { type: final, title: A note is started on the celse's own page }
+  locked_shown: { type: final, title: The celse is locked to the caller }
+  cancelled_shown: { type: final, title: The celse is cancelled }
+  not_found: { type: final, title: The page is not found }
+  left: { type: final, title: The person leaves the celse's page, leavesPage: true }
+
+assertions:
+  - id: only-an-open-celse-draws-the-page
+    never: "state in ['ahead', 'opening', 'live', 'over'] and access != 'open'"
+    say: "The page of the celse is drawn only for a caller who may read it and for a celse that stands: a locked or cancelled celse leaves for the other flows"
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:29
+  - id: a-join-needs-a-link
+    never: "state == 'meeting_opened' and not hasLink"
+    say: "The meeting can be opened only from a celse that has a meeting link"
+    source: apps/tedris/features/courses/components/session-action-card.tsx:181
+  - id: no-join-after-the-end
+    never: "state == 'meeting_opened' and standing == 'over'"
+    say: "A celse that had ended when the page was read never offers the meeting: the API sends no link for a finished celse and the card draws none"
+    source: apps/tedris/features/courses/components/session-action-card.tsx:176
+  - id: calendar-only-before-the-start
+    never: "state == 'calendar_menu_opened' and standing in ['live', 'over']"
+    say: "\"Takvime ekle\" is offered only while the celse has not begun: not on a running or an ended one"
+    source: apps/tedris/features/courses/components/session-action-card.tsx:384
+  - id: a-stream-link-needs-a-stream
+    never: "state == 'stream_opened' and not hasStream"
+    say: "\"Yayını izle\" exists only for a celse that has a stream"
+    source: apps/tedris/features/courses/components/session-action-card.tsx:233

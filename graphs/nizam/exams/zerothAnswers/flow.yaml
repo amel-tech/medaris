@@ -1,0 +1,165 @@
+# Medaris management reads, in nizam-web, how the zeroth question of the online exams was answered, in aggregate: never one talebe's
+# answer. Written from the code (captured): apps/nizam/app/sifirinci-soru-cevaplari and app/kosks/[id]/sifirinci-soru-cevaplari
+# (features/zeroth-answers; MDRS-299, #420, #427), in the menu of a person who holds exam.zeroth_read; its reads are
+# listZerothAnswerCounts and getZerothQuestionExams of domain/online-exams.yaml (GET /nizam/exam-zeroth-answers).
+#
+# The owner's words this flow carries: the zeroth question, "'bizi aldatan bizden değildir' hadisi hakkında soru olacak … doğru yanlış
+# cevabı olan bi soru değil" (21 Nov); who reads the answers, "Yönetim toplu, ekip talebe bazında" (21 Nov); "Köşk nazımı kendi
+# köşkünü" (21 Nov). The question is the course's or the medrese's since 22 Nov, so exams of one medrese can ask different ones; they
+# count together only when their words and options match letter for letter (my choice).
+#
+# The counts are exact. The first draft hid every count under five and called it his rule; it was not: "ben böyle bi karar vermedim,
+# saçma bu zaten neden gizleyeyim tabi ki görünecek" (22 Nov 2026). #427 removed the hiding.
+#
+# Choices made in the code that are not his: the span is the last 90 days when the page opens, sent as UTC+3 day bounds; the filters
+# and the question opened live in the page's address and apply with "Uygula"; every read is written to the audit log (exam.zeroth_read).
+schema: delurio-graph/0
+kind: flow
+id: nizam.exams.zerothAnswers
+status: captured
+domain: medaris.api
+ui: nizam.exams.zerothAnswers
+title: Read how the zeroth question was answered, across exams
+summary: >-
+  The Medaris başnazımı, a Medaris nazımı who holds the grant, or a köşk nazımı for their own köşk, opens the zeroth question's
+  page in nizam. It lists the zeroth questions of the online exams, with exams that asked the same words counted together, and for
+  each how many talebe answered and how many chose each option. It filters by a span of dates, by köşk, by medrese and by course. No
+  talebe's name and no single answer is shown; every count is exact.
+scope:
+  shows: one page of nizam-web, the platform's and a köşk's
+  world: open
+  outOfView:
+    - "the course team's view of its own talebe's answers, by name: nazar.exams.results"
+    - "the menu of nizam, where the page has its entry for a person who holds exam.zeroth_read, for the platform and for a köşk (apps/nizam/lib/shell-nav.ts:145, :268, :321): nizam.nav"
+    - "a read that fails outright: the list's alert \"Sayılar okunamadı\" and a question's \"Bu sorunun sınavları okunamadı\", each with \"Yeniden dene\" (apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:213, :224); and an ended session, which sends the person to sign in (realm.auth.signIn)"
+    - "a köşk page whose köşk is not found: nizam's own \"Bu bölüm için izniniz yok\" (nizam.shell.noAccessAndNotFound)"
+context:
+  access:
+    values: [allowed, refused]
+    initial: any
+    say:
+      allowed: the person holds exam.zeroth_read in the platform scope, or in the köşk of the page, or is the başnazım
+      refused: the person holds exam.zeroth_read nowhere the page reads, so tedrisat answers 403
+  answers:
+    values: [none, some]
+    initial: any
+    say:
+      none: no zeroth question has been answered in the span chosen
+      some: answers are counted
+  page:
+    values: [platform, kosk]
+    initial: any
+    say:
+      platform: platform management's page, /sifirinci-soru-cevaplari, over every köşk
+      kosk: a köşk nazımı's page, /kosks/<id>/sifirinci-soru-cevaplari, whose köşk is fixed
+  notice:
+    values: [none, gone]
+    initial: none
+    say:
+      none: no line above the list
+      gone: a line above the list says no exam in the span asks that question any more
+effects:
+  refilter: { havoc: [answers], set: { notice: none } }
+  clearNotice: { set: { notice: none } }
+  noticeGone: { set: { notice: gone } }
+  # the list is read again beside the question, and may now count nothing
+  listReadAgain: { havoc: [answers] }
+failures:
+  opening:
+    from: listZerothAnswerCounts
+    forbidden: [AUTHZ_FORBIDDEN]
+  questionReading:
+    from: getZerothQuestionExams
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [ZEROTH_QUESTION_NOT_FOUND]
+main:
+  given: { access: allowed, answers: some, page: platform }
+  events: [DONE, FILTER, DONE, OPEN, DONE]
+initial: opening
+states:
+  opening:
+    title: The page is opened
+    source: apps/nizam/features/zeroth-answers/components/zeroth-answers-page.tsx:21
+    description: >-
+      The server page reads listZerothAnswerCounts, GET /nizam/exam-zeroth-answers, with the span and the place of its address: the
+      last 90 days when the address names no span (present.ts:13), each day from 00:00 to 23:59 at UTC+3 (present.ts:92), and a köşk
+      nazımı's page (/kosks/<id>/sifirinci-soru-cevaplari) sends its köşk with every read. The answer is the zeroth questions, the same
+      words counted together, each with how many exams asked it, how many talebe answered and how many chose each option. Every read is
+      audited. A person who holds exam.zeroth_read neither in the platform scope nor in the köşk is refused.
+    invoke: { action: listZerothAnswerCounts }
+    on:
+      DONE: { guard: "access == 'allowed'", target: loaded, say: "the counts are read" }
+      FAIL.forbidden: { guard: "access == 'refused'", target: forbidden, say: "tedrisat refuses the read with 403" }
+  loaded:
+    title: The page is drawn as the read says
+    source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:253
+    description: A step with no screen of its own.
+    always:
+      - { guard: "answers == 'none'", target: empty, say: "no answer in the span" }
+      - { target: listed, say: "answers are counted" }
+  forbidden:
+    title: Not allowed
+    source: apps/nizam/features/zeroth-answers/components/zeroth-answers-page.tsx:26
+    description: >-
+      The page is in the menu only for a person who holds exam.zeroth_read (apps/nizam/lib/shell-nav.ts:321). Opened by its address,
+      a refused read (a 403) calls forbidden(), and nizam's own screen says "Bu bölüm için izniniz yok" (app/forbidden.tsx, the same as
+      not-found.tsx).
+    by: human
+    on:
+      GO_HOME: { target: home_opened, say: "'Ana sayfaya dön' goes to '/'", source: "apps/nizam/components/errors/no-access.tsx:38" }
+      NAVIGATE: left
+  listed:
+    title: The zeroth questions and their answers
+    source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:256
+    description: >-
+      Under the title, the intro, the hadith and its meaning, and the filters ("Tarih aralığı" with Başlangıç and Bitiş, Köşk, Medrese,
+      Ders, "Uygula"; on a köşk nazımı's page the köşk is fixed and disabled), "Sorular ({count})" lists each zeroth question, the same
+      words of several exams counted together: in how many exams it was asked, how many talebe answered, and how many chose each
+      option, as a number and a percentage, every count exact; and "Sınavlar" opens it. A span whose start is after its end is not
+      applied: Bitiş says "Başlangıç, bitişten sonra olamaz." and nothing is read.
+    by: human
+    goal: true
+    on:
+      FILTER: { target: opening, effect: [refilter], say: "they press Uygula with a span in order: the address takes the filters and the counts are read again", source: "apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:116" }
+      OPEN: { target: questionReading, effect: [clearNotice], say: "they press Sınavlar on a question: the address takes it", source: "apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:298" }
+      NAVIGATE: left
+  questionReading:
+    title: Read one question's exams
+    source: apps/nizam/features/zeroth-answers/components/zeroth-answers-page.tsx:23
+    description: >-
+      The server page reads getZerothQuestionExams, GET /nizam/exam-zeroth-answers/{questionKey}, in the same span and place, beside
+      the list, which it reads again: the exams that asked it, each with its counts, and the counts over them all. The read is audited.
+    invoke: { action: getZerothQuestionExams }
+    on:
+      DONE: questionDetail
+      FAIL.forbidden: { guard: "access == 'refused'", target: forbidden, say: "tedrisat refuses the read with 403" }
+      FAIL.gone: { target: loaded, effect: [listReadAgain, noticeGone], say: "no exam in the span asks it any more: a line says so, above the list read beside it, or above the note that the span has no answer", source: "apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:250" }
+  questionDetail:
+    title: A zeroth question
+    source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:241
+    description: >-
+      The intro and the filters give way to the question (h2), how many talebe answered it and how many chose each option over every
+      exam that asked it, and the table "Bu soruyu soran sınavlar": each exam's course, köşk, date, how many answered and the counts of
+      its options; every count exact. "Sorulara dön" goes back to the list.
+    by: human
+    on:
+      BACK: { target: opening, effect: [refilter], say: "they press Sorulara dön: the address drops the question and the list is read again", source: "apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:92" }
+      NAVIGATE: left
+  empty:
+    title: No answer yet
+    source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx:254
+    description: >-
+      The filters stay, and the page says "Seçtiğiniz aralıkta sıfırıncı soruya verilmiş cevap yok."; reached from a question that is
+      gone, the line that says so stands above it.
+    by: human
+    on:
+      FILTER: { target: opening, effect: [refilter], say: "they choose another span and press Uygula" }
+      NAVIGATE: left
+  home_opened:
+    title: The home page is opened
+    description: nizam's home page.
+    type: final
+  left:
+    title: The person left the page
+    type: final
+    leavesPage: true

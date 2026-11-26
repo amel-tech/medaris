@@ -1,0 +1,275 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.account.notifications
+status: proposed
+summary: >-
+  What must exist for a person to triage their notifications: tedris.account.notifications. Each need is what the product must do,
+  from the flow's story and from the findings of the page; none is read off what the page does today. Only one planned item of
+  planned.md touches this page (P-29, the e-mail notices) and FLOWS.md gives it to nazar.sessions.manage and nazar.bans.ban; the
+  design's own e-mail sentence and button, which this page left out, are the need email-preferences below. Nothing here carries a
+  kontenjan or a gender rule: a notification has neither.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing or unwalked, for the orchestrator's gaps merge:
+# missing:  bell-says-how-many (none; SHL-04, decision D1), marking-says-it-is-done (none; ACC-05), focus-stays-after-a-mark (none; ACC-04,
+# ACC-10), failed-retry-says-so (none; ACC-03), every-kind-has-words (none; ACC-06), the-help-lists-every-kind (none; ACC-15),
+# loading-says-so (none; ACC-18), a-network-failure-is-handled (none; ACC-12), a-mark-by-link-is-not-lost (none; NOTIF-1),
+# two-marks-do-not-undo-each-other (none; NOTIF-3), lists-have-their-own-names (none; NOTIF-2), title-says-the-site (none;
+# ACC-19), labels-are-the-apps-own (none; ACC-23), answers-match-the-contract (none; NOTIF-4), unknown-type-keeps-its-code (none;
+# the domain's notification-types-code-dropped), repeated-types-is-a-400 (none; the domain's unreadable-input-500),
+# cancelled-celse-leads-to-its-make-up (none), email-preferences (MDRS-189)
+# unwalked: news-by-day, open-what-it-is-about, mark-one-read, mark-all-read, narrow-to-unread, older-news-on-request, refusal-puts-the-list-back,
+# only-mine (code, no e2e and no replay run yet; apps/tedris/test/notifications-page.spec.ts, notification-state.spec.ts and
+# notification-view.spec.ts prove the markup and the transitions, and the replay of binding.yaml and binding.gone.yaml will walk them)
+# Nothing here is walked by a replay yet: the owner moved every replay to the end, so `walked` holds only e2e checks that exist today, and none
+# exists for this page (apps/tedris/e2e has no file for Bildirimler).
+
+needs:
+  - id: news-by-day
+    need: >-
+      A person reads, in one place, what has happened to their applications and courses, newest first, grouped by the day it
+      happened, and sees which of it they have not read yet.
+    evidence:
+      - state: listed
+      - state: allRead
+      - state: emptyAll
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/tedrisat/src/notification/notification.controller.ts:135
+      - source: apps/tedris/features/notifications/components/notifications-page.tsx:204
+      - source: apps/tedris/features/notifications/notification-view.ts:216
+
+  - id: open-what-it-is-about
+    need: >-
+      A notification about a course, a celse, a deck or a köşk opens that page in one press, and counts as read from then on; one
+      that is about nothing in particular is plain text.
+    evidence:
+      - state: listed
+      - state: allRead
+      - state: course_opened
+      - state: celse_opened
+      - state: deck_opened
+      - state: kosk_opened
+      - source: apps/tedris/features/notifications/notification-view.ts:60
+      - source: apps/tedris/features/notifications/components/notification-row.tsx:54
+
+  - id: narrow-to-unread
+    need: >-
+      A person narrows the list to what they have not read, and the tab says how many that is; it keeps working after they mark
+      something.
+    evidence:
+      - state: listed
+      - state: loadingUnread
+      - state: allRead
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/tedris/features/notifications/components/notifications-page.tsx:152
+
+  - id: mark-one-read
+    need: >-
+      A person marks one notification read without opening it, and the page shows it read, and one fewer unread, at once; marking
+      it again changes nothing.
+    evidence:
+      - state: menuOpen
+      - state: markingOne
+      - state: markingLast
+      - source: apps/tedrisat/src/notification/notification.controller.ts:190
+      - source: apps/tedris/features/notifications/components/notification-row.tsx:86
+      - source: apps/tedris/features/notifications/components/notifications-page.tsx:114
+
+  - id: mark-all-read
+    need: >-
+      A person marks every notification read in one press, rows beyond the first page included, and the page shows nothing unread
+      at once.
+    evidence:
+      - state: markingAll
+      - state: allRead
+      - source: apps/tedrisat/src/notification/notification.controller.ts:164
+      - source: apps/tedris/features/notifications/components/notifications-page.tsx:133
+
+  - id: older-news-on-request
+    need: >-
+      A person who has more notifications than fit on a page asks for the next ones and gets them below the others, with no row
+      twice.
+    evidence:
+      - state: loadingMore
+      - state: moreFailed
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/tedris/features/notifications/components/notifications-page.tsx:236
+      - source: apps/tedris/features/notifications/notification-state.ts:49
+
+  - id: refusal-puts-the-list-back
+    need: >-
+      When a mark is refused the page shows the list as it was, with the row unread again and the counts restored, and tells the
+      person in words that nothing changed and that they can try again.
+    evidence:
+      - state: markingOne
+      - state: markingLast
+      - state: markingAll
+      - state: listed
+      - source: apps/tedris/features/notifications/components/notifications-page.tsx:124
+
+  - id: only-mine
+    need: A person reads and marks only their own notifications; another person's id is answered as one that does not exist.
+    evidence:
+      - state: markingOne
+      - source: apps/tedrisat/src/notification/notification.controller.ts:190
+      - source: apps/tedrisat/src/notification/notification.repository.ts:51
+
+  - id: bell-says-how-many
+    need: >-
+      The bell that leads to the list tells a person, by its name, how many notifications are unread, wherever they are in the app
+      (decision D1 of the flow).
+    missing: >-
+      no Linear issue; SHL-04 = ACC-01; the count is read only by the older header, which is hidden, and still asked for on every
+      render
+    note: >-
+      Drawn on the states listed and allRead, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: marking-says-it-is-done
+    need: Marking read tells a person it was done, in a way a screen reader announces, and does not leave them nowhere.
+    missing: no Linear issue; ACC-05; "Tüm bildirimler okundu." is in the catalog and is never used
+    note: >-
+      Drawn on the states markingOne and markingAll, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-stays-after-a-mark
+    need: >-
+      After a mark the keyboard focus is somewhere sensible: not on a control that has just been removed or turned off, and not on
+      <body>.
+    missing: >-
+      no Linear issue; ACC-04 (the row's "…" is unmounted), ACC-10 ("Tümünü okundu say" is natively disabled while focused); not
+      verified in a browser
+    note: >-
+      Drawn on the states markingOne and markingAll, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: failed-retry-says-so
+    need: When "Yeniden dene" fails again the person is told, and is not left with a button that only stops spinning.
+    missing: no Linear issue; ACC-03
+    note: >-
+      Drawn on the states retryingFirst and readFailed, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: every-kind-has-words
+    need: >-
+      Every kind of notification the API can store reads as a title and a sentence in the person's language, so no row says only
+      "Bildirim".
+    missing: no Linear issue; ACC-06; COURSE_BAN_PLACED and KOSK_BAN_PLACED have no entry in the page's types
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: the-help-lists-every-kind
+    need: The card "Neler bildirilir" names every kind of notification the page shows, and no kind it does not show.
+    missing: no Linear issue; ACC-15; the homework review and the three exam notices are not in it
+    note: >-
+      Drawn on the states listed, allRead and emptyAll, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: loading-says-so
+    need: While the page or a tab reads, a person who cannot see the screen is told it is loading.
+    missing: no Linear issue; ACC-18; app/notifications/loading.tsx and the tab's skeleton have no word
+    note: >-
+      Drawn on the state loadingUnread, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-network-failure-is-handled
+    need: >-
+      A mark or a read that never reaches the server is told to the person and does not leave the page showing something the API
+      does not hold.
+    missing: no Linear issue; ACC-12; the two marks are .then() chains with no catch
+    note: >-
+      Drawn on the states markingOne, markingAll, loadingUnread and loadingMore, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-mark-by-link-is-not-lost
+    need: >-
+      Opening a notification marks it read for certain: if the mark is refused the person is told, or the page they land on does
+      the marking.
+    missing: no Linear issue; NOTIF-1; the refusal's toast belongs to the segment the person has left
+    note: >-
+      Drawn on the states listed, course_opened, celse_opened, deck_opened and kosk_opened, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: two-marks-do-not-undo-each-other
+    need: Two marks made one after the other each stand or fall on their own answer; a refusal of one never takes the other back.
+    missing: no Linear issue; NOTIF-3; the rollback restores the whole page's state taken before the first mark
+    note: >-
+      Drawn on the states markingOne and markingAll, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: lists-have-their-own-names
+    need: Each day's list is named by its day, so a person moving by lists knows which one they are in.
+    missing: no Linear issue; NOTIF-2; every list is "Bildirim listesi"
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: title-says-the-site
+    need: The document title of every Hesap-side page follows one pattern, so a person with many tabs can tell them apart.
+    missing: no Linear issue; ACC-19; "Bildirimler" has no " | Tedris"
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: labels-are-the-apps-own
+    need: >-
+      The words the kit puts on a toast ("Kapat" and the region's name) come from the app's catalog in the person's language, and
+      the region is not named like the page.
+    missing: no Linear issue; ACC-23
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: answers-match-the-contract
+    need: >-
+      What the API answers for a notification is what its published contract says: the list and the mark carry no field the
+      contract leaves out.
+    missing: >-
+      no Linear issue; NOTIF-4 (read on the stack, GET /notifications?limit=1: each item has `userId`, which NotificationResponse
+      does not declare)
+    note: >-
+      Drawn on the state markingOne, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: unknown-type-keeps-its-code
+    need: >-
+      A request that names a notification type the API does not know is refused with the code that says so
+      (INVALID_NOTIFICATION_TYPES), not with the generic code of every other bad request.
+    missing: >-
+      no Linear issue; the domain's notification-types-code-dropped (invariant notification-types-code-reaches-the-client, holds:
+      false); this page never sends `types`
+    note: >-
+      Drawn on the state readingList, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: repeated-types-is-a-400
+    need: A request that gives the same query key twice (types=A&types=B) is refused as a bad request, never answered with a 500.
+    missing: >-
+      no Linear issue; the domain's unreadable-input-500 (invariant unreadable-input-is-a-400, holds: false); this page never
+      sends `types`
+    note: >-
+      Drawn on the state readingList, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: cancelled-celse-leads-to-its-make-up
+    need: The notice of a cancelled celse that has a make-up time leads to the make-up celse, not only to the cancelled one.
+    missing: >-
+      no Linear issue; notification-aside.tsx:13-15: "no route links a make-up session yet"; the sentence names the make-up time
+      (makeupAt) and the link goes to the cancelled celse
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: email-preferences
+    need: >-
+      A person chooses which notices also reach them by e-mail, from this page, and the page says so in a sentence, as the design
+      had it.
+    missing: >-
+      the design's sentence and "E-posta tercihleri" are left out of the page because MDRS-167 has no SMTP
+      (notification-aside.tsx:6-10); MDRS-189 is the deferred e-mail notices (planned.md P-29)
+    note: >-
+      Drawn on the states listed and emptyAll, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

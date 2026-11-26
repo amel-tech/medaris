@@ -1,0 +1,26 @@
+# nazar.course.overview as a ders nazırı granted no permission, on the local stack: she reads no count (course.staff_read is refused),
+# so the page draws one box, "Sıradaki celse", which Celseler refuses her (OVERVIEW-1). Her own binding file because the walk adds no
+# transition to binding.yaml's (dersNazirRoster already takes both refusals), and it is the one that checks the absent boxes.
+#   (the main story is the müderris's, so a walk of this file needs --cover; the flow's `main` has no start here)
+#   node apps/engine/src/cli.ts replay graphs/nazar/course/overview --bind graphs/nazar/course/overview/binding.bare.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. `setup` makes "Deneme dersi ovwBare" in the medrese with the başmüderris as its hoca, with one celse
+# tomorrow, and appoints Rukiye with no permission, as the hoca does on Ders nazırları (helpers/course-nazir-grants.mjs, `--codes none`,
+# `--as basmuderris`); the seeded post of "Bina ve İzhar Şerhi" is not touched. `teardown` deletes the course, and the post with it.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.course.overview
+
+scenarios:
+  dersNazirBare:
+    given: { applications: none, homework: none, sessions: next, celseler: refuses }
+    as: dersNazir
+    open: '{nazar}/ders/{ovwBare.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, ovwBare, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi ovwBare"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{ovwBare.course}', --nazir, dersNazir, --codes, none, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, ovwBare]
+        expect: 'course remove ovwBare'

@@ -1,0 +1,665 @@
+# "Ders ayarları" of a course in nizam-web (/kosks/<id>/courses/<id>/ayarlar), used by the köşk's nazım and the başnazım: the five
+# settings of the access card and the köşk's recordings policy in one Kaydet, the "Yayın" card (take a published course back to draft
+# after being asked once, publish it again, with the number of enrolled talebe in the warning), and "Dersi gizle". Read from the code of
+# the branch (the tree of PR #394) on 16 Nov 2026: apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx and layout, the page
+# component features/courses/components/course-settings-page.tsx, features/courses/{present,reads,actions}.ts, hide-course-dialog.tsx,
+# the kit's libs/ui/src/mds/{button,checkbox,select,field,alert-dialog,breadcrumb}.tsx, and the API's GET /courses/:id, GET
+# /courses/:id/stats, PATCH /lessons/:id, PATCH /courses/:id, PATCH /kosks/:id and POST /courses/:id/archive. Nothing here was seen in a
+# browser and no replay has run: "from the code" is the source of every behaviour below, apart from one read-only look at the running API
+# (GET /kosks/<kosk2>, which says both policies are off) and the unit specs named in needs.yaml.
+#
+# It is the sibling of nazar.courseSettings.access and nazar.courseSettings.publish, written from the same facts through a different page,
+# and the differences are the point of reading both:
+#   - ONE form, one Kaydet and one Vazgeç. nizam has no "Hocalar ve unvanları" card with a Kaydet of its own (the team is a list and a
+#     button that opens a dialog, nizam.courses.editHocalar), so the stale e2e of nazar (F-D2c-14: two buttons named Kaydet) does NOT apply
+#     here: courses#6 to #9 name Kaydet by role and name and find one button. They are carried as written.
+#   - The form is not built again after a save: it is `useState(stored)` once, and `router.refresh()` only moves `stored` under it. So
+#     after a save the pressed controls are the stored ones, nothing is lost and nothing is remounted (nazar's F-D2c-7 does not hold); what
+#     is lost is the pressed Kaydet, which becomes natively disabled under the focus (F-W4-8).
+#   - NO REFUSAL READS THE PAGE AGAIN, and no refusal tells the page the version moved. The conflict (COURSE_VERSION_CONFLICT) is only the
+#     sample session's: PATCH /courses/:id takes no version (the inventory's "carrying the course version" is not so: course.controller.ts:300
+#     and the DTO), so a save of closed, approval, in person or the zone from an old page is never refused and the last save wins. The
+#     toast of the conflict itself says "Sayfayı yenileyip yeniden deneyin", so the person knows to reload (unlike nazar's, which reads the
+#     page for her).
+#   - The page carries the köşk's RECORDINGS POLICY ("Ders kayıtları herkese açılamaz", manager only) in the same form, and the page's
+#     last write after the sample and the course is PATCH /kosks/:id, a policy of the köşk's every course.
+#   - The enrolled count is the API's, read with the page (GET /courses/:id/stats), and it is in the card's caption, not in the question.
+#   - "Dersi gizle" is here (manager only); nazar has it elsewhere (nazar.archive.hideAndRestoreCourse).
+#
+# What this flow draws: the page for the manager (köşk nazımı or başnazım) with its three cards, the two option lists, the question
+# "Dersi taslağa çek" and the question "Dersi gizle", the toasts of every write, and four ways the page opens differently (the köşk's
+# approval policy holds the box, a person who teaches the course but does not manage the köşk, a person with no nazım role, a course
+# that is not there). What it does not: see `scope.outOfView`.
+#
+# Findings it carries, with the inventory's ids: F-W4-8 (the focused Kaydet is turned off by its own success), F-W4-15 (does NOT hold on
+# this page: it has no `sent` and no field with an error), F-W4-16 (the "teaches" branch is not dead: it is a nazım of another köşk who
+# teaches here), F-W4-17 (the tab and the h1 name no course), F-X-8 (the family of F-W4-8). New ones, proposed ids SETPUB-1 to SETPUB-9, are
+# in ui.yaml `rules`: opening the page writes two audit rows, a refusal never reads the page again and a refusal after the sample landed
+# makes the retry a conflict, a locked policy is told with the generic sentence, the köşk's recordings policy is not enforced on the write
+# side (the same family as RECADD-1 of nazar.recordings.add), the "0 talebe" sentence, the link that opens a new tab and says nothing, the
+# skeleton of the wrong page, and the page of a hidden course.
+#
+# e2e checks it takes over: courses#6 (a1 to a6), #7 (a1 to a6), #8 (a1 to a3), #9 (a1 to a6), #20 (the 403, whose status the replay
+# cannot read). None is stale: see needs.yaml.
+schema: delurio-graph/0
+kind: flow
+id: nizam.courses.settingsAndPublish
+status: captured
+domain: medaris.api
+ui: nizam.courses.settingsAndPublish
+title: Change a course's settings, publish it, take it back, or hide it
+summary: >-
+  The köşk's nazım (or the başnazım) opens "Ders ayarları" of a course. The card "Erişim, kayıt ve saat dilimi" has "Kapalı ders", "Örnek
+  ders", "Kayıt onayı gereksin", "Celseler yüz yüze yapılır", "Saat dilimi" and, under a line, the köşk's policy "Ders kayıtları herkese
+  açılamaz"; "Kaydet" and "Vazgeç" are off until something differs. One Kaydet writes it all in order: the sample session (PATCH /lessons/:id,
+  with the course version the page was read at), the course's own fields that differ (PATCH /courses/:id, no version), and the köşk's policy
+  (PATCH /kosks/:id) if it changed. A toast says "Ders ayarları kaydedildi". A sample write from an out-of-date page is refused ("Ders, bu
+  sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin."), nothing is written, and the page is not
+  read again: she reloads and tries again. Beside it the card "Yayın" says "Yayında" or "Taslak" and, on a published course, how many talebe
+  are enrolled and lose the course; "Taslağa çek" asks once ("Dersi taslağa çek", the focus on "Vazgeç") and writes the status alone,
+  "Yayımla" publishes at once. "Dersi gizle" asks once as well and, once the course is hidden, takes her to the list of courses.
+
+scope:
+  shows: >-
+    the page of Ders ayarları for the manager with its access card, the two option lists, the "Yayın" card with its two questions' worth of
+    states, the "Hocalar" and "Dersi gizle" cards, the toasts of the writes, the page that opens with the approval box shut by the köşk's
+    policy, the page of a person who teaches the course and does not manage the köşk, and the refusal that stops a person with no nazım role
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the dialog 'Hocaları düzenle' and everything in it (the e-mail search, the imam, the unvan, the refusals): nizam.courses.editHocalar. Only the section's heading, its list and its button are drawn here"
+    - "the köşk's own settings page 'Köşk ayarları', which the sentence under the policy box links to: nizam.kosks.editAndHide (the same two policies, the same refusal for a platform policy that is on, F-W3-3)"
+    - "the list of courses 'Dersler' that 'Dersi gizle' ends on, its toast 'Ders gizlendi', the 'Arşiv' and 'Geri al': nizam.courses.list and nizam.moderation.restoreArchived. Here the page ends at the exit `dersler_opened`"
+    - "the public page that 'Tanıtım sayfasını gör' opens in a new tab: tedris.course.readProgramme for a published course, tedris.course.draftPreview for a draft (the link is drawn for a draft too: DRAFT-1; a person with no Tedris session is sent to sign in and back there since #401)"
+    - "the course overview that the breadcrumb's course name links to, and the sub-pages of the course (Müfredat, Celseler, Talebeler): nizam.courses.overview, nizam.courses.curriculum, nizam.courses.manageSessions, nizam.courses.roster"
+    - "the 404 and 403 screens 'Bu bölüm için izniniz yok' for a course of another köşk, an unknown id, or a nazım of this köşk who may not edit the course (the page's `forbidden()` and `notFound()`), and the page's own failure face 'Ders bilgisi okunamadı' with 'Yeniden dene' (CourseLoadFailed): nizam.shell.noAccessAndNotFound. Here the person with no nazım role is the exit `no_access`, which is e2e courses#20"
+    - "the way back of each press: untick 'Kapalı ders' or 'Celseler yüz yüze yapılır', choose İstanbul again, choose 'Örnek ders yok' after a saved sample, tick 'Kayıt onayı gereksin' again, untick the policy box: the same transitions the other way, each drawn one way only (`closeIt`, `dropApproval` and the others hold a control to one press), so that a walk of a world presses the same controls whichever way the checker finds to Kaydet"
+    - "a second round of edits after a save in the same visit: the same transitions again from `clean`; the graph keeps one record of what the form shows, and the page's Vazgeç after a save would put back values that the graph does not keep"
+    - "the other options of the two lists: about 418 zones and the other sessions of a longer course; the options drawn are the two a world needs"
+    - "a save that is refused after an earlier write landed (the sample saved, then the course's fields or the policy refused): the stack cannot make it (nothing but a policy that came on, a lost code or a platform policy refuses a course write, and the sample is written first); the code leaves the earlier write done, tells the person nothing was changed and keeps the old course version, so her retry is a conflict (SETPUB-3)"
+    - "a platform policy that is on, which the köşk's policy box cannot switch off (PLATFORM_POLICY_LOCKED from PATCH /kosks/:id, answered with the generic sentence: F-W3-3 of nizam.kosks.editAndHide): switching a platform policy on and off is platform-wide, so no walk does it; the same code path as `policyLate` draws the refusal for the approval box"
+    - "AUTHZ_FORBIDDEN of a write ('Bu işlem için yetkiniz yok.'): nothing on the stack takes the nazım's role away while the page is open, and a deleted course reads as it does for the başnazım (see `gone`)"
+    - "the enrolled count that could not be read (the stats read answers 403, 404 or fails): the caption then says what taking the course back does without a number (`count: unread`); the stack cannot make it, so it is drawn and not walked"
+    - "leaving a changed form: nothing asks (no beforeunload and no router guard in the settings page: F-W4-5), so a menu entry, a link or a reload drops the pressed controls"
+    - "an ended session: every server action sends the person to sign in (redirectIfUnauthenticated) instead of drawing an error: realm.auth.signIn, realm.auth.sessionEnded"
+    - "a refusal of the köşk write that is not a policy lock (a handle, a name): the page sends only `recordingsNeverPublic`, so none applies"
+    - "the page of a course that is already hidden, opened by its address by the manager (who may read it): it draws like any other with no word of it, and 'Dersi gizle' is offered again (SETPUB-8); `alreadyHidden` draws the other half, the hide that finds it done"
+    - "the sidebar, its köşk picker and the phone sheet: nizam.shell.menuPerPersona; only the sidebar is named as a landmark that the page sits beside"
+    - "the page of a hoca who is only a hoca (no nazım role): nizam's layout sends them to Nazar before this page runs, so they are not a reader of it (F-W4-16 explains who the 'teaches' branch really serves)"
+
+decisions:
+  D1:
+    question: >-
+      Should the köşk's recordings policy be changed from a course's settings page at all? The checkbox says in its own sentence that it covers
+      every course of the köşk, not this one, and a manager who ticks it while editing one course's access saves it in the same Kaydet, with
+      the same toast "Ders ayarları kaydedildi" that names only this course.
+    recommend: >-
+      Keep the policy on "Köşk ayarları", where the sentence under the box already points ("Köşk ayarları"), and leave the course page with a
+      line that says the policy's state. If it stays, the toast should say that the köşk's policy changed ("Köşk politikası da değişti").
+    affects: [dirty, clean]
+  D2:
+    question: >-
+      Should the "Taslağa çek" question say how many talebe lose the course? The number is on the card's caption above the button, not in the
+      question the person answers; the question says only "talebeler dersi göremez". The count is the ENROLLED seats only: a COMPLETED talebe
+      and the waiting applications lose sight of a draft as well, and are not counted.
+    recommend: >-
+      Put the count in the question's own sentence ("{count} talebe dersi göremez") and count every seat that is not removed; for none, say that
+      nobody is enrolled and not "kayıtlı 0 talebe" (SETPUB-4).
+    affects: [asking]
+  D3:
+    question: >-
+      Should a refusal that leaves the stored values as they were read the page again, so that the form shows what is true (a policy that came
+      on, a deleted course) and the next Kaydet carries the new version? Today `fail()` only words the refusal and leaves the page as it was.
+    recommend: >-
+      Read the page again on every refusal and keep the draft of the controls that still apply; after the sample landed, say that the sample was
+      saved and the rest was not (SETPUB-3).
+    affects: [dirty]
+
+context:
+  world:
+    initial: any
+    values: [saves, stale, policyLate, gone, alreadyHidden, approvalFixed, nonManager, outsider]
+    say:
+      saves: "the course is published, asks for approval, is open, not in person, in Istanbul, has no sample; the köşk's recordings policy is off; every write is accepted"
+      stale: "as saves, and after the page was read someone else saved the course with no change of value, so the course version moved: the sample session's write is refused (409) and nothing is written"
+      policyLate: "as saves, and after the page was read the köşk's own policy 'Kayıt her zaman onaylı' came on: switching 'Kayıt onayı gereksin' off is refused (409 PLATFORM_POLICY_LOCKED)"
+      gone: "as saves, and the course is deleted while the page is open (read as the başnazım, for whom the API answers 404, not 403): every write answers 404 COURSE_NOT_FOUND"
+      alreadyHidden: "as saves, and the course was hidden by someone else after the page was read: 'Dersi gizle' is answered 409 COURSE_ALREADY_HIDDEN, which the page takes as done"
+      approvalFixed: "the köşk's policy 'Kayıt her zaman onaylı' is on when the page opens: the approval box is ticked and shut and says why"
+      nonManager: "the reader teaches the course and is a nazım elsewhere but does not manage this köşk: no 'Hocaları düzenle', no 'Dersi gizle', the köşk's policy box shut"
+      outsider: "the reader has no nazım role at all (a talebe): the /kosks layout refuses before the page runs"
+  stored:
+    initial: any
+    values: [published, draft]
+    say:
+      published: "the course is published when the page is read: the card says Yayında and offers Taslağa çek"
+      draft: "the course is a draft when the page is read: the card says Taslak and offers Yayımla"
+  count:
+    initial: any
+    values: [read, unread]
+    say:
+      read: "the stats read answered, so the caption says how many talebe are enrolled"
+      unread: "the stats read failed or was refused, so the caption says what taking the course back does and no number"
+  status: { values: [published, draft], initial: published } # what the card shows
+  closed: { values: ["off", "on"], initial: "off" } # what "Kapalı ders" shows
+  approval: { values: ["off", "on"], initial: "on" } # what "Kayıt onayı gereksin" shows (the course asks for approval, e2e courses#6 a3)
+  inPerson: { values: ["off", "on"], initial: "off" } # what "Celseler yüz yüze yapılır" shows
+  zone: { values: [istanbul, berlin], initial: istanbul } # what "Saat dilimi" shows (two of about 418)
+  sample: { values: [none, first], initial: none } # what "Örnek ders" shows: no sample, or the first live session
+  neverPublic: { values: ["off", "on"], initial: "off" } # what "Ders kayıtları herkese açılamaz" shows
+  sampleDraft: { values: [unchanged, changed], initial: unchanged } # the sample differs from what the page read: the first write is due
+  fieldsDraft: { values: [unchanged, changed], initial: unchanged } # a box or the zone differs: the course write is due
+  policyDraft: { values: [unchanged, changed], initial: unchanged } # the köşk policy box differs: the köşk write is due
+  written: { values: [no, yes], initial: no } # the sample write of this Kaydet has landed
+  looked: { values: [first, again], initial: first } # the page as it was first read, or as a reload read it
+  toast: { values: [none, saved, drafted, published, stale, generic, hideFailed], initial: none } # the toast the last step left
+
+guards:
+  # the sample write carries the version the page was read at; someone else's save moved it
+  conflicting: "world == 'stale' and looked == 'first'"
+  policyWorld: "world == 'policyLate'"
+  goneWorld: "world == 'gone'"
+  settledWorld: "world == 'alreadyHidden'"
+  # PATCH /courses/:id is refused in these worlds
+  courseRefused: "policyWorld or goneWorld"
+  # PATCH /courses/:id with a status, and POST /courses/:id/archive, are refused in the world where the course is gone
+  statusRefused: "goneWorld"
+  hideRefused: "goneWorld"
+  sampleDue: "sampleDraft == 'changed'"
+  fieldsDue: "fieldsDraft == 'changed'"
+  policyDue: "policyDraft == 'changed'"
+  anythingPressed: "sampleDraft == 'changed' or fieldsDraft == 'changed' or policyDraft == 'changed'"
+  # What each world presses. Every press is drawn one way only, so that a walk of a world presses the same controls whichever way the checker
+  # finds to Kaydet; the way back is the same transition the other way and is not drawn (outOfView).
+  closeIt: "closed == 'off' and (world == 'saves' or goneWorld)"
+  dropApproval: "approval == 'on' and (world == 'saves' or policyWorld)"
+  markInPerson: "inPerson == 'off' and world == 'saves'"
+  pickBerlin: "zone == 'istanbul' and world == 'saves'"
+  pickFirst: "sample == 'none' and (world == 'saves' or world == 'stale')"
+  tickPolicy: "neverPublic == 'off' and world == 'saves'"
+  # Kaydet is on as soon as one control differs; the graph draws its press once the form holds everything the world presses
+  readyToSend: "(world == 'saves' and closed == 'on' and approval == 'off' and inPerson == 'on' and zone == 'berlin' and sample == 'first' and neverPublic == 'on') or (world == 'stale' and sample == 'first') or (policyWorld and approval == 'off') or (goneWorld and closed == 'on')"
+  isPublished: "status == 'published'"
+  isDraft: "status == 'draft'"
+
+effects:
+  loadedPlain: { set: { status: published } } # the page was read as the walk's own course is: published, asking approval, open, in Istanbul, no sample (names the read for the effect check)
+  loadedDraft: { set: { status: draft } }
+  closedOn: { set: { closed: "on", fieldsDraft: changed, toast: none } }
+  approvalOff: { set: { approval: "off", fieldsDraft: changed, toast: none } }
+  inPersonOn: { set: { inPerson: "on", fieldsDraft: changed, toast: none } }
+  zoneBerlin: { set: { zone: berlin, fieldsDraft: changed, toast: none } }
+  sampleFirst: { set: { sample: first, sampleDraft: changed, toast: none } }
+  policyOn: { set: { neverPublic: "on", policyDraft: changed, toast: none } }
+  # Vazgeç puts back what the page read (`setForm(stored)`, `setNeverPublic(kosk.recordingsNeverPublic)`)
+  restorePlain: { set: { closed: "off", approval: "on", inPerson: "off", zone: istanbul, sample: none, neverPublic: "off", sampleDraft: unchanged, fieldsDraft: unchanged, policyDraft: unchanged, toast: none } }
+  # a reload builds the form again from what the API holds: the pressed controls are gone
+  reloadedLost: { set: { closed: "off", approval: "on", inPerson: "off", zone: istanbul, sample: none, neverPublic: "off", sampleDraft: unchanged, fieldsDraft: unchanged, policyDraft: unchanged, toast: none, looked: again } }
+  # a reload of a saved page shows what was saved: the values are the ones the controls hold
+  reloadedSaved: { set: { toast: none, looked: again } }
+  sampleLanded: { set: { written: yes } }
+  savedAll: { set: { sampleDraft: unchanged, fieldsDraft: unchanged, policyDraft: unchanged, written: no, toast: saved } }
+  toastStale: { set: { toast: stale } }
+  toastGeneric: { set: { toast: generic } }
+  toastHideFailed: { set: { toast: hideFailed } }
+  drafted: { set: { status: draft, toast: drafted } }
+  published: { set: { status: published, toast: published } }
+  clearToast: { set: { toast: none } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+    failed: []
+  sendingSample:
+    from: updateLesson
+    stale: [COURSE_VERSION_CONFLICT]
+  sendingCourse:
+    from: updateCourse
+    policy: [PLATFORM_POLICY_LOCKED]
+    other: [COURSE_NOT_FOUND]
+  drafting:
+    from: updateCourse
+    other: [COURSE_NOT_FOUND]
+  publishing:
+    from: updateCourse
+    other: [COURSE_NOT_FOUND]
+  hiding:
+    from: hideCourse
+    settled: [COURSE_ALREADY_HIDDEN]
+    other: [COURSE_NOT_FOUND]
+
+# The story the page tells first, and e2e courses#6, #7, #8 and #9 as one visit: the nazım unticks "Kayıt onayı gereksin" and ticks "Kapalı ders"
+# and "Celseler yüz yüze yapılır", chooses Berlin and the first celse as the sample, ticks the köşk's policy and saves once, reloads and reads each
+# value back, takes the course back to draft and publishes it again, and hides it.
+main:
+  given: { world: saves, stored: published, count: read }
+  events: [DONE, TOGGLE_APPROVAL, TOGGLE_CLOSED, TOGGLE_IN_PERSON, OPEN_SAMPLE, PICK_FIRST, OPEN_ZONE, PICK_BERLIN, TOGGLE_POLICY, SUBMIT, DONE, DONE, DONE, RELOAD, DONE, UNPUBLISH, CONFIRM_UNPUBLISH, DONE, PUBLISH, DONE, HIDE, CONFIRM_HIDE, DONE]
+
+initial: entered
+
+states:
+  entered:
+    title: The /kosks layout lets the person in, or refuses them
+    description: >-
+      Not a screen. Every /kosks page sits under app/kosks/layout.tsx, which reads the caller's assignments and refuses with `forbidden()` when
+      they are not a nazım (`landingFor(me) !== "nizam"`): a talebe, a person with medrese or course roles only. It answers before the page
+      runs and without a skeleton, so it is the one refusal of this address that is HTTP 403 (NOACC-2 of nizam.shell.noAccessAndNotFound), as e2e
+      courses#20 asserts; the replay does not read the status. When the assignments cannot be read the page is let through and tedrisat
+      refuses each read itself.
+    always:
+      - { guard: "world == 'outsider'", target: no_access, say: "a person with no nazım role: the layout refuses them before the page runs", source: apps/nizam/app/kosks/layout.tsx:20 }
+      - { target: opened, say: "a nazım, the başnazım or a hoca who is a nazım elsewhere: the page runs" }
+    source: apps/nizam/app/kosks/layout.tsx:19
+
+  opened:
+    title: The page reads the köşk, the course, the caller's roles and the enrolled count
+    description: >-
+      The server component reads GET /kosks/:id, GET /courses/:id and GET /me together (readCourseScope) and, beside them, GET
+      /courses/:id/stats for the enrolled count, behind a skeleton that is the course OVERVIEW's, not this page's (loading.tsx of the course
+      folder, SETPUB-7). A course of another köşk or an unknown one is `notFound()`, a caller who is neither the köşk's manager nor the
+      course's hoca is `forbidden()`: both are the one screen "Bu bölüm için izniniz yok" (exit `no_access`), and a read that fails is "Ders
+      bilgisi okunamadı" with "Yeniden dene" (exit `load_failed`). The manager reads the course with `course.content_read` audited AND the stats
+      with `course.roster_read` audited: two audit rows every time the page opens, to word one caption (SETPUB-1). From the code: the page
+      sets no initial focus (focus-not-set).
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "world == 'approvalFixed' and stored == 'draft'", target: readFixed, effect: [loadedDraft], say: "the köşk's approval policy holds the box, and the course is a draft", source: apps/nizam/features/courses/components/course-settings-page.tsx:94 }
+        - { guard: "world == 'approvalFixed'", target: readFixed, effect: [loadedPlain], say: "the köşk's approval policy holds the box: ticked and shut", source: apps/nizam/features/courses/components/course-settings-page.tsx:94 }
+        - { guard: "world == 'nonManager' and stored == 'draft'", target: readLimited, effect: [loadedDraft], say: "a hoca who is a nazım elsewhere reads a draft", source: apps/nizam/features/courses/components/course-settings-page.tsx:50 }
+        - { guard: "world == 'nonManager'", target: readLimited, effect: [loadedPlain], say: "a hoca who is a nazım elsewhere: no team button, no hide card, the policy box shut", source: apps/nizam/features/courses/components/course-settings-page.tsx:50 }
+        - { guard: "stored == 'draft'", target: clean, effect: [loadedDraft], say: "the course is a draft: the card says Taslak and offers Yayımla", source: apps/nizam/features/courses/components/course-settings-page.tsx:95 }
+        - { target: clean, effect: [loadedPlain], say: "the course is published: the card says Yayında and offers Taslağa çek", source: apps/nizam/features/courses/components/course-settings-page.tsx:95 }
+      FAIL.missing: no_access
+      FAIL.failed: load_failed
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:29"
+
+  readFixed:
+    title: The page opens with the approval box shut by the köşk's policy
+    by: human
+    description: >-
+      "Kayıt onayı gereksin" is ticked and shut and says "Köşk politikası gereği her kayıt onaya bağlıdır; bu derste değiştirilemez." (the köşk's
+      `alwaysRequireApproval`, `fixed`; the box shows `effectiveApproval`, ticked whatever the course's own flag holds, and `disabled={saving ||
+      fixed}`). The other controls and both cards behave as in `clean`, where a press leads; the box stays shut there too, for `fixed` is
+      read once (the page's `world`). The page does not read
+      the PLATFORM policy of the same name: when that one is on the box is open and the save is refused (policyLate, SETPUB-2). The page sets no
+      focus (focus-not-set).
+    on:
+      # The controls are live here as in `clean`, and each press goes where it goes from there; this world draws none of the boxes' presses
+      # (`closeIt` and the others name the worlds that press them), so its walks open the lists, the Yayın card and the question only.
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:231 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nizam/features/courses/components/course-settings-page.tsx:285 }
+      TOGGLE_POLICY: { guard: tickPolicy, target: dirty, effect: [policyOn], say: "they tick 'Ders kayıtları herkese açılamaz'", source: apps/nizam/features/courses/components/course-settings-page.tsx:319 }
+      OPEN_SAMPLE: { target: choosingSample, effect: [clearToast], say: "they open 'Örnek ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:245 }
+      OPEN_ZONE: { target: choosingZone, effect: [clearToast], say: "they open 'Saat dilimi'", source: apps/nizam/features/courses/components/course-settings-page.tsx:289 }
+      UNPUBLISH: { guard: isPublished, target: asking, effect: [clearToast], say: "they press Taslağa çek", source: apps/nizam/features/courses/components/course-settings-page.tsx:369 }
+      PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla: it asks nothing", source: apps/nizam/features/courses/components/course-settings-page.tsx:377 }
+      HIDE: { target: confirmingHide, effect: [clearToast], say: "they press Dersi gizle", source: apps/nizam/features/courses/components/course-settings-page.tsx:432 }
+      OPEN_PUBLIC:
+        - { guard: isDraft, target: readFixed, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is sent to sign in and back to the preview since #401 (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+        - { target: readFixed, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+      NAVIGATE: { target: left, say: "they go to another page" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:262
+
+  readLimited:
+    title: The page of a hoca who does not manage the köşk
+    by: human
+    description: >-
+      A caller who teaches this course and is a nazım of another köşk (the layout lets a nazım in, `mayEditCourse` lets a müderris of the course
+      edit): `manager` is false, so "Hocaları düzenle" and the whole card "Dersi gizle" are left out, and the köşk's policy box is shut. The
+      access card and the "Yayın" card work as in `clean` (the API asks `course.edit`, `course.settings` and `course.publish`, which the hoca
+      holds). Not walked: it needs a throwaway köşk and a hoca who is a nazım elsewhere. F-W4-16 calls this branch dead, and it is not: it is
+      exactly this person (a nazım whose köşk list leaves the course off, `taughtElsewhere`); only a person who is nothing but a hoca never
+      gets here, because the layout sends them to Nazar.
+    on:
+      # The controls are live here as in `clean`, and each press goes where it goes from there; this world draws none of the boxes' presses
+      # (`closeIt` and the others name the worlds that press them), so its walks open the lists, the Yayın card and the question only.
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:231 }
+      TOGGLE_APPROVAL: { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nizam/features/courses/components/course-settings-page.tsx:275 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nizam/features/courses/components/course-settings-page.tsx:285 }
+      OPEN_SAMPLE: { target: choosingSample, effect: [clearToast], say: "they open 'Örnek ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:245 }
+      OPEN_ZONE: { target: choosingZone, effect: [clearToast], say: "they open 'Saat dilimi'", source: apps/nizam/features/courses/components/course-settings-page.tsx:289 }
+      UNPUBLISH: { guard: isPublished, target: asking, effect: [clearToast], say: "they press Taslağa çek", source: apps/nizam/features/courses/components/course-settings-page.tsx:369 }
+      PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla: it asks nothing", source: apps/nizam/features/courses/components/course-settings-page.tsx:377 }
+      OPEN_PUBLIC:
+        - { guard: isDraft, target: readLimited, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is sent to sign in and back to the preview since #401 (DRAFT-1), and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+        - { target: readLimited, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+      NAVIGATE: { target: left, say: "they go to another page" }
+    source: apps/nizam/features/courses/reads.ts:48
+
+  clean:
+    title: The page holds what is stored
+    by: human
+    description: >-
+      The five controls and the policy box show what the course and the köşk hold, and "Kaydet" and "Vazgeç" are natively disabled with no word of
+      why. A toast of the last step may be up (`toast`): after a save "Ders ayarları kaydedildi" with "<course> dersinin ayarları güncellendi."
+      for six seconds. The form is not built again by a save: the controls keep what was pressed, which is now what is stored, and `router.refresh()`
+      moves `stored` under them. What the person loses is the pressed Kaydet: once `stored` equals the form it is `disabled={!dirty}`, a
+      natively disabled button under the focus (F-W4-8, F-X-8; not verified in a browser). The page sets no focus.
+    on:
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:231 }
+      TOGGLE_APPROVAL: { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nizam/features/courses/components/course-settings-page.tsx:275 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nizam/features/courses/components/course-settings-page.tsx:285 }
+      TOGGLE_POLICY: { guard: tickPolicy, target: dirty, effect: [policyOn], say: "they tick 'Ders kayıtları herkese açılamaz': the köşk's policy, for every course of the köşk", source: apps/nizam/features/courses/components/course-settings-page.tsx:319 }
+      OPEN_SAMPLE: { target: choosingSample, effect: [clearToast], say: "they open 'Örnek ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:245 }
+      OPEN_ZONE: { target: choosingZone, effect: [clearToast], say: "they open 'Saat dilimi'", source: apps/nizam/features/courses/components/course-settings-page.tsx:289 }
+      UNPUBLISH: { guard: isPublished, target: asking, effect: [clearToast], say: "they press Taslağa çek", source: apps/nizam/features/courses/components/course-settings-page.tsx:369 }
+      PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla: it asks nothing", source: apps/nizam/features/courses/components/course-settings-page.tsx:377 }
+      HIDE: { target: confirmingHide, effect: [clearToast], say: "they press Dersi gizle", source: apps/nizam/features/courses/components/course-settings-page.tsx:432 }
+      RELOAD: { guard: "world == 'saves'", target: reloading, effect: [reloadedSaved], say: "they reload the page: it is read again with what the API now holds", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:29" }
+      OPEN_PUBLIC:
+        - { guard: isDraft, target: clean, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab, where a person with no Tedris session is a visitor, sent to sign in and back to the preview since #401 (DRAFT-1)", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+        - { target: clean, say: "they follow Tanıtım sayfasını gör: the course's page in Tedris opens in a new tab (tedris.course.readProgramme) and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+      NAVIGATE: { target: left, say: "they follow the menu, a breadcrumb or a link" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:190
+
+  dirty:
+    title: Something differs from what is stored
+    by: human
+    description: >-
+      Kaydet and Vazgeç are on as soon as one control differs, in the form or in the köşk's policy box (`dirty = settingsChanged ||
+      policyChanged`; a control put back by hand turns them off again, not drawn). The graph draws the press of Kaydet once the form holds everything
+      the walk's world presses (`readyToSend`): a form that holds less sends what differs by the same transitions. Nothing is sent until Kaydet, and
+      the only sign of an unsaved change is that the two buttons are on: a menu entry, a link or a reload drops the pressed controls without a word
+      (F-W4-5). The "Yayın" and "Dersi gizle" cards stay live; taking the course back to draft or publishing it keeps the form's draft (the form is
+      not keyed by the status). After a refusal the person stays here, with the error toast over the page (it stays until closed) and the pressed
+      controls as they were: nothing was read again, so after a policy that came on the box is still open and unticked and the same Kaydet is
+      refused the same way, and after a conflict the same Kaydet is refused again until the page is reloaded (SETPUB-3).
+    on:
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:231 }
+      TOGGLE_APPROVAL: { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nizam/features/courses/components/course-settings-page.tsx:275 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nizam/features/courses/components/course-settings-page.tsx:285 }
+      TOGGLE_POLICY: { guard: tickPolicy, target: dirty, effect: [policyOn], say: "they tick 'Ders kayıtları herkese açılamaz'", source: apps/nizam/features/courses/components/course-settings-page.tsx:319 }
+      OPEN_SAMPLE: { target: choosingSample, effect: [clearToast], say: "they open 'Örnek ders'", source: apps/nizam/features/courses/components/course-settings-page.tsx:245 }
+      OPEN_ZONE: { target: choosingZone, effect: [clearToast], say: "they open 'Saat dilimi'", source: apps/nizam/features/courses/components/course-settings-page.tsx:289 }
+      SUBMIT: { guard: readyToSend, target: sending, say: "they press Kaydet", source: apps/nizam/features/courses/components/course-settings-page.tsx:335 }
+      REVERT: { target: reverting, say: "they press Vazgeç: nothing asks first", source: apps/nizam/features/courses/components/course-settings-page.tsx:324 }
+      UNPUBLISH: { guard: isPublished, target: asking, effect: [clearToast], say: "they press Taslağa çek with an unsaved change in the form", source: apps/nizam/features/courses/components/course-settings-page.tsx:369 }
+      PUBLISH: { guard: isDraft, target: publishing, effect: [clearToast], say: "they press Yayımla with an unsaved change in the form", source: apps/nizam/features/courses/components/course-settings-page.tsx:377 }
+      HIDE: { target: confirmingHide, effect: [clearToast], say: "they press Dersi gizle: hiding does not look at the form, and its unsaved change goes with the page", source: apps/nizam/features/courses/components/course-settings-page.tsx:432 }
+      RELOAD: { guard: "world == 'stale'", target: reloading, effect: [reloadedLost], say: "after the conflict they reload the page: it is read again, the form is built again and the pressed controls are gone", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:29" }
+      OPEN_PUBLIC:
+        - { guard: isDraft, target: dirty, starts: { flow: tedris.course.draftPreview, given: { viewer: "'visitor'", draft: "'dated'" } }, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab (DRAFT-1) and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+        - { target: dirty, say: "they follow Tanıtım sayfasını gör: Tedris opens in a new tab and this tab stays", source: apps/nizam/features/courses/components/course-settings-page.tsx:209 }
+      NAVIGATE: { target: left, say: "they leave the page: the pressed controls are lost and nothing warned them" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:93
+
+  choosingSample:
+    title: The list "Örnek ders" is open
+    by: human
+    description: >-
+      The kit's Select, a Base UI listbox in a popup: "Örnek ders yok" and one option for every LIVE session in programme order, "Hafta 1 · Celse 1" and
+      "Hafta 1 · Celse 2" for the walk's course (`sampleOptions`; the Select has no empty value, "none" stands for no sample). Base UI's Select is
+      modal, so the page behind is taken to be inert and only the list is drawn here (not verified in a browser). Choosing the value already shown
+      changes nothing and is not drawn; "Hafta 1 · Celse 2" is an option of the list that no walk of this graph chooses. Esc closes the list and
+      changes nothing.
+    on:
+      PICK_FIRST: { guard: pickFirst, target: dirty, effect: [sampleFirst], say: "they choose 'Hafta 1 · Celse 1'", source: apps/nizam/features/courses/components/course-settings-page.tsx:248 }
+      DISMISS:
+        - { guard: anythingPressed, target: dirty, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+        - { target: clean, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  choosingZone:
+    title: The list "Saat dilimi" is open
+    by: human
+    description: >-
+      The same Select with every zone the runtime lists (about 418, `listTimeZones`), each named by its city alone, "İstanbul" being the only one the
+      catalog words and the others being the last part of the IANA id with the underscores as spaces ("Berlin"), in the order of the ids, not of the
+      labels (F-D2c-17 of nazar: no region, no search). Two options are drawn: the zone every course starts with and the one e2e courses#9 chooses;
+      choosing İstanbul again is the way back and is not drawn. The page behind is inert as for the first list (not verified).
+    on:
+      PICK_BERLIN: { guard: pickBerlin, target: dirty, effect: [zoneBerlin], say: "they choose 'Berlin'", source: apps/nizam/features/courses/components/course-settings-page.tsx:292 }
+      DISMISS:
+        - { guard: anythingPressed, target: dirty, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+        - { target: clean, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  reverting:
+    title: Vazgeç puts back what the page read
+    description: >-
+      Not a screen: the form becomes `stored` and the köşk's policy box becomes the köşk's own value. The graph keeps one record of that, the course
+      as the walk's world has it, so it puts that back; a Vazgeç after a save in the same visit is not drawn (outOfView). Vazgeç is natively
+      disabled once the form equals the record, so the pressed button turns off under the focus.
+    always:
+      - { target: clean, effect: [restorePlain], say: "back to the course as it was read" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:328
+
+  sending:
+    title: Which writes are due
+    description: >-
+      Not a screen: `submit` returns at once when nothing differs, otherwise it writes the sample first when its id differs from the stored one, then the
+      course's fields that differ (`settingsPatch` is null when none does, and then no course write is made), then the köşk's policy when it changed and
+      the caller is the manager. The controls and Kaydet are busy while it runs: the fields are disabled, Kaydet is aria-disabled and aria-busy with a
+      hidden output "Kaydediliyor…", Vazgeç is off.
+    always:
+      - { guard: sampleDue, target: sendingSample, say: "the sample differs: it is written first" }
+      - { guard: fieldsDue, target: sendingCourse, say: "only the course's fields differ" }
+      - { guard: policyDue, target: sendingPolicy, say: "only the köşk's policy differs" }
+      - { target: clean, effect: [savedAll], say: "nothing differs (Kaydet is off then, so this is never taken)" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:109
+
+  sendingSample:
+    title: The sample session is written
+    description: >-
+      patchLesson, PATCH /lessons/:id with `{ version, isPreview }` and the version the page was read at: first the old sample is taken off
+      (`isPreview: false`) when the course had one, then the new one is set (`isPreview: true`) with the version the first write returned; a course
+      with no sample is one write. The API checks the version in the statement that bumps it, so a stale page changes nothing
+      (COURSE_VERSION_CONFLICT). It needs `session.manage`. A refusal here stops the save: the course's fields and the policy are not sent, the
+      toast "Ayarlar kaydedilemedi" says "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.", the
+      page is NOT read again and the same Kaydet is refused again (SETPUB-3).
+    invoke: { action: updateLesson }
+    on:
+      DONE: { guard: "not conflicting", target: afterSample, effect: [sampleLanded], say: "the sample is stored: it carries the course's new version", source: apps/nizam/features/courses/components/course-settings-page.tsx:129 }
+      FAIL.stale: { guard: conflicting, target: dirty, effect: [toastStale], say: "409: nothing was written, the toast says to reload, the page is not read again and Kaydet stays on", source: apps/nizam/features/courses/components/course-settings-page.tsx:124 }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:116
+
+  afterSample:
+    title: Is a course or a policy write due?
+    description: "Not a screen: after the sample the course's fields are written when any differs, then the policy; a save that changed only the sample is done."
+    always:
+      - { guard: fieldsDue, target: sendingCourse, say: "a box or the zone differs: one PATCH /courses/:id follows" }
+      - { guard: policyDue, target: sendingPolicy, say: "only the köşk's policy differs besides the sample" }
+      - { target: clean, effect: [savedAll], say: "only the sample differed: the save is done" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:145
+
+  sendingCourse:
+    title: The course's fields are written
+    description: >-
+      patchCourse, PATCH /courses/:id with only the fields that differ from what was read among isClosed, requiresApproval, inPerson and timeZone:
+      never the version (the route takes none, so it is never COURSE_VERSION_CONFLICT and the last save wins), never null. It needs `course.edit`, and
+      `course.settings` for the two boxes (AUTHZ_FORBIDDEN otherwise); switching approval off or opening a closed course also needs the abilities a
+      policy may have closed (PLATFORM_POLICY_LOCKED, 409), and the page words that code with the generic sentence "İşlem tamamlanamadı. Biraz
+      sonra yeniden deneyin." because its table has no entry for it (SETPUB-2). A course that is gone is COURSE_NOT_FOUND for the başnazım and,
+      from the guard, probably AUTHZ_FORBIDDEN for the nazım (the route resolves with `byParam`, not `byExistingCourse`; not verified), worded
+      "Bu işlem için yetkiniz yok.".
+    invoke: { action: updateCourse }
+    on:
+      DONE: { guard: "not courseRefused", target: afterCourse, say: "the course is saved", source: apps/nizam/features/courses/components/course-settings-page.tsx:154 }
+      FAIL.policy: { guard: policyWorld, target: dirty, effect: [toastGeneric], say: "409 PLATFORM_POLICY_LOCKED: the toast says 'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.' and names no box and no policy; nothing is read again, so the box is still open and the same Kaydet is refused again", source: apps/nizam/features/courses/present.ts:1242 }
+      FAIL.other: { guard: goneWorld, target: dirty, effect: [toastGeneric], say: "404 COURSE_NOT_FOUND (read as the başnazım): the generic sentence; the course is gone and the page does not know", source: apps/nizam/features/courses/present.ts:1242 }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:147
+
+  afterCourse:
+    title: Is a policy write due?
+    description: "Not a screen: after the course the köşk's policy is written when it changed and the caller is the manager; a save with no policy change is done."
+    always:
+      - { guard: policyDue, target: sendingPolicy, say: "the policy box differs: PATCH /kosks/:id follows" }
+      - { target: clean, effect: [savedAll], say: "the course was the last write: the save is done" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:155
+
+  sendingPolicy:
+    title: The köşk's policy is written
+    description: >-
+      updateKosk, PATCH /kosks/:id with `{ recordingsNeverPublic }` only, the köşk's own setting for EVERY course it runs. It needs `kosk.manage` or
+      `platform.kosk_edit`. A platform policy that is on cannot be switched off from below (PLATFORM_POLICY_LOCKED, the başnazım excepted): the
+      box accepts the untick and the refusal is the generic sentence, as on the köşk's own settings page (F-W3-3 of nizam.kosks.editAndHide; not
+      drawn here, outOfView). The write is audited as `kosk.policy_change`. What the policy does and does not do is SETPUB-5: it is read when
+      a visitor reads the course's recordings, and nothing reads it when a recording is made public.
+    invoke: { action: updateKosk }
+    on:
+      DONE: { target: clean, effect: [savedAll], say: "the köşk's policy is stored: the save is done and the toast says the course's settings were saved", source: apps/nizam/features/courses/components/course-settings-page.tsx:166 }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:155
+
+  reloading:
+    title: The page is read again
+    description: >-
+      After a reload the page reads the köşk, the course and the caller's roles again, as `opened` does, and the form is built again from them: the
+      pressed controls of a reload from `dirty` are gone, and after a save the form shows what was saved, read from the API and not kept by the
+      browser (the walk's effect check reads the course through the API as well).
+    invoke: { action: getCourse }
+    on:
+      DONE: { target: clean, say: "the page shows what the API holds", source: apps/nizam/features/courses/components/course-settings-page.tsx:77 }
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:29"
+
+  asking:
+    title: Taslağa çek asks once
+    description: >-
+      An alertdialog, "Dersi taslağa çek", headed by the course's title as its eyebrow: "{name} taslağa çekilecek; talebeler dersi göremez." and
+      "İstediğiniz zaman yeniden yayımlayabilirsiniz." The focus starts on "Vazgeç" (the kit's `initialFocus`), and the scrim does not close it. The
+      page behind is inert. "Vazgeç", Esc and "Kapat" close it and write nothing, and the focus goes back to the button that opened it (Base UI's
+      return to the element focused before; not verified). The question says no number of talebe: the caption on the card does (D2). After a
+      refused write the question is STILL OPEN with the error toast over it (nizam closes the question only on a success; nazar closes it first).
+    by: human
+    on:
+      CONFIRM_UNPUBLISH: { target: drafting, effect: [clearToast], say: "they press Taslağa çek in the dialog", source: apps/nizam/features/courses/components/course-settings-page.tsx:457 }
+      CANCEL: { target: backToPage, say: "they press Vazgeç, or Esc", source: apps/nizam/features/courses/components/course-settings-page.tsx:448 }
+      CLOSE: { target: backToPage, say: "they press the close icon", source: apps/nizam/features/courses/components/course-settings-page.tsx:448 }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:446
+
+  drafting:
+    title: The status is written, the question still open
+    description: >-
+      changeStatus("DRAFT") sends PATCH /courses/:id with `{ status: "DRAFT" }` and nothing else (no version, the last save wins). It needs
+      `course.publish`. The dialog stays open until the answer: its confirming button is busy (aria-disabled, with a hidden "Yükleniyor" output from
+      the kit's default, F-D2c-13 of nazar) and the dialog ignores every way of closing meanwhile (`if (!publishBusy)`), though "Vazgeç" and "Kapat"
+      look live (SETPUB-6, the same as PUB-2 of nazar). A success closes the question, says "Ders taslağa çekildi" in a toast and reads the page
+      again; a refusal leaves the question open under an error toast.
+    invoke: { action: updateCourse }
+    on:
+      DONE: { guard: "not statusRefused", target: backToPage, effect: [drafted], say: "the API answered 200: the question closes, toast \"Ders taslağa çekildi\", the page is read again and the card says Taslak", source: apps/nizam/features/courses/components/course-settings-page.tsx:183 }
+      FAIL.other: { guard: statusRefused, target: asking, effect: [toastGeneric], say: "the course is gone: the question stays open with 'Ayarlar kaydedilemedi' and the generic sentence", source: apps/nizam/features/courses/components/course-settings-page.tsx:179 }
+      CANCEL: { target: drafting, source: apps/nizam/features/courses/components/course-settings-page.tsx:449, say: "they press Vazgeç, or Esc, while the status is written: nothing happens, the change goes on (`if (!publishBusy)`, SETPUB-6)" }
+      CLOSE: { target: drafting, source: apps/nizam/features/courses/components/course-settings-page.tsx:449, say: "they press the close icon: nothing happens, the change goes on" }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:173
+
+  publishing:
+    title: The publish is on its way
+    description: >-
+      changeStatus("PUBLISHED") sends `{ status: "PUBLISHED" }`. "Yayımla" is busy (aria-disabled, "Yükleniyor" for a reader of the screen from the
+      kit's default); the form's controls, Vazgeç, Kaydet and "Dersi gizle" are off until the answer (`writing`, course-settings-page.tsx:86-88;
+      fixed 23 Nov 2026: they stayed live, and a press then went beside the write), and only the link to the public page is live. A success
+      says "Ders yayımlandı" and reads the page again; the badge is "Yayında" and the button
+      is "Taslağa çek" in the same place. Yayımla asks nothing: publishing is undone with Taslağa çek, and nothing is lost.
+    invoke: { action: updateCourse }
+    on:
+      DONE: { guard: "not statusRefused", target: backToPage, effect: [published], say: "the API answered 200: toast \"Ders yayımlandı\"; the page is read again", source: apps/nizam/features/courses/components/course-settings-page.tsx:184 }
+      FAIL.other: { guard: statusRefused, target: backToPage, effect: [toastGeneric], say: "the course is gone: 'Ayarlar kaydedilemedi' and the generic sentence; the card still offers Yayımla", source: apps/nizam/features/courses/components/course-settings-page.tsx:179 }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:173
+
+  backToPage:
+    title: The page is back, with the form as it was
+    description: >-
+      Not a screen: on every way out of a question and on the end of a status change, the page is the clean one or the one holding the pressed controls
+      (the status card does not touch the form's draft, and the form is not keyed by the status).
+    always:
+      - { guard: anythingPressed, target: dirty }
+      - { target: clean }
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:77
+
+  confirmingHide:
+    title: Dersi gizle asks once
+    description: >-
+      An alertdialog, "Dersi gizle", with the course's title as its eyebrow: "{name} talebelerden ve ziyaretçilerden gizlenecek; ders her listeden çıkar."
+      and "Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz." The focus starts on "Vazgeç"; the confirming "Gizle" is the primary button (hiding is
+      not destructive). The scrim does not close it. "Vazgeç", Esc and "Kapat" close it and write nothing. After a refused hide the question is still
+      open with the toast "Ders gizlenemedi" over it.
+    by: human
+    on:
+      CONFIRM_HIDE: { target: hiding, effect: [clearToast], say: "they press Gizle in the dialog", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:71 }
+      CANCEL: { target: backToPage, say: "they press Vazgeç, or Esc", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:62 }
+      CLOSE: { target: backToPage, say: "they press the close icon", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:62 }
+    source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:60
+
+  hiding:
+    title: The course is hidden, the question still open
+    description: >-
+      hideCourse, POST /courses/:id/archive. The confirming button is busy and the dialog ignores every way of closing meanwhile (SETPUB-6). A success
+      closes the question, says "Ders gizlendi" and "<course> artık hiçbir listede görünmüyor." and sends the person to the list of courses
+      (router.push) while the page, the opener and the dialog are all gone, so the focus is on nothing (not verified, as F-W3-hide-2 of
+      nizam.kosks.editAndHide). A course hidden by someone else meanwhile answers 409 COURSE_ALREADY_HIDDEN, which the page takes as done (what the
+      click wanted is done). Any other refusal is the toast "Ders gizlenemedi" with "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." and the question
+      stays open.
+    invoke: { action: hideCourse }
+    on:
+      DONE: { guard: "not hideRefused and not settledWorld", target: dersler_opened, say: "the course is hidden: toast 'Ders gizlendi', and the person goes to the list of courses", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:52 }
+      FAIL.settled: { guard: settledWorld, target: dersler_opened, say: "409 COURSE_ALREADY_HIDDEN: the same as done: the same toast and the same list", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:42 }
+      FAIL.other: { guard: hideRefused, target: confirmingHide, effect: [toastHideFailed], say: "any other refusal: 'Ders gizlenemedi' and the question stays open", source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:46 }
+      CANCEL: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press Vazgeç, or Esc, while the hide runs: nothing happens, the hide goes on (onOpenChange is ignored while saving, SETPUB-6)" }
+      CLOSE: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press the close icon: nothing happens, the hide goes on" }
+    source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
+
+  dersler_opened:
+    title: The list of courses opens
+    description: >-
+      After a hide the page goes to /kosks/<id>/dersler, where the toast "Ders gizlendi" is up and the course is no longer among the courses; the list
+      is nizam.courses.list's, and the hidden course waits in the köşk's Arşiv (nizam.moderation.restoreArchived).
+    type: final
+    leavesPage: true
+
+  no_access:
+    title: The page says "Bu bölüm için izniniz yok"
+    description: >-
+      A person with no nazım role (the layout's `forbidden()`, HTTP 403, e2e courses#20), or a course of another köşk or an unknown one, or a caller who
+      may not edit the course: one screen on purpose, drawn and walked by nizam.shell.noAccessAndNotFound.
+    type: final
+    leavesPage: true
+
+  load_failed:
+    title: The course could not be read
+    description: "Any other failure of the reads draws 'Ders bilgisi okunamadı' with 'Yeniden dene' (CourseLoadFailed). Not reachable on the local stack."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: the-sample-is-sent-only-when-it-differs
+    never: "state == 'sendingSample' and sampleDraft == 'unchanged'"
+    say: The sample session is written only when the chosen one differs from the stored one.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:116
+  - id: the-course-is-sent-only-when-a-field-differs
+    never: "state == 'sendingCourse' and fieldsDraft == 'unchanged'"
+    say: PATCH /courses/:id is sent only when a box or the zone differs, and carries only what differs.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:145
+  - id: the-policy-is-sent-only-when-it-differs
+    never: "state == 'sendingPolicy' and policyDraft == 'unchanged'"
+    say: PATCH /kosks/:id is sent only when the köşk's policy box differs from the köşk's own value.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:155
+  - id: the-sample-goes-before-the-course
+    never: "state == 'sendingCourse' and sampleDraft == 'changed' and written == 'no'"
+    say: When the sample differs, the course's fields are sent only after the sample's write landed.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:116
+  - id: a-conflict-stops-the-save
+    never: "(state == 'sendingCourse' or state == 'sendingPolicy') and conflicting and sampleDraft == 'changed'"
+    say: A sample write refused for a stale page stops the save; neither the course's fields nor the köşk's policy are sent after it.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:124
+  - id: a-success-toast-follows-a-save
+    never: "toast == 'saved' and (sampleDraft == 'changed' or fieldsDraft == 'changed' or policyDraft == 'changed')"
+    say: After a save the toast says so and nothing is left unsaved; the next press clears the toast.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:167
+  - id: only-a-published-course-is-taken-back
+    never: "state == 'drafting' and status == 'draft'"
+    say: Taslağa çek is offered, and its question asked, on a published course only.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:368
+  - id: only-a-draft-is-published
+    never: "state == 'publishing' and status == 'published'"
+    say: Yayımla is offered on a draft only.
+    source: apps/nizam/features/courses/components/course-settings-page.tsx:376
+  - id: a-confirm-starts-with-no-toast
+    never: "(state == 'drafting' or state == 'hiding') and toast != 'none'"
+    say: A write behind a question starts when the person presses its confirming button, with no toast of an earlier step over it.
+    source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36

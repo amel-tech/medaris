@@ -1,0 +1,132 @@
+# What the walks of nazar.decks.import share: the data they read, the events a person causes outside the screen, the addresses of the states, the
+# checks of what a step leaves outside the screen, and the locators role and name cannot give. It has no scenario: binding.yaml (the nine
+# scenarios) and binding.csv.yaml (the main story with a CSV instead of the template's workbook) extend it.
+#
+# NOT RUN: the graphs were written without a replay (the walk phase comes later); every locator below comes from the code and the catalog and is
+# unverified until a walk. What the code alone leaves in doubt is marked "not verified".
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/decks/import --bind graphs/nazar/decks/import/binding.yaml \
+#     [--cover transitions] --out <dir>
+#
+# THE ONE VERB THE ENGINE LACKS. `replay` has no action that puts a file into an <input type=file> (`fill` refuses one: Playwright throws "Input
+# of type "file" cannot be filled"; apps/engine/src/bind.ts lists goto, reload, click, fill, key, waitUrl, waitText, waitResponse, run). So
+# `events.CHOOSE_FILE` below is left as a comment, and every transition from CHOOSE_FILE on (SUBMIT with a file, the whole `sending` state, the two
+# alerts, the toast, the closed-while-sending state, the error page) is not drivable; the walks reach the dialog, the deck list, the empty send
+# and the two template links, and stop. The ask is one action, e.g. `{ attach: { css: 'input[type=file]' }, files: ['{upload}'] }` (Playwright's
+# setInputFiles; the type of the file given by its name). When it exists, uncommenting `events.CHOOSE_FILE` is the whole change: each scenario
+# already names its file in `vars.upload`.
+#
+# The bulk budget. tedrisat answers 429 to the 11th request on a bulk route within a window per person and route (THROTTLE_BULK_LIMIT, 10;
+# apps/tedrisat/src/config/throttle-env.ts:26). A walk of this flow sends at most one file (the import) as MUDERRIS, and the helper's template
+# download is not a bulk route, so one walk after another stays inside it; many scenarios of `--cover transitions` back to back may not, and a
+# 429 would be told by the dialog as the generic failure. If a walk reports that sentence where a clean file was sent, wait out the window.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.decks.import
+
+# {made.course} is the walk's own course (helpers/course.mjs make import); {files.deckA}, {files.deckB} and the paths of the files are written by
+# import-data.mjs up
+data:
+  made: { json: ../.local/made/import.json }
+  files: { json: ../.local/deck-import.json }
+
+events:
+  # choosing a file has no node that sends an event: the binding sets the input. NOT BOUND until the engine has such an action (see the header).
+  # CHOOSE_FILE:
+  #   - attach: { css: 'input[type=file]' }
+  #     files: ['{upload}']
+  # Esc closes the open list of decks and nothing else
+  DISMISS: [{ key: Escape }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  # the list and the deck's page keep one address through every state of the dialog
+  list: { url: '{nazar}/ders/*/deste' }
+  listNoDeck: { url: '{nazar}/ders/*/deste' }
+  deckPage: { url: '{nazar}/ders/*/deste/*' }
+  # The import is a Server Action: a POST to the page's own address, which answers 200 whatever the API said, so `call` only holds the busy state; it
+  # cannot compare the status of a refusal (the row alert's 422, the failure alert's 400). `**` because the list and a deck's page both send it. A
+  # refresh of the page after a clean file is a GET with `?_rsc=` and comes after the call is released. Not walked: if a held call hangs the walk,
+  # take `call` off both states.
+  sending: { call: '{nazar}/ders/*/deste**' }
+  abandoned: { call: '{nazar}/ders/*/deste**' }
+  # NOT `call` on sampling: the template links are <a download> navigations, and a held navigation may hang the walk (CONVENTIONS); the effect
+  # below reads the same route over HTTP
+  # exits with no screen of their own are checked by their address or their words
+  error_page: { text: Sayfa açılamadı }
+  handed_over.open_deck: { url: '{nazar}/ders/*/deste' }
+  left: { url: 'about:blank' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone: a bare role=main that the next page has too, data in the text, a name
+# that several elements share, a file input with no role, and the alerts and the toast, found by their classes and words.
+nodes:
+  # the shell's one <main id="main"> is on every page; the list's own line and a deck's own settings tell them apart
+  pageMain: { css: 'main#main', hasText: '/talebe görür|Deste ayarları/' }
+  # the dialog's title shares its words with the page's button; the title is the heading
+  importTitle: { role: heading, name: Excel'den aktar }
+  # a toast has a "Kapat" of its own, so the dialog's is found inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog } }
+  # "Aktar" alone, not "Excel'den aktar"
+  submit: { role: button, name: '/^Aktar$/', within: { role: dialog } }
+  # the Select is a button with role combobox, named by its label; the sidebar's scope picker is a menu button, not a combobox
+  deckField: { role: combobox, name: '/^Hedef deste/' }
+  # what the Select shows is its chosen option's words
+  deckShownFirst: { role: combobox, name: '/^Hedef deste/', hasText: Aktarma denemesi A }
+  deckShownSecond: { role: combobox, name: '/^Hedef deste/', hasText: Aktarma denemesi B }
+  # the open list: an unnamed listbox with one option per deck
+  deckList: { role: listbox }
+  optionFirst: { role: option, name: Aktarma denemesi A }
+  optionSecond: { role: option, name: Aktarma denemesi B }
+  # a file input has no ARIA role
+  fileField: { css: 'input[type=file]' }
+  # the sentence shares its <p> with the two links
+  sampleLead: { css: 'p.mds-body-sm', hasText: Örnek şablon }
+  # the row alert and the failure alert are both role=alert; the dialog's body holds at most one of them
+  rowAlert: { css: '[role=alert]', hasText: satırda hata var }
+  rowAlertTitle: { css: '.mds-alert__title', hasText: satırda hata var }
+  rowList: { css: '.mds-alert ul' }
+  rowItem: { css: '.mds-alert li', hasText: '/^Satır \d+/' } # the sample's words are one row's; the pattern is every row's
+  failedAlert: { css: '[role=alert]', hasText: İşlem tamamlanamadı }
+  failedText: { css: '.mds-alert', hasText: İşlem tamamlanamadı }
+  # the busy button's hidden <output>
+  busy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor }
+  # the toast: a Base UI dialog in the region "Bildirimler", found by its tone class; its close button has the same name as the dialog's icon
+  importedToast: { css: '.mds-toast--success', hasText: kart eklendi }
+  toastClose: { css: '.mds-toast--success button[aria-label=Kapat]' }
+
+# What a step leaves outside the screen.
+effects:
+  # nazar's template route, read over HTTP with a web session of MUDERRIS (import-data.mjs probe sample): the two formats, and what tedris does
+  # not do, a format that is neither (never a 400, the workbook comes)
+  webDownloadCardSampleNazar:
+    - run: [node, ../nazar/decks/import/import-data.mjs, probe, sample, xlsx]
+      expect: 'probe sample xlsx 200 file=deste-ornek.xlsx type=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet zip=yes'
+    - run: [node, ../nazar/decks/import/import-data.mjs, probe, sample, csv]
+      expect: 'probe sample csv 200 file=deste-ornek.csv type=text/csv; charset=utf-8 header=Card Type,Content Front,Content Back cards=2 bom=none'
+    - run: [node, ../nazar/decks/import/import-data.mjs, probe, sample, other]
+      expect: 'probe sample other 200 file=deste-ornek.xlsx'
+  # a clean file: every row is a card of the deck the dialog sent it to, and the other deck is untouched; the template's HADEETH row is a card of
+  # the Kelime deck all the same (IMPORT-4). The count of the card total on the page is read by the nodes (summaryAfter, cardsHeadingAdded).
+  addedToFirst:
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deckA}'"]
+      expect: '"c":{cardsAfter}'
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deckB}'"]
+      expect: '"c":0'
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deckA}' and type = 'HADEETH'"]
+      expect: '"c":{hadeeth}'
+  addedToSecond:
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deckB}'"]
+      expect: '"c":{cardsAfter}'
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deckA}'"]
+      expect: '"c":0'
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id = '{files.deckB}' and type = 'HADEETH'"]
+      expect: '"c":{hadeeth}'
+  # a refused file adds nothing to either deck (e2e-less; the API's own bulk e2e holds it: apps/tedrisat/test/e2e/flashcard-bulk.e2e.spec.ts)
+  rowsRefused:
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id in ('{files.deckA}', '{files.deckB}')"]
+      expect: '"c":0'
+  fileRefused:
+    - run: [node, helpers/sql.mjs, "select count(*) as c from flashcards where deck_id in ('{files.deckA}', '{files.deckB}')"]
+      expect: '"c":0'

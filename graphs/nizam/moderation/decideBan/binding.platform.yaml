@@ -1,0 +1,41 @@
+# nizam.moderation.decideBan at the köşk's list, on a ban Medaris administration placed: the row offers no lift and says "Bu yasağı yalnız Medaris
+# yönetimi kaldırabilir." (bans#6: the lift is hidden where the kademe is too low), and it still offers "Köşkten de yasakla" (the widening asks
+# for the köşk's code, which the köşk nazım holds, not for the kademe that placed the ban).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.platform.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`). A scenario that adds no transition of its own is
+# not walked by `--cover transitions` of binding.yaml, so this one has a file of its own.
+#
+# The ban is the başnazım's: helpers/kosk-bans.mjs up places it through the API as SYSTEM_ADMIN (tier 4), on applicantC, who is enrolled in the walk's own course.
+# Nothing in the seed is changed. The same teardown as binding.yaml's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+states:
+  listed: { url: '{nizam}/kosks/*/yasaklamalar' }
+  empty: { url: '{nizam}/kosks/*/yasaklamalar' }
+  liftedTab: { url: '{nizam}/kosks/*/yasaklamalar' }
+  widening: { call: '{nizam}/kosks/*/yasaklamalar' }
+
+scenarios:
+  platform:
+    given: { viewer: kosk, read: ok, row: platform, answer: done, after: more }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --platform, APPLICANT_C]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: 'COURSE lifted by KOSK_NAZIM'
+      widenHas: KOSK open

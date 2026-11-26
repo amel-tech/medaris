@@ -1,0 +1,43 @@
+# nizam.courses.list over a köşk with no course (`courses` none): the table says "Henüz ders yok." on every tab and every number is 0. The nazım
+# opens "Deneme köşkü ncl", which has only its nazım (KOSK_NAZIM) and nothing else.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/list \
+#     --bind graphs/nizam/courses/list/binding.empty.yaml --to empty --cover states --out <dir>
+# NOT RUN. Walk it with `--to empty` (or `--cover states`): the data holds nothing to hide or restore, so the transitions of `listed` are
+# not this file's. `teardown` removes the köşk and checks that it is gone.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.list
+
+data:
+  ncl: { json: ../.local/made/ncl.json }
+
+scenarios:
+  emptyKosk:
+    given: { courses: none, held: none }
+    as: koskNazim
+    open: '{nizam}/kosks/{ncl.kosk}'
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, ncl, KOSK_NAZIM]
+        expect: '"tag":"ncl"'
+    teardown:
+      - run: [node, helpers/make-kosk.mjs, remove, ncl]
+        expect: 'kosk remove ncl'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where name like 'Deneme köşkü ncl%'"]
+        expect: '"n":0'
+
+nodes:
+  # nothing is listed, so every tab says 0 and no card holds a number above the nazım's own
+  tabAll: { role: tab, name: '/^Tümü0$/' }
+  tabPublished: { role: tab, name: '/^Yayında0$/' }
+  tabDraft: { role: tab, name: '/^Taslak0$/' }
+  tabHidden: { role: tab, name: '/^Gizli0$/' }
+  applicationsNumber: { css: .mds-stat__value, hasText: '/^0$/', within: { css: .mds-stat, hasText: Bekleyen başvuru } }
+  hostingNumber: { css: .mds-stat__value, hasText: '/^0$/', within: { css: .mds-stat, hasText: Barındırma hakkı olan medrese } }
+  emptyAll: { css: tbody td, hasText: Henüz ders yok. }
+
+# no course is made here, so the checks of the shared file (they read nclOwn) have nothing to read
+effects:
+  cancelled: []
+  hideCourse: []
+  restoreCourse: []

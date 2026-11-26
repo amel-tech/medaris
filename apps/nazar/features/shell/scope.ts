@@ -162,7 +162,7 @@ export function parseScopeCookie(
   raw: string | null | undefined
 ): { kind: ScopeKind; id: string } | null {
   if (!raw) return null;
-  let value = raw;
+  let value: string;
   try {
     value = decodeURIComponent(raw);
   } catch {

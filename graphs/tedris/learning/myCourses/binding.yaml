@@ -1,0 +1,116 @@
+# tedris.learning.myCourses on the local stack (graphs/README.md, "The stack and the bindings"): Derslerim (tedris-web, :4000), reached from the
+# top bar's "Derslerim" (the tedris navigation graph's entry frame:app->myCourses), read as the spare talebe `applicantE`.
+#   node apps/engine/src/cli.ts replay graphs/tedris/learning/myCourses --bind graphs/tedris/learning/myCourses/binding.yaml --out <dir>
+#   (a `--to empty` run takes the scenario nothingYet)
+#
+# Data. The seed gives `talebe` three ongoing courses and nothing else, and TALEBE_MALE a seat and a waiting application: no seeded person holds
+# a completed course or a revoked seat, and a walk must not use up the seed's own rows or change a seeded course. So the walk makes four courses
+# of its own with the shared helper (helpers/course.mjs make <tag>: `Deneme dersi <tag>` in the second köşk, the seeded müderris as hoca, a
+# celse tomorrow at 21:00, `--talebe applicantE` applying), one for each state Derslerim sorts into, and mycourses-data.mjs (this folder) puts
+# applicantE's rows into those states through the routes the people use (no SQL writes a status):
+#   ongoing    mycourses-ongoing: ENROLLED, progress 40 per cent, the next celse is tomorrow, Hafta 1
+#   waiting    mycourses-waiting, made with --approval: PENDING, applied today
+#   completed  mycourses-completed: the müderris completed it today
+#   revoked    mycourses-revoked: the müderris took the seat away
+# `applicantE` is a spare talebe (a woman). The eight spares are all taken by the R2 flows (celse.attend also seats applicantE, and a probe of
+# watchRecording left a seat in its course), so the nodes that hold what this walk made are found by the course's title (`vars`), and the others by role and name, so a seat
+# another flow leaves for applicantE does not fail this walk (the first run met one: a card with no celse ahead, which read as hidden "Planlı celse yok"). `course.mjs make` removes
+# an old course of its tag first, so a walk that crashed leaves nothing in the way; the teardown deletes applicantE's rows in the four courses
+# (one SQL: no route removes a COMPLETED or a REVOKED row, see mycourses-data.mjs) and then removes the four courses. Taking and giving seats
+# makes tedrisat's invitation sweep mail applicantE (Mailpit), so both setup and teardown clear that mailbox. The dates the page writes
+# ("Başvurdun: <today>", "Ders kadrosu <today> ...") and the celse's day are the walk's own, so those nodes are found by a pattern, not by the
+# e2e's fixed dates (discover#24).
+#
+# Scenarios.
+#   fullPage     the main story: all four sections, then the ongoing card's link. e2e discover#21-#23, #25 (the link).
+#   nothingYet   `--to empty`: the seeded OTHER holds no seat at all, so the page is the empty state and "Keşfet'e git". Nothing is made.
+#   threeCards   the seeded TALEBE: three ongoing cards and the three other sections empty ("many"). Bound, NOT walked in the writing phase.
+# Not walkable on the stack, so not bound: `loadFailed` (tedrisat answers every read, and the stack has no way to make it refuse one: the unit spec
+# discover-pages.spec.ts covers the alert), the RELOAD of that state, `next: none` (every seeded course has a celse ahead), and every transition
+# that hands over to tedris.course.leave (OPEN_MENU, WITHDRAW): that flow's own binding walks them from this page.
+# `call` is not used on any state: the read is server-side, so the browser makes no fetch to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learning.myCourses
+
+scenarios:
+  fullPage:
+    given: { read: ok, ongoing: one, applications: one, revoked: some, completed: some, next: planned }
+    as: applicantE
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->myCourses' }
+    vars: { ongoingCourse: 'Deneme dersi mycourses-ongoing', waitingCourse: 'Deneme dersi mycourses-waiting', revokedCourse: 'Deneme dersi mycourses-revoked', completedCourse: 'Deneme dersi mycourses-completed' }
+    setup:
+      - { run: [node, helpers/course.mjs, make, mycourses-ongoing, --talebe, applicantE], expect: '"tag":"mycourses-ongoing"' }
+      - { run: [node, helpers/course.mjs, make, mycourses-waiting, --approval, --talebe, applicantE], expect: '"tag":"mycourses-waiting"' }
+      - { run: [node, helpers/course.mjs, make, mycourses-completed, --talebe, applicantE], expect: '"tag":"mycourses-completed"' }
+      - { run: [node, helpers/course.mjs, make, mycourses-revoked, --talebe, applicantE], expect: '"tag":"mycourses-revoked"' }
+      - { run: [node, ../tedris/learning/myCourses/mycourses-data.mjs, states], expect: 'mycourses-data states APPLICANT_E' }
+      - { run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}'] }
+    teardown:
+      - { run: [node, ../tedris/learning/myCourses/mycourses-data.mjs, down], expect: 'mycourses-data down APPLICANT_E' }
+      - { run: [node, helpers/course.mjs, remove, mycourses-ongoing] }
+      - { run: [node, helpers/course.mjs, remove, mycourses-waiting] }
+      - { run: [node, helpers/course.mjs, remove, mycourses-completed] }
+      - { run: [node, helpers/course.mjs, remove, mycourses-revoked] }
+      - { run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}'] }
+  nothingYet:
+    given: { read: ok, ongoing: none, applications: none, revoked: none, completed: none, next: planned }
+    as: other
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->myCourses' }
+  threeCards:
+    given: { read: ok, ongoing: many, applications: none, revoked: none, completed: none, next: planned }
+    as: talebe
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->myCourses' }
+
+events:
+  NAVIGATE:
+    - goto: '{tedris}/notifications'
+  # RELOAD (the alert's "Yeniden dene") is not bound: nothing on the stack makes the read fail
+
+states:
+  listed: { url: '{tedris}/my-courses' }
+  empty: { url: '{tedris}/my-courses' }
+  course_opened: { url: '{tedris}/courses/*' }
+  calendar_opened: { url: '{tedris}/account/calendar' }
+  discover_opened: { url: '{tedris}/discover**' }
+  # the menu and the row's call are on this page: the leave flow takes over from here
+  handed_over.leave_menu: { url: '{tedris}/my-courses' }
+  handed_over.withdraw: { url: '{tedris}/my-courses' }
+  left: { url: '{tedris}/notifications' }
+
+# Where role and name cannot find a node. The four sections are named by their aria-labelledby ids (my-ongoing, my-applications, my-revoked,
+# my-completed), which the e2e finds them by too; a name that is a value the API gives (a title, the place line) matches any text, so those
+# nodes are found by the page's own classes. The cards' footers hold the celse's words and the date in one span: the footer is found by what it
+# starts or ends with.
+nodes:
+  # Derslerim's <main>; the pages it leaves for have a <main> of their own, so the subtitle every state carries names it
+  listMain: { role: main, hasText: 'Kayıtlı olduğun dersler' }
+  # the counts sit in a span beside each h2 (the first child of the section is the head)
+  ongoingCount: { css: 'section[aria-labelledby=my-ongoing] > div:first-child > .mds-caption', hasText: '/^\d+ ders$/' }
+  applicationsCount: { css: 'section[aria-labelledby=my-applications] > div:first-child > .mds-caption', hasText: '/^\d+ başvuru onay bekliyor$/' }
+  revokedCount: { css: 'section[aria-labelledby=my-revoked] > div:first-child > .mds-caption', hasText: '/^\d+ ders$/' }
+  completedCount: { css: 'section[aria-labelledby=my-completed] > div:first-child > .mds-caption', hasText: '/^\d+ ders$/' }
+
+  # What this walk made, found by its title, so that a seat another flow leaves for applicantE (a card with no celse ahead, a row of its own)
+  # is on the page and is not read as this walk's: an ongoing card is a `.mds-card` and each other row an `li`, each holding its course's title.
+  # an ongoing card: the h3 holds the card's link
+  cardTitle: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") h3', count: 1 }
+  cardLink: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") h3 > a', count: 1 }
+  cardPlace: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") p.mds-card__body', count: 1 }
+  cardPercent: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") .mds-progress__value', hasText: '%40', count: 1 }
+  nextLabel: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") .mds-card__footer', hasText: '/^Sıradaki celse/', count: 1 }
+  nextTime: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") .mds-card__footer time', count: 1 }
+  nextWeek: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") .mds-card__footer', hasText: '/Hafta \d+$/', count: 1 }
+  noNext: { css: 'section[aria-labelledby=my-ongoing] .mds-card:has-text("{ongoingCourse}") .mds-card__footer', hasText: '/^Planlı celse yok$/' }
+
+  # the waiting row, the revoked row and the completed row: a link of class mds-h4, the place line, then what each says
+  applicationLink: { css: 'section[aria-labelledby=my-applications] li:has-text("{waitingCourse}") a.mds-h4', count: 1 }
+  applicationPlace: { css: 'section[aria-labelledby=my-applications] li:has-text("{waitingCourse}") p.mds-caption[dir=auto]', count: 1 }
+  revokedLink: { css: 'section[aria-labelledby=my-revoked] li:has-text("{revokedCourse}") a.mds-h4', count: 1 }
+  revokedPlace: { css: 'section[aria-labelledby=my-revoked] li:has-text("{revokedCourse}") p.mds-caption[dir=auto]', count: 1 }
+  completedLink: { css: 'section[aria-labelledby=my-completed] li:has-text("{completedCourse}") a.mds-h4', count: 1 }
+  completedPlace: { css: 'section[aria-labelledby=my-completed] li:has-text("{completedCourse}") p.mds-caption[dir=auto]', count: 1 }

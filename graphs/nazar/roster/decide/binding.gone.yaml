@@ -1,0 +1,39 @@
+# nazar.roster.decide: the application is settled behind the page's back, so "Onayla" and "Reddet" are answered with 404
+# ENROLLMENT_NOT_FOUND, the info toast "Bu başvuru artık yok; liste yenilendi." and the list read again without the row
+# (FAIL.gone of both decisions). The course also has its own approval flag switched off after the three applications were made, so
+# the note over the waiting rows says "Bu ders onay istemiyor" (ROSTER-1).
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/decide --bind graphs/nazar/roster/decide/binding.gone.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the answer is made: SETTLED_ELSEWHERE is no node's, so the binding gives it. The newest application is applicantE's (it is the
+# last to apply and the page lists newest first, so it is the row the walk presses); the event has applicantE take it back
+# (DELETE /courses/:id/enrollment, which removes a waiting row), and the page, which was read before, still draws the row. It is an
+# event of the flow (the page is stale before the person presses), not a failure injected into the held call, so it does not depend
+# on whether the replay runs actions before it releases the held call. The status the replay compares on FAIL.gone is the server
+# action's own 200 (an engine limit, see locators.binding.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.decide
+
+events:
+  SETTLED_ELSEWHERE:
+    - run: [node, helpers/leave.mjs, applicantE, '{course}']
+      expect: 'leave APPLICANT_E'
+
+scenarios:
+  gone:
+    given: { approval: needed, mayDecide: may, note: open }
+    as: muderris
+    open: '{nazar}/ders/{rosGone.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    vars: { course: '{rosGone.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosGone, --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+      # the flag is the course's own: turning it off approves nobody, so the three rows keep waiting under a note that says nobody waits
+      - run: [node, helpers/api.mjs, systemAdmin, PATCH, '/courses/{rosGone.course}', '{"requiresApproval":false}']
+        expect: '"requiresApproval":false'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosGone]
+        expect: 'course remove rosGone'

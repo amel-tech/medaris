@@ -1,0 +1,673 @@
+# nazar.recordings.add on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, the hoca of a
+# course of the walk's own signed in through Keycloak's real form, on Ders kayıtları, entered through the sidebar's "Ders kayıtları".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/recordings/add \
+#     --bind graphs/nazar/recordings/add/binding.yaml --out <dir>
+#   ... --cover transitions --out <dir>       (every transition the scenarios below can drive; the walk of `exists` is best run without --absent)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation below is
+# from the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <scratchpad>/emit/...` wrote a spec and
+# walked nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, hoca, medrese or setting is touched. helpers/course.mjs
+# opens "Deneme dersi recAdd" in the seed's second köşk through the API (published; the köşk's nazım opens it, MUDERRIS is its one hoca and
+# imam; two weeks of two celses, the first at -5 days, then -3, +2 and +4; the ids are read from graphs/.local/made/recAdd.json as {made.*}),
+# and the teardown deletes it with everything under it (recordings, posts, grants). The course has no talebe, so a recording adds no
+# notification and sends no mail. data.mjs, in this folder, writes graphs/.local/recordings-add.json (the dates the walk types, on the course's
+# clock) and does the one thing another person does mid-walk. The page lists the weeks newest first: Hafta 2 (Celse 3, Celse 4, both ahead)
+# above Hafta 1 (Celse 1, Celse 2, both over), so the first "Değiştir" is Celse 3's and the first "Kayıt ekle" the walk presses is Celse 1's.
+#
+# e2e course-scope#5 (apps/nazar/e2e/course-scope.e2e.ts:121), the one web e2e of this page, is carried by scenario `adds` on its first state: a1 the h1
+# (`pageTitle`), a2 the placeholder is absent (`placeholder`, a node no state shows, so only a walk with --absent checks it), a3 the note a holder of
+# recording.upload reads (`uploadNote`: the müderris here, the başmüderris there), a4 the sidebar's entry is the current page (`menuRecordings`, found by
+# its aria-current). The e2e's start is the seeded medrese course, this binding's a course of its own.
+#
+#   adds           (the main story) the hoca presses "Kayıt ekle: Celse 1", chooses the tab "Bağlantı yapıştır", types a title and a YouTube link,
+#                  and adds it; --cover also walks the cancel paths, "Herkese açık", "Düzenle" of that recording (the title changes), the
+#                  edit that changes nothing, and "Değiştir" with nothing chosen.
+#   addsLater      release: later. "Şu tarih ve saatte" with a date three days ahead at 12:00 on the add form, on "Düzenle" and on
+#                  "Değiştir" (the first row, Celse 3); the toast says when it opens, and the row's "Erişim" too.
+#   titleEmpty     the title is cleared: "Başlığı yazın." under it and nothing is sent. notHttps: a link that starts with http://: the same.
+#                  (pressing the submit before pasting a link says "Bağlantıyı yapıştırın." in every scenario's add form: no case of its own)
+#   releaseEmpty   "Şu tarih ve saatte" with no date typed: "Tarihi ve saati yazın."   releasePast: a date in 2020: "İleri bir tarih ve saat seçin."
+#   linkInvalid    a YouTube address that names no video (https://www.youtube.com/): tedrisat answers 400 RECORDING_LINK_INVALID, reason
+#                  youtube-no-video, and the toast says what is wrong; the dialog stays. The only refusal of the link the stack can be made to give.
+#   exists         just before "Kaydı ekle" is pressed, the node's `before` has the müderris add a recording to the same celse through the API
+#                  (data.mjs meanwhile record): the walk's own add is refused with 409 RECORDING_EXISTS, the toast says so, the dialog closes and the
+#                  row now holds the other recording ("Düzenle" is there). streamMoved: the same for "Yayını kayıt olarak ekle" (Celse 2).
+#   manager        a ders nazırı granted recording.manage alone (helpers/course-nazir-grants.mjs): "Kayıt ekle" opens the link form with no tabs,
+#                  the note says nothing is uploaded here, and there is no stream button.
+#   refused        the same ders nazırı; just before "Kaydı ekle" the müderris takes the grant off (data.mjs meanwhile revoke): 403. refusedEdit and
+#                  refusedLater do it before "Kaydet" of "Kaydı düzenle" and of "Kayıt erişimi". A revoke stays: a walk that goes on after a refusal
+#                  meets more refusals (the shortest paths of --cover end at the refusal).
+#   edits          a recording on Celse 1 (the müderris adds a YouTube link through the API): "Düzenle" opens the link form, the title is changed,
+#                  "Kaydet" saves it. The walk's own add goes to Celse 2. editLinkInvalid: the edit pastes https://www.youtube.com/: 400 again.
+#   fromStream     a YouTube live link is set on Celse 2 through the API (it is over, so "Yayını kayıt olarak ekle: Celse 2" is drawn): one press
+#                  adds it as the recording.
+#   forbidden      the ders nazırı with no permission at all: "Bu sayfaya izniniz yok".
+#   empty          a course with one week and no celse: "Bu derste henüz celse yok".
+#
+# Not bound, and why:
+#   - loadFailed and its retry, and not_found: the stack cannot make a read fail or a course vanish between the menu and the page.
+#   - the `failed` answers of the add, the edit, the stream and the release (VALIDATION_ERROR, COURSE_NOT_FOUND), the other `moved` codes
+#     (LESSON_CANCELLED, LESSON_NOT_FOUND, RECORDING_NOT_FOUND), the stream's linkInvalid and refused, and the release's `gone`: nothing on the stack
+#     makes tedrisat answer them on request (the stream's link is always one tedrisat takes, and a hoca's grants cannot be taken off), and the
+#     client's own checks keep a bad body from being sent. The replay lists them as not bound.
+#   - the other reasons of RECORDING_LINK_INVALID (not-https from the server, bunny-*): the page's own check stops a link without https, and
+#     Bunny keys are unset.
+#   - the tab "Bunny’ye yükle" and everything under it: nazar.recordings.upload.
+#   - a time before a celse that is still ahead (Recordings.release.errors.beforeSession) and a closed course's locked switch: see outOfView.
+#   - the toast of a time set to "Hazır olunca hemen" again after a time was held: the walk's celse holds none, so choosing it changes nothing.
+#
+# What a write leaves outside the screen is read through the API as the müderris (effects); nothing is mailed or notified here.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.recordings.add
+
+data:
+  made: { json: ../.local/made/recAdd.json }
+  rec: { json: ../.local/recordings-add.json }
+
+# the course's title is the subtitle's {name}
+samples:
+  name: '{made.title}'
+
+scenarios:
+  # The main story and the cancel, toggle and edit paths from it.
+  adds:
+    given: { caller: hoca, rows: bare, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  addsLater:
+    given: { caller: hoca, rows: bare, stream: absent, fields: valid, release: later, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  titleEmpty:
+    given: { caller: hoca, rows: bare, stream: absent, fields: titleEmpty, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: ''
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: ''
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  notHttps:
+    given: { caller: hoca, rows: bare, stream: absent, fields: notHttps, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'http://www.example.test/kayit'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: 'http://www.example.test/kayit'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  releaseEmpty:
+    given: { caller: hoca, rows: bare, stream: absent, fields: valid, release: empty, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.empty.date}'
+      releaseTime: '{rec.empty.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  releasePast:
+    given: { caller: hoca, rows: bare, stream: absent, fields: valid, release: past, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.past.date}'
+      releaseTime: '{rec.past.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  # tedrisat refuses a YouTube address that names no video: 400 RECORDING_LINK_INVALID, reason youtube-no-video.
+  linkInvalid:
+    given: { caller: hoca, rows: bare, stream: absent, fields: valid, release: ready, answer: linkInvalid, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  # Another person records Celse 1 just before the add is pressed: 409 RECORDING_EXISTS. The row then holds their recording.
+  exists:
+    given: { caller: hoca, rows: bare, stream: absent, fields: valid, release: ready, answer: moved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: record
+      meanwhileEdit: none
+      meanwhileRelease: none
+  # The same, for the stream button (Celse 2) and for the add (Celse 1): both answered 409.
+  streamMoved:
+    given: { caller: hoca, rows: bare, stream: offered, fields: valid, release: ready, answer: moved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.1}/live-stream', '{"liveStreamUrl":"https://www.youtube.com/live/Ab3dEfGh1jK"}']
+        expect: 'liveStreamUrl'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Celse 2 kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: record
+      meanwhileEdit: none
+      meanwhileRelease: none
+  manager:
+    given: { caller: manager, rows: bare, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, recording.manage]
+        expect: 'course-nazir-grants'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  # The grant is taken off just before the add is pressed: 403 AUTHZ_FORBIDDEN.
+  refused:
+    given: { caller: manager, rows: bare, stream: absent, fields: valid, release: ready, answer: refused, editAnswer: saved, releaseAnswer: saved }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, recording.manage]
+        expect: 'course-nazir-grants'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: revoke
+      meanwhileEdit: none
+      meanwhileRelease: none
+  # The same for "Kaydet" of the recording the müderris added on Celse 1.
+  refusedEdit:
+    given: { caller: manager, rows: mixed, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: refused, releaseAnswer: saved }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{made.lessons.0}/recordings', '{"title":"Birinci kayıt","url":"https://www.youtube.com/watch?v=Cd4eFgHi2kL","visibility":"ENROLLED"}']
+        expect: '"provider":"YOUTUBE"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, recording.manage]
+        expect: 'course-nazir-grants'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: İkinci celse kaydı
+      link: 'https://www.youtube.com/watch?v=Ef5gHiJk3lM'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: 'https://www.youtube.com/watch?v=Cd4eFgHi2kL'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: revoke
+      meanwhileRelease: none
+    samples:
+      session: Celse 2
+      title: Birinci kayıt
+  # The same for "Kaydet" of "Kayıt erişimi" (the first row, Celse 3).
+  refusedLater:
+    given: { caller: manager, rows: bare, stream: absent, fields: valid, release: later, answer: saved, editAnswer: saved, releaseAnswer: refused }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, recording.manage]
+        expect: 'course-nazir-grants'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: revoke
+  # Celse 1 holds a recording from the start, so the walk's own add goes to Celse 2.
+  edits:
+    given: { caller: hoca, rows: mixed, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{made.lessons.0}/recordings', '{"title":"Birinci kayıt","url":"https://www.youtube.com/watch?v=Cd4eFgHi2kL","visibility":"ENROLLED"}']
+        expect: '"provider":"YOUTUBE"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: İkinci celse kaydı
+      link: 'https://www.youtube.com/watch?v=Ef5gHiJk3lM'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: 'https://www.youtube.com/watch?v=Cd4eFgHi2kL'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+    samples:
+      session: Celse 2
+      title: Birinci kayıt
+  # Celse 1 holds a recording; the edit pastes a YouTube address that names no video: 400 RECORDING_LINK_INVALID.
+  editLinkInvalid:
+    given: { caller: hoca, rows: mixed, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: linkInvalid, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{made.lessons.0}/recordings', '{"title":"Birinci kayıt","url":"https://www.youtube.com/watch?v=Cd4eFgHi2kL","visibility":"ENROLLED"}']
+        expect: '"provider":"YOUTUBE"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: İkinci celse kaydı
+      link: 'https://www.youtube.com/watch?v=Ef5gHiJk3lM'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: 'https://www.youtube.com/'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+    samples:
+      session: Celse 2
+      title: Birinci kayıt
+  fromStream:
+    given: { caller: hoca, rows: bare, stream: offered, fields: valid, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.1}/live-stream', '{"liveStreamUrl":"https://www.youtube.com/live/Ab3dEfGh1jK"}']
+        expect: 'liveStreamUrl'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Celse 2 kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  forbidden:
+    given: { caller: outsider, rows: bare, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '2', --lessons, '2', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+  # A course with one week and no celse.
+  empty:
+    given: { caller: hoca, rows: none, stream: absent, fields: valid, release: ready, answer: saved, editAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recAdd, --weeks, '1', --lessons, '0', --start, '-5']
+        expect: '"tag":"recAdd"'
+      - run: [node, ../nazar/recordings/add/data.mjs, dates]
+        expect: 'recordings-add dates written'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recAdd]
+        expect: 'course remove recAdd'
+      - run: [node, ../nazar/recordings/add/data.mjs, clear]
+        expect: 'recordings-add clear removed'
+    vars:
+      title: Tanışma celsesi kaydı
+      link: 'https://www.youtube.com/watch?v=Ab3dEfGh1jK'
+      newTitle: Düzeltilmiş kayıt başlığı
+      editLink: '{link}'
+      releaseDate: '{rec.later.date}'
+      releaseTime: '{rec.later.time}'
+      meanwhile: none
+      meanwhileEdit: none
+      meanwhileRelease: none
+
+# The events no node of the screen sends. Pressing a button, a tab or the switch is the walk's own.
+events:
+  # the title and the link of a new recording
+  FILL_IN:
+    - fill: { role: textbox, name: Başlık, value: '{title}' }
+    - fill: { role: textbox, name: Bağlantı, value: '{link}' }
+  # the same on the edit form: a new title, and the link it already holds (or one the page refuses)
+  FILL_IN_EDIT:
+    - fill: { role: textbox, name: Başlık, value: '{newTitle}' }
+    - fill: { role: textbox, name: Bağlantı, value: '{editLink}' }
+  # "Şu tarih ve saatte", then the date and the time (the boxes read what is typed when they are left)
+  SET_RELEASE:
+    - click: { role: radio, name: Şu tarih ve saatte }
+    - fill: { role: textbox, name: '/^Açılış tarihi ve saati\s*$/', value: '{releaseDate}' }
+    - key: Tab
+    - fill: { role: textbox, name: '/^Açılış tarihi ve saati Saat$/', value: '{releaseTime}' }
+    - key: Tab
+  # Vazgeç, the close icon and Esc all send CANCEL; the buttons are the walk's own
+  NAVIGATE:
+    - goto: '{nazar}/'
+
+states:
+  listed: { url: '{nazar}/ders/*/kayitlar' }
+  empty: { url: '{nazar}/ders/*/kayitlar' }
+  forbidden: { url: '{nazar}/ders/*/kayitlar' }
+  # the writes are Next server actions: a POST to the page's own address, held while the busy state is checked
+  adding: { call: '{nazar}/ders/*/kayitlar' }
+  saving: { call: '{nazar}/ders/*/kayitlar' }
+  addingStream: { call: '{nazar}/ders/*/kayitlar' }
+  releasing: { call: '{nazar}/ders/*/kayitlar' }
+  # NAVIGATE goes to the portal's root, which sends the person on to the first scope they hold
+  left: { url: '{nazar}/**' }
+
+# Where role and name cannot find a node. The page is the course's whole list, so the rows are found by what they say; a toast has a
+# "Kapat" and is a dialog too, so a dialog is found by its exact name and the close icon by the dialog's own class.
+nodes:
+  recordingsPage: { role: main, hasText: Ders kayıtları }
+  pageTitle: { role: heading, name: '/^Ders kayıtları$/' }
+  # the sidebar's entry, found by the attribute the e2e checks (course-scope#5 a4): it is the current page
+  menuRecordings: { css: 'aside a[aria-current="page"]', hasText: '/^Ders kayıtları/' }
+  # "{n} celsenin kaydı var, {m} celsenin yok."
+  counts: { testId: recording-counts, hasText: '/^\d+ celsenin kaydı var, \d+ celsenin yok\.$/' }
+  weekSection: { css: 'section[aria-labelledby^="week-"]' }
+  # "Hafta 1 · Hafta 1": the week's number and its title (the walk's weeks are titled "Hafta n")
+  weekHeading: { css: 'h2[id^="week-"]', hasText: '/^Hafta \d+/' }
+  weekTable: { role: table, name: '/^Hafta \d+: celseler ve kayıtları$/' }
+  slotTitle: { role: rowheader, name: '/^Celse \d/' }
+  slotStart: { css: 'th[scope=row] time' }
+  noRecording: { text: '/^Kayıt yok$/' }
+  notYet: { text: '/^Celse henüz yapılmadı$/' }
+  recordingTitle: { css: 'td span.font-semibold bdi' }
+  providerChip: { css: 'td .mds-platform-chip' }
+  openLink: { role: link, name: '/^Kaydı aç: /' }
+  stateBadge: { css: 'td .mds-badge', hasText: '/^Hazır$/' }
+  visibilityBadge: { css: 'td .mds-badge', hasText: '/^(Herkese açık|Kayıtlı talebe)$/' }
+  # the cell "Erişim": "Açık", "24 Kasım 12:00’de açılır" or "Hazır olunca açılır", and the "Değiştir" button inside it
+  access: { css: 'td[data-label="Erişim"]', hasText: '/Açık|açılır/' }
+  # one "Değiştir" a row, Celse 3's first (the weeks are newest first)
+  changeAccess: { role: button, name: '/^Kayıt erişimini değiştir: /' }
+  # the first one is the walk's: a celse that is over (Celse 1, or Celse 2 where Celse 1 holds a recording)
+  add: { role: button, name: '/^Kayıt ekle: Celse [12]$/' }
+  # just before the press, what another person does meanwhile (nothing, except in `streamMoved`): Celse 2 is recorded
+  addStream: { role: button, name: '/^Yayını kayıt olarak ekle: Celse 2$/', before: [{ run: [node, ../nazar/recordings/add/data.mjs, meanwhile, '{meanwhile}', '{made.course}', '{made.lessons.1}'], expect: 'recordings-add meanwhile' }] }
+  rowStream: { role: button, name: '/^Yayını kayıt olarak ekle: Celse 2$/' }
+  # the first one is Celse 1's, the recording the müderris added
+  edit: { role: button, name: '/^Kaydı düzenle: /' }
+
+  # the dialogs: the toasts are dialogs too, and "Kayıt ekle" is the start of "Kayıt eklendi", so each name is anchored
+  addDialog: { role: dialog, name: '/^Kayıt ekle$/' }
+  editDialog: { role: dialog, name: '/^Kaydı düzenle$/' }
+  releaseDialog: { role: dialog, name: '/^Kayıt erişimi$/' }
+  addTitle: { role: heading, name: '/^Kayıt ekle$/' }
+  editTitle: { role: heading, name: '/^Kaydı düzenle$/' }
+  releaseTitle: { role: heading, name: '/^Kayıt erişimi$/' }
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: '/^Celse \d/' }
+  dialogClose: { role: button, name: Kapat, within: { css: '.mds-dialog' } }
+  uploadSubmit: { role: button, name: '/^Yükle$/' }
+  # the three submits, each with the hook of its write: another person records Celse 1 (`exists`), or the grant is taken off (`refused*`)
+  submitAdd: { role: button, name: Kaydı ekle, before: [{ run: [node, ../nazar/recordings/add/data.mjs, meanwhile, '{meanwhile}', '{made.course}', '{made.lessons.0}'], expect: 'recordings-add meanwhile' }] }
+  submitEdit: { role: button, name: Kaydet, before: [{ run: [node, ../nazar/recordings/add/data.mjs, meanwhile, '{meanwhileEdit}', '{made.course}', '{made.lessons.0}'], expect: 'recordings-add meanwhile' }] }
+  submitRelease: { role: button, name: Kaydet, before: [{ run: [node, ../nazar/recordings/add/data.mjs, meanwhile, '{meanwhileRelease}', '{made.course}', '{made.lessons.2}'], expect: 'recordings-add meanwhile' }] }
+  detectedChip: { css: '.mds-platform-chip', hasText: YouTube, within: { css: '.mds-dialog' } }
+  # the time box is named by the date's label and "Saat": the date's name must not match it
+  whenDate: { role: textbox, name: '/^Açılış tarihi ve saati\s*$/' }
+  whenTime: { role: textbox, name: '/^Açılış tarihi ve saati Saat$/' }
+
+  # the toasts: a dialog (an error one an alertdialog) named by its title, its words by the walk's own celse
+  toastAdded: { role: dialog, name: '/^Kayıt eklendi$/', hasText: '/celsesinin kaydı eklendi\.$/' }
+  toastSaved: { role: dialog, name: '/^Kayıt kaydedildi$/', hasText: '/güncellendi\.$/' }
+  toastFromStream: { role: dialog, name: '/^Yayın kayıt olarak eklendi$/', hasText: '/Celse 2 celsesinin kaydı, YouTube yayını arşivleyince oynar\.$/' }
+  toastReleasedAt: { role: dialog, name: '/^Kayıt erişimi kaydedildi$/', hasText: '/celsesinin kaydı talebeye .+ açılır\.$/' }
+  toastMoved: { role: alertdialog, name: '/^Kayıt kaydedilemedi$/', hasText: '/zaten bir kaydı var|İptal edilmiş|artık yok/' }
+  toastLinkInvalid: { role: alertdialog, name: '/^Kayıt kaydedilemedi$/', hasText: '/YouTube bağlantısı bir videoyu göstermiyor/' }
+  toastRefused: { role: alertdialog, name: '/^Kayıt kaydedilemedi$/', hasText: 'Bunu yapma izniniz yok.' }
+  toastReleaseRefused: { role: alertdialog, name: '/^Kayıt erişimi kaydedilemedi$/', hasText: 'Bunu yapma izniniz yok.' }
+
+# What a write leaves outside the screen, read through the API as the müderris.
+effects:
+  createLessonRecording:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/recordings']
+      expect: '"provider":"YOUTUBE"'
+  updateRecording:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/recordings']
+      expect: '"title":"{newTitle}"'
+  # the first "Değiştir" is Celse 3's, the third celse of the programme
+  setLessonRecordingAvailability:
+    - run: [node, helpers/sql.mjs, "select recording_available_at is not null as held from lessons where id = '{made.lessons.2}'"]
+      expect: '"held":true'

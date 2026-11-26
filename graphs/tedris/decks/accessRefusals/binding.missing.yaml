@@ -1,0 +1,27 @@
+# tedris.decks.accessRefusals, the id that is no deck, on the local stack: OTHER opens /decks/<a uuid nobody has>/edit.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/accessRefusals --bind graphs/tedris/decks/accessRefusals/binding.missing.yaml --to notFound --absent --out <dir>
+#
+# A file of its own for the reason binding.hidden.yaml gives: it reaches notFound as the main story does. Nothing is made or removed. The
+# uuid is the one e2e system-pages.e2e.ts#8 uses for a missing course (00000000-0000-4000-8000-00000000dead), not any deck's. `setup`
+# expects the API's 404 for it. An id that is no uuid at all (/decks/nope/cards) gives the API's 400 and the same screen (measured by hand,
+# not bound: a scenario's address is one text and a file holds one scenario of each `given`).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.accessRefusals
+
+scenarios:
+  missingDeck:
+    given: { deck: missing, address: edit }
+    as: other
+    open: '{tedris}/decks/00000000-0000-4000-8000-00000000dead/edit'
+    setup:
+      - run: [node, helpers/api.mjs, other, GET, '/flashcard/decks/00000000-0000-4000-8000-00000000dead', --any]
+        expect: '"code":"DECK_NOT_FOUND"'
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  home_opened: { url: '{tedris}/home' }
+  left: { url: '{tedris}/notifications' }

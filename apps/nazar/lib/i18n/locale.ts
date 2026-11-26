@@ -5,8 +5,11 @@
  * there is none. next-intl's request config reads it, and so does every trip
  * to Keycloak, whose sign-in and sign-out pages open in it (`ui_locales` and
  * `kc_locale`, MDRS-274, MDRS-222).
+ *
+ * Turkish only for now: English and Arabic are switched off in every app, and
+ * a cookie naming one of them falls back to Turkish.
  */
-export const LOCALES = ["tr", "en", "ar"] as const;
+export const LOCALES = ["tr"] as const;
 export type NazarLocale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: NazarLocale = "tr";
 
@@ -19,5 +22,5 @@ export const htmlLangDir = (
   locale: NazarLocale
 ): { lang: NazarLocale; dir: "ltr" | "rtl" } => ({
   lang: locale,
-  dir: locale === "ar" ? "rtl" : "ltr",
+  dir: (locale as string) === "ar" ? "rtl" : "ltr",
 });

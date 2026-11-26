@@ -1,0 +1,123 @@
+# Köşk, medrese, hosting rights and the platform policy (domain.md section 7, B). Who runs a köşk or a medrese is not a column here:
+# it is a role assignment (the authz entities). `created_at` and `updated_at` of Kosk and Madrasah are timestamps WITHOUT time zone
+# (older tables); the other timestamps are with time zone.
+# A user column holds a Keycloak sub and is no foreign key (invariant data-user-columns-hold-a-sub): it is marked `note: "Keycloak sub"`.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  Kosk: # a publisher or school that owns courses; its nazım is a KOSK_NAZIM role assignment, not a column
+    source: apps/tedrisat/src/database/schema/kosk.schema.ts:21
+    required: [id, ownerId, name, coverHue, isPrivate, tags, alwaysRequireApproval, recordingsNeverPublic, verified, featured, rating, ratingCount, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      ownerId: { type: string, format: uuid, note: "Keycloak sub; the creator, who is granted nothing by it since MDRS-126" }
+      name: { type: string, minLength: 2, maxLength: 120, note: "the length is the DTO's" }
+      handle: { type: [string, "null"], maxLength: 60, unique: case-insensitive, note: "NOT unique in the database: the rule is the application's (case-insensitive, a leading @ ignored, 409 KOSK_HANDLE_TAKEN), so a concurrent create can insert two köşks with one handle" }
+      description: { type: [string, "null"], maxLength: 1000 }
+      coverHue: { type: integer, default: 215, maximum: 360 }
+      isPrivate: { type: boolean, default: false, note: "unlisted: in no list, opened by link to signed-in callers only, every enrollment waits for approval" }
+      field: { type: [string, "null"], maxLength: 60, note: "the field of knowledge (ilim alani)" }
+      level: { type: [string, "null"], enum: [ALL, BEGINNER, INTERMEDIATE, ADVANCED, null], note: "an application enum, no DB check (kosk-field-rules.ts:25-30)" }
+      tags: { type: array, items: { type: string, maxLength: 40 }, maxItems: 10, default: [] }
+      alwaysRequireApproval: { type: boolean, default: false, note: "the köşk policy (MDRS-174): every enrollment in its courses waits for approval" }
+      recordingsNeverPublic: { type: boolean, default: false, note: "the köşk policy: no recording of its courses is open to everyone. Stale comments say nothing reads it (kosk.schema.ts:38-41 and create-kosk.dto.ts), but course.service.ts:859-872 and the authz policy chain do" }
+      verified: { type: boolean, default: false, note: "no writer in src" }
+      featured: { type: boolean, default: false, note: "no writer in src; only read, for the ordering of the köşk list (kosk.repository.ts:410)" }
+      rating: { type: number, default: 0, note: "no writer in src" }
+      ratingCount: { type: integer, default: 0, note: "no writer in src" }
+      passiveSince: { type: [string, "null"], format: date-time }
+      passiveReason: { type: [string, "null"], note: "the one known value is DEACTIVATED_BY_ADMIN" }
+      archivedAt: { type: [string, "null"], format: date-time }
+      archivedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      archivedLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null], note: "the level the hider acted at; null on rows hidden before it was recorded; a restore needs the same level or above" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> active: a köşk is opened by the Medaris management, or by approving a köşk application"
+      - "active -> passive: deactivated by the başnazım: passiveSince is set, passiveReason becomes DEACTIVATED_BY_ADMIN, every KOSK_NAZIM role is revoked, the audit action kosk.deactivate is written. What authorization treats as passive is derived from the role assignments (isPassiveScope); these columns are what the lists show"
+      - "passive -> active: a nazım is seated through POST /kosks/{id}/nazims or the inactive-scope assignment, which clear passiveSince and passiveReason; the other seating route, POST /kosks/{id}/managers/{userId}, does not, so the list keeps saying PASSIVE although a live nazım holds the seat"
+      - "active -> hidden: archivedAt, archivedBy and archivedLevel are set; every course of the köşk then answers 404 COURSE_NOT_FOUND to everyone except holders of course.hide or platform.kosk_edit, whether the course was opened before or after the hide"
+      - "hidden -> active: restored by someone at the level that hid it or above; exactly what the hide closed opens again"
+
+  KoskFollower: # a talebe follows a köşk
+    source: apps/tedrisat/src/database/schema/kosk.schema.ts:72
+    key: [userId, koskId]
+    required: [userId, koskId, createdAt]
+    fields:
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      koskId: { type: string, format: uuid, references: Kosk, note: "on delete cascade" }
+      createdAt: { type: string, format: date-time, note: "timestamp without time zone" }
+    lifecycle:
+      - "none -> following: a signed-in caller follows; the route checks only that the köşk exists, so a hidden köşk can be followed by someone who knows its id"
+      - "following -> none: the follower unfollows, or the köşk is purged"
+
+  Madrasah: # a medrese: the optional layer above courses, linked to köşks only through hosting rights; its head is a MEDRESE_BASMUDERRIS role assignment
+    source: apps/tedrisat/src/database/schema/madrasah.schema.ts:18
+    required: [id, handle, name, coverHue, createdBy, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      handle: { type: string, unique: true, note: "constraint madrasahs_handle_unique; the application checks it too (MadrasahHandleTakenError)" }
+      name: { type: string }
+      description: { type: [string, "null"] }
+      coverHue: { type: integer, default: 215 }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub; the SYSTEM_ADMIN who opened it" }
+      passiveSince: { type: [string, "null"], format: date-time }
+      passiveReason: { type: [string, "null"], note: "the one known value is DEACTIVATED_BY_ADMIN" }
+      archivedAt: { type: [string, "null"], format: date-time }
+      archivedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      archivedLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null], note: "the level the hider acted at; a restore needs the same level or above. A stale comment says a medrese has no hide column (archive-types.ts:9-10), but these three columns exist and are written (madrasah.repository.ts:650-690)" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> active: opened by the başnazım (madrasah.repository.ts:183, 271)"
+      - "active -> passive: deactivated by the başnazım: passiveSince is set, passiveReason becomes DEACTIVATED_BY_ADMIN (madrasah.repository.ts:718-750)"
+      - "passive -> active: a head (başmüderris) is seated, which clears passiveSince (madrasah.repository.ts:620)"
+      - "active -> hidden: archivedAt, archivedBy and archivedLevel are set, and in the same transaction every course of the medrese is hidden with the same level and its version is bumped (madrasah.repository.ts:650-690)"
+      - "hidden -> active: restored (madrasah.repository.ts:780-810)"
+
+  MadrasahSettings: # the three medrese policies its nazırs set, kept apart from Madrasah so that public reads never carry them. NO ROW means every policy is off
+    source: apps/tedrisat/src/database/schema/madrasah.schema.ts:55
+    key: [madrasahId]
+    required: [madrasahId, policyClosedCourseRequired, policyAlwaysApproval, policyNoPublicRecordings, updatedAt, updatedBy]
+    fields:
+      madrasahId: { type: string, format: uuid, references: Madrasah, note: "the primary key; on delete cascade" }
+      policyClosedCourseRequired: { type: boolean, default: false, note: "closes setting.course_open in every course of the medrese" }
+      policyAlwaysApproval: { type: boolean, default: false, note: "closes setting.approval_off; enroll then answers PENDING" }
+      policyNoPublicRecordings: { type: boolean, default: false, note: "closes setting.recordings_public in the engine, but CourseService.publicRecordingsAllowed does not read it (course.service.ts:861-871), so a PUBLIC recording of a medrese course is still shown to visitors" }
+      updatedAt: { type: string, format: date-time }
+      updatedBy: { type: string, format: uuid, note: "Keycloak sub" }
+    lifecycle:
+      - "none -> present: the first save of the medrese settings (an upsert, audit madrasah.settings.update); every policy was off until then"
+      - "present -> present: a later save"
+
+  MadrasahKoskHosting: # "this medrese may open courses in this köşk": the only link between the two; revoked rows stay as history
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:133
+    required: [id, madrasahId, koskId, grantedBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      madrasahId: { type: string, format: uuid, references: Madrasah, note: "on delete cascade" }
+      koskId: { type: string, format: uuid, references: Kosk, note: "on delete cascade" }
+      grantedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      grantedByRole: { type: [string, "null"], enum: [SYSTEM_ADMIN, MEDARIS_NAZIM, KOSK_NAZIM, null], note: "null on rows older than MDRS-170" }
+      createdAt: { type: string, format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time }
+      revokedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub; set exactly when revokedAt is (check madrasah_kosk_hosting_revocation_complete)" }
+    # A unique partial index (madrasahId, koskId) where revokedAt is null: one held right per pair. An index on koskId.
+    lifecycle:
+      - "none -> held: a hosting right is granted (audit hosting_right.grant)"
+      - "held -> revoked: revokedAt and revokedBy are set (audit hosting_right.revoke); the row stays"
+      - "revoked -> none: nothing; to grant again a new row is inserted (hosting.repository.ts:286)"
+
+  PlatformPolicy: # the two platform-wide switches; a key with no row reads as off
+    source: apps/tedrisat/src/database/schema/platform-policy.schema.ts:19
+    key: [key]
+    required: [key, enabled, changedAt]
+    fields:
+      key: { enum: [ALWAYS_REQUIRE_APPROVAL, RECORDINGS_NEVER_PUBLIC], note: "no DB check (platform-policy.schema.ts:10-13); the audit row of a change names the all-zero uuid as its entity id" }
+      enabled: { type: boolean, default: false }
+      changedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      changedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> present: the first change of a switch (an upsert and the audit action platform_policy.change)"
+      - "present -> present: a later change of enabled"

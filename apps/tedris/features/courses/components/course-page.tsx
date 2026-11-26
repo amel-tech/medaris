@@ -3,6 +3,8 @@
 import type {
   CourseDeckStudentResponse,
   CourseDetailResponse,
+  LessonViewResponse,
+  MyGradesResponse,
   RecordingResponse,
 } from "@medaris/services/tedrisat";
 import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
@@ -43,6 +45,7 @@ import { CourseDecksTab } from "./course-decks-tab";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
+import { MyGradesTab } from "./exam-grades";
 import { FileErrorNotice } from "./file-error-notice";
 import { RecordingsTab } from "./recordings-tab";
 
@@ -67,6 +70,8 @@ export const CoursePage = ({
   handedIn = null,
   decks = [],
   initialTab,
+  grades = null,
+  views = null,
   now: nowProp,
 }: {
   course: CourseDetailResponse;
@@ -102,6 +107,17 @@ export const CoursePage = ({
    * API leaves drafts out. Empty for anyone else, and when the read failed.
    */
   decks?: CourseDeckStudentResponse[];
+  /**
+   * "Notlarım" (MDRS-248, `GET /courses/:id/my-grades`) for a seat holder;
+   * null for anyone else and when the read failed, and the tab is left out.
+   */
+  grades?: MyGradesResponse | null;
+  /**
+   * How far the seat holder has watched each celse (MDRS-248, `GET
+   * /courses/:id/lesson-views`); null for anyone else and when the read
+   * failed, and then the programme draws no watch marks.
+   */
+  views?: LessonViewResponse[] | null;
   /** The tab the page opens on: `?tab=kayitlar` from a session page. */
   initialTab?: string;
   /** The instant the page is drawn at, for tests. */
@@ -179,6 +195,7 @@ export const CoursePage = ({
     ...(asksQuestions
       ? [{ value: "sorularim", label: t("tabMyQuestions") }]
       : []),
+    ...(seat && grades ? [{ value: "notlarim", label: t("tabGrades") }] : []),
     { value: "muderrisler", label: t("tabTeachers") },
   ];
 
@@ -414,6 +431,7 @@ export const CoursePage = ({
                 state={state}
                 now={now}
                 homework={homework}
+                views={views}
               />
             </TabsPanel>
             <TabsPanel value="kayitlar" className="pbs-4">
@@ -455,6 +473,11 @@ export const CoursePage = ({
                   timeZone={zone}
                   canAsk
                 />
+              </TabsPanel>
+            ) : null}
+            {seat && grades ? (
+              <TabsPanel value="notlarim" className="pbs-4">
+                <MyGradesTab grades={grades} />
               </TabsPanel>
             ) : null}
             <TabsPanel

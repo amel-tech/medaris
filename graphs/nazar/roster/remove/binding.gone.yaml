@@ -1,0 +1,50 @@
+# nazar.roster.remove where the seat has moved: the müderris presses "Dersten çıkar" on Esma Başvuran's row, and the talebe leaves the course
+# while the removal is on its way, so the server answers ENROLLMENT_NOT_FOUND: an info toast "Talebe dersten çıkarılamadı" / "Bu talebenin
+# kaydı artık böyle değil; liste yenilendi.", the dialog closes and the list is read again without her.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/remove --bind graphs/nazar/roster/remove/binding.gone.yaml --cover transitions --out <dir>
+# NOT RUN, and the least sure of the bindings: the leaving is the `before` of the state `submitting`, which the replay runs while the server
+# action is held (replay.ts: `before`, then the check, then the release of the held call), so the POST reaches the API after the row is
+# gone. It is a file of its own because that `before` would run in every walk of a file that holds the other scenarios.
+#
+# Same course, data and teardown as binding.yaml (see its header); the leaving is DELETE /courses/:id/enrollment as applicantC
+# (helpers/leave.mjs), which a PENDING or ENROLLED row allows. ENROLLMENT_STATE_CONFLICT, the same sentence from a seat that is no longer
+# ENROLLED (the course completed for them meanwhile), is not walked separately: both codes are one class and one toast.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.remove
+
+scenarios:
+  gone:
+    given: { viewer: remover, answer: gone, others: some }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosterremove, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove
+      - run: [node, helpers/sql.mjs, "select count(*) as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+    vars:
+      who: applicantC
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      otherName: Salih Başvuran
+      courseTitle: Deneme dersi rosterremove
+      reason: Ayrıldığı için kaydı kapatıldı
+      reasonSaved: Ayrıldığı için kaydı kapatıldı
+      removerName: Hamdi Müderris
+
+states:
+  # the talebe leaves while the call waits: the page keeps what it drew, and the API no longer holds the seat
+  submitting:
+    call: '{nazar}/ders/*/talebeler**'
+    before:
+      - run: [node, helpers/leave.mjs, applicantC, '{made.course}']
+        expect: leave APPLICANT_C

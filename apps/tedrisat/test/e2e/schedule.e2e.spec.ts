@@ -1,5 +1,5 @@
 import { INestApplication } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import request from "supertest";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
@@ -108,11 +108,13 @@ describe("schedule (e2e)", () => {
       .post(`/courses/${courseId}/enroll`)
       .expect(201);
 
-  const cancel = (lessonId: string) =>
+  const cancel = (lessonId: string, reason?: string) =>
     app
       .get(DatabaseService)
       .db.execute(
-        `UPDATE "lessons" SET "cancelled_at" = now() WHERE "id" = '${lessonId}'`
+        reason
+          ? sql`UPDATE "lessons" SET "cancelled_at" = now(), "cancel_reason" = ${reason} WHERE "id" = ${lessonId}`
+          : sql`UPDATE "lessons" SET "cancelled_at" = now() WHERE "id" = ${lessonId}`
       );
 
   const window = (fromDays: number, toDays: number) => ({
@@ -265,6 +267,55 @@ describe("schedule (e2e)", () => {
       });
     });
 
+    it("records the cancellation note of a passive course it hands the köşk's nazımı, as content (MDRS-248)", async () => {
+      const course = await createCourse("Notu kalan", {
+        sessions: [{ title: "İptal edilen", at: inHours(30) }],
+      });
+      const db = app.get(DatabaseService).db;
+      await db.insert(enrollments).values({
+        userId: TEST_USER_ID,
+        courseId: course.id,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await cancel(course.weeks[0].lessons[0].id, "Müderris hasta.");
+      await db
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: TEST_USER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, course.id),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+      const mine = await request(app.getHttpServer())
+        .get("/sessions")
+        .query(window(-1, 7))
+        .expect(200);
+      expect(
+        mine.body.map(
+          (s: { meetingUrl: string | null; cancelReason: string | null }) => [
+            s.meetingUrl,
+            s.cancelReason,
+          ]
+        )
+      ).toEqual([[null, "Müderris hasta."]]);
+
+      // No link went out, but the note did: it is content (MDRS-158), and is
+      // recorded under the permission that shows it.
+      const audited = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.entityId, course.id))
+        .orderBy(auditLog.seq);
+      expect(
+        audited.map((r) => [r.action, r.details.via, r.details.permission])
+      ).toEqual([
+        ["scope.passive_open", "schedule", "course.view_details"],
+        ["course.content_read", "schedule", "course.view_details"],
+      ]);
+    });
+
     it("keeps a cancelled session, marked, with no meeting link", async () => {
       const course = await createCourse("Emsile ve Bina", {
         sessions: [
@@ -276,7 +327,10 @@ describe("schedule (e2e)", () => {
       const cancelled = course.weeks[0].lessons.find(
         (l) => l.title === "İptal"
       );
-      await cancel((cancelled as { id: string }).id);
+      await cancel(
+        (cancelled as { id: string }).id,
+        "Bu hafta ders yapılmayacak."
+      );
 
       const res = await list().expect(200);
       expect(
@@ -290,6 +344,9 @@ describe("schedule (e2e)", () => {
       ]);
       expect(res.body[0].meetingUrl).toBeNull();
       expect(res.body[1].meetingUrl).toBe(MEETING_URL);
+      // MDRS-248: the müderris's note for talebe, on the cancelled one alone.
+      expect(res.body[0].cancelReason).toBe("Bu hafta ders yapılmayacak.");
+      expect(res.body[1].cancelReason).toBeNull();
     });
 
     it("applies the window: from inclusive, to exclusive; other lesson types and hidden lessons are not sessions", async () => {

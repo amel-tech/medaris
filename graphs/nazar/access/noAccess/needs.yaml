@@ -1,0 +1,134 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.access.noAccess
+status: proposed
+summary: >-
+  What must exist for a person who holds no medrese and no course seat to open Nazar: nazar.access.noAccess. Each need is what the
+  product must do, from the flow's story; none is read off what the page does today. Nothing here comes from planned.md: no
+  planned feature (P-nn) names this page. No replay has run, so no `replay:` is named as walking anything; the e2e checks are the
+  repository's own (apps/nazar/e2e is not run in CI).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the orchestrator's gaps merge (graphs/needs.gaps.yaml, flow nazar.access.noAccess):
+# missing:  chief-is-told-the-truth, chief-is-named-by-his-role, nazim-is-led-to-nizam, sign-out-asks-first   (all `none`: no Linear issue yet)
+# unwalked: failed-read-is-not-a-verdict   (the unit spec access.spec.tsx proves it; no e2e and no replay makes the API fail a read)
+
+needs:
+  - id: no-seat-is-told-so
+    need: >-
+      A signed-in person who holds no seat in a medrese or a course is told, in one sentence, that Nazar is the portal of medrese
+      and course staff and that their account holds no such seat, and is shown the account they signed in with; they are not shown
+      a menu or a scope picker for a portal they cannot use.
+    evidence:
+      - state: verdict
+      - node: verdictTitle
+      - node: verdictText
+      - node: accountLine
+      - node: accountEmail
+      - node: sidebar
+      - node: userName
+      - node: roleStudent
+      - node: roleKosk
+      - node: rolePlatform
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nazar/features/access/no-access-page.tsx:17
+      - source: apps/nazar/app/erisim-yok/page.tsx:24
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "a talebe with no medrese and no course opens '/' and sees nazir/02, with their e-mail and no menu"
+      - test: apps/nazar/test/access.spec.tsx
+    note: Also drawn as the assertion verdict-only-without-a-seat.
+
+  - id: way-out-for-the-wrong-account
+    need: >-
+      A person who signed in with the wrong account, or who works elsewhere, is not left at a dead end: they can go back to Tedris
+      and they can sign out, from the page itself.
+    evidence:
+      - node: backToTedris
+      - node: signOut
+      - state: tedris_opened
+      - state: handed_over.sign_out
+      - source: apps/nazar/features/access/no-access-page.tsx:46
+      - source: apps/nazar/features/account/components/sign-out-button.tsx:26
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "'Tedris’e dön' is a link to the Tedris address"
+      - test: apps/nazar/test/access.spec.tsx
+
+  - id: seat-holder-is-sent-on
+    need: >-
+      A person who holds a seat never meets the no-access page: it sends them to their scope, and "/" reopens the scope they were
+      last in.
+    evidence:
+      - state: sent_on
+      - source: apps/nazar/app/erisim-yok/page.tsx:27
+      - source: apps/nazar/app/page.tsx:16
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "a person with a medrese opening /erisim-yok is sent on to the portal (criterion 4)"
+      - test: apps/nazar/test/access.spec.tsx
+    note: Also drawn as the assertion a-seat-is-sent-on-only-for-staff, the assertion verdict-only-without-a-seat.
+
+  - id: asked-address-is-the-verdict
+    need: >-
+      A person who holds no seat at all and asks for the address of a medrese, a course or Hesap is told they have no access, not
+      that the page is not there; a person who holds some seat and asks for one that is not theirs gets the 404
+      (nazar.access.landingScope).
+    evidence:
+      - state: sorting
+      - state: askingWho
+      - state: verdict
+      - source: apps/tedrisat/src/user/me.controller.ts:30
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:76
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:107
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "a talebe asking for a scope's page gets the no-access page, not a 404"
+      - test: apps/nazar/test/access.spec.tsx
+
+  - id: failed-read-is-not-a-verdict
+    need: When the roles cannot be read the person is told so and can retry; they are never told they have no access.
+    evidence:
+      - state: load_failed
+      - source: apps/nazar/app/erisim-yok/page.tsx:26
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:67
+    note: |-
+      Also drawn as the assertion a-failed-read-is-never-the-verdict, the assertion retry-only-after-a-failed-read.
+      walked: nothing. The unit spec apps/nazar/test/access.spec.tsx proves the markup; no e2e and no replay makes the API fail a
+      read.
+
+  - id: chief-is-told-the-truth
+    need: >-
+      The Medaris başnazım, who may open every medrese and every course by its address, is not told "Bu portala erişiminiz yok" at
+      "/" or at the page's address; he is told what he may do and offered a way in, or sent to Nizam (decision D1 of the flow;
+      F-E-17, F-L-8).
+    missing: "F-E-17: the page never reads GET /me; no Linear issue yet"
+    note: |-
+      Drawn on the states verdict, askingWho and opened_by_address, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Also drawn as the assertion only-the-chief-opens-by-address.
+
+  - id: chief-is-named-by-his-role
+    need: >-
+      The başnazım is called "Medaris başnazımı" in the user row of every page he opens, the no-access page included, not "Talebe"
+      (NOACC-1; F-E-4 and F-L-7 are the same cause on Hesap and on a scope he opened).
+    missing: "NOACC-1: no Linear issue yet"
+    note: >-
+      Drawn on the node roleStudent, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: nazim-is-led-to-nizam
+    need: >-
+      A köşk nazımı or a Medaris nazımı, whose work is in Nizam, is led there from this page, as Hesap in Tedris leads them
+      (decision D2 of the flow).
+    missing: "a decision: no Linear issue yet"
+    note: >-
+      Drawn on the state verdict and on the nodes roleKosk and rolePlatform, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: sign-out-asks-first
+    need: >-
+      A person who signs out of Nazar from this page is asked first, as in Tedris and Nizam, through the confirmation page nazar
+      already has (F-E-18; decision D1 of realm.auth.signOut).
+    missing: "F-E-18: no Linear issue yet"
+    note: >-
+      Drawn on the state handed_over.sign_out and on the node signOut, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).

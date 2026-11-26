@@ -32,7 +32,6 @@ vi.mock("~/features/courses/actions", () => ({
   enrollInCourse: vi.fn(),
   leaveCourse: vi.fn(),
   withdrawEnrollment: vi.fn(),
-  updateCourseProgress: vi.fn(),
 }));
 
 // 3 Ekim 2026 Cumartesi 12:00 İstanbul.
@@ -101,6 +100,7 @@ const course = (status: Status, contentLocked: boolean) =>
           }),
           lesson("iptal", "2026-10-05T18:00:00Z", {
             cancelledAt: new Date("2026-10-01T10:00:00Z"),
+            cancelReason: "Bu hafta ders yapılmayacak.",
           }),
         ],
       },
@@ -244,7 +244,9 @@ describe("tedris/12: an enrolled talebe", () => {
     expect(html).toContain(tr.meetingNotAdded);
     expect(html).toContain(`>${tr.continue}</a>`);
     expect(html).toContain("%40");
-    expect(html).toContain(tr.updateProgress);
+    // MDRS-248: the progress is counted from the celses watched, not typed.
+    expect(html).toContain(tr.progressNote);
+    expect(html).not.toContain("İlerlemeni güncelle");
     expect(html).toContain(tr.tabDeck);
   });
 
@@ -258,14 +260,17 @@ describe("tedris/12: an enrolled talebe", () => {
   it("marks a cancelled session and says when a week that has not begun opens", async () => {
     const html = await render("ENROLLED");
     expect(html).toContain(tr.cancelledBadge);
+    // MDRS-248: the note on one line under the row, the title not struck.
+    expect(html).toContain("mds-lesson-row__note");
+    expect(html).toContain("Bu hafta ders yapılmayacak.");
+    expect(html).not.toContain("line-through");
     expect(html).toContain("11 Ekim");
     expect(html).not.toContain(tr.signInToApply);
   });
 
-  it("has no way to update progress or leave once the course is completed", async () => {
+  it("has no way to leave once the course is completed", async () => {
     const html = await render("COMPLETED");
     expect(html).toContain(tr.statusCompleted);
-    expect(html).not.toContain(tr.updateProgress);
     expect(html).not.toContain(tr.leaveCourse);
   });
 });

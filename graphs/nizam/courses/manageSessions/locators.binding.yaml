@@ -1,0 +1,241 @@
+# What every walk of nizam.courses.manageSessions shares: the course the walk makes, the words it types, the events no node sends, the states'
+# addresses, the locators role and name cannot find, and the checks of what a write leaves in the database, in Mailpit and in the talebe's notices.
+# It has no scenario; binding.yaml (the köşk nazımı's main story and a course that is not theirs) and refusals.binding.yaml (the page gone stale, the
+# celse cancelled elsewhere) extend it. Written without a replay (the owner's word: replays happen once, at the end), so every locator, every address
+# and every expectation is from the code and unverified. Each of the three files loads: `replay <dir> --bind <file> --emit-spec --out <dir>` writes
+# a spec and walks nothing.
+#
+# The stack: nizam-web at http://localhost:4001, signed in as the seeded köşk nazımı (KOSK_NAZIM, who manages both seeded köşks) through Keycloak's real
+# form (graphs/bindings/local.nizam.binding.yaml).
+# Data. A walk makes its own course and takes it away, so no seeded course, celse or grant is touched. helpers/course.mjs opens "Deneme dersi
+# nmSessions" in the seed's second köşk ("Kubbealtı Köşkü", which no seeded flow reads), published, MUDERRIS its hoca, and APPLICANT_G (a woman,
+# a spare talebe) enrolled in it: ONE week of TWO LIVE celses of 60 minutes, "Celse 1" yesterday at 21:00 (over) and "Celse 2" tomorrow at 21:00
+# (ahead), in Istanbul, none with a link, a stream or an in-person mark (so "Celse 2" reads "Eksik" at the start). The ids are read from
+# graphs/.local/made/nmSessions.json as {made.*}: {made.lessons.0} is the celse that is over, {made.lessons.1} the one every write is made on. One
+# celse ahead and one over, on purpose: a `repeat` node is checked on every row, so two rows ahead would have to read alike through a write.
+# The talebe is there so that a change of time and a cancel have somebody to tell: the SESSION_RESCHEDULED and SESSION_CANCELLED notices and the
+# calendar's "Güncellendi" and "İptal" mails; `setup` empties her notices and her mailbox, and `teardown` does again, the only way to hand the account
+# back as it started. What a walk cannot undo: the audit rows (audit_log is append-only) and the invitation rows `course.mjs remove` deletes with the
+# course. SQL is used to read what a write left, never to write.
+#
+# What the typed values are. They are fixed, and far enough ahead that the walk does not age:
+#   words.linkText    https://zoom.us/j/82907461385                  the address of e2e courses#17; the platform chip reads "Zoom"
+#   words.linkBad     http://zoom.us/j/81234567890                   not https: refused under the field, nothing sent
+#   words.timeDate    2029-03-12 and 20:30 (Istanbul)                e2e courses#19 moves a celse to 20:30, which is 17:30 UTC
+#   words.streamUrl   https://www.youtube.com/watch?v=Abc123Def45    stored as https://www.youtube.com/live/Abc123Def45
+#   words.streamBad   https://www.youtube.com/@ornekkanal/live       a channel link: "Bu bir kanal bağlantısı…"
+#
+# Not bound, and why (each is a transition the local stack cannot be made to take on request):
+#   - FAIL.forbidden and FAIL.failed of every write, FAIL.already and FAIL.forbidden of the cancel, FAIL.invalid of the stream (the page's own
+#     parser is the server's, so no link passes one and fails the other), FAIL.missing of the read: the walk would have to take a permission from the
+#     köşk's nazımı, hide the celse or break a call between two presses of one walk. FAIL.moved of the link, the time, the in-person mark and the cancel
+#     IS bound (refusals.binding.yaml, scenario `stale`: `bump` raises the course's version while the form is open); so is the stream's (`streamGone`).
+#   - a celse that has begun, a celse over (no buttons), a course with no celse or with no celse ahead, the fold of "Geçmiş celseler", a course held in
+#     person, the stream buttons left out: the stack's clock and the course's setting are not the walk's to change, and the köşk's nazımı always holds
+#     the codes. `rowState` is only ever "Planlandı" and the past row "Sona erdi".
+#   - the dropped call, the failed read of the course ("Ders okunamadı"), the ended session.
+# What carries the e2e courses#16 to #19 (apps/nizam/e2e/courses.e2e.ts): see binding.yaml's header.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.manageSessions
+
+data:
+  made: { json: ../.local/made/nmSessions.json }
+  # the words the walk types, one file, so no scenario repeats them (no secret in it)
+  words: { json: ../nizam/courses/manageSessions/words.json }
+
+# the words the page builds from the course's own data; {count}, {range}, {cancelled}, {when} and {fullWhen} move with the day and match anything
+samples:
+  name: '{made.title}'
+  course: '{made.title}'
+  zone: İstanbul
+  title: Celse 2
+  n: '1'
+  minutes: '60'
+  platform: Zoom
+
+events:
+  # what is typed
+  FILL_LINK:
+    - fill: { role: textbox, name: Toplantı bağlantısı, value: '{words.linkText}' }
+  FILL_LINK_BAD:
+    - fill: { role: textbox, name: Toplantı bağlantısı, value: '{words.linkBad}' }
+  FILL_TIME:
+    - fill: { label: '/^Tarih/', value: '{words.timeDate}' }
+    - fill: { label: '/^Saat/', value: '{words.timeTime}' }
+  # the date is emptied: "Tarihi ve saati girin." under Tarih
+  FILL_TIME_BAD:
+    - fill: { label: '/^Tarih/', value: '' }
+  FILL_STREAM:
+    - fill: { role: textbox, name: Canlı yayın bağlantısı, value: '{words.streamUrl}' }
+  FILL_STREAM_BAD:
+    - fill: { role: textbox, name: Canlı yayın bağlantısı, value: '{words.streamBad}' }
+
+states:
+  listed: { url: '{nizam}/kosks/*/courses/*/sessions' }
+  # `bump` and `gone` are 0 except in refusals.binding.yaml: 1 makes a second person save the course, or cancel the celse ahead, as soon as the form
+  # (or the confirmation) that is going to send is open. The page was read before, so its "Kaydet" or its confirm is refused. The stream write
+  # carries no course version, so only the celse's own cancel can refuse it.
+  linkForm:
+    url: '{nizam}/kosks/*/courses/*/sessions'
+    before:
+      - run: [node, ../nizam/courses/manageSessions/sessions.mjs, bump, '{bump}']
+        expect: 'bump'
+  timeForm:
+    url: '{nizam}/kosks/*/courses/*/sessions'
+    before:
+      - run: [node, ../nizam/courses/manageSessions/sessions.mjs, bump, '{bump}']
+        expect: 'bump'
+  inPersonForm:
+    url: '{nizam}/kosks/*/courses/*/sessions'
+    before:
+      - run: [node, ../nizam/courses/manageSessions/sessions.mjs, bump, '{bump}']
+        expect: 'bump'
+  streamForm:
+    url: '{nizam}/kosks/*/courses/*/sessions'
+    before:
+      - run: [node, ../nizam/courses/manageSessions/sessions.mjs, gone, '{gone}']
+        expect: 'gone'
+  confirmCancel:
+    url: '{nizam}/kosks/*/courses/*/sessions'
+    before:
+      - run: [node, ../nizam/courses/manageSessions/sessions.mjs, bump, '{bump}']
+        expect: 'bump'
+  cancelledShown: { url: '{nizam}/kosks/*/courses/*/sessions' }
+  # the course is not this köşk's (notFound() draws the screen "Bu bölüm için izniniz yok", nizam.shell.noAccessAndNotFound): the address stays
+  no_access: { url: '{nizam}/kosks/*/courses/*/sessions', text: Bu bölüm için izniniz yok }
+  # exits with no node of their own are checked by their address
+  plan_opened: { url: '{nizam}/kosks/*/courses/*/sessions/new' }
+  left: { url: '{nizam}/kosks/*/dersler' }
+
+# Where role and name do not find a node, or would find the wrong one. A catalog message with a {placeholder} the binding does not give matches
+# anything, but a row button's name carries the celse's short date, which moves with the day, so each is found by the end of its name.
+nodes:
+  # the shell's one <main>; any page of the app has one, so it is told apart by its table
+  page: { role: main, hasText: Yaklaşan celseler }
+  # the breadcrumb: the menu's "Dersler" is a link too, so each crumb is looked for inside the breadcrumb
+  crumbCourses: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+  crumbCourse: { role: link, name: '{made.title}', within: { role: navigation, name: Sayfa yolu } }
+  crumbCurrent: { css: '[aria-current=page]', hasText: Celseler, within: { role: navigation, name: Sayfa yolu } }
+  # the h1 and the two h2 all end in "celseler": the h1 is the only heading with that name alone
+  pageTitle: { role: heading, name: '/^Celseler$/' }
+  # two messages joined with " · " in one span: found by its test id and its shape; the sentence with "iptal edildi" is the second node
+  upcomingCounts: { testId: upcoming-counts, hasText: '/^\d+ celse · Hafta [\d–]+$/' }
+  countsCancelled: { testId: upcoming-counts, hasText: '/^\d+ celse · \d+ iptal edildi · Hafta [\d–]+$/' }
+  # the rows of the two tables
+  rowTitle: { role: link, name: Celse 2, within: { role: table, name: Yaklaşan celseler } }
+  rowWeek: { text: Hafta 1, within: { role: table, name: Yaklaşan celseler } }
+  rowTime: { text: '/ · 60 dk/', within: { role: table, name: Yaklaşan celseler } }
+  rowState: { text: Planlandı, within: { role: table, name: Yaklaşan celseler } }
+  rowCancelled: { text: İptal edildi, within: { role: table, name: Yaklaşan celseler } }
+  linkHidden: { text: Bağlantı gösterilmez, within: { role: table, name: Yaklaşan celseler } }
+  noActions: { text: İşlem yok, within: { role: table, name: Yaklaşan celseler } }
+  # "Eksik" and its hidden sentence are one badge
+  missingBadge: { testId: attendance-missing, hasText: Eksik }
+  attendanceChip: { css: '.mds-platform-chip', hasText: Zoom, within: { role: table, name: Yaklaşan celseler } }
+  # "Yüz yüze" is also the first words of the in-person button and the radio: the Katılım cell is the one that begins with it
+  attendanceInPerson: { role: cell, hasText: '/^Yüz yüze/', within: { role: table, name: Yaklaşan celseler } }
+  attendanceStream: { testId: stream-set, hasText: YouTube yayını }
+  attendanceStreamAlone: { testId: stream-set, hasText: Yalnız yayın }
+  # the row buttons are named by the celse's short date and then these words
+  addLink: { role: button, name: '/ celsesine bağlantı ekle$/', within: { role: table, name: Yaklaşan celseler } }
+  updateLink: { role: button, name: '/ celsesinin bağlantısını güncelle$/', within: { role: table, name: Yaklaşan celseler } }
+  inPersonButton: { role: button, name: '/ celsesinin yüz yüze ayarı$/', within: { role: table, name: Yaklaşan celseler } }
+  addStream: { role: button, name: '/ celsesine canlı yayın bağlantısı ekle$/', within: { role: table, name: Yaklaşan celseler } }
+  updateStream: { role: button, name: '/ celsesinin canlı yayın bağlantısını güncelle$/', within: { role: table, name: Yaklaşan celseler } }
+  changeTimeButton: { role: button, name: '/ celsesinin tarihini değiştir$/', within: { role: table, name: Yaklaşan celseler } }
+  cancelButton: { role: button, name: '/ celsesini iptal et$/', within: { role: table, name: Yaklaşan celseler } }
+  # the past table
+  pastRowTitle: { role: link, name: Celse 1, within: { role: table, name: Geçmiş celseler } }
+  pastEnded: { text: Sona erdi, within: { role: table, name: Geçmiş celseler } }
+  pastRecording: { testId: recording-state, hasText: Kayıt yok }
+  pastAttendance: { text: Eklenmedi, within: { role: table, name: Geçmiş celseler } }
+  # the forms are one <form data-testid=session-edit>; each heading is "<the date in full> celsesinin …"
+  linkFormTitle: { role: heading, name: '/ celsesinin toplantı bağlantısı$/' }
+  timeFormTitle: { role: heading, name: '/ celsesinin zamanı$/' }
+  inPersonFormTitle: { role: heading, name: '/ celsesinin yüz yüze ayarı$/' }
+  streamFormTitle: { role: heading, name: '/ celsesinin canlı yayın bağlantısı$/' }
+  # native date and time inputs have no role: found by their label, which ends in a decorative star
+  dateField: { label: '/^Tarih/' }
+  timeField: { label: '/^Saat/' }
+  # a radio's words are its label's, beside it: found by role and name (exact, so "Yüz yüze" is not "Yüz yüze değil")
+  radioCourse: { role: radio, name: Dersin ayarına uy }
+  radioYes: { role: radio, name: Yüz yüze }
+  radioNo: { role: radio, name: Yüz yüze değil }
+  # the error under a field is one of several sentences; the stream's is one of five
+  streamError: { css: '.mds-error', within: { testId: session-edit } }
+  streamRemove: { role: button, name: Bağlantıyı kaldır, within: { testId: session-edit } }
+  formCancel: { role: button, name: Vazgeç, within: { testId: session-edit } }
+  formSave: { role: button, name: Kaydet, within: { testId: session-edit } }
+  busyStatus: { role: status, hasText: Yükleniyor }
+  # the confirmation: the title and the confirm say the same words, so the confirm is looked for inside the dialog; its eyebrow is the celse's title
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: Celse 2, within: { role: alertdialog, name: Celseyi iptal et } }
+  dialogBody: { text: '/celsesi iptal edilecek; talebeler programda/', within: { role: alertdialog, name: Celseyi iptal et } }
+  dialogWay: { text: İptal edilen celse programda kalır., within: { role: alertdialog, name: Celseyi iptal et } }
+  closeIcon: { role: button, name: Kapat, within: { role: alertdialog, name: Celseyi iptal et } }
+  cancelStay: { role: button, name: Vazgeç, within: { role: alertdialog, name: Celseyi iptal et } }
+  confirm: { role: button, name: Celseyi iptal et, within: { role: alertdialog, name: Celseyi iptal et } }
+  confirmBusy: { role: status, hasText: Yükleniyor, within: { role: alertdialog, name: Celseyi iptal et } }
+  # the toasts are Sonner's: one <li data-sonner-toast> with the title in [data-title] and the description in [data-description]
+  toastLinkSaved: { css: '[data-sonner-toast] [data-title]', hasText: Bağlantı kaydedildi }
+  toastTimeSaved: { css: '[data-sonner-toast] [data-title]', hasText: Celse zamanı değişti }
+  toastInPersonSaved: { css: '[data-sonner-toast] [data-title]', hasText: Yüz yüze ayarı kaydedildi }
+  toastStreamSaved: { css: '[data-sonner-toast] [data-title]', hasText: Canlı yayın bağlantısı kaydedildi }
+  toastStreamRemoved: { css: '[data-sonner-toast] [data-title]', hasText: Canlı yayın bağlantısı kaldırıldı }
+  toastCancelledTitle: { css: '[data-sonner-toast] [data-title]', hasText: Celse iptal edildi }
+  toastCancelledBody: { css: '[data-sonner-toast] [data-description]', hasText: '/ iptal edildi\.$/' }
+  toastErrorTitle: { css: '[data-sonner-toast] [data-title]', hasText: İşlem yapılamadı }
+  toastMoved: { css: '[data-sonner-toast] [data-description]', hasText: '/başkası tarafından kaydedildi|Yalnız canlı celselere|Bu celse iptal edilmiş; yayın/' }
+  toastForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bu işlem için yetkiniz yok. }
+  toastFailed: { css: '[data-sonner-toast] [data-description]', hasText: İşlem tamamlanamadı }
+  toastAlready: { css: '[data-sonner-toast] [data-description]', hasText: Bu celse zaten iptal edilmiş. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+# What a write leaves outside the screen, read from tedrisat's database, Mailpit and the talebe's notices. The first is the finding MANAGE-1: no audit
+# row for the link, the time or the in-person mark; if the API ever writes one, this check fails and the graph is to say so. {made.lessons.1} is
+# the celse the walk presses; the mails are searched by their subject, "<kind>: <course> — <celse>" (invitation-mail.ts:70, lesson-calendar.ts:157).
+effects:
+  updateLesson:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where entity_id = '{made.lessons.1}' and action not like 'lesson.live_stream%' and action <> 'lesson.cancel'"]
+      expect: '{"n":0}'
+  closedAfterLink:
+    - run: [node, helpers/sql.mjs, "select meeting_url from lessons where id = '{made.lessons.1}'"]
+      expect: '"meeting_url":"{words.linkText}"'
+  # the time as the course reads it: 20:30 on the new date, in Istanbul; the talebe is told, by a notice and by the calendar
+  closedAfterTime:
+    - run: [node, helpers/sql.mjs, "select to_char(scheduled_at at time zone 'Europe/Istanbul', 'YYYY-MM-DD HH24:MI') as at from lessons where id = '{made.lessons.1}'"]
+      expect: '"at":"{words.timeDate} {words.timeTime}"'
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as told from notifications where user_id = '{secret.E2E_APPLICANT_G_SUB}' and type = 'SESSION_RESCHEDULED' and target_id = '{made.lessons.1}'"]
+      expect: '"told":true'
+    - run: [node, helpers/mail.mjs, search, 'to:{secret.E2E_APPLICANT_G_EMAIL} subject:"Güncellendi: {made.title} — Celse 2"', --wait, '90']
+      expect: 'Güncellendi'
+  closedAfterInPersonYes:
+    - run: [node, helpers/sql.mjs, "select in_person from lessons where id = '{made.lessons.1}'"]
+      expect: '"in_person":true'
+  closedAfterInPersonNo:
+    - run: [node, helpers/sql.mjs, "select in_person from lessons where id = '{made.lessons.1}'"]
+      expect: '"in_person":false'
+  closedAfterInPersonCourse:
+    - run: [node, helpers/sql.mjs, "select in_person is null as follows from lessons where id = '{made.lessons.1}'"]
+      expect: '"follows":true'
+  closedAfterStream:
+    - run: [node, helpers/sql.mjs, "select live_stream_url from lessons where id = '{made.lessons.1}'"]
+      expect: '"live_stream_url":"https://www.youtube.com/live/Abc123Def45"'
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as written from audit_log where entity_id = '{made.lessons.1}' and action = 'lesson.live_stream_set'"]
+      expect: '"written":true'
+  closedAfterRemoval:
+    - run: [node, helpers/sql.mjs, "select live_stream_url is null as cleared from lessons where id = '{made.lessons.1}'"]
+      expect: '"cleared":true'
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as written from audit_log where entity_id = '{made.lessons.1}' and action = 'lesson.live_stream_clear'"]
+      expect: '"written":true'
+  # e2e courses#18: the celse is cancelled (cancelledAt set, one audit row lesson.cancel), with no note and no make-up (NMSESS-2); the talebe is told
+  cancelled:
+    - run: [node, helpers/sql.mjs, "select (cancelled_at is not null) as cancelled, (cancel_reason is null) as no_note, (replacement_lesson_id is null) as no_makeup from lessons where id = '{made.lessons.1}'"]
+      expect: '"cancelled":true,"no_note":true,"no_makeup":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'lesson.cancel' and entity_id = '{made.lessons.1}'"]
+      expect: '{"n":1}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from notifications where user_id = '{secret.E2E_APPLICANT_G_SUB}' and type = 'SESSION_CANCELLED' and target_id = '{made.lessons.1}' and not (params ? 'reason')"]
+      expect: '{"n":1}'
+    - run: [node, helpers/mail.mjs, search, 'to:{secret.E2E_APPLICANT_G_EMAIL} subject:"İptal: {made.title} — Celse 2"', --wait, '90']
+      expect: 'İptal'

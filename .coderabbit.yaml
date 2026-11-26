@@ -89,9 +89,13 @@ reviews:
     enabled: true
     # A draft is not ready to be read. Marking it ready triggers the review.
     drafts: false
-    # Integration branches (release/260817 was one) take pull requests too.
+    # Every base branch, not only main: a stacked pull request has its
+    # parent's branch as its base, and integration branches (release/260817
+    # was one) take pull requests too. Patterns are regular expressions; the
+    # file is read from the pull request's own branch, so a stack picks this
+    # up once main is in it.
     base_branches:
-      - "release/.*"
+      - ".*"
     # Bumps and release PRs: the Security gate (audit-ci) and OSV cover the
     # advisories; an LLM reading a lockfile diff spends the hourly allowance
     # on nothing.
@@ -128,7 +132,7 @@ reviews:
     # ── Shared framing — every file ─────────────────────────────────────────
     - path: "**"
       instructions: |
-        THE STACK: one pnpm workspace on Nx 23 with Biome, 17 packages listed
+        THE STACK: one pnpm workspace on Nx 24 with Biome, 17 packages listed
         explicitly in pnpm-workspace.yaml (no globs, ADR-001 §D11). apps/tedrisat
         and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL services authenticated
         by Keycloak JWT; apps/tedris, apps/nizam, apps/nazar and apps/landing are

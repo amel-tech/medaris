@@ -1,0 +1,159 @@
+# The screens of tedris.shell.home: tedris-web's Ana sayfa (/home, app/home/page.tsx) as a signed-in talebe meets it: the greeting and
+# its sentence, the next celse with its join card, the celses after it, and the three sections "Kaldığın yerden devam et", "Bugün
+# çalışılacak desteler" and "Takip ettiğin köşklerden", each with its empty and failed look. The chrome around the page (the wide bar,
+# the phone sheet, the footer) is tedris.shell.frame's and is not drawn here.
+#
+# Words: every `PhoneMenu.*`, `SessionPage.*`, `SchedulePage.*`, `AddToCalendar.*`, `MyCoursesPage.*` and `Decks.*` key is copied from
+# libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`), every `Home.*` key from tedris-learn.json (the app reads
+# it as `tedrisLearn.Home.<key>`); the key is the path inside the file. The `composed.Home.*` keys are NOT in any i18n file: they are
+# the texts the app builds in code from messages and data, written here with their placeholders so a replay can match them (a
+# placeholder with no sample matches any text):
+#   composed.Home.countdown          the badge of the card before the start, Intl.RelativeTimeFormat ("22 saat sonra", "Yarın")    libs/ui/src/mds/session-join.tsx:47
+#   composed.Home.celseTitle         the title of a celse, a value the API gives                                                  home-sessions.tsx:137
+#   composed.Home.joinDay            the day and hour of the card, Intl ("16 Kasım Pazartesi 20:30")                              session-join.tsx:205
+#   composed.Home.joinLength         the length, a number and the unit SessionPage.minuteUnit ("60 dk")                           session-join.tsx:244
+#   composed.Home.platformChip       the platform's label and, for an unknown platform, its host                                  session-join.tsx:295-306
+#   composed.Home.joinName           SessionPage.joinAction and the hidden SessionPage.newTab, which make the link's name         session-join.tsx:353-354
+#   composed.Home.courseTitle        a course's title, a value the API gives                                                      home-sessions.tsx:126, home-sections.tsx:150
+#   composed.Home.kosk               a köşk's name, a value the API gives                                                         home-sessions.tsx:129
+#   composed.Home.laterCaption       PhoneMenu.liveBadge, the course, SchedulePage.week and the moment (formatSessionMoment)      home-sessions.tsx:198-219
+#   composed.Home.hoca               formatHocaName: the name with the unvan of this course, "Hoca" when it has none               home-sections.tsx:96-121
+#   composed.Home.meetingMadrasah    the medrese and the köşk of a course card                                                    home-sections.tsx:157-160
+#   composed.Home.nextSession        Home.nextSessionShort and the weekday and hour of the course's next celse                    home-sections.tsx:163-166
+#   composed.Home.deckTitle          a deck's title, a value the API gives                                                        home-sections.tsx:304
+#   composed.Home.deckCaption        the deck's kind (Decks.yours, Decks.kind*) and Decks.dueCount or Decks.added                 home-sections.tsx:306-313
+#   composed.Home.followedCaption    the köşk and the hoca of a followed köşk's course                                            home-sections.tsx:352-371
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.shell.home
+flow: tedris.shell.home
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek
+  when: yarın, Pazartesi 20:30’da
+  course: Örnek ders
+  title: Örnek celse
+  minutes: "10"
+  countdown: 22 saat sonra
+  day: 16 Kasım Pazartesi 20:30
+  length: "60"
+  unit: dk
+  platform: Bilinmeyen platform
+  host: meet.example.test
+  week: "1"
+  kosk: Örnek köşk
+  madrasah: Örnek medrese
+  moment: 18 Kas Çar 20:30
+  count: "2"
+  hoca: Örnek Hoca
+  time: Pzt 20:30
+  deck: Örnek deste
+  kind: Senin desten
+  line: 2 kart tekrar bekliyor
+
+nodes:
+  # ---- the page and its head ----
+  homePage: { type: page, component: Page, role: main, in: [home], source: apps/tedris/features/schedule/components/home-sessions.tsx:78 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set); one <main>, which the legacy wrapper does not add (tab-view ownsItsMain lists /home)
+  greeting: { type: text, component: Heading, role: heading, text: { key: PhoneMenu.greeting, params: { name: session.firstName } }, in: [home], source: apps/tedris/features/schedule/components/home-sessions.tsx:80 } # h1, in a <header> that is not a banner inside <main>; the first word of the session's name
+  introFailed: { type: text, component: Text, text: { key: PhoneMenu.loadFailed }, in: [home], when: "next == 'failed'", source: apps/tedris/features/schedule/components/home-sessions.tsx:86 } # a <p>, not a live region and no retry (HOME-1)
+  introNone: { type: text, component: Text, text: { key: PhoneMenu.noNext }, in: [home], when: "next == 'none'", source: apps/tedris/features/schedule/components/home-sessions.tsx:94 }
+  introNext: { type: text, component: Text, text: { key: PhoneMenu.nextIntro, params: { when: session.startsAt } }, in: [home], when: upcoming, source: apps/tedris/features/schedule/components/home-sessions.tsx:91 } # "yarın, Pazartesi 20:30’da": the day word, the weekday and the hour in the viewer's zone
+  introLive: { type: text, component: Text, text: { key: PhoneMenu.liveIntro, params: { course: session.courseTitle } }, in: [home], when: "next == 'live'", source: apps/tedris/features/schedule/components/home-sessions.tsx:89 }
+
+  # ---- "Sıradaki celse": the next celse ----
+  nextSection: { type: page, component: Page, role: region, name: { labelledBy: nextTitle }, in: [home], when: hasNext, source: apps/tedris/features/schedule/components/home-sessions.tsx:101 }
+  nextTitle: { type: text, component: Heading, role: heading, text: { key: PhoneMenu.nextTitle }, in: [home], when: hasNext, source: apps/tedris/features/schedule/components/home-sessions.tsx:106 } # h2
+  sessionLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: PhoneMenu.sessionPage }, in: [home], when: hasNext, emits: OPEN_CELSE, source: apps/tedris/features/schedule/components/home-sessions.tsx:109 } # /courses/<course>/lessons/<celse>
+  courseLink: { type: action, component: LinkButton, role: link, text: { key: composed.Home.courseTitle, params: { course: session.courseTitle } }, in: [home], when: hasNext, emits: OPEN_COURSE, source: apps/tedris/features/schedule/components/home-sessions.tsx:121 } # the run line's first piece, underlined; /courses/<course>
+  runWeek: { type: text, component: Text, text: { key: SchedulePage.week, params: { week: session.weekNumber } }, in: [home], when: hasNext, source: apps/tedris/features/schedule/components/home-sessions.tsx:128 }
+  runKosk: { type: text, component: Text, text: { key: composed.Home.kosk, params: { kosk: session.koskName } }, in: [home], when: hasNext, source: apps/tedris/features/schedule/components/home-sessions.tsx:129 } # a <bdi>
+
+  # the join card (the kit's SessionJoin, behind SessionJoinLive: a client component with its own clock)
+  joinCard: { type: page, component: Page, role: region, name: { labelledBy: joinTitle }, in: [home], when: hasNext, source: libs/ui/src/mds/session-join.tsx:386 } # the real name is two ids, the title and the start (aria-labelledby="…-h …-at"): "Nahiv dersi 16 Kasım Pazartesi 20:30"; the graph can name one node
+  joinEyebrow: { type: text, component: Text, text: { key: SessionPage.joinLabel }, in: [home], when: hasNext, source: libs/ui/src/mds/session-join.tsx:393 } # "Canlı ders" for every celse, an in-person one too (HOME-2)
+  joinCountdown: { type: text, component: Text, text: { key: composed.Home.countdown, params: { countdown: session.startsAt } }, in: [home], when: upcoming, source: libs/ui/src/mds/session-join.tsx:271 } # a <time> in a secondary badge, moved on by a 30-second clock
+  joinLive: { type: text, component: Text, text: { key: SessionPage.liveLabel }, in: [home], when: "next == 'live'", source: libs/ui/src/mds/session-join.tsx:259 } # the live badge, with a decorative dot
+  addToCalendar: { type: action, component: Button, role: button, intent: secondary, text: { key: AddToCalendar.button }, in: [home], when: upcoming, emits: ADD_TO_CALENDAR, source: apps/tedris/features/courses/components/session-join-live.tsx:119 } # a Menu trigger (aria-haspopup="menu"), shown only before the start; its menu is tedris.learning.addToCalendar
+  joinTitle: { type: text, component: Heading, role: heading, text: { key: composed.Home.celseTitle, params: { title: session.title } }, in: [home], when: hasNext, source: libs/ui/src/mds/session-join.tsx:400 } # h3, after the card's header
+  joinDay: { type: text, component: Text, text: { key: composed.Home.joinDay, params: { day: session.startsAt } }, in: [home], when: hasNext, source: libs/ui/src/mds/session-join.tsx:210 } # a <time>
+  joinLength: { type: text, component: Text, text: { key: composed.Home.joinLength, params: { length: session.durationMinutes, unit: SessionPage.minuteUnit } }, in: [home], when: hasNext, source: libs/ui/src/mds/session-join.tsx:239 } # a <time> "60 dk"; left out when the celse has no length
+  joinElapsed: { type: text, component: Text, text: { key: SessionPage.elapsed, params: { minutes: elapsed } }, in: [home], when: "next == 'live'", source: libs/ui/src/mds/session-join.tsx:249 }
+  platformChip: { type: text, component: Text, text: { key: composed.Home.platformChip, params: { platform: platform.label, host: platform.host } }, in: [home], when: hasLink, source: libs/ui/src/mds/session-join.tsx:295 } # the host is added only for a platform the kit does not know ("Bilinmeyen platform meet.example.test")
+  joinOpens: { type: text, component: Text, text: { key: SessionPage.joinOpensText, params: { minutes: join.window } }, in: [home], when: "next == 'waiting'", source: libs/ui/src/mds/session-join.tsx:337 } # "Katılım, celse başlamadan 10 dakika önce açılır."
+  joinLink: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: composed.Home.joinName }, text: { key: SessionPage.joinAction }, in: [home], when: canJoin, emits: JOIN, source: libs/ui/src/mds/session-join.tsx:347 } # target=_blank; the new tab is said in a visually hidden span, so the visible text is in the name
+  joinReveal: { type: action, native: summary, component: Button, text: { key: SessionPage.reveal }, in: [home], when: canJoin, source: libs/ui/src/mds/session-join.tsx:356 } # a <summary> of a <details> that shows the address; its role is not verified in assistive technology (a browser's tree calls the <details> a group)
+  elsewhereNote: { type: text, component: Text, text: { oneOf: [SchedulePage.noLink, SchedulePage.inPerson, SchedulePage.stream, SchedulePage.streamLive, SchedulePage.inPersonStream, SchedulePage.inPersonStreamLive] }, in: [home], when: "next == 'elsewhere'", source: libs/ui/src/mds/session-join.tsx:326 } # no link: Programım's words (elsewhereJoinLabels), because the stream and the recording are on the celse page
+
+  # ---- "Sonraki celseler": the celses after the next one ----
+  laterSection: { type: page, component: Page, role: region, name: { labelledBy: laterTitle }, in: [home], when: hasLater, source: apps/tedris/features/schedule/components/home-sessions.tsx:164 }
+  laterTitle: { type: text, component: Heading, role: heading, text: { key: PhoneMenu.upcomingTitle }, in: [home], when: hasLater, source: apps/tedris/features/schedule/components/home-sessions.tsx:169 } # h2
+  scheduleLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: PhoneMenu.schedule }, in: [home], when: hasLater, emits: OPEN_SCHEDULE, source: apps/tedris/features/schedule/components/home-sessions.tsx:172 } # /schedule
+  laterList: { type: list, component: List, role: list, in: [home], when: hasLater, source: apps/tedris/features/schedule/components/home-sessions.tsx:177 } # a <ul> in a Card
+  laterRow: { type: text, component: Text, role: listitem, text: { key: composed.Home.laterCaption, params: { course: session.courseTitle, week: session.weekNumber, moment: session.startsAt } }, in: [home], when: hasLater, repeat: later.sessions, source: apps/tedris/features/schedule/components/home-sessions.tsx:179 } # up to three; a video glyph (decorative), the title, a caption, the length
+  laterLink: { type: action, component: LinkButton, role: link, text: { key: composed.Home.celseTitle, params: { title: session.title } }, in: [home], when: hasLater, repeat: later.sessions, emits: OPEN_CELSE, source: apps/tedris/features/schedule/components/home-sessions.tsx:191 }
+  laterLength: { type: text, component: Text, text: { key: SchedulePage.minutes, params: { count: session.durationMinutes } }, in: [home], when: hasLater, repeat: later.sessions, source: apps/tedris/features/schedule/components/home-sessions.tsx:223 } # left out when the celse has no length
+
+  # ---- "Kaldığın yerden devam et" ----
+  continueSection: { type: page, component: Page, role: region, name: { labelledBy: continueTitle }, in: [home], source: apps/tedris/features/home/components/home-sections.tsx:203 }
+  continueTitle: { type: text, component: Heading, role: heading, text: { key: Home.continueTitle }, in: [home], source: apps/tedris/features/home/components/home-sections.tsx:207 } # h2 (SectionHead)
+  continueLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: PhoneMenu.courses }, in: [home], emits: OPEN_MY_COURSES, source: apps/tedris/features/home/components/home-sections.tsx:207 } # /my-courses
+  continueFailed: { type: alert, component: Alert, role: alert, text: { key: Home.sectionFailed }, in: [home], when: "courses == 'failed'", source: apps/tedris/features/home/components/home-sections.tsx:214 } # role=alert, so it is announced when it appears
+  continueRetry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Home.retry }, in: [home], when: "courses == 'failed'", emits: RELOAD, source: apps/tedris/features/home/components/home-sections.tsx:56 } # <a href="">: a reload of the whole page, not of the section (SHL-08)
+  continueEmpty: { type: text, component: Text, text: { key: Home.emptyCourses }, in: [home], when: "courses == 'empty'", source: apps/tedris/features/home/components/home-sections.tsx:226 }
+  continueDiscover: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyCoursesPage.goDiscover }, in: [home], when: "courses == 'empty'", emits: OPEN_DISCOVER, source: apps/tedris/features/home/components/home-sections.tsx:221 } # /discover
+  continueCardTitle: { type: text, component: Heading, role: heading, text: { key: composed.Home.courseTitle, params: { course: course.title } }, in: [home], when: coursesListed, repeat: courses.cards, source: apps/tedris/features/home/components/home-sections.tsx:148 } # h3 of the Card
+  continueCardLink: { type: action, component: LinkButton, role: link, text: { key: composed.Home.courseTitle, params: { course: course.title } }, in: [home], when: coursesListed, repeat: courses.cards, emits: OPEN_COURSE, source: apps/tedris/features/home/components/home-sections.tsx:148 } # the only tab stop of the card; its ::after covers the card
+  continueHoca: { type: text, component: Text, text: { key: composed.Home.hoca, params: { hoca: course.muderris } }, in: [home], when: coursesListed, repeat: courses.cards, source: apps/tedris/features/home/components/home-sections.tsx:176 }
+  continueProgress: { type: status, component: Status, role: progressbar, name: { key: MyCoursesPage.progress }, in: [home], when: coursesListed, repeat: courses.cards, source: apps/tedris/features/home/components/home-sections.tsx:180 } # the percent is aria-valuetext ("%0"); "Tamamlandı" is never read here, a course at 100 % is left out
+  continueMeta: { type: text, component: Text, text: { oneOf: [composed.Home.meetingMadrasah, composed.Home.kosk] }, in: [home], when: coursesListed, repeat: courses.cards, source: apps/tedris/features/home/components/home-sections.tsx:157 } # the medrese and the köşk, or the köşk alone for a köşk's own course
+  continueNext: { type: text, component: Text, text: { oneOf: [composed.Home.nextSession, MyCoursesPage.noNextSession] }, in: [home], when: coursesListed, repeat: courses.cards, source: apps/tedris/features/home/components/home-sections.tsx:161 } # "Sonraki celse Pzt 20:30", or "Planlı celse yok"
+
+  # ---- "Bugün çalışılacak desteler" ----
+  decksSection: { type: page, component: Page, role: region, name: { labelledBy: decksTitle }, in: [home], source: apps/tedris/features/home/components/home-sections.tsx:269 }
+  decksTitle: { type: text, component: Heading, role: heading, text: { key: Home.decksTitle }, in: [home], source: apps/tedris/features/home/components/home-sections.tsx:273 } # h2 (SectionHead)
+  decksLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: PhoneMenu.decks }, in: [home], emits: OPEN_DECKS, source: apps/tedris/features/home/components/home-sections.tsx:273 } # /decks
+  decksFailed: { type: alert, component: Alert, role: alert, text: { key: Home.sectionFailed }, in: [home], when: "decks == 'failed'", source: apps/tedris/features/home/components/home-sections.tsx:280 }
+  decksRetry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Home.retry }, in: [home], when: "decks == 'failed'", emits: RELOAD, source: apps/tedris/features/home/components/home-sections.tsx:56 } # SHL-08
+  decksEmpty: { type: text, component: Text, text: { key: Home.emptyDecks }, in: [home], when: "decks == 'empty'", source: apps/tedris/features/home/components/home-sections.tsx:285 } # no action beside it
+  deckList: { type: list, component: List, role: list, in: [home], when: decksListed, source: apps/tedris/features/home/components/home-sections.tsx:288 }
+  deckRow: { type: text, component: Text, role: listitem, text: { key: composed.Home.deckCaption, params: { kind: deck.kind, line: deck.line } }, in: [home], when: decksListed, repeat: decks.rows, source: apps/tedris/features/home/components/home-sections.tsx:292 } # an avatar with the deck's initials (decorative), the title, a caption, "Çalış"
+  deckLink: { type: action, component: LinkButton, role: link, text: { key: composed.Home.deckTitle, params: { deck: deck.title } }, in: [home], when: decksListed, repeat: decks.rows, emits: OPEN_DECK, source: apps/tedris/features/home/components/home-sections.tsx:299 } # /decks/<deck>
+  deckCaption: { type: text, component: Text, text: { key: composed.Home.deckCaption, params: { kind: deck.kind, line: deck.line } }, in: [home], when: decksListed, repeat: decks.rows, source: apps/tedris/features/home/components/home-sections.tsx:306 } # "Senin desten · 2 kart tekrar bekliyor", or the kind of a collected deck and "n yeni kart"
+  deckStudy: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: Home.studyDeck, params: { title: deck.title } }, text: { key: Decks.study }, in: [home], when: decksListed, repeat: decks.rows, emits: OPEN_STUDY, source: apps/tedris/features/home/components/home-sections.tsx:316 } # an outline link; the visible "Çalış" is inside the name "Çalış: <deck>" (WCAG 2.5.3); /decks/study/<deck>
+
+  # ---- "Takip ettiğin köşklerden" ----
+  followedSection: { type: page, component: Page, role: region, name: { labelledBy: followedTitle }, in: [home], source: apps/tedris/features/home/components/home-sections.tsx:386 }
+  followedTitle: { type: text, component: Heading, role: heading, text: { key: Home.followedTitle }, in: [home], source: apps/tedris/features/home/components/home-sections.tsx:390 } # h2 (SectionHead)
+  followedLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: PhoneMenu.discover }, in: [home], emits: OPEN_DISCOVER, source: apps/tedris/features/home/components/home-sections.tsx:390 } # /discover
+  followedFailed: { type: alert, component: Alert, role: alert, text: { key: Home.sectionFailed }, in: [home], when: "followed == 'failed'", source: apps/tedris/features/home/components/home-sections.tsx:397 }
+  followedRetry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Home.retry }, in: [home], when: "followed == 'failed'", emits: RELOAD, source: apps/tedris/features/home/components/home-sections.tsx:56 } # SHL-08
+  followedEmpty: { type: text, component: Text, text: { key: Home.emptyFollowed }, in: [home], when: "followed == 'empty'", source: apps/tedris/features/home/components/home-sections.tsx:402 } # no action beside it
+  followedList: { type: list, component: List, role: list, in: [home], when: followedListed, source: apps/tedris/features/home/components/home-sections.tsx:405 }
+  followedRow: { type: text, component: Text, role: listitem, text: { key: composed.Home.followedCaption, params: { kosk: course.koskName, hoca: course.muderrisName } }, in: [home], when: followedListed, repeat: followed.courses, source: apps/tedris/features/home/components/home-sections.tsx:342 } # a tile in the course's hue (decorative), the title, a caption
+  followedCourse: { type: action, component: LinkButton, role: link, text: { key: composed.Home.courseTitle, params: { course: course.title } }, in: [home], when: followedListed, repeat: followed.courses, emits: OPEN_COURSE, source: apps/tedris/features/home/components/home-sections.tsx:345 } # underlined; /courses/<course>
+  followedCaption: { type: text, component: Text, text: { key: composed.Home.followedCaption, params: { kosk: course.koskName, hoca: course.muderrisName } }, in: [home], when: followedListed, repeat: followed.courses, source: apps/tedris/features/home/components/home-sections.tsx:352 }
+
+edges:
+  - { labelledBy: [nextSection, nextTitle] }
+  - { labelledBy: [joinCard, joinTitle] }
+  - { labelledBy: [laterSection, laterTitle] }
+  - { labelledBy: [continueSection, continueTitle] }
+  - { labelledBy: [decksSection, decksTitle] }
+  - { labelledBy: [followedSection, followedTitle] }
+  - { triggers: [addToCalendar, calendar_menu_opened] }
+
+rules:
+  - { id: SHL-05, rule: "`/` takes a permanent redirect (308, cached by browsers) to /home from next.config.js:87-95, and /home sends a visitor on to /discover (307, no-store) from app/home/page.tsx:26-28, so a visitor takes two hops; the choice app/page.tsx:12-14 makes (a visitor to /discover) is never reached. Measured on the stack with curl: `/` 308 location /home, `/home` 307 location /discover. Fix: drop the redirects entry or the page's own redirect." }
+  - { id: SHL-08, rule: "The box of a failed section carries \"Yeniden dene\", drawn as `Button href=\"\"` (home-sections.tsx:56): an <a href=\"\"> to the page's own address. Pressing it reloads the whole page and the two other sections with it, where the sentence above it promises to read the section again. Fix: a button that calls router.refresh(), or name it \"Sayfayı yenile\" (decision D1). Read from the code and the unit spec home-sections.spec.ts; the stack cannot make a read fail, so it was not pressed." }
+  - { id: SHL-04, rule: "The bell in the page's frame is named \"Bildirimler\" and not with the unread count that MDRS-167 asks for (desktop-bar.tsx:83-89, member-phone-menu.tsx:86-92); the frame is tedris.shell.frame's, recorded here because the inventory lists it for Ana sayfa. Not drawn in this graph." }
+  - { id: SHL-09, rule: "The phone sheet's foot calls every signed-in account \"Talebe\" (member-phone-menu.tsx:106) and the link's name \"Hesabım: <name>\" leaves it out; the frame is tedris.shell.frame's, recorded here because the inventory lists it for Ana sayfa. Not drawn in this graph." }
+  - { id: SHL-01, rule: "app/home/page.tsx and app/home/layout.tsx export no metadata, so the tab and a screen reader say \"Medaris Tedris\" on Ana sayfa as on every page with no title of its own (WCAG 2.4.2); the phone bar's title and the nav graph's page title are \"Ana sayfa\". Measured on the stack: document.title is \"Medaris Tedris\". Fix: a generateMetadata from PhoneMenu.home." }
+  - { id: focus-not-set, rule: "Ana sayfa sets no initial focus (no autoFocus and no focus() in app/home, features/home or features/schedule/components/home-sessions.tsx), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. Measured on the stack: document.activeElement is the <body> after the page loads. Recorded so the silence is not read as an omission." }
+  - { id: HOME-1, rule: "When the read of the celses fails (`getMyUpcomingLessons` answers null) the page says it in one <p> under the greeting, \"Celselerin şu an okunamadı.\" (home-sessions.tsx:86-87): no alert and no live region, no retry, and \"Sıradaki celse\" and \"Sonraki celseler\" are simply absent, so a person cannot tell a failed read from \"Planlı bir celsen görünmüyor.\" except by the words. The three sections below get an error box with a link (SHL-08). Fix: the same box, announced, in place of the two celse blocks (decision D2). Proposed id; read from the code, not walked (the stack cannot make the read fail)." }
+  - { id: HOME-2, rule: "The join card's eyebrow is SessionPage.joinLabel, \"Canlı ders\", and so is the first piece of every caption in \"Sonraki celseler\" (home-sessions.tsx:208), whatever the celse is: for an in-person celse the card's body says it is held face to face while its label calls it a live lesson. The celse page says \"Yüz yüze\" (SessionPage.inPersonKind, session-action-card.tsx:339). Fix: the same label choice on Ana sayfa as on the celse page. Proposed id; read from the code, not walked (the stack has no in-person celse)." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): \"Çalış\" is inside \"Çalış: <deck>\" and \"Celseye katıl\" is inside \"Celseye katıl (yeni sekmede açılır)\"" }
+  - { id: sections-fail-alone, rule: "the three sections read for themselves inside their own Suspense and each answers null on a failed read, so one that fails or is slow does not hold back the others (page.tsx:40-57, reads.ts:20-33, unit spec home-sections.spec.ts \"the sections are independent\")" }

@@ -1,0 +1,121 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.discover.applyForKosk
+status: proposed
+summary: >-
+  What must exist for a talebe who asks Medaris to open a köşk: the flow's product list, from its story and from planned.md, never
+  from what the page does today. Gender separation is given (kontenjan per gender, gender always required), but no seat is decided
+  anywhere in this flow, so neither shows up here.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the gaps merge:
+# missing (no code): the-form-says-what-is-missing-to-everyone, a-refusal-names-the-field, the-applicant-is-led-to-the-kosk
+# unwalked (code, no e2e and no replay): medaris-management-sees-the-application, only-management-opens-a-kosk,
+# the-applicant-is-told-the-result
+
+needs:
+  - id: ask-for-a-kosk
+    need: >-
+      A signed-in talebe who wants a köşk opened for a field of knowledge can ask Medaris for it from Keşfet: they give the köşk's
+      name, its field, a short description, why they want it and an address to be reached at (a telephone number is optional, the
+      address starts as the account's own), they are told the application reached Medaris, and nothing is written until they send
+      it.
+    evidence:
+      - state: discover
+      - state: form
+      - state: choosingField
+      - state: sending
+      - state: sent
+      - source: apps/tedrisat/src/kosk-application/kosk-application.controller.ts:28
+      - source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:60
+      - source: apps/tedris/features/discover/components/discover-page.tsx:203
+      - test: apps/tedris/e2e/profile.e2e.ts
+        name: "Köşk açma başvurusu: validation, 'Vazgeç' writes nothing, a sent form is PENDING"
+      - test: apps/tedris/e2e/discover.e2e.ts
+        name: "ends with the way to ask for a köşk"
+      - test: apps/tedris/test/kosk-application.spec.ts
+        name: "holds the field list while the application is sent: a field chosen then would not be the one sent"
+      - test: apps/tedris/test/kosk-application.spec.ts
+        name: "holds the text fields and 'Vazgeç' while the application is sent: a change would not be sent, and leaving would not stop it"
+      - scenario: sent
+    note: P-14 of planned.md (MDRS-107); the application half of it is built (MDRS-166).
+
+  - id: the-form-says-what-is-missing-to-everyone
+    need: >-
+      A form that cannot be sent says, to every person including one who cannot see the page, which fields need something and
+      what, and takes them to the first one; an address or a number that is wrong is told apart from one that is empty.
+    evidence:
+      - source: apps/tedris/features/kosk-application/model.ts:40
+      - test: apps/tedris/e2e/profile.e2e.ts
+        name: "Köşk açma başvurusu: validation, 'Vazgeç' writes nothing, a sent form is PENDING"
+    missing: no Linear issue; findings DSC-05; code exists in part
+    note: |-
+      Drawn on the state form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      Partly built (finding DSC-05): the errors are written under the fields, as plain text with no announcement and no move of
+      the focus, and the same words stand for an empty and a malformed address. A defect, not a planned feature, so no Linear key.
+
+  - id: a-refusal-names-the-field
+    need: >-
+      When the API refuses an application the person is told what to change, by field, not only that it could not be sent; a check
+      the page makes is the check the API makes, so the page never lets through what the API will refuse.
+    evidence:
+      - source: apps/tedrisat/src/kosk-application/kosk-application.controller.ts:28
+    missing: no Linear issue; findings DSC-08, APPLYKOSK-1; code exists in part
+    note: |-
+      Drawn on the states sending and refused, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      Partly built (findings DSC-08 and APPLYKOSK-1): one toast for every refusal, and an address such as "ad@alan.c" passes the
+      page and is refused by the API. A defect, so no Linear key. The replay scenario `serverRefuses` draws it.
+
+  - id: medaris-management-sees-the-application
+    need: >-
+      The application reaches the people who decide it, the başnazım and a Medaris nazımı who holds the permission, with the
+      applicant's contact details, and nobody else reads it. (The screen is another flow; this flow starts it.)
+    evidence:
+      - state: reachesNizam
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:86
+      - source: apps/nizam/app/talepler/kosk-basvurulari/page.tsx:25
+    note: >-
+      Unwalked here. nizam.applications.decide (round R7) owns the screen; the platform-admin e2e (platform-admin#1 to #4) covers
+      the page, not this flow's send.
+
+  - id: only-management-opens-a-kosk
+    need: A köşk is opened only by Medaris management; everyone else can only ask for one, and asking opens nothing.
+    evidence:
+      - state: sending
+      - state: reachesNizam
+      - source: apps/tedrisat/src/kosk-application/kosk-application.controller.ts:28
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+    note: >-
+      P-14 of planned.md (MDRS-107), the restriction half. The application half is the first need. Unwalked here: the walk ends at
+      the sent card, which opens nothing; nizam.kosks.open owns the other side. The planned note "role-aware navigation" is
+      nizam's.
+
+  - id: the-applicant-is-told-the-result
+    need: >-
+      The applicant is told the outcome of the application, with the reason when it is refused (step 3 of "Başvurundan sonra"
+      promises it), without having to look for it.
+    evidence:
+      - state: sent
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:124
+      - source: apps/tedris/features/notifications/notification-view.ts:168
+    note: >-
+      Unwalked here: the notification is written when management decides, which is nizam.applications.decide's walk, and read on
+      tedris.account.notifications. The person has no page for the application itself and no way to take it back.
+
+  - id: the-applicant-is-led-to-the-kosk
+    need: >-
+      When the application is approved the applicant is told the köşk opened and is led to it, and the köşk is known to be the one
+      opened from that application and from no other.
+    missing: no Linear issue; findings F-3
+    note: |-
+      Drawn on the state reachesNizam, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      Finding F-3: the approval's notification carries the köşk's name and no target, so the notification page, which can lead to
+      /kosks/<id>, leads nowhere; and approveKoskApplication does not check that the köşk was opened from the application. A
+      defect, so no Linear key.

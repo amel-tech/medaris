@@ -1,0 +1,438 @@
+# nizam.decks.legacyCards on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the köşk nazımı (`koskNazim`) signed in through
+# Keycloak's real form, a spare talebe with no role (`applicantF`) for the empty table, and a deck of the walk's own in every scenario.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/decks/legacyCards --bind graphs/nizam/decks/legacyCards/binding.yaml \
+#     [--cover transitions] --out <dir>
+# NOT RUN in the writing phase (the owner moved every replay to the walk phase): the binding was only loaded, with `replay ... --emit-spec`. Every locator
+# below comes from the code and the catalog and is unverified until a walk; where the code alone leaves a doubt it says so.
+#
+# What a walk makes and takes away (deck-data.mjs, this folder; every run of it by hand takes the replay lock). `setup` removes every deck of the walk's own
+# titles ("Deneme destesi legacy...", written by `koskNazim`, `applicantF` or `dersNazir`) and makes the one the scenario needs:
+#   mine      a köşk deck of the seed's second köşk, opened by `koskNazim` through POST /kosks/{kosk2}/decks, with three cards (none for `cardsEmpty`): a private
+#             deck of the nazım's own, listed by /decks, and the one the köşk decks page links to ("Kartları düzenle")
+#   foreign   a public deck of `dersNazir` with one card, published after the başnazım approves the request (POST /nizam/deck-publish-requests/{id}/approve)
+#   none      nothing: `applicantF` has no deck and no public deck exists
+# and prints `rows=<n>`, the number of rows /decks will draw for the person (1, 1 and 0): a stack that holds another public deck or another deck of the nazım
+# fails the setup there. `teardown` runs `remove`, which deletes those decks as their authors (a deck made by the walk in the dialog too: its title begins the
+# same way) and the approval's notification. The seed's decks are never touched. Left behind: audit rows of the creations (the API has no way to remove them).
+# The ids are in graphs/.local/legacy-cards.json, read here as {lc.*}.
+#
+# Every scenario carries every var any event or effect names (the loader refuses a placeholder a scenario does not define), so the values are repeated; a
+# scenario overrides only what its story changes.
+# Scenarios, one for each `given` the flow's `--cover transitions` paths start from (eleven, so that no two share one):
+#   listMine/ok       the main story: /decks with the nazım's own deck, a rename, the cards, a card changed and deleted, an export
+#   listMine/short    the rename is "Kısa" (4 characters): 400, "Update Error", and the cell keeps the text (LEGACY-1)
+#   listNone/ok       a person with no role opens /decks (nothing is listed), makes a deck in the dialog (the empty table gets its first row)
+#   listNone/short    the dialog's title is "Kısa": 400, "Oluşturma Hatası" with the validator's English sentence
+#   listNone/space    the dialog's title is five blanks: the page's own toast, nothing sent
+#   listForeign/ok    the only deck is dersNazir's public one: a rename and a delete are refused with 403 (LEGACY-2, LEGACY-4)
+#   cardsMine/ok      from the köşk decks page (the nav entry koskDecks->legacyDeckCards, ./enter.nav.binding.yaml) to the deck's cards; the menus, the export and
+#                     the sample as CSV and Excel
+#   cardsMine/short   a card's back face of two letters: 400, "Güncelleme Hatası"
+#   cardsEmpty/ok     a deck with no card: "Sonuç bulunamadı."
+#   cardsForeign/ok   the cards of the public deck: an edit, a delete and an export are refused with 403
+#   cardsGone/ok      the cards of an address with no deck: the generic error page and its "Yeniden dene"
+#
+# Not bound, so the replay cannot reach them (reported): CHOOSE_FILE and everything after it (importing, the import-errors dialog, the toasts of an import):
+# the engine has no verb that puts a file into an <input type=file> (`fill` refuses one; bind.ts lists goto, reload, click, fill, key, waitUrl, waitText,
+# waitResponse, run), so `events.CHOOSE_FILE` is a comment below, and the ask is one action, `{ attach: { css: 'input[type=file]' }, files: [...] }`; FAIL.signedOut of
+# every read and write (the stack cannot end the session in the middle of a call); FAIL.other and FAIL.failed of every call (no condition of the stack makes
+# the API fail a valid request or a read); FAIL.missing of savingCard and removingCard (a card taken away behind the page: nothing in the flow causes it);
+# `sent_to_sign_in`; a table of two rows or more (outOfView).
+# Server Actions answer 200 on the page's own address whatever the API said, so `call` here only holds a busy state, and the statuses of the refusals (403, 400)
+# cannot be compared (an engine limit, as in nazar.decks.publishAndDelete).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.decks.legacyCards
+
+data:
+  lc: { json: ../.local/legacy-cards.json }
+
+scenarios:
+  # ---- /decks as the köşk nazımı ----
+  listMine:
+    given: { world: listMine, typed: ok }
+    as: koskNazim
+    open: '{nizam}/decks'
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Deneme destesi legacy (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, mine]
+        expect: 'rows=1'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # "Kısa" is 4 characters: the API takes 5 to 100
+  listMineShort:
+    given: { world: listMine, typed: short }
+    as: koskNazim
+    open: '{nizam}/decks'
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Kısa
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, mine]
+        expect: 'rows=1'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # a public deck of someone else: the nazım sees it, with the same controls (LEGACY-4)
+  listForeign:
+    given: { world: listForeign, typed: ok }
+    as: koskNazim
+    open: '{nizam}/decks'
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy herkese açık
+      renamedTitle: Deneme destesi legacy herkese açık (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, foreign]
+        expect: 'rows=1'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # ---- /decks as a person with no role at all (F-P0-16): the table is empty, and the dialog makes the first deck ----
+  listNone:
+    given: { world: listNone, typed: ok }
+    as: applicantF
+    open: '{nizam}/decks'
+    vars:
+      who: applicantF
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Deneme destesi legacy yeni (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, none]
+        expect: 'rows=0'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # the dialog's title is 4 characters
+  listNoneShort:
+    given: { world: listNone, typed: short }
+    as: applicantF
+    open: '{nizam}/decks'
+    vars:
+      who: applicantF
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Kısa
+      newTitle: Kısa
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, none]
+        expect: 'rows=0'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # five blanks: `required` is satisfied, the page's own trim is not
+  listNoneSpace:
+    given: { world: listNone, typed: space }
+    as: applicantF
+    open: '{nizam}/decks'
+    vars:
+      who: applicantF
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Kısa
+      newTitle: '     '
+      newDescription: ''
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, none]
+        expect: 'rows=0'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # ---- /decks/<id>/cards ----
+  # from the köşk decks page of the second köşk: the walk presses the deck's "Kartları düzenle" (the nav entry koskDecks->legacyDeckCards)
+  cardsMine:
+    given: { world: cardsMine, typed: ok }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'koskDecks->legacyDeckCards' }
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Deneme destesi legacy (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, mine]
+        expect: 'with 3 card(s)'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # "ab" is 2 characters: the API takes 3 to 5000
+  cardsMineShort:
+    given: { world: cardsMine, typed: short }
+    as: koskNazim
+    open: '{nizam}/decks/{lc.deck}/cards'
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Deneme destesi legacy (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: ab
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, mine]
+        expect: 'with 3 card(s)'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # a deck with no card
+  cardsEmpty:
+    given: { world: cardsEmpty, typed: ok }
+    as: koskNazim
+    open: '{nizam}/decks/{lc.deck}/cards'
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Deneme destesi legacy (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, mine, --cards, '0']
+        expect: 'with 0 card(s)'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # the public deck has one card
+  cardsForeign:
+    given: { world: cardsForeign, typed: ok }
+    as: koskNazim
+    open: '{nizam}/decks/{lc.deck}/cards'
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy herkese açık
+      renamedTitle: Deneme destesi legacy (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, make, foreign]
+        expect: 'rows=1'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+  # an address that is no deck: tedrisat answers 404 DECK_NOT_FOUND, as for another person's private deck; nothing is made
+  cardsGone:
+    given: { world: cardsGone, typed: ok }
+    as: koskNazim
+    open: '{nizam}/decks/00000000-0000-4000-8000-000000000000/cards'
+    vars:
+      who: koskNazim
+      deckTitle: Deneme destesi legacy
+      renamedTitle: Deneme destesi legacy (yeni ad)
+      newTitle: Deneme destesi legacy yeni
+      newDescription: Yeni destenin açıklaması.
+      newBack: 'fiil, yaptı'
+      origBack: fiil
+      cardsKept: '1'
+      deck: '{lc.deck}'
+    setup:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+    teardown:
+      - run: [node, ../nizam/decks/legacyCards/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. The dialog's two fields, then the focus stays in the dialog
+  TYPE_TITLE:
+    - fill: { css: '#title', value: '{newTitle}' }
+    - fill: { css: '#description', value: '{newDescription}' }
+  # the first row's title cell: typed over, saved on Enter (a one-line cell saves on Enter or on leaving it). The cell is a placeholder-named <input>, so css
+  EDIT_TITLE:
+    - fill: { css: 'tbody td:nth-child(1) input', nth: 0, value: '{renamedTitle}' }
+    - key: Enter
+  # the first card's back face: typed over, saved on leaving it (a textarea has no key that saves; Tab moves the focus out and fires the blur)
+  EDIT_CARD:
+    - fill: { css: 'tbody td:nth-child(2) textarea', nth: 0, value: '{newBack}' }
+    - key: Tab
+  # Esc closes the open menu, or the open submenu only
+  ESCAPE:
+    - key: Escape
+  # the browser's own file chooser is no part of the page: dismissing it leaves the page as it was, so the step only checks the page is still there
+  CANCEL_CHOOSE:
+    - waitText: Toplu İşlemler
+  # choosing a file has no binding: the engine has no action that puts a file into an <input type=file> (see the header). When it has one, this is the whole
+  # change, each scenario naming its file in `vars.upload`:
+  # CHOOSE_FILE:
+  #   - attach: { css: 'input[type=file]' }
+  #     files: ['{upload}']
+  # a link or the menu leaves the pages
+  NAVIGATE:
+    - goto: 'about:blank'
+
+states:
+  # the two pages keep one address through every state of their dialogs and menus; the cards' address holds the deck's id
+  list: { url: '{nizam}/decks' }
+  newDeck: { url: '{nizam}/decks' }
+  newDeckInvalid: { url: '{nizam}/decks' }
+  newDeckFailed: { url: '{nizam}/decks' }
+  confirmRemoveDeck: { url: '{nizam}/decks' }
+  removingDeck: { url: '{nizam}/decks' }
+  cards: { url: '{nizam}/decks/*/cards' }
+  confirmRemoveCard: { url: '{nizam}/decks/*/cards' }
+  removingCard: { url: '{nizam}/decks/*/cards' }
+  bulkMenu: { url: '{nizam}/decks/*/cards' }
+  exportMenu: { url: '{nizam}/decks/*/cards' }
+  sampleMenu: { url: '{nizam}/decks/*/cards' }
+  exporting: { url: '{nizam}/decks/*/cards' }
+  sampling: { url: '{nizam}/decks/*/cards' }
+  choosingFile: { url: '{nizam}/decks/*/cards' }
+  # The saves and the make are Server Actions: a POST to the page's own address, held while the busy state is checked ("Oluşturuluyor...", the Skeleton that
+  # replaces the cell). The page's own reads are GETs with a query (`?_rsc=`), so this glob (anchored) matches only the POST. There is no busy state at all in
+  # removingDeck, removingCard, exporting, sampling and importing (LEGACY-7), so no `call` on them. Not verified: that the first request of the walk, the
+  # navigation to the address itself, is not held (the call is armed only when the state is entered).
+  creating: { url: '{nizam}/decks', call: '{nizam}/decks' }
+  renaming: { url: '{nizam}/decks', call: '{nizam}/decks' }
+  savingCard: { url: '{nizam}/decks/*/cards', call: '{nizam}/decks/*/cards' }
+  # a deck that is not there: Next's error boundary draws app/error.tsx; its words are the check
+  pageError: { text: Bir şeyler ters gitti }
+  left: { url: 'about:blank' }
+
+# What a write leaves outside the screen, read through the API or the database as the person who made it. `{who}` is the scenario's account, and a person's own
+# non-public decks are `GET /flashcard/decks?isPublic=false` (the deck of the walk, or of the dialog, whose id the walk does not know).
+effects:
+  # a deck made in the dialog: the person's own list holds it
+  createDeck:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/decks?isPublic=false']
+      expect: '"title":"{newTitle}"'
+  # a title the dialog's title was refused for: the list is still empty
+  createRefused:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/decks?isPublic=false']
+      expect: '[]'
+  # a rename that went through: the list holds the new title (the person has the one deck)
+  updateDeck:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/decks?isPublic=false']
+      expect: '"title":"{renamedTitle}"'
+  # a rename the API refused (a title of 4 characters, or another person's deck): the deck holds its own title still
+  renameRefused:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/decks/{lc.deck}']
+      expect: '"title":"{deckTitle}"'
+  # a deck that was deleted: the person has none left
+  deleteDeck:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/decks?isPublic=false']
+      expect: '[]'
+  # a deck that was refused its delete (another person's): it is there still
+  removeRefused:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/decks/{lc.deck}']
+      expect: '"title":"{deckTitle}"'
+  # a card that went through: the deck's cards hold the new back face
+  updateCard:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/cards?deckId={lc.deck}']
+      expect: '"contentBack":"{newBack}"'
+  # a card refused its edit (two letters, or another person's deck): the original back face is still there
+  cardSaveRefused:
+    - run: [node, helpers/api.mjs, '{who}', GET, '/flashcard/cards?deckId={lc.deck}']
+      expect: '"contentBack":"{origBack}"'
+  # a card that was deleted: two of the three are left
+  deleteCard:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from flashcards where deck_id = '{lc.deck}'"]
+      expect: '"n":2'
+  # a card refused its delete (the public deck's only one): it is there still
+  cardRemoveRefused:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from flashcards where deck_id = '{lc.deck}'"]
+      expect: '"n":{cardsKept}'
+
+# Role and name find most nodes. Below are the ones they cannot find alone: the table's cells (named by a placeholder only, and the rows have no other name), the
+# icon buttons with no name, the toasts (sonner draws a list item with no role), and the pages' <main>, which a bare role would find on the page a walk leaves for.
+nodes:
+  listPage: { role: main, hasText: Bilgi Kartı Desteleri }
+  cardsPage: { role: main, hasText: Toplu İşlemler }
+  errorMain: { role: main, hasText: Bir şeyler ters gitti }
+  # the first row: the title and description cells, the eye (the first button of the last cell) and the trash (the second); the placeholder is an input's only name
+  # and a replay may or may not take it for one (not verified), so css
+  rowTitle: { css: 'tbody td:nth-child(1) input', nth: 0 }
+  rowDescription: { css: 'tbody td:nth-child(2) input', nth: 0 }
+  rowOpen: { css: 'tbody td:last-child button', nth: 0 }
+  rowRemove: { css: 'tbody td:last-child button', nth: 1 }
+  # the first card: the two textareas and the trash, the only button of the last cell
+  cardFront: { css: 'tbody td:nth-child(1) textarea', nth: 0 }
+  cardBack: { css: 'tbody td:nth-child(2) textarea', nth: 0 }
+  cardRemove: { css: 'tbody td:last-child button', nth: 0 }
+  # the dialog's description box: the page behind holds an input of the same words, inert while the dialog is open
+  descriptionField: { role: textbox, name: Açıklama, within: { role: dialog } }
+  # the two submenus' items are named CSV and Excel in both; each is found inside its own menu, which Radix names by its trigger
+  exportCsv: { role: menuitem, name: CSV, within: { role: menu, name: Dışa Aktar } }
+  exportXlsx: { role: menuitem, name: Excel, within: { role: menu, name: Dışa Aktar } }
+  sampleCsv: { role: menuitem, name: CSV, within: { role: menu, name: Örnek Dosyayı İndir } }
+  sampleXlsx: { role: menuitem, name: Excel, within: { role: menu, name: Örnek Dosyayı İndir } }
+  # sonner's list items hold the title and the description in two divs (data-title and data-description; not verified): the titles are found by their words
+  toastCreated: { css: '[data-sonner-toast] [data-title]', hasText: Deste Oluşturuldu }
+  toastCreatedBody: { css: '[data-sonner-toast] [data-description]', hasText: Yeni bilgi kartı destesi başarıyla oluşturuldu. }
+  toastBlank: { css: '[data-sonner-toast] [data-title]', hasText: Doğrulama Hatası }
+  toastBlankBody: { css: '[data-sonner-toast] [data-description]', hasText: Deste başlığı zorunludur. }
+  toastCreateFailed: { css: '[data-sonner-toast] [data-title]', hasText: Oluşturma Hatası }
+  toastRenamed: { css: '[data-sonner-toast] [data-title]', hasText: Card Updated }
+  toastRenamedBody: { css: '[data-sonner-toast] [data-description]', hasText: Flashcard was updated successfully. }
+  toastRenameFailed: { css: '[data-sonner-toast] [data-title]', hasText: Update Error }
+  toastRemoved: { css: '[data-sonner-toast] [data-title]', hasText: Card Deleted }
+  toastRemovedBody: { css: '[data-sonner-toast] [data-description]', hasText: was deleted. }
+  toastRemoveFailed: { css: '[data-sonner-toast] [data-title]', hasText: Delete Error }
+  toastCardSaved: { css: '[data-sonner-toast] [data-title]', hasText: Kart Güncellendi }
+  toastCardSavedBody: { css: '[data-sonner-toast] [data-description]', hasText: Kartvizit başarıyla güncellendi. }
+  toastCardFailed: { css: '[data-sonner-toast] [data-title]', hasText: Güncelleme Hatası }
+  toastCardRemoved: { css: '[data-sonner-toast] [data-title]', hasText: Kart Silindi }
+  toastCardRemovedBody: { css: '[data-sonner-toast] [data-description]', hasText: kimlik numaralı kart silindi. }
+  toastCardRemoveFailed: { css: '[data-sonner-toast] [data-title]', hasText: Silme Hatası }
+  # the API's own sentence, whichever refusal: a 403 of the authorizer, or the validator's first constraint
+  toastReason: { css: '[data-sonner-toast] [data-description]', hasText: '/Caller is not authorized|must be longer than or equal to/' }

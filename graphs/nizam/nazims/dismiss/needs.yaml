@@ -1,0 +1,248 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.nazims.dismiss
+status: proposed
+summary: >-
+  What must exist for the Medaris başnazım to dismiss a Medaris nazımı and answer for what that person handed on: the flow's
+  product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For needs.gaps.yaml (nizam.nazims.dismiss):
+# missing:  adopt-edit-or-drop-each-grant (MDRS-201), say-why-the-button-is-off (none), each-answer-names-its-person (none), focus-after-a-dismissal (none),
+# a-person-who-is-gone-is-not-an-error (none), loading-is-announced (none), a-refusal-names-whose-rows-block-it (none),
+# a-person-without-a-name-has-a-name-in-the-buttons (none)
+# unwalked: nothing-to-ask-when-nothing-was-given (no e2e; the replay scenario `nothing` is written, not run), a-person-who-is-gone-is-not-an-error (no e2e; the replay event
+# GONE_ELSEWHERE is written, not run), groups-they-defined-are-listed (code, no e2e; no API route
+# makes the row, see binding.yaml), a-refusal-is-told-in-the-dialog, a-moved-list-is-asked-again, a-failed-read-can-be-retried (code, no e2e; a server action answers 200
+# whatever the API said and no stack condition makes it refuse), what-they-gave-themselves-is-told (code, no e2e, not drawn)
+# No replay is named below: none has run (the walk phase is later); the scenarios of binding.yaml (many, one, nothing) are added to `walked` as each passes.
+
+needs:
+  - id: dismiss-a-medaris-nazim
+    need: >-
+      The Medaris başnazım ends a Medaris nazımı's seat from the list of those in office in one confirmed act: the seat and every
+      platform permission the person held end at once, the row leaves the list, and a message says who is no longer a Medaris
+      nazımı.
+    evidence:
+      - state: roster
+      - node: dismissThis
+      - node: dismissDialog
+      - state: dismissing
+      - state: settled
+      - node: toastDismissedTitle
+      - node: toastDismissedBody
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:150
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:102
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — after the gate 'Görevden al' asks what to do with what the person handed on, and removes them (criterion 5)"
+    note: >-
+      Also drawn as the assertion the-seat-ends-only-with-the-dismissal, the assertion a-dismissal-that-succeeded-ends-the-seat.
+
+  - id: dismiss-from-every-row
+    need: >-
+      "Görevden al" is on the row of every Medaris nazımı in office, whatever the date (the October version gate was lifted by
+      MDRS-215), and the row's button names the person.
+    evidence:
+      - node: dismissRow
+      - node: dismissThis
+      - source: apps/nizam/features/permissions/components/nazims-view.tsx:185
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — 'Görevden al' is on on every row whatever the date (MDRS-215: no version gate)"
+
+  - id: ask-for-everything-handed-on
+    need: >-
+      Before the seat ends, the başnazım is shown every role or permission the person gave to someone else, what it is and who and
+      where it went to, and answers for each one, Devral (it stays, under the başnazım's name) or Düşür (it is taken back at
+      once); nothing is chosen for them and the confirmation stays off until every row has an answer.
+    evidence:
+      - state: asking
+      - state: choosing
+      - state: partlyAnswered
+      - state: answered
+      - node: givenList
+      - node: givenItem
+      - node: itemWhat
+      - node: itemLine
+      - node: answerGroup
+      - node: takeOver
+      - node: drop
+      - node: answersNote
+      - node: submit
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:132
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:150
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:188
+      - source: apps/nizam/features/permissions/present.ts:258
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — after the gate 'Görevden al' asks what to do with what the person handed on, and removes them (criterion 5)"
+    note: Also drawn as the assertion choice-only-when-something-was-given, the assertion one-row-has-no-partial-answer.
+
+  - id: devral-keeps-and-duser-takes-back
+    need: >-
+      Devral leaves what was handed on in place under the başnazım's name; Düşür revokes it at once, and a dropped seat also takes
+      back what its holder was given inside that seat's scope, unless another role of theirs still covers it.
+    evidence:
+      - node: takeOver
+      - node: drop
+      - state: dismissing
+      - state: settled
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:150
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:565
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — after the gate 'Görevden al' asks what to do with what the person handed on, and removes them (criterion 5)"
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — dropping what was handed on revokes it, and 'Vazgeç' changes nothing"
+
+  - id: nothing-to-ask-when-nothing-was-given
+    need: >-
+      A Medaris nazımı who gave nobody anything is dismissed without a choice step: the dialog says there is nothing to answer and
+      the confirmation is ready at once.
+    evidence:
+      - state: nothingToAsk
+      - node: nothingLine
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:184
+      - source: apps/nizam/features/permissions/present.ts:258
+    note: Also drawn as the assertion no-choice-when-nothing-was-given.
+
+  - id: cancel-writes-nothing
+    need: >-
+      "Vazgeç", Esc and the close icon close the dialog and change nothing; the scrim does not close it, so a stray click loses no
+      answers.
+    evidence:
+      - node: dismissCancel
+      - node: dismissClose
+      - node: dismissDialog
+      - state: roster
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:151
+      - source: libs/ui/src/mds/dialog.tsx:133
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — dropping what was handed on revokes it, and 'Vazgeç' changes nothing"
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — after the gate 'Görevden al' asks what to do with what the person handed on, and removes them (criterion 5)"
+
+  - id: groups-they-defined-are-listed
+    need: >-
+      The permission groups the person defined or changed are listed in the dialog, with what they did and where, so the başnazım
+      sees what a Medaris nazımı wrote into a medrese's groups; nothing is asked about them, they stay.
+    evidence:
+      - node: groupsQuestion
+      - node: groupsList
+      - node: groupItem
+      - node: groupLine
+      - node: groupsNote
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:132
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:263
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:290
+
+  - id: what-they-gave-themselves-is-told
+    need: >-
+      A role or permission the person gave themselves is told apart from what they gave others: it goes with the dismissal
+      whatever the answer, the dialog says so, and asks nothing. Not drawn: no route lets a Medaris nazımı make such a row, and
+      the e2e does not seed one.
+    evidence:
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:241
+      - source: apps/nizam/features/permissions/present.ts:237
+
+  - id: adopt-edit-or-drop-each-grant
+    need: >-
+      Beside Devral and Düşür the başnazım can edit a grant before the seat ends (a third answer per row, or a link to the
+      permission editor), as the removal of a role is specified in MDRS-201 (planned.md P-15). Today there are two answers and no
+      third (decision D1).
+    missing: MDRS-201
+    note: >-
+      Drawn on the state choosing, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: say-why-the-button-is-off
+    need: >-
+      While "Görevden al" is off the dialog says what it waits for ('Her satır için seçim yapılmadan görevden alınamaz.'), as the
+      head dialog's footer does, and the button stays reachable by the keyboard (F-W2-4, F-X-3).
+    missing: no Linear issue; findings F-W2-4, F-X-3
+    note: >-
+      Drawn on the states choosing and partlyAnswered and on the nodes submit and auditNote, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: each-answer-names-its-person
+    need: >-
+      A required either/or answer is a radio group per row, announced as required, with the person in every option's name, so a
+      list of buttons or voice control can tell the rows apart (F-W2-5).
+    missing: no Linear issue; findings F-W2-5
+    note: >-
+      Drawn on the nodes takeOver, drop, answerGroup and pressedChip, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-after-a-dismissal
+    need: >-
+      After a dismissal the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next row's
+      button), not on the document, because the pressed button left with its row (F-W2-10).
+    missing: no Linear issue; findings F-W2-10
+    note: >-
+      Drawn on the state settled and on the node toastDismissedTitle, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-person-who-is-gone-is-not-an-error
+    need: >-
+      When the person is no longer a Medaris nazımı by the time the başnazım confirms, the dialog closes, the list is read again,
+      and a notice that closes by itself says so, instead of an error that stays with a button that can only fail again (NZDIS-1).
+    missing: no Linear issue; findings NZDIS-1
+    note: >-
+      Drawn on the state backToDialog and on the node toastGone, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: loading-is-announced
+    need: >-
+      While the dialog reads what the person gave, a status says so (the hidden word the kit uses for a busy button), so a
+      screen-reader user is not left with an intro line that reads as the whole dialog (NZDIS-2).
+    missing: no Linear issue; findings NZDIS-2
+    note: >-
+      Drawn on the state asking, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-refusal-names-whose-rows-block-it
+    need: >-
+      A Düşür that would leave what a dropped seat's holder handed on with no seat is refused, and the message names the person to
+      dismiss first or take over, as the API's own answer does (NZDIS-5).
+    missing: no Linear issue; findings NZDIS-5
+    note: >-
+      Drawn on the node toastCascade, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-person-without-a-name-has-a-name-in-the-buttons
+    need: >-
+      A Medaris nazımı whose name is unknown is still named in the row's buttons, in the dialog's eyebrow and intro, and in the
+      toast ('Adı bilinmiyor' or the e-mail) (F-W2-11).
+    missing: no Linear issue; findings F-W2-11
+    note: >-
+      Drawn on the nodes dismissRow, rowEdit, dismissEyebrow and introText, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-is-told-in-the-dialog
+    need: >-
+      A refused dismissal (no permission, a Devral of a permission whose seat is dropped, any other failure) keeps the dialog and
+      every answer and says why in a toast that stays.
+    evidence:
+      - state: backToDialog
+      - node: toastRefused
+      - node: toastSeatless
+      - node: toastFailed
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:108
+      - source: apps/nizam/features/permissions/present.ts:348
+
+  - id: a-moved-list-is-asked-again
+    need: >-
+      When what the person handed on changed while the dialog was open, nothing is written, the answers are cleared, the list is
+      read again and a toast says to choose again.
+    evidence:
+      - state: asking
+      - node: toastChanged
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:150
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:114
+
+  - id: a-failed-read-can-be-retried
+    need: When the list of what the person gave cannot be read, the dialog says so with a retry and the confirmation stays off.
+    evidence:
+      - state: loadFailed
+      - node: loadFailedAlert
+      - node: retry
+      - source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:177

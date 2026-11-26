@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { displayNameOf } from "../assignment/assignment.service";
 import type { Tx } from "../course/course-purge";
+import { AssignmentKind } from "../course/domain/assignment-kind.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { LessonNotFoundError } from "../course/errors/lesson-not-found.error";
 import { DatabaseService } from "../database/database.service";
@@ -24,6 +25,7 @@ import {
 } from "../storage/storage-deletions";
 import type { IStoredFile } from "../storage/stored-file";
 import { SubmissionFileLimitError } from "./errors/submission-file-limit.error";
+import { SubmissionFilesNotTakenError } from "./errors/submission-files-not-taken.error";
 import { SubmissionReviewEmptyError } from "./errors/submission-review-empty.error";
 import { SubmissionReviewFileLimitError } from "./errors/submission-review-file-limit.error";
 
@@ -112,6 +114,8 @@ type Db = DatabaseService["db"] | Tx;
 export interface ISessionHandIns {
   lessonId: string;
   hasAssignment: boolean;
+  /** Its homework is recited to the müderris (MDRS-248): nothing is handed in. */
+  isMemorization: boolean;
   /** Enrolled talebe who handed in on it. */
   handedInCount: number;
 }
@@ -246,6 +250,21 @@ export class LessonSubmissionRepository {
     }));
   }
 
+  /** Whether the celse's homework is recited to the müderris (MDRS-248). */
+  async isMemorization(lessonId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: lessonAssignments.id })
+      .from(lessonAssignments)
+      .where(
+        and(
+          eq(lessonAssignments.lessonId, lessonId),
+          eq(lessonAssignments.kind, AssignmentKind.MEMORIZE)
+        )
+      )
+      .limit(1);
+    return row !== undefined;
+  }
+
   /** How many files the talebe's homework on the celse holds. */
   async countFiles(lessonId: string, userId: string): Promise<number> {
     const [row] = await this.db
@@ -302,6 +321,16 @@ export class LessonSubmissionRepository {
     return this.db.transaction(async (tx) => {
       if (!(await this.isLiveLesson(lessonId, tx))) {
         throw new LessonNotFoundError(lessonId);
+      }
+      // Asked again under a share lock on the homework (MDRS-248): a switch
+      // to MEMORIZE committed since the service's early check refuses the file.
+      const [assignment] = await tx
+        .select({ kind: lessonAssignments.kind })
+        .from(lessonAssignments)
+        .where(eq(lessonAssignments.lessonId, lessonId))
+        .for("share");
+      if (assignment?.kind === AssignmentKind.MEMORIZE) {
+        throw new SubmissionFilesNotTakenError(lessonId);
       }
       await tx
         .insert(lessonSubmissions)
@@ -836,7 +865,11 @@ export class LessonSubmissionRepository {
     );
     const [celses, counts, [seated]] = await Promise.all([
       this.db
-        .select({ lessonId: lessons.id, assignmentId: lessonAssignments.id })
+        .select({
+          lessonId: lessons.id,
+          assignmentId: lessonAssignments.id,
+          kind: lessonAssignments.kind,
+        })
         .from(lessons)
         .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
         .leftJoin(lessonAssignments, eq(lessonAssignments.lessonId, lessons.id))
@@ -876,6 +909,7 @@ export class LessonSubmissionRepository {
       sessions: celses.map((celse) => ({
         lessonId: celse.lessonId,
         hasAssignment: celse.assignmentId !== null,
+        isMemorization: celse.kind === AssignmentKind.MEMORIZE,
         handedInCount: handedInBy.get(celse.lessonId) ?? 0,
       })),
       talebeCount: seated?.n ?? 0,

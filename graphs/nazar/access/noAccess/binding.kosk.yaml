@@ -1,0 +1,17 @@
+# nazar.access.noAccess for a köşk nazımı: the seeded KOSK_NAZIM, nazım of "Süleymaniye Köşkü" and "Kubbealtı Köşkü" and of no medrese or
+# course. A köşk role makes no seat in nazar, so he meets the verdict, and the user row names the role he holds: "Köşk nazımı" (seen in the
+# smoke run's nazar-KOSK_NAZIM.png). The page offers him Tedris and sign-out and no way to Nizam, where his work is (decision D2).
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/noAccess --bind graphs/nazar/access/noAccess/binding.kosk.yaml --to verdict \
+#     --absent --out <dir>
+# NOT RUN: written without a replay. Nothing is made or removed.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.access.noAccess
+
+scenarios:
+  koskNazim:
+    given: { who: kosk, entry: here, read: ok }
+    as: koskNazim
+    open: '{nazar}/erisim-yok'
+    vars: { acct: KOSK_NAZIM, held: '"role":"KOSK_NAZIM"', chief: 'false' }

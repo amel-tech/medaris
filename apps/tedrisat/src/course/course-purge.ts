@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, type SQLWrapper } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, type SQLWrapper, sql } from "drizzle-orm";
 import type { DatabaseService } from "../database/database.service";
 import { deleteAssignmentsIn } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -13,9 +13,20 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import {
+  examAnswers,
+  examAttempts,
+  examTabSwitches,
+  zerothAnswers,
+} from "../database/schema/exam-attempt.schema";
+import {
+  assignmentEvaluations,
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../database/schema/lesson-assignment.schema";
+import {
+  examResults,
+  lessonExams,
+} from "../database/schema/lesson-exam.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
 import { lessonQuestions } from "../database/schema/lesson-question.schema";
 import {
@@ -23,6 +34,18 @@ import {
   submissionFiles,
   submissionReviewFiles,
 } from "../database/schema/lesson-submission.schema";
+import { lessonViews } from "../database/schema/lesson-view.schema";
+import {
+  courseExamTopics,
+  courseZerothOptions,
+  courseZerothQuestions,
+  examOptions,
+  examQuestions,
+  examQuestionTopics,
+  onlineExams,
+  onlineExamTopics,
+  zerothOptions,
+} from "../database/schema/online-exam.schema";
 import {
   partnerCourseCodes,
   partnerEnrollmentLinks,
@@ -73,6 +96,10 @@ export async function purgeCourses(
   const counts = emptyPurgeCounts();
   if (courseIds.length === 0) return counts;
 
+  // The courses' online exams (MDRS-299) with everything under them, and
+  // their topic lists; first, since a published exam points at its celse.
+  await deleteCourseOnlineExams(tx, courseIds);
+
   const weekIds = (
     await tx
       .select({ id: courseWeeks.id })
@@ -98,6 +125,9 @@ export async function purgeCourses(
     await tx
       .delete(lessonNotes)
       .where(inArray(lessonNotes.lessonId, lessonIds));
+    await tx
+      .delete(lessonViews)
+      .where(inArray(lessonViews.lessonId, lessonIds));
     await tx
       .delete(lessonQuestions)
       .where(inArray(lessonQuestions.lessonId, lessonIds));
@@ -176,6 +206,61 @@ export async function purgeCourses(
 }
 
 /**
+ * Deletes the online exams of the given courses (MDRS-299), uncounted: the
+ * talebe's attempts with their answers and switches and their zeroth answers,
+ * the questions with options and topics, the zeroth options and picked
+ * topics, then the courses' topic lists.
+ */
+export async function deleteCourseOnlineExams(
+  tx: Tx,
+  courseIds: string[]
+): Promise<void> {
+  const examIds = tx
+    .select({ id: onlineExams.id })
+    .from(onlineExams)
+    .where(inArray(onlineExams.courseId, courseIds));
+  const questionIds = tx
+    .select({ id: examQuestions.id })
+    .from(examQuestions)
+    .where(inArray(examQuestions.examId, examIds));
+  // The talebe's sittings first: they hold keys to the questions and options.
+  const attemptIds = tx
+    .select({ id: examAttempts.id })
+    .from(examAttempts)
+    .where(inArray(examAttempts.examId, examIds));
+  await tx
+    .delete(examAnswers)
+    .where(inArray(examAnswers.attemptId, attemptIds));
+  await tx
+    .delete(examTabSwitches)
+    .where(inArray(examTabSwitches.attemptId, attemptIds));
+  await tx.delete(examAttempts).where(inArray(examAttempts.examId, examIds));
+  await tx.delete(zerothAnswers).where(inArray(zerothAnswers.examId, examIds));
+  await tx
+    .delete(examOptions)
+    .where(inArray(examOptions.questionId, questionIds));
+  await tx
+    .delete(examQuestionTopics)
+    .where(inArray(examQuestionTopics.questionId, questionIds));
+  await tx.delete(examQuestions).where(inArray(examQuestions.examId, examIds));
+  await tx.delete(zerothOptions).where(inArray(zerothOptions.examId, examIds));
+  await tx
+    .delete(onlineExamTopics)
+    .where(inArray(onlineExamTopics.examId, examIds));
+  await tx.delete(onlineExams).where(inArray(onlineExams.courseId, courseIds));
+  await tx
+    .delete(courseExamTopics)
+    .where(inArray(courseExamTopics.courseId, courseIds));
+  // The course's own zeroth question (its medrese's stays with the medrese).
+  await tx
+    .delete(courseZerothOptions)
+    .where(inArray(courseZerothOptions.courseId, courseIds));
+  await tx
+    .delete(courseZerothQuestions)
+    .where(inArray(courseZerothQuestions.courseId, courseIds));
+}
+
+/**
  * Deletes the resources of the given lessons (MDRS-286) inside the caller's
  * transaction, and marks the objects of those that are files (MDRS-287) for
  * removal from storage once it commits. Shared by every purge that deletes
@@ -240,19 +325,24 @@ export async function deleteLessonSubmissions(
 }
 
 /**
- * Deletes the homework the müderris set on the given lessons, files first,
- * inside the caller's transaction, and marks every file's object for removal
- * from storage once it commits. Shared by every purge that deletes lessons.
+ * Deletes the homework the müderris set on the given lessons, the course
+ * team's marks on it (MDRS-248) and its files first, inside the caller's transaction, and marks every file's object for removal
+ * from storage once it commits. Shared by every purge that deletes lessons,
+ * so it also deletes what makes any of them an exam (`deleteLessonExams`).
  */
 export async function deleteLessonAssignments(
   tx: Tx,
   lessonIds: SQLWrapper | string[],
   reason: DeletionReason
 ): Promise<void> {
+  await deleteLessonExams(tx, lessonIds);
   const assignmentIds = tx
     .select({ id: lessonAssignments.id })
     .from(lessonAssignments)
     .where(inArray(lessonAssignments.lessonId, lessonIds));
+  await tx
+    .delete(assignmentEvaluations)
+    .where(inArray(assignmentEvaluations.assignmentId, assignmentIds));
   const removed = await tx
     .delete(lessonAssignmentFiles)
     .where(inArray(lessonAssignmentFiles.assignmentId, assignmentIds))
@@ -265,6 +355,59 @@ export async function deleteLessonAssignments(
   await tx
     .delete(lessonAssignments)
     .where(inArray(lessonAssignments.lessonId, lessonIds));
+}
+
+/**
+ * Deletes the exam rows of the given lessons (MDRS-248), their results first,
+ * inside the caller's transaction. Nothing of an exam is held in storage.
+ */
+export async function deleteLessonExams(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[]
+): Promise<void> {
+  const examIds = tx
+    .select({ id: lessonExams.id })
+    .from(lessonExams)
+    .where(inArray(lessonExams.lessonId, lessonIds));
+  await tx.delete(examResults).where(inArray(examResults.examId, examIds));
+  // An online exam (MDRS-299) whose celse goes is a draft again: it keeps its
+  // questions, and the restricting key to the celse is cleared first.
+  await tx
+    .update(onlineExams)
+    .set({
+      lessonId: null,
+      publishedAt: null,
+      latestStartAt: null,
+      version: sql`${onlineExams.version} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(inArray(onlineExams.lessonId, lessonIds));
+  await tx.delete(lessonExams).where(inArray(lessonExams.lessonId, lessonIds));
+}
+
+/**
+ * Deletes one session and everything that hangs off it, inside the caller's
+ * transaction, as the archive's session purge does. Used when an online
+ * exam's publication is taken back before it opens (MDRS-299): its draft has
+ * no celse. `lesson_invitations` stays, so the sweep sends the CANCEL.
+ */
+export async function deleteSession(
+  tx: Tx,
+  lessonId: string,
+  reason: DeletionReason
+): Promise<void> {
+  const ids = [lessonId];
+  await tx
+    .delete(lessonRecordings)
+    .where(inArray(lessonRecordings.lessonId, ids));
+  await tx.delete(lessonNotes).where(inArray(lessonNotes.lessonId, ids));
+  await tx
+    .delete(lessonQuestions)
+    .where(inArray(lessonQuestions.lessonId, ids));
+  await deleteLessonResources(tx, ids, reason);
+  await deleteLessonSubmissions(tx, ids, reason);
+  await deleteLessonAssignments(tx, ids, reason);
+  await tx.delete(lessons).where(eq(lessons.id, lessonId));
 }
 
 /** The ids of every course of a köşk, hidden or not. */

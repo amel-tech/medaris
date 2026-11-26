@@ -1,0 +1,102 @@
+# The screens of nazar.archive.hideMedrese: the Arşiv of a medrese (/medrese/<id>/arsiv) as it bears on hiding the medrese: the
+# section "Medreseyi gizle" and its question, the banner of a hidden medrese with "Medreseyi geri getir", the courses that went with it,
+# and the toasts of each answer. Read from apps/nazar/features/archive; the words are copied from libs/i18n/src/locales/tr/nazar.json.
+# Two messages are not the app's: `composed.Button.loading` is the hidden status text a busy button writes (libs/ui/src/mds/button.tsx:114).
+# `changes` is the app's own message that tells the person what hiding changes (the dialog's body), so no message is authored.
+# A node that says "repeat" is drawn once per hidden course; the walk's medrese holds one course, and the binding says so.
+schema: delurio-graph/0
+kind: ui
+id: nazar.archive.hideMedrese
+flow: nazar.archive.hideMedrese
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Archive.hide.confirmBody }
+samples:
+  name: Gizleme Denemesi Medresesi
+  title: Deneme dersi hideMedrese
+
+# The page keeps no focus of its own on load (nothing in features/archive sets it) and none after the hiding or the restore (F-A-2),
+# so there is no `initialFocus` on the page and no `focus` here: the graph says nothing of what the code does not say.
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------------
+  archivePage: { type: page, component: Page, role: main, in: [forbidden, shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  archiveTitle: { type: text, component: Heading, role: heading, text: { key: Archive.title }, in: [forbidden, shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-page.tsx:73 } # level 1
+  archiveIntro: { type: text, component: Text, text: { key: Archive.intro }, in: [forbidden, shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-page.tsx:74 }
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert (F-A-16)
+
+  # --- the tabs and the list --------------------------------------------------------------------------------------------------
+  tabsNav: { type: list, component: List, role: navigation, name: { key: Archive.tabsLabel }, in: [shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-list.tsx:173 }
+  tabAll: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Archive.tabs.all }, in: [shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-list.tsx:173 } # the link's name is the label with the count glued on ("Tümü1", F-A-12): found by its beginning
+  tabCourse: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Archive.tabs.course }, in: [shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-list.tsx:173 }
+  tabWeeks: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Archive.tabs.weeks }, in: [shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-list.tsx:173 }
+  tabRecordings: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Archive.tabs.recordings }, in: [shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-list.tsx:173 }
+  archiveTable: { type: list, component: List, role: table, name: { key: Archive.caption }, in: [shownMedrese, hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/archive-list.tsx:186 } # the caption is visually hidden; role=table is set because the table is `stack`
+  emptyLine: { type: text, component: Text, text: { key: Archive.empty.all }, in: [shownMedrese], source: libs/ui/src/mds/table.tsx:160 } # while nothing is hidden: the medrese's courses are shown
+  # duringStep on a row's "Geri al" and the banner's "Medreseyi geri getir": each is busy only for its own call (archive-list.tsx:157,
+  # restore-madrasah.tsx:76), so while one runs the other is sent at once, and the two calls race (worth a look).
+  rowRestore: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [hidden, restoring], repeat: archive.items, emits: RESTORE_ROW, duringStep: true, source: apps/nazar/features/archive/components/archive-list.tsx:153 } # one per hidden course; the visible words are in the name (label in name holds)
+  rowRestoreBusy: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [restoringCourse], disabledIn: [restoringCourse], source: apps/nazar/features/archive/components/archive-list.tsx:157 } # the course being asked: busy (aria-busy), the other rows stay live
+  rowBusyStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [restoringCourse], source: libs/ui/src/mds/button.tsx:114 } # the busy row's hidden <output>; the other buttons' are empty (F-A-14)
+  lockedRowNote: { type: text, component: Text, text: { key: Archive.lockedAdmin }, in: [lockedHidden], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:164 } # in place of "Geri al": the course was hidden at the same level
+
+  # --- the banner of a hidden medrese -----------------------------------------------------------------------------------------
+  hiddenAlert: { type: alert, component: Alert, role: status, name: { key: Archive.hidden.title }, text: { key: Archive.hidden.body, params: { name: madrasah.name } }, in: [hidden, restoringCourse, restoring, lockedHidden], source: apps/nazar/features/archive/components/restore-madrasah.tsx:69 } # inside <section data-testid="madrasah-hidden" aria-labelledby="hidden-heading">: no element has that id, so the section has no name and the banner no heading (F-A-3); a warning Alert is a status
+  restoreMedrese: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.hidden.restoreLabel, params: { name: madrasah.name } }, text: { key: Archive.hidden.restore }, in: [hidden, restoringCourse, restoring], disabledIn: [restoring], emits: RESTORE, duringStep: true, source: apps/nazar/features/archive/components/restore-madrasah.tsx:72 } # the name "Geri getir: {name}" does not contain the visible words "Medreseyi geri getir" (HIDEMED-1); busy while it is restored (aria-busy)
+  restoringBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [restoring], source: libs/ui/src/mds/button.tsx:114 } # the banner button's hidden <output> (F-A-14)
+  lockedBannerNote: { type: text, component: Text, text: { key: Archive.lockedAdmin }, in: [lockedHidden], source: apps/nazar/features/archive/components/restore-madrasah.tsx:85 } # in place of the button
+
+  # --- the section "Medreseyi gizle", under the list; drawn only while the medrese is shown and she runs it -----------------------
+  hideRegion: { type: page, component: Page, role: region, name: { labelledBy: hideTitle }, in: [shownMedrese], source: apps/nazar/features/archive/components/hide-madrasah.tsx:72 }
+  hideTitle: { type: text, component: Heading, role: heading, text: { key: Archive.hide.title }, in: [shownMedrese], source: apps/nazar/features/archive/components/hide-madrasah.tsx:77 } # level 2
+  hideText: { type: text, component: Text, text: { key: Archive.hide.text, params: { name: madrasah.name } }, in: [shownMedrese], source: apps/nazar/features/archive/components/hide-madrasah.tsx:91 }
+  hideButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Archive.hide.button }, in: [shownMedrese], emits: HIDE, source: apps/nazar/features/archive/components/hide-madrasah.tsx:94 }
+
+  # --- Medreseyi gizle asks once ----------------------------------------------------------------------------------------------
+  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: dialogTitle }, in: [confirmHide, hiding], initialFocus: dialogCancel, source: libs/ui/src/mds/alert-dialog.tsx:68 } # its eyebrow is the medrese's name; the scrim does not close it
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: Archive.hide.title }, in: [confirmHide, hiding], source: libs/ui/src/mds/alert-dialog.tsx:80 }
+  dialogBody: { type: text, component: Text, text: { key: Archive.hide.confirmBody, params: { name: madrasah.name } }, in: [confirmHide, hiding], source: apps/nazar/features/archive/components/hide-madrasah.tsx:117 }
+  dialogCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Archive.hide.cancel }, in: [confirmHide, hiding], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:102 } # the focus starts here; while the call runs it does nothing and is not marked disabled (HIDEMED-3)
+  dialogConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Archive.hide.confirm }, in: [confirmHide, hiding], disabledIn: [hiding], emits: CONFIRM_HIDE, source: libs/ui/src/mds/alert-dialog.tsx:109 } # busy (aria-busy) while the call runs
+  dialogClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmHide, hiding], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:88 } # an icon button named only by aria-label
+  hidingBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [hiding], source: libs/ui/src/mds/button.tsx:114 } # the confirm button's hidden <output> (F-A-14)
+
+  # --- the toasts: a region "Bildirimler", each toast a dialog (a success or an info) or an alertdialog (an error, which stays) ---
+  toastHidden: { type: status, component: Status, role: dialog, name: { key: Archive.hide.done }, text: { key: Archive.hide.doneBody, params: { name: madrasah.name } }, in: [hidden], when: "last == 'hidden'", source: apps/nazar/features/archive/components/hide-madrasah.tsx:53 } # tone success: it closes by itself after 6 seconds
+  toastAlready: { type: status, component: Status, role: dialog, name: { key: Archive.hide.done }, text: { key: Archive.hide.already }, in: [lockedHidden], when: "last == 'already'", source: apps/nazar/features/archive/components/hide-madrasah.tsx:53 } # tone info, with the success title (HIDEMED-2)
+  toastHideRefused: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.hide.failedTitle }, text: { key: Problems.actionForbidden }, in: [shownMedrese], when: "last == 'hideRefused'", source: apps/nazar/features/archive/components/hide-madrasah.tsx:64 }
+  toastHideFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.hide.failedTitle }, text: { key: Problems.actionGeneric }, in: [shownMedrese], when: "last == 'hideFailed'", source: apps/nazar/features/archive/components/hide-madrasah.tsx:64 }
+  toastParentHidden: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Archive.errors.parentHidden }, in: [hidden], when: "last == 'parentHidden'", source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+  toastRestored: { type: status, component: Status, role: dialog, name: { key: Archive.hidden.restored }, text: { key: Archive.hidden.restoredBody, params: { name: madrasah.name } }, in: [shownMedrese], when: "last == 'restored'", source: apps/nazar/features/archive/components/restore-madrasah.tsx:46 }
+  toastNotHidden: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.hidden.failedTitle }, text: { key: Archive.hidden.notHidden }, in: [shownMedrese], when: "last == 'notHidden'", source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+  toastRestoreLevel: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.hidden.failedTitle }, text: { key: Archive.hide.restoreLevel }, in: [lockedHidden], when: "last == 'restoreLevel'", source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+  toastRestoreRefused: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.hidden.failedTitle }, text: { key: Problems.actionForbidden }, in: [hidden], when: "last == 'restoreRefused'", source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+  toastRestoreFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.hidden.failedTitle }, text: { key: Problems.actionGeneric }, in: [hidden], when: "last == 'restoreFailed'", source: apps/nazar/features/archive/components/restore-madrasah.tsx:55 }
+
+edges:
+  - { labelledBy: [hideRegion, hideTitle] }
+  - { labelledBy: [hideDialog, dialogTitle] }
+  - { triggers: [hideButton, confirmHide] }
+  - { triggers: [dialogConfirm, hiding] }
+  - { triggers: [restoreMedrese, restoring] }
+  - { triggers: [rowRestore, restoringCourse] }
+  - { returnsFocus: [hideDialog, hideButton] } # Vazgeç, Esc or the close icon: the page's button is still there; the dialog has no trigger, so the return rests on the element that had the focus when it opened; not verified in the browser
+
+rules:
+  - { id: focus-not-set, rule: "The page sets no initial focus (nothing in features/archive does), so a person who arrives starts at the top of the document; the graph says no more. The dialog's focus on 'Vazgeç' is the app's own (libs/ui/src/mds/alert-dialog.tsx:70)." }
+  - { id: F-A-2, rule: "After the hiding the button 'Medreseyi gizle' is replaced (by an Alert for an instant, then, once the page is read again, by the banner), and after the restore the banner is replaced by the section; no code moves the focus, and the only word is a toast of 6 seconds (hide-madrasah.tsx:46-69, restore-madrasah.tsx:40-65). Fix: after the page is read again, focus the banner's heading or the section's, and keep the line on the page." }
+  - { id: F-A-3, rule: "restore-madrasah.tsx:68: aria-labelledby='hidden-heading' names an id that exists nowhere, so the banner's section has no name and the banner has no heading (its title is a <p>). Fix: give the Alert's title that id, or drop the attribute." }
+  - { id: F-A-10, rule: "hide-madrasah.tsx:46-69 and restore-madrasah.tsx:40-65: no try/catch around the server action, so when the call itself fails (the network) the busy state is never cleared and no toast is shown; React hands the error to the nearest boundary. Not verified in a browser." }
+  - { id: F-A-12, rule: "A tab link's name is its label with the count span glued on, with no space ('Dersler1'; archive-list.tsx:173-184, libs/ui/src/mds/tabs.tsx:65-69). Not verified in a browser." }
+  - { id: F-A-14, rule: "The three busy buttons here (Gizle, Medreseyi geri getir, a row's Geri al) pass no loadingLabel, so their hidden status says 'Yükleniyor' from a hard-coded default outside the catalog (libs/ui/src/mds/button.tsx:62,114)." }
+  - { id: F-A-16, rule: "The refusal of the read ('Bu sayfaya izniniz yok') is a neutral Alert, which is role=status and already in the page at load, so it is not announced (page-problem.tsx:23-29, libs/ui/src/mds/alert.tsx:23). Only the forbidden state draws it." }
+  - id: HIDEMED-1
+    rule: "restore-madrasah.tsx:77-83: the banner's button shows 'Medreseyi geri getir' but its aria-label is 'Geri getir: {name}', which does not contain the visible words (WCAG 2.5.3 Label in Name): a person who speaks the label they see ('Medreseyi geri getir') to voice control does not reach it. The row's 'Geri al' / 'Geri al: {title}' pair is fine. The e2e asserts the name by /^Geri getir: / (archive#7 a14). Fix: aria-label 'Medreseyi geri getir: {name}', or drop the aria-label (the banner already names the medrese)."
+  - id: HIDEMED-2
+    rule: "hide-madrasah.tsx:53-59: when the medrese was already hidden (409 MADRASAH_ALREADY_HIDDEN) the toast, an info, carries the success title 'Medrese gizlendi' with 'Bu medrese zaten gizli.' under it, and so does the Alert in the section until the page is read again; the person who pressed 'Gizle' is told she hid it, when someone else had. Fix: a title of its own ('Medrese zaten gizliydi')."
+  - id: HIDEMED-3
+    rule: "hide-madrasah.tsx:106-108: while the call runs, onOpenChange ignores every close, so 'Vazgeç', the close icon and Esc do nothing, and none of them is marked disabled or busy; only 'Gizle' shows busy. Not verified in a browser. Fix: disable 'Vazgeç' and the close icon with 'Gizle', or let them close the dialog (the call goes on)."
+  - { id: row-restore-offered-while-parent-hidden, rule: "A hidden medrese lists its courses with 'Geri al', and every press is refused (409 ARCHIVE_PARENT_HIDDEN) until the medrese is brought back; the page says why only in the error toast after the press, and, for this refusal, does not read the list again (archive-list.tsx:79). Decision D1 of the flow. The e2e carries this behaviour (archive#7 a13)." }
+  - { id: confirm-before-hiding, rule: "'Medreseyi gizle' asks first, in an alertdialog whose focus starts on 'Vazgeç' and which the scrim does not close; its body names what follows, in the app's own words (the shown courses go with it, nothing is deleted, who brings it back, and that the Arşiv's courses stay put until then). 'Medreseyi geri getir' asks nothing, as nothing is lost by it." }
+  - { id: section-only-for-the-head, rule: "'Medreseyi gizle' is drawn only where runsMedrese holds (the başmüderris, or the başnazım) and the medrese is shown (archive-page.tsx:112): a nazır given madrasah.course_hide or madrasah.settings_edit opens the page and meets no section, because madrasah.hide is no grant (MDRS-108). The graph draws the başmüderris only." }

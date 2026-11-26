@@ -1,0 +1,89 @@
+# What must exist for Medaris management to read the zeroth answers in aggregate: written needs-first on 21 November 2026, then met by
+# MDRS-299 (#420, #427); each met need names its code or test.
+schema: delurio-graph/0
+kind: needs
+id: nizam.exams.zerothAnswers
+status: proposed
+needs:
+  - id: management-reads-in-aggregate
+    need: >-
+      The Medaris başnazımı, and a Medaris nazımı who holds the grant, read how the zeroth questions of the online exams were answered:
+      how many talebe answered each and how many chose each option, as a number and a percentage. A köşk nazımı reads the same for the
+      exams of their own köşk, and nothing of another's.
+    evidence:
+      - state: listed
+      - node: questionsList
+      - node: optionCount
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "counts the same words of two köşks together for platform management, with no user id"
+      - source: apps/nizam/lib/shell-nav.ts:141
+    note: "Owner, asked who reads the zeroth answers: \"Yönetim toplu, ekip talebe bazında\"; asked who else: \"Köşk nazımı kendi köşkünü\"."
+
+  - id: never-one-talebe-s-answer
+    need: >-
+      The page never shows a talebe's name or a single answer; its counts are exact, small ones included.
+    evidence:
+      - state: listed
+      - node: optionCount
+      - node: examAnswered
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "counts the same words of two köşks together for platform management, with no user id"
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "sends small counts as they are, one to four included"
+    note: >-
+      The first draft hid every count under five and called it the owner's rule. He said, 22 Nov 2026: "ben böyle bi karar vermedim,
+      saçma bu zaten neden gizleyeyim tabi ki görünecek" (#427).
+
+  - id: the-same-question-counted-together
+    need: >-
+      Each exam's preparer writes its zeroth question, so exams that asked it in the same words, with the same options, are counted
+      together, and the page says how many exams asked it; a question opens the exams that asked it, each with its counts.
+    evidence:
+      - state: listed
+      - state: questionDetail
+      - node: questionExams
+      - node: examsTable
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "counts the same words of two köşks together for platform management, with no user id"
+
+  - id: filtered-by-time-and-place
+    need: The counts filter by a span of dates, by köşk, by medrese and by course, and the filter stays in the address.
+    evidence:
+      - state: listed
+      - node: filters
+      - node: fromField
+      - node: koskField
+      - test: apps/nizam/test/zeroth-answers.spec.tsx
+        name: "open on the last 90 days in Turkey and drop what they do not know"
+      - test: apps/nizam/test/zeroth-answers.spec.tsx
+        name: "narrow the medrese and the course to the köşk chosen"
+    note: "There is no term (dönem) in Medaris; a span of dates stands for one, as the owner's \"bu dönem ... diğer dönem\" reads."
+
+  - id: only-management
+    need: >-
+      To anyone else the page is not in the menu, opened by its address it says they may not read it, and the API refuses the counts.
+      Every read is audited, as other platform reads are.
+    evidence:
+      - state: opening
+      - state: forbidden
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "refuses a Medaris nazımı without the grant, and anyone else"
+      - test: apps/tedrisat/test/e2e/zeroth-answers.e2e.spec.ts
+        name: "gives a köşk nazımı their own köşk only, and refuses another köşk"
+    note: A köşk nazımı reads it for their own köşk only.
+
+  - id: none-yet-says-so
+    need: With no answer in the span chosen, the page says so.
+    evidence:
+      - state: empty
+      - node: emptyNote
+      - source: apps/nizam/features/zeroth-answers/components/zeroth-answers-view.tsx
+
+  - id: figures-as-text
+    need: Every count is said in numbers and words; a bar only repeats it, and a table has headers a screen reader reads.
+    evidence:
+      - state: listed
+      - node: optionCount
+      - node: examsTable
+      - test: apps/nizam/test/zeroth-answers.spec.tsx
+        name: "says every count as it is, small ones included, with its percentage"

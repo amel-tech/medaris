@@ -1,0 +1,26 @@
+# tedris.celse.cancelled, a cancelled lesson that is no live celse (the VIDEO lesson cancelLesson let the hoca cancel: cancel-no-type-check): the
+# address the course's programme links to is the not-found page. Same data and account as binding.yaml (see it and locators.binding.yaml);
+# the walk opens the address itself, because no page of the app but the programme links to it.
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/cancelled --bind graphs/tedris/celse/cancelled/binding.missing.yaml --absent --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.cancelled
+
+scenarios:
+  notALiveCelse:
+    given: { lesson: missing, makeUp: none, note: none }
+    as: applicantF
+    open: '{tedris}/courses/{cancelled.course}/lessons/{cancelled.video}'
+    vars: { course: '{cancelled.course}', celse: '{cancelled.video}', celseTitle: İptal edilen video }
+    setup:
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, ../tedris/celse/cancelled/cancelled-data.mjs, make]
+        expect: 'cancelled-data make'
+    teardown:
+      - run: [node, ../tedris/celse/cancelled/cancelled-data.mjs, remove]
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*) as n from courses where title = 'İptal edilen celse denemesi'"]
+        expect: '"n":0'

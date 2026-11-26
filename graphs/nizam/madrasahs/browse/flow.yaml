@@ -1,0 +1,399 @@
+# Medreseler (nizam-web, /medreseler) as the Medaris başnazım and a Medaris nazımı who holds one of the three platform.madrasah_* codes
+# read it. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026: apps/nizam/app/medreseler, features/madrasahs
+# (madrasahs-view.tsx, present.ts, reads.ts), features/assignments/reads.ts, libs/ui/src/mds (tabs, table, alert) and, for the answer the page
+# draws, tedrisat's GET /madrasahs/directory (madrasah.controller.ts:283, madrasah.repository.ts:858-995). The running stack was looked at with
+# GET requests only, as the seeded başnazım, Medaris nazımı and köşk nazımı: the directory (one medrese, active, counts 1 / 1 / 0 / 0), the
+# Medaris nazımı's permission codes (platform.madrasah_create among five) and the 403 the köşk nazımı gets. No page was opened in a browser,
+# so everything about what the screen looks like and where the focus goes is from the code. It says what the code does today:
+#   - The URL is the one source of the filter: ?durum=etkin|pasif|gizli (no ?durum= is Tümü) and ?q=. A tab is router.push, the typed
+#     text router.replace after 300 ms; the server reads again each time, so the counts and the rows come from one answer. Each keeps the
+#     other (a tab keeps the typed text, the typed text keeps the tab). The tab counts are every medrese's, whatever the search leaves, and
+#     so is the passive warning: they do not follow the filter or the search.
+#   - Every button is drawn from the viewer's permissions (madrasahAbilities): "Medrese aç" for platform.madrasah_create, "Başmüderris ata"
+#     and "Başmüderrisi değiştir" for platform.head_muderris_manage, "Geri al" and "Pasife al" for platform.madrasah_edit, "Arşiv" and
+#     "Nazar’da aç" for the başnazım alone. This flow only reads: each button opens a dialog that another flow draws (handed_over.*).
+#   - Findings it carries (the inventory's ids): F-W2-2 (every button on when the roles or codes cannot be read), F-W2-10 (focus after "Geri al"
+#     or an assignment, drawn by the flows that make them; recorded where the buttons are), F-A-12 (the tab name and its count, the same
+#     component as nazar's). Five more are this flow's own, proposed as MBROWSE-1 to MBROWSE-5 (ui.yaml `rules`).
+#   - e2e checks it takes over: madrasahs#1 and #2 (the numbers, the rows and the warning, the tab and the search). madrasahs#8 (a Medaris
+#     nazımı with no grants is refused) is nizam.shell.noAccessAndNotFound's; the refusal is drawn here as the exit that starts it.
+schema: delurio-graph/0
+kind: flow
+id: nizam.madrasahs.browse
+status: captured
+domain: medaris.api
+ui: nizam.madrasahs.browse
+title: Read the medreseler
+summary: >-
+  The başnazım (or a Medaris nazımı who holds platform.madrasah_create, madrasah_edit or head_muderris_manage) opens Medreseler and reads
+  every medrese on the platform, hidden and passive ones included: four tabs, "Tümü", "Etkin", "Pasif" and "Gizli", each with the number of
+  medreses in that state, a search box, and a table with the medrese's name and short name, its başmüderris, its course count, the köşks that
+  host it and its state with the date it began. A warning above the tabs names the passive medreses. A tab narrows the list through the
+  address (?durum=), the search narrows it through ?q= by name, short name or the başmüderris's name; an empty answer says so in the table. The
+  buttons on a row and in the header ("Medrese aç", "Başmüderris ata", "Başmüderrisi değiştir", "Pasife al", "Geri al", "Nazar’da aç", "Arşiv")
+  are drawn from what the viewer may do and lead to the flows that make those changes. A person tedrisat refuses is shown the section refusal.
+
+scope:
+  shows: >-
+    the Medreseler page: its header, the passive warning, the four tabs with their numbers, the search box, the table with its rows and its
+    three empty lines, the box that says the list could not be read, and the buttons that leave this flow
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the dialogs and what they write: Medrese aç is nizam.madrasahs.open, Başmüderris ata and Başmüderrisi değiştir are nizam.madrasahs.headMuderris, Pasife al is nizam.madrasahs.passivate, Geri al is nizam.madrasahs.restore"
+    - "the lock caption of a hidden row the viewer's kademe may not bring back (\"Bunu <level> gizledi; ...\", present.ts via HideLevel.locked): the başnazım is the top kademe and meets none; nizam.madrasahs.restore draws it"
+    - "the caption under the table when the answer holds more than the 50 rows asked for (\"Toplam <total> medrese, <shown> tanesi gösteriliyor\", data-testid=truncated): the stack holds a handful of medreses; MBROWSE-4"
+    - "the tab panel (role tabpanel, named by its tab) that holds the search box and the table, and the aria-busy the wrapper carries while a read is pending; the three other panels are empty"
+    - "the loading skeleton (loading.tsx), the phone layout (below 768 px each row is a card), the sidebar and the person row (nizam.shell.menuPerPersona) and the badge counts of the menu"
+    - "where nizam.shell.landingByRole sends a person with no role (/yetki-yok) and a signed-out request (the proxy sends it to sign in before the page runs)"
+    - "what the Nazar page of a medrese does when it opens (nazar.access.landingScope), and the platform archive the Arşiv link opens (nizam.moderation.restoreArchived)"
+    - "a başmüderris, who is refused here too (the directory asks for one of the three platform codes), and a Medaris nazımı with none: nizam.shell.noAccessAndNotFound"
+    - "the date and the time zone of the \"beri\" lines: the viewer's, Europe/Istanbul on the stack"
+
+decisions:
+  D1:
+    question: >-
+      What should "Pasif" mean in Medreseler? The only code that makes a medrese passive here is the başnazım's "Pasife al" (it revokes the
+      başmüderris and sets passive_since, madrasah.repository.ts:746), yet the page tells every passive medrese as one whose başmüderris's
+      term ran out ("Görev süresi <tarih> doldu"), and a medrese whose başmüderris's term really ran out is "Etkin" here, with "Atanmamış" and
+      no "Başmüderris ata" (it is listed in Pasif kapsamlar instead).
+    recommend: >-
+      Say why: have the directory send the passive reason (it is stored as passiveReason) and word the warning and the row by it; and
+      count a medrese with no sitting başmüderris as passive, as Pasif kapsamlar does, so that the two lists agree.
+    affects: [listed]
+  D2:
+    question: >-
+      When the page cannot read who the viewer is or what they hold, should it still draw every button (today: yes, "tedrisat refuses what
+      is not theirs") or a notice and only the buttons it can vouch for?
+    recommend: >-
+      A notice and no buttons: a Medaris nazımı who holds one code is offered the other two and meets a refusal toast for each (F-W2-2).
+    affects: [readingViewer, listed]
+
+context:
+  viewer:
+    values: [chief, medarisOpen, medarisEdit, unread, stranger]
+    initial: any
+    say:
+      chief: "the Medaris başnazım (the realm role SYSTEM_ADMIN): every button, the Arşiv link and Nazar’da aç"
+      medarisOpen: "a Medaris nazımı who holds platform.madrasah_create and neither madrasah_edit nor head_muderris_manage (the stack's seeded one): \"Medrese aç\" and no button on a row"
+      medarisEdit: "a Medaris nazımı who holds madrasah_edit and head_muderris_manage and not madrasah_create: the buttons on the rows and no \"Medrese aç\""
+      unread: "the page could not read the person's roles or permission codes (either read failed) and the directory still answers: every ability is on and Nazar’da aç is left out"
+      stranger: "a person tedrisat refuses the directory: a köşk nazımı, a Medaris nazımı with none of the three codes, a başmüderris, a talebe"
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the directory read answers"
+      failed: "the directory read fails for any reason but a 403: the page draws its box"
+  world:
+    values: [empty, activeOnly, mixed, manyPassive]
+    initial: any
+    say:
+      empty: "there is no medrese at all"
+      activeOnly: "every medrese is active: none is passive or hidden (the stack's seed)"
+      mixed: "active medreses, one passive and one hidden"
+      manyPassive: "active medreses, two passive and one hidden"
+  hit:
+    values: [active, passive, hidden, none]
+    initial: any
+    say:
+      active: "the text they type finds an active medrese and no other kind"
+      passive: "the text they type finds a passive medrese and no other kind"
+      hidden: "the text they type finds a hidden medrese and no other kind"
+      none: "the text they type finds nobody"
+  tab:
+    values: [ALL, ACTIVE, PASSIVE, HIDDEN]
+    initial: ALL
+    say:
+      ALL: "Tümü, the address with no ?durum="
+      ACTIVE: "Etkin (?durum=etkin)"
+      PASSIVE: "Pasif (?durum=pasif)"
+      HIDDEN: "Gizli (?durum=gizli)"
+  typed:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the search box is empty"
+      some: "a text is typed in the search box (?q=)"
+
+guards:
+  mayOpen: "viewer != 'medarisEdit'" # platform.madrasah_create; on for the başnazım and for a viewer the page could not read
+  mayRows: "viewer != 'medarisOpen'" # head_muderris_manage and madrasah_edit, which the row buttons ask for
+  mayArchive: "viewer == 'chief' or viewer == 'unread'" # can.archive: the başnazım's alone, but every ability is on when the page could not read the person (F-W2-2)
+  mayNazar: "viewer == 'chief'" # nazarForMadrasahs: the roles read must say systemAdmin
+  hasActive: "world != 'empty'"
+  hasPassive: "world == 'mixed' or world == 'manyPassive'"
+  hasHidden: "world == 'mixed' or world == 'manyPassive'"
+  finds: "(hit == 'active' and hasActive) or (hit == 'passive' and hasPassive) or (hit == 'hidden' and hasHidden)"
+  showsActive: "hasActive and (tab == 'ALL' or tab == 'ACTIVE') and (typed == 'none' or (finds and hit == 'active'))"
+  showsPassive: "hasPassive and (tab == 'ALL' or tab == 'PASSIVE') and (typed == 'none' or (finds and hit == 'passive'))"
+  showsHidden: "hasHidden and (tab == 'ALL' or tab == 'HIDDEN') and (typed == 'none' or (finds and hit == 'hidden'))"
+  rowsShown: "showsActive or showsPassive or showsHidden"
+
+effects:
+  toAll: { set: { tab: ALL } }
+  toActive: { set: { tab: ACTIVE } }
+  toPassive: { set: { tab: PASSIVE } }
+  toHidden: { set: { tab: HIDDEN } }
+  typedIn: { set: { typed: some } }
+  erased: { set: { typed: none } }
+  again: { havoc: [read] } # the box's "Yeniden dene" asks again, and the answer may differ
+
+failures:
+  readingDirectory:
+    from: getMadrasahDirectory
+    forbidden: [AUTHZ_FORBIDDEN]
+    unreadable: [HTTP_400]
+  readingViewer:
+    from: getMyPermissions
+    unreadable: []
+# `forbidden` is the 403 the page turns into forbidden() (reads.ts:31); `unreadable` stands for every other answer, which the page treats alike
+# (a null, reads.ts:34): the directory's only other documented refusal is HTTP_400, a status or a page the page never sends. getMyPermissions
+# lists no refusal; the page makes the same read of GET /me/assignments and GET /me/roles beside it, and a failure of any of the three is the
+# same `unread` viewer (assignments/reads.ts:36, :60).
+
+# The story the page tells first, and the one e2e madrasahs#1 and #2 carry: the başnazım reads the numbers, goes to Pasif and to Gizli, comes
+# back to Tümü and types a text that finds the passive medrese.
+main:
+  given: { viewer: chief, read: ok, world: mixed, hit: passive }
+  events: [DONE, DONE, TAB_PASSIVE, DONE, DONE, TAB_HIDDEN, DONE, DONE, TAB_ALL, DONE, DONE, TYPE_SEARCH, DONE, DONE]
+
+initial: readingDirectory
+
+states:
+  readingDirectory:
+    title: The medreseler are read
+    description: >-
+      The page's server side asks tedrisat for GET /madrasahs/directory with the status the address names (?durum=etkin, pasif or gizli;
+      anything else, and no ?durum=, is Tümü) and the text of ?q= (trimmed, cut to 100 characters), at most 50 rows (page.tsx:40-47,
+      reads.ts:24-28), at the same time as the two reads of readingViewer. The answer holds the rows, ordered by name; the total; the four
+      counts of every medrese, whatever the status and the search ask; and the passive medreses the warning names, also whatever they
+      ask (madrasah.repository.ts:962-995). A row says its status (hidden wins over passive wins over active), since when, the oldest sitting
+      başmüderris, the courses that are not hidden, the köşks that hold an unrevoked hosting right for it, and whether the caller may bring
+      it back. A 403 is told apart and the page calls forbidden() (page.tsx:48); any other failure is a null the page draws as a box
+      (reads.ts:31-36). Nothing is on the screen of this step: the loading skeleton (loading.tsx) is out of view. The same step runs again
+      after every tab and every search.
+    includes: ["the rows with their status, başmüderris, course count and hosting köşks", "the four counts", "the passive medreses of the warning"]
+    source: apps/nizam/app/medreseler/page.tsx:43
+    invoke: { action: getMadrasahDirectory }
+    on:
+      DONE: { guard: "viewer != 'stranger' and read == 'ok'", target: readingViewer }
+      FAIL.forbidden: { guard: "viewer == 'stranger'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'section'" } }, say: "a 403: the page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" (nizam.shell.noAccessAndNotFound)", source: apps/nizam/features/madrasahs/reads.ts:31 }
+      FAIL.unreadable: { guard: "viewer != 'stranger' and read == 'failed'", target: readingViewer, say: "any other failure is a null: the page still reads the person and draws its box", source: apps/nizam/features/madrasahs/reads.ts:34 }
+
+  readingViewer:
+    title: The viewer's roles and permissions are read
+    description: >-
+      Beside the list the page reads who the person is and what they hold: GET /me/assignments with GET /me/roles (is the person the
+      başnazım) and GET /me/permissions (the codes) (assignments/reads.ts:18-62). madrasahAbilities turns them into five abilities: "Medrese
+      aç" for platform.madrasah_create, "Başmüderris ata" and "Başmüderrisi değiştir" for head_muderris_manage, "Geri al" and "Pasife al" for
+      madrasah_edit, and the Arşiv link for the başnazım alone; "Nazar’da aç" needs the roles read to say the person is the başnazım
+      (present.ts:99-125). F-W2-2: when either read fails nothing is hidden, so a Medaris nazımı who holds one code is offered the buttons of
+      the other two (and the archive link), and tedrisat answers each with a refusal toast; the "Nazar’da aç" links go. The graph draws the
+      one read of the three that carries the codes; the three fail alike for the page.
+    includes: ["the person's roles and whether they are the başnazım", "the permission codes they hold"]
+    source: apps/nizam/features/madrasahs/present.ts:99
+    invoke: { action: getMyPermissions }
+    on:
+      DONE: { guard: "viewer != 'unread'", target: classify }
+      FAIL.unreadable: { guard: "viewer == 'unread'", target: classify, say: "a null: every ability is on and no Nazar link is drawn (F-W2-2)", source: apps/nizam/features/madrasahs/present.ts:103 }
+
+  classify:
+    title: What the answer holds decides which table
+    description: >-
+      Classification only. A failed read is the box. Otherwise a platform with no medrese at all is "Henüz medrese yok." whatever is typed; a
+      list the status and the search leave with rows is the table; a list they leave empty is "Aramaya uyan medrese yok." when something is
+      typed and "Bu durumda medrese yok." when not (madrasahs-view.tsx:318-323).
+    always:
+      - { guard: "read == 'failed'", target: loadFailed, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:418 }
+      - { guard: "world == 'empty'", target: emptyAll, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:319 }
+      - { guard: rowsShown, target: listed, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 }
+      - { guard: "typed == 'some'", target: emptySearch, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:321 }
+      - { target: emptyStatus, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:323 }
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:318
+
+  listed:
+    title: The medreseler are listed
+    by: human
+    goal: true
+    description: >-
+      The page: "Medreseler" and its sentence, "Medrese aç" for a viewer who holds platform.madrasah_create, the warning that names the
+      passive medreses ("<ad> pasif" for one, "<n> medrese pasif" for more, with the date the başmüderris's term ended for one and the names
+      for more; it is every passive medrese whatever tab or text), the section "Bütün medreseler" with "Arşiv" (the başnazım's), the tabs
+      "Tümü", "Etkin", "Pasif" and "Gizli" each followed by the number of medreses in that state (every medrese's, not what the search
+      leaves), the search box, the table named by the caption of the tab, and the footnote about hiding. A row has the medrese's name and
+      "@short name", the başmüderris ("Atanmamış" with "Görev süresi <tarih> doldu" under it for a passive row, "Atanmamış" only for a row with
+      none), the courses that are not hidden, the hosting köşks ("Yok" for none, "A ve B" for several), and the state: "Etkin" in a badge,
+      "Pasif" in a badge with "<tarih>’den beri" under it, "Gizli" as plain text with "<tarih>’den beri". The buttons of a row follow the
+      viewer's abilities and the row's state: an active row has "Nazar’da aç, yeni sekmede" (the başnazım's), "Başmüderrisi değiştir" and "Pasife
+      al"; a passive row "Başmüderris ata"; a hidden row "Geri al" or, for a kademe that may not bring it back, a sentence. No focus is set when
+      the page opens, and a press on a tab or the typing keeps the focus where it was (focus-not-set). A tab changes the address through
+      router.push, so each press is a history entry; the tabs and the search read the server again (readingDirectory). Findings read here:
+      MBROWSE-1 (Pasif is told as an ended term and a lapsed term reads Etkin, decision D1), MBROWSE-2 (the numbers and the warning are
+      every medrese's, not what the text leaves), MBROWSE-3 (a tab or a search changes the rows and nothing says so), MBROWSE-4 (50 rows and no way to the rest), MBROWSE-5 (the arrow keys of the tab list navigate), F-A-12 (the name of a
+      tab carries its count), F-W2-2 (state readingViewer) and F-W2-10 (after "Geri al" or an assignment the row's button is gone and the
+      focus falls to the page: nizam.madrasahs.restore and nizam.madrasahs.headMuderris draw it).
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:325
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli", source: libs/ui/src/mds/tabs.tsx:110 }
+      TYPE_SEARCH: { guard: "typed == 'none'", target: readingDirectory, effect: [typedIn], say: "they type a text in Medrese ara, and the address follows after 300 ms", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      CLEAR_SEARCH: { guard: "typed == 'some'", target: readingDirectory, effect: [erased], say: "they erase the text", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      OPEN: { guard: mayOpen, target: handed_over.open, starts: { flow: nizam.madrasahs.open }, say: "they press Medrese aç in the header", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336 }
+      OPEN_ARCHIVE: { guard: mayArchive, target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380 }
+      ASSIGN: { guard: "showsPassive and mayRows", target: handed_over.assign, starts: { flow: nizam.madrasahs.headMuderris }, say: "they press Başmüderris ata on a passive row", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:258 }
+      CHANGE: { guard: "showsActive and mayRows", target: handed_over.change, starts: { flow: nizam.madrasahs.headMuderris }, say: "they press Başmüderrisi değiştir on an active row", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:283 }
+      PASSIVATE: { guard: "showsActive and mayRows", target: handed_over.passivate, starts: { flow: nizam.madrasahs.passivate }, say: "they press Pasife al on an active row", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:300 }
+      RESTORE: { guard: "showsHidden and mayRows", target: handed_over.restore, starts: { flow: nizam.madrasahs.restore }, say: "they press Geri al on a hidden row", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:239 }
+      OPEN_NAZAR: { guard: "showsActive and mayNazar", target: listed, starts: { flow: nazar.access.landingScope }, say: "\"Nazar’da aç, yeni sekmede\" opens the medrese's Pano in nazar-web in a new tab, at <NAZAR_URL>/medrese/<id>; this tab stays on Medreseler", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:270 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  emptyStatus:
+    title: The tab holds no medrese
+    by: human
+    description: >-
+      Nothing is typed and the tab has no row: the table's one line says "Bu durumda medrese yok.", and the tabs still carry the numbers of
+      every medrese (the one on screen reads 0). The warning is there when a medrese is passive, on any tab: the Etkin tab of a platform whose
+      every medrese is passive reads like this and still shows the warning. The header, the tabs and the search box are as in the listed page.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:323
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli", source: libs/ui/src/mds/tabs.tsx:110 }
+      TYPE_SEARCH: { guard: "typed == 'none'", target: readingDirectory, effect: [typedIn], say: "they type a text in Medrese ara, and the address follows after 300 ms", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      OPEN: { guard: mayOpen, target: handed_over.open, starts: { flow: nizam.madrasahs.open }, say: "they press Medrese aç in the header", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336 }
+      OPEN_ARCHIVE: { guard: mayArchive, target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  emptySearch:
+    title: Nothing matches the text
+    by: human
+    description: >-
+      A text is typed and the tab has no row that fits (the text finds nobody, or finds only medreses of another tab): the table's one line
+      says "Aramaya uyan medrese yok." The tab numbers are the whole directory's, so "Tümü 3" can sit over a table that says nothing fits, and
+      nothing says that a text typed in Tümü may have found a medrese the other tab hides (MBROWSE-2).
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:322
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli", source: libs/ui/src/mds/tabs.tsx:110 }
+      CLEAR_SEARCH: { guard: "typed == 'some'", target: readingDirectory, effect: [erased], say: "they erase the text", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      OPEN: { guard: mayOpen, target: handed_over.open, starts: { flow: nizam.madrasahs.open }, say: "they press Medrese aç in the header", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336 }
+      OPEN_ARCHIVE: { guard: mayArchive, target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  emptyAll:
+    title: There is no medrese
+    by: human
+    description: >-
+      The platform has no medrese: the table's one line says "Henüz medrese yok." on every tab and whatever is typed, and every tab reads 0.
+      A fresh platform meets this before the first "Medrese aç". The stack never does: its seed always holds one medrese, which no walk may
+      remove, so this state is not walked.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:320
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli", source: libs/ui/src/mds/tabs.tsx:110 }
+      TYPE_SEARCH: { guard: "typed == 'none'", target: readingDirectory, effect: [typedIn], say: "they type a text in Medrese ara, and the address follows after 300 ms", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      CLEAR_SEARCH: { guard: "typed == 'some'", target: readingDirectory, effect: [erased], say: "they erase the text", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      OPEN: { guard: mayOpen, target: handed_over.open, starts: { flow: nizam.madrasahs.open }, say: "they press Medrese aç in the header", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336 }
+      OPEN_ARCHIVE: { guard: mayArchive, target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  loadFailed:
+    title: The list could not be read
+    by: human
+    description: >-
+      The directory read failed for a reason other than a 403: where the table would be, an alert says "Medreseler yüklenemedi" and that the
+      list cannot be read now, with "Yeniden dene", which reads the page again. The header, the buttons the viewer holds, the tabs (without
+      numbers: the counts came with the answer) and the search box stay, and there is no passive warning. Not walked: nothing on the stack
+      makes tedrisat fail this read, and no e2e check or unit spec of the app draws it.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:418
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli", source: libs/ui/src/mds/tabs.tsx:110 }
+      TYPE_SEARCH: { guard: "typed == 'none'", target: readingDirectory, effect: [typedIn], say: "they type a text in Medrese ara, and the address follows after 300 ms", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      CLEAR_SEARCH: { guard: "typed == 'some'", target: readingDirectory, effect: [erased], say: "they erase the text", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:100 }
+      OPEN: { guard: mayOpen, target: handed_over.open, starts: { flow: nizam.madrasahs.open }, say: "they press Medrese aç in the header", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336 }
+      OPEN_ARCHIVE: { guard: mayArchive, target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380 }
+      RETRY: { target: readingDirectory, effect: [again], say: "they press Yeniden dene, which reads the page again (router.refresh)", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:421 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  handed_over.open:
+    title: The "Medrese aç" dialog opens
+    description: "\"Medrese aç\" opens a form dialog over the page: nizam.madrasahs.open draws it. The page stays at its address."
+    type: final
+  handed_over.assign:
+    title: The "Başmüderris ata" dialog opens
+    description: "\"Başmüderris ata: <ad>\" on a passive row opens the form that gives the medrese its başmüderris: nizam.madrasahs.headMuderris draws it. The page stays at its address."
+    type: final
+  handed_over.change:
+    title: The "Başmüderrisi değiştir" dialog opens
+    description: "\"Başmüderrisi değiştir: <ad>\" on an active row opens the form that replaces the başmüderris and lists what they handed on: nizam.madrasahs.headMuderris draws it. The page stays at its address."
+    type: final
+  handed_over.passivate:
+    title: The "Pasife al" dialog opens
+    description: "\"Pasife al: <ad>\" on an active row opens the dialog that reads what taking the medrese out of service takes along: nizam.madrasahs.passivate draws it. The page stays at its address."
+    type: final
+  handed_over.restore:
+    title: A hidden medrese is brought back
+    description: "\"Geri al: <ad>\" on a hidden row has no dialog: it brings the medrese back at once and tells it in a toast. nizam.madrasahs.restore draws it. The page stays at its address."
+    type: final
+  handed_over.archive:
+    title: The platform archive opens
+    description: "\"Arşiv\" is a plain link (a full page load) to /arsiv, the başnazım's archive of everything hidden: nizam.moderation.restoreArchived draws it."
+    type: final
+    leavesPage: true
+  handed_over.no_access:
+    title: The section refusal opens
+    description: "The page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" at the same address: nizam.shell.noAccessAndNotFound draws it."
+    type: final
+    leavesPage: true
+  left:
+    title: The person leaves the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-stranger-meets-no-list
+    never: "viewer == 'stranger' and state in ['listed', 'emptyStatus', 'emptySearch', 'emptyAll', 'loadFailed']"
+    say: A person tedrisat refuses the directory is never shown the table, the empty lines or the box; they get the section refusal.
+    source: apps/nizam/app/medreseler/page.tsx:48
+  - id: rows-mean-the-answer-holds-some
+    never: "state == 'listed' and not rowsShown"
+    say: The table is drawn with rows only when the tab and the text leave some.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427
+  - id: a-tab-with-nothing-says-so
+    never: "state == 'emptyStatus' and (typed == 'some' or world == 'empty' or rowsShown)"
+    say: The line "Bu durumda medrese yok." shows only for a tab with no row, with nothing typed, on a platform that has medreses.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:323
+  - id: nothing-fits-needs-a-text
+    never: "state == 'emptySearch' and (typed == 'none' or world == 'empty' or rowsShown)"
+    say: The line "Aramaya uyan medrese yok." shows only while a text is typed and no row fits, on a platform that has medreses.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:321
+  - id: no-medrese-means-the-first-line
+    never: "state == 'emptyAll' and world != 'empty'"
+    say: The line "Henüz medrese yok." shows only when the platform holds no medrese at all.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:319
+  - id: a-box-only-after-a-failed-read
+    never: "state == 'loadFailed' and read == 'ok'"
+    say: The box that says the list could not be read is drawn only when the directory read failed.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:418
+  - id: row-buttons-need-their-permission
+    never: "state in ['handed_over.assign', 'handed_over.change', 'handed_over.passivate', 'handed_over.restore'] and viewer == 'medarisOpen'"
+    say: A Medaris nazımı who holds only platform.madrasah_create is offered no button on a row (MDRS-108).
+    source: apps/nizam/features/madrasahs/present.ts:105
+  - id: medrese-ac-needs-the-create-permission
+    never: "state == 'handed_over.open' and viewer == 'medarisEdit'"
+    say: A Medaris nazımı who does not hold platform.madrasah_create is offered no "Medrese aç".
+    source: apps/nizam/features/madrasahs/present.ts:105
+  - id: the-archive-is-the-chiefs
+    never: "state == 'handed_over.archive' and (viewer == 'medarisOpen' or viewer == 'medarisEdit')"
+    say: A Medaris nazımı whose permissions the page could read is never offered the platform archive, which is the başnazım's alone.
+    source: apps/nizam/features/madrasahs/present.ts:109

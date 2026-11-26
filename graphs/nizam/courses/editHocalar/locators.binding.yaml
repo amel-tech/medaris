@@ -1,0 +1,109 @@
+# What every walk of nizam.courses.editHocalar shares: the course's data, the events no node sends, the pages' addresses, where the
+# page's nodes are found when role and name cannot find them, and the checks of what a save leaves behind. Nothing here changes
+# data; each scenario (binding.yaml, binding.guestRow.yaml) makes its own course and removes it.
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation
+# below is from the code and unverified. The files load (`replay <dir> --bind <file> --emit-spec` wrote a spec and walked nothing).
+#
+# The three server calls of the dialog (the read of the course, the search, the save) are Next server actions: a POST to the
+# page's own address, held while the busy state is checked and then let go. The status the replay would compare on a FAIL is the
+# server action's own 200 (an engine limit), so only the screen after the failure is checked.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.editHocalar
+
+# a wide window, so that the sidebar (the menu's "Dersler") is drawn and not the phone's sheet, and the table is not stacked
+browser: { width: 1440, height: 900 }
+
+# the walk's own course, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes
+data:
+  made: { json: ../.local/made/editHocalar.json }
+
+# the title of the walk's course, which the dialog's eyebrow and its intro carry. `name` has no sample on purpose: the catalog's
+# {name} is the course's title in one message and a person's in another, and a placeholder without a sample matches any text.
+samples:
+  title: '{made.title}'
+
+events:
+  # the address is searched on Enter (it is also searched when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: Hoca, value: '{lookupEmail}' }
+    - key: Enter
+  # somebody else saves the course's hocas while the dialog is open: the başnazım seats a spare account through the API (as the
+  # başnazım the helper acts; the course's version moves, so the dialog's "Kaydet" is refused). A second run finds the account seated.
+  OTHER_SAVES:
+    - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantE]
+      expect: 'seat-hoca APPLICANT_E'
+  NAVIGATE:
+    - goto: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+
+states:
+  reading: { call: '{nizam}/kosks/{seed.kosk2}/dersler' }
+  looking: { call: '{nizam}/kosks/{seed.kosk2}/dersler' }
+  saving: { call: '{nizam}/kosks/{seed.kosk2}/dersler' }
+  # an exit with no node of its own is checked by its address
+  left: { url: '{nizam}/kosks/*/ana-sayfa' }
+
+# Where role and name do not find a node. The page behind the dialog is inert while it is open, so the dialog is the scope; the table
+# is the köşk's whole list (the seeded köşk "Kubbealtı Köşkü" has no course of its own, so the walk's course is the only row, but the
+# row's button is found by the title all the same).
+nodes:
+  page: { css: main, hasText: Bütün dersler }
+  rowEdit: { role: button, name: 'Hocaları düzenle: {made.title}' }
+  # a toast has a "Kapat" too: the dialog's own close icon is the one inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: Hocaları düzenle } }
+  eyebrow: { css: 'p.mds-eyebrow', hasText: '{made.title}', within: { role: dialog, name: Hocaları düzenle } }
+  introTitle: { css: 'strong bdi', hasText: '{made.title}', within: { role: dialog, name: Hocaları düzenle } }
+  intro: { text: '/dersinin hocaları\. Dersin en az bir hocası olmalı/', within: { role: dialog, name: Hocaları düzenle } }
+  readFailedTitle: { css: 'p.mds-alert__title', hasText: Hocalar okunamadı, within: { role: dialog, name: Hocaları düzenle } }
+  # the radios are the list's: one an account, named "{name} dersin imamı olsun". The checked one is the imam's; pressing the checked
+  # one would change nothing, so the radios to press are the unchecked ones
+  radioSole: { css: '[data-testid=team-list] input[type=radio]:checked', count: 1 }
+  radioImam: { css: '[data-testid=team-list] input[type=radio]:checked', count: 1 }
+  radioOther: { css: '[data-testid=team-list] input[type=radio]:not(:checked)' }
+  radioUnset: { css: '[data-testid=team-list] input[type=radio]:not(:checked)', count: 2 }
+  # the badge on the imam's row; the star of the table is a button behind the dialog, this is a badge inside it
+  imamBadge: { css: '.mds-badge', hasText: Dersin imamı, within: { role: dialog, name: Hocaları düzenle } }
+  # "Çıkar" is told apart by its row, not by a name: the imam's row has the badge (a path may have changed who the imam is)
+  removeImam: { role: button, name: '/^Hocayı listeden çıkar: /', within: { css: '[data-testid=team-list] li:has(.mds-badge)' } }
+  removeOther: { role: button, name: '/^Hocayı listeden çıkar: /', within: { css: '[data-testid=team-list] li:not(:has(.mds-badge))' } }
+  # the outcomes of a search: the field's own error while the list is empty has no role, the same sentence beside a list is an alert
+  searchNotFoundField: { css: '.mds-error:not([role=alert])', hasText: Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. }
+  searchDownField: { css: '.mds-error:not([role=alert])', hasText: Arama şu an yapılamadı. }
+  searchNotFoundAlert: { css: 'p.mds-error[role=alert]', hasText: Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. }
+  searchListedAlert: { css: 'p.mds-error[role=alert]', hasText: Bu kişi zaten listede. }
+  searchDownAlert: { css: 'p.mds-error[role=alert]', hasText: Arama şu an yapılamadı. }
+  imamRequired: { css: 'p.mds-error[role=alert]', hasText: Birden çok hoca var }
+  emptyError: { css: 'p.mds-error[role=alert]', hasText: En az bir hoca olmalı. }
+  # the hidden <output>: "Aranıyor…", "{name} seçildi" and the busy button's "Yükleniyor" are three of them
+  searching: { role: status, hasText: Aranıyor }
+  added: { role: status, hasText: '/ seçildi$/' }
+  savingStatus: { role: status, hasText: Yükleniyor }
+  # Sonner's toast has no role: found by its own attribute and its words
+  toastSavedTitle: { css: '[data-sonner-toast]', hasText: Hocalar güncellendi }
+  toastSavedBody: { css: '[data-sonner-toast]', hasText: dersinin hoca listesi kaydedildi }
+  toastFailedTitle: { css: '[data-sonner-toast]', hasText: Hocalar kaydedilemedi }
+  toastConflict: { css: '[data-sonner-toast]', hasText: başkası tarafından kaydedildi }
+  toastUnknownUser: { css: '[data-sonner-toast]', hasText: hesabı bulunamadı }
+  toastDuplicate: { css: '[data-sonner-toast]', hasText: Aynı kişi listede iki kez }
+  toastInvalid: { css: '[data-sonner-toast]', hasText: imam listedekilerden biri olmalı }
+  toastForbidden: { css: '[data-sonner-toast]', hasText: Bu işlem için yetkiniz yok. }
+  toastOther: { css: '[data-sonner-toast]', hasText: İşlem tamamlanamadı. }
+
+# What a save leaves outside the screen, read from tedrisat's database as invariants that hold on every path of a walk (the e2e's
+# lists, which name who stays, hold for one path only): one audit row `course.muderris_update` written by the nazım (the helper's
+# seatings are the başnazım's, so they are not counted) (courses#4 a12); exactly one imam among those who hold the MUDERRIS role;
+# every account on the list holds the role and no one holds it who is not on the list (the leavers lose it, the newcomer takes it,
+# courses#4 a11); and no hoca with no account is left on the course (F-W4-hocalar-4: a save deletes them).
+effects:
+  setCourseMuderris:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'course.muderris_update' and entity_id = '{made.course}' and actor_id = '{secret.E2E_KOSK_NAZIM_SUB}'"]
+      expect: '{"n":1}'
+    - run: [node, helpers/sql.mjs, "select count(*) filter (where is_imam)::int as imams from role_assignments where role = 'MUDERRIS' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"imams":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_muderris cm where cm.course_id = '{made.course}' and cm.user_id is not null and not exists (select 1 from role_assignments ra where ra.scope_id = cm.course_id and ra.user_id = cm.user_id and ra.role = 'MUDERRIS' and ra.revoked_at is null)"]
+      expect: '{"n":0}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'MUDERRIS' and ra.scope_id = '{made.course}' and ra.revoked_at is null and not exists (select 1 from course_muderris cm where cm.course_id = ra.scope_id and cm.user_id = ra.user_id)"]
+      expect: '{"n":0}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_muderris where course_id = '{made.course}' and user_id is null"]
+      expect: '{"n":0}'

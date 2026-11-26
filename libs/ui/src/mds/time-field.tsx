@@ -206,7 +206,7 @@ export function TimeField({
     );
     const at = rows.indexOf(event.target as HTMLElement);
     if (at < 0) return;
-    let to = at;
+    let to: number;
     switch (event.key) {
       case "ArrowDown":
         to = Math.min(rows.length - 1, at + 1);

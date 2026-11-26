@@ -1,0 +1,195 @@
+# tedris.nav bound to the local stack: tedris-web on :4000, signed in as the seeded talebe through Keycloak's real form.
+#   node apps/engine/src/cli.ts replay graphs/tedris/nav --bind graphs/tedris/nav/binding.yaml --out <dir>
+# (run from the engine checkout; paths of the base are relative to graphs/bindings, so `root` is the base's and is not set
+# here). NOT RUN in the writing phase: nothing below has been replayed.
+#
+# What the base gives: browser (tr-TR, Europe/Istanbul), the `secret` dotenv and the `seed` json, the accounts and the real
+# sign-in, and the apps with tedris-web first, where a nav replay opens every page.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../bindings/local.tedris.binding.yaml
+
+# The routes' :params, from the ids the stack's seed.json holds (ids only). `lessonId` is the next celse of courses.open and
+# `id` the seeded talebe's own deck "Kelime Defterim" (the seed now holds both: sessions.open.next and decks.own), so the
+# celse page and the four deck pages open too. The watch page is the exception: it has nothing to show for a celse with no
+# stream and no recording, and sends the person back to the celse (see `pages`).
+samples:
+  koskId: '{seed.kosk}'
+  madrasahId: '{seed.madrasah}'
+  courseId: '{seed.courses.open}'
+  lessonId: '{seed.sessions.open.next}'
+  id: '{seed.decks.own}'
+  address: no-such-page # notFound: any address no page owns
+
+# One person is bound. The graph's `visitor` has no account to sign in as, and a replay binds a persona only to an account
+# (`as` must name one), so the visitor's views (the invitation links, the sign-in redirects) are read from the graph and
+# not replayed; the replay of a signed-out browser is a gap of the engine.
+personas:
+  talebe: { as: talebe }
+
+frames:
+  app:
+    # the wide bar; the phone's app bar is another header, hidden from 768 px
+    find: { css: 'header[data-system-chrome]' }
+    # where a page draws its own links and buttons. A page with the legacy wrapper has two mains (SHL-16 on /kosk-applications/new).
+    page: { role: main }
+
+pages:
+  # a redirect page answers at another address: the replay holds that a page stays where it was opened
+  start: { skip: "/ redirects (308 to /home, then the page's own redirect)" }
+  learning: { skip: 'a redirect to /discover' }
+  learningMyCourses: { skip: 'a redirect to /my-courses' }
+  learningCalendar: { skip: 'a redirect to /account/calendar' }
+  legacyStart: { skip: 'a redirect to /' }
+  legacyWelcome: { skip: 'a redirect to /' }
+  # the seeded celse has no stream and no recording, so the page sends the person back to the celse page (izle/page.tsx:31-33)
+  celseWatch: { skip: "sends the person back to the celse: the seeded celse has no stream and no recording (izle/page.tsx:31-33)" }
+  # signed in, the page goes on to the callback address at once
+  signIn: { skip: 'opened with a session it goes straight on to its callbackUrl ("/" when none): enterSignIn checks the session first (libs/auth/src/client/sign-in.ts:341)' }
+  register: { skip: 'the same page and the same check: enterSignIn does not read the intent, so with a session it goes on to the callbackUrl too (read from the code, not replayed)' }
+  # what shows each page opened
+  home:
+    shows: { role: heading, name: /^Selâmün aleyküm/ }
+  discover:
+    shows: { role: heading, name: Keşfet }
+  myCourses:
+    shows: { role: heading, name: Derslerim }
+  schedule:
+    shows: { role: heading, name: Programım }
+  decks:
+    shows: { role: heading, name: Desteler }
+  newKoskApplication:
+    shows: { role: heading, name: Köşk açma başvurusu }
+  signOut:
+    shows: { role: heading, name: Çıkış yapılsın mı? }
+  notFound:
+    shows: { role: heading, name: Sayfa bulunamadı }
+  accountPublicProfile:
+    # the switch is off (features/public-profile/availability.ts:14): the page is the not-found page at this address
+    shows: { role: heading, name: Sayfa bulunamadı }
+  # the pages the seed's celse and deck open (read from the code, not run): the celse's title is the batch's "Canlı ders"
+  # (session-header.tsx:58), a deck's h1 is its title (deck-header.tsx:54), the study page's h1 is "Çalışma"
+  celse:
+    shows: { role: heading, name: '/Canlı ders/' }
+  deck:
+    shows: { role: heading, name: Kelime Defterim }
+  deckCards:
+    shows: { role: heading, name: Kelime Defterim }
+  deckEdit:
+    # the deck's page with the edit dialog open over it, so the dialog is what proves it (the page behind is inert)
+    shows: { role: dialog, name: Desteyi düzenle }
+  deckStudy:
+    shows: { role: heading, name: Çalışma }
+
+entries:
+  # the footer's link sits outside <main>, so the frame's `page` locator cannot find it
+  frame:app->landingPrivacyNotice:
+    { role: link, name: Aydınlatma Metni, within: { role: contentinfo } }
+  # the empty states of Desteler repeat these two links, so the first one is the header's
+  decks->decksExplore: { role: link, name: Desteleri keşfet, nth: 0 }
+  decks->decksCreate: { role: link, name: Deste oluştur, nth: 0 }
+  # these end the session or leave the app: never taken
+  signOut->start: { follow: false }
+  signOut->home: { follow: false }
+  account->signOut: { follow: false }
+  account->realmProfileUpdate: { follow: false }
+
+  # ---- the entries that need an item (`data: true`), as the seeded talebe meets them ----
+  # The seeded talebe holds a seat in the three courses of the seed (Bina ve İzhar Şerhi, İsâgûcî ile Mantığa Giriş, Nahiv
+  # Metinleri), has a next celse of the first one, a deck "Kelime Defterim" with three cards, and no notification, no
+  # followed köşk, no finished course. Every locator below is read from the code and not run. Where two entries share their
+  # ends and their `how`, only the one with a label key can be named apart (`<from>-><to> <LabelKey>`); an entry that
+  # shares its ends with one that needs no item is left to the entries above and not skipped as a whole, which would skip
+  # that one too. A skip says why the seed cannot show the control; a replay reports "not bound" for it either way.
+
+  # Ana sayfa (home-sessions.tsx, home-sections.tsx)
+  home->celse PhoneMenu.sessionPage: { role: link, name: Celse sayfası }
+  home->schedule: { role: link, name: Programım }
+  home->celse: { skip: "'a later celse in the list' is a plain link named by the celse's title; no key tells it from the first" }
+  home->course: { skip: "three plain links to a course (the next celse's, a card of 'Kaldığın yerden devam et', a followed köşk's) share their ends, and none has a key" }
+  home->discover MyCoursesPage.goDiscover: { skip: "the empty state of 'Kaldığın yerden devam et': the seeded talebe holds three courses" }
+  home->deck: { skip: "a deck with cards due today: not verified that the seeded deck is due" }
+  home->deckStudy: { skip: "a deck with cards due today: not verified that the seeded deck is due" }
+  home->accountCalendar: { skip: "a menu item of 'Takvime ekle', visible only once the menu is open" }
+  home->lessonCalendar: { skip: "a menu item of 'Takvime ekle', visible only once the menu is open" }
+
+  # Keşfet, köşk, medrese: a card is one link, in its title (libs/ui card.tsx)
+  discover->kosk: { css: 'a.mds-card__link[href="/kosks/{seed.kosk}"]' }
+  discover->madrasah: { css: 'a.mds-card__link[href="/madrasahs/{seed.madrasah}"]' }
+  discover->course: { css: 'a[href="/courses/{seed.courses.open}"]', nth: 0 }
+  kosk->course: { css: 'a.mds-card__link[href="/courses/{seed.courses.open}"]' }
+  # one such link on each course card of the medrese: the first is enough
+  kosk->madrasah: { css: 'a[href="/madrasahs/{seed.madrasah}"]', nth: 0 }
+  kosk->deck: { skip: 'a deck of the köşk offered to its talebe: the seed makes none' }
+  madrasah->course: { css: 'a.mds-card__link[href="/courses/{seed.courses.open}"]' }
+  madrasah->kosk: { skip: "two plain links to the köşk (a course card's footer and the side card) share their ends, and neither has a key" }
+
+  # the course page
+  course->madrasah: { css: 'a[href="/madrasahs/{seed.madrasah}"]', nth: 0 }
+  course->kosk: { skip: 'two plain links to the köşk (the breadcrumb and the line under the title) share their ends, and neither has a key' }
+  course->celse CoursePage.continue: { role: link, name: Derse devam et }
+  course->celse CoursePage.openSession: { skip: "only once the course is completed (course-aside.tsx:257); the seeded one is not" }
+  course->celse: { skip: "a row of the programme is a plain link named by the celse's title; no key tells it from the other two entries of these ends" }
+  course->celseWatch: { skip: 'a recording row: the seed makes no recording' }
+  course->deckStudy CoursePage.deckStudy: { skip: "the 'Çalış' link of a row in the Desteler tab, which is not the tab the page opens on" }
+  course->deck: { skip: 'a row of the Desteler tab, which is not the tab the page opens on' }
+  course->myCourses CoursePage.backToMyCourses: { skip: "the card of a revoked access: the seeded talebe's seats are not revoked" }
+  course->nazarApp CoursePage.backToEditing: { skip: 'the preview of a draft, for an editor: the seeded talebe edits nothing' }
+  course->filesCourseResource: { skip: 'a resource that is a file: the seed attaches none' }
+  course->lessonCalendar AddToCalendar.apple: { skip: "a menu item of 'Takvime ekle', visible only once the menu is open" }
+
+  # the celse page (the seeded celse has a question, a note, homework and a hand-in with a note, and no file, stream or recording)
+  celse->kosk: { css: 'a[href="/kosks/{seed.kosk}"]', nth: 0 }
+  celse->course: { skip: "four links to the course share their ends: two plain (the breadcrumb, the locked card) and two keyed ones that exist only for a recording being prepared and inside the Müfredat popup" }
+  celse->celseWatch: { skip: 'the stream and the recording links: the seeded celse has neither' }
+  celse->celse: { skip: "the replacement link (a cancelled celse), the pager and the Müfredat popup's buttons share their ends, and only the replacement has a key" }
+  celse->accountCalendar: { skip: "a menu item of 'Takvime ekle', visible only once the menu is open" }
+  celse->lessonCalendar: { skip: "a menu item of 'Takvime ekle', visible only once the menu is open" }
+  celse->signIn: { role: link, name: Giriş yap } # offered to a visitor only: for the talebe it must be absent
+  celse->filesCourseResource: { skip: 'a resource that is a file: the seed attaches none' }
+  celse->filesLessonResource: { skip: 'a resource that is a file: the seed attaches none' }
+  celse->filesLessonAssignment: { skip: "a file attached to the homework: the seeded homework has none" }
+  celse->filesSubmissionFile: { skip: "a file of the talebe's hand-in: the seeded hand-in is a note (no storage on the stack)" }
+  celse->filesReviewFile: { skip: 'a file returned with a review: the seeded hand-in is not reviewed' }
+
+  # Derslerim and Programım
+  # the card's title link: its label is the course's own title, not a key, so it is bound by its ends alone; the recordings link
+  # below shares the ends and is found first by its label key
+  myCourses->course: { css: 'a.mds-card__link[href="/courses/{seed.courses.open}"]' }
+  myCourses->course MyCoursesPage.recordings: { skip: "the link of a completed course (my-courses-page.tsx:406): the seeded talebe has none" }
+  myCourses->discover: { skip: 'the empty state: the seeded talebe holds three courses' }
+  schedule->celse: { css: 'a[href^="/courses/{seed.courses.open}/lessons/"]', nth: 0 }
+  schedule->accountCalendar AddToCalendar.subscribe: { skip: "a menu item of 'Takvime ekle', visible only once the menu is open" }
+  schedule->lessonCalendar: { skip: "a menu item of 'Takvime ekle', visible only once the menu is open" }
+
+  # decks
+  decks->deck: { css: 'a.mds-card__link[href="/decks/{seed.decks.own}"]' }
+  decks->deckStudy: { css: 'a[href="/decks/study/{seed.decks.own}"]' }
+  decksExplore->deck: { skip: 'a public deck in the explore list: the seeded decks are private to the talebe or to a course' }
+  deck->deckCards Decks.tabCards: { role: link, name: '/^Kartlar/', within: { role: navigation, name: Deste bölümleri } }
+  deck->deckCards Decks.allCards: { role: link, name: Bütün kartlar }
+  deck->deckCards Decks.addCard: { skip: "the empty state's button, drawn only while the deck has no card (deck-owner-overview.tsx:174); the seeded deck has three" }
+  deck->deckEdit: { css: 'a[href="/decks/{seed.decks.own}/edit"]' }
+  deck->decks Decks.delete: { role: button, name: Desteyi sil, follow: false } # opens the confirmation; never taken
+  deck->decks DeckUnavailable.backToDecks: { skip: 'the screen of a deck that is missing or private to someone else' }
+  deck->decksCreate: { skip: "not drawn on the owner's deck page; the entry is the unavailable screen's (not verified)" }
+  deckCards->deck SystemPages.forbiddenDeckAction: { skip: "the forbidden screen, drawn to someone who is not the deck's author" }
+  deckCards->decks DeckUnavailable.backToDecks: { skip: 'the screen of a deck that is missing or private to someone else' }
+  deckCards->deckSample: { skip: "the template links of the import dialog, which is closed" }
+  deckEdit->deck SystemPages.forbiddenDeckAction: { skip: "the forbidden screen, drawn to someone who is not the deck's author" }
+  deckEdit->decks: { skip: 'the screen of a deck that is missing or private to someone else' }
+  deckStudy->deck Study.backToDeck: { skip: "the finished state of a study round, after the last card" }
+  deckStudy->decks DeckUnavailable.backToDecks: { skip: 'the screen of a deck that is missing or private to someone else' }
+
+  # Hesap, the calendar and Bildirimler
+  account->nizamApp: { skip: "a row of the roles table (roles-section.tsx, assignments-table.tsx:122), drawn for each role held in Nizam; the seeded talebe holds none, and the graph does not say so with a `when`" }
+  account->nazarApp: { skip: "a row of the roles table (roles-section.tsx, assignments-table.tsx:122), drawn for each role held in Nazar; the seeded talebe holds none, and the graph does not say so with a `when`" }
+  account->accountPublicProfile: { skip: 'the card is not drawn while PUBLIC_PROFILE_ENABLED is off; the page is the not-found page' }
+  accountCalendar->calendarFeed: { skip: "the feed's address needs a token, made by 'Bağlantıyı oluştur' (a write)" }
+  notifications->course: { skip: 'the seed makes no notification for the talebe' }
+  notifications->celse: { skip: 'the seed makes no notification for the talebe' }
+  notifications->deck: { skip: 'the seed makes no notification for the talebe' }
+  notifications->kosk: { skip: 'the seed makes no notification for the talebe' }
+  notifications->notFound: { skip: 'the seed makes no notification for the talebe' }
+  newKoskApplication->discover KoskApplication.backToDiscover: { skip: 'shown after an application is sent (a write)' }

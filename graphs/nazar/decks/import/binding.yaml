@@ -1,0 +1,212 @@
+# nazar.decks.import on the local stack (graphs/README.md, "The stack and the bindings"): nazar-web on :4002, the course's hoca (MUDERRIS)
+# signed in through Keycloak's real form. The shared parts (data, events, states, effects, locators) are in binding.common.yaml, which also says
+# what the engine cannot do yet (choose a file) and why every scenario stops short of it. binding.csv.yaml is the main story with a CSV.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/decks/import --bind graphs/nazar/decks/import/binding.yaml \
+#     [--cover transitions] --out <dir>
+# NOT RUN in the writing phase (the owner moved every replay to the walk phase): the binding was only loaded, with `replay ... --emit-spec`.
+#
+# Data. Every scenario makes the walk's own course and, in it, its own decks; nothing seeded is touched (the seed's course deck "Sarf Kavramları" and
+# the talebe's deck "Kelime Defterim" are other flows' data). `setup` (1) takes away what an earlier walk left, (2) opens `Deneme dersi import` with
+# helpers/course.mjs (PUBLISHED, in the seed's second köşk, one week of one celse, the MUDERRIS account as its hoca; ids in graphs/.local/made/import.json),
+# and (3) with ./import-data.mjs opens two draft decks of it as the hoca, "Aktarma denemesi A" and "B" (Kelime, no card), writes the eight files a
+# person would choose and graphs/.local/deck-import.json. `teardown` deletes the decks first (deleting a course only sets its decks' course to null)
+# and then the course. Every helper takes the replay lock when run by hand. Left behind: audit rows (course.create, deck.create, card.create, ...),
+# which the API cannot remove. SQL only reads.
+#
+# Scenarios (each starts at the course's overview and presses the sidebar's "Ders destesi": the nav entry frame:ders->dersDeck; `onDeckPage` presses
+# the deck's card on the list, which the nav binding has no locator for, so ./enter.nav.binding.yaml adds one):
+#   sends        the main story: two decks, the template as a workbook, the second deck picked. The walk stops at CHOOSE_FILE (no `attach` yet).
+#   badRows      bad.csv: 422, rows 2 and 3, nothing written.
+#   tooMany      tooMany.csv: 422, one error on row 1002.
+#   refused      empty.csv: 400, the generic failure alert.
+#   notSheet     notSheet.txt: the field's own "Yalnızca .xlsx ya da .csv dosyası seçilebilir.", nothing sent.
+#   tooBig       tooBig.csv, about 5.9 MB: "Dosya 5 MB'den büyük olamaz.", nothing sent.
+#   midSize      midSize.csv, about 1.4 MB: Next refuses the Server Action's body (F-D1-18); the error page. NOT VERIFIED: the walk finds out.
+#   noDeck       a course with no deck: the import button is off (F-D1-15).
+#   onDeckPage   a deck's own page: the dialog has no deck field and the file goes to that deck.
+# Not bound, with the reason:
+#   template: refused           a refusal of the template route needs tedrisat to fail for one request; no stack condition does that
+#   sending FAIL.refused for a deck gone, a 429 or a session ended    the empty file is the one refusal a file can cause; the others need a deck taken
+#                               away or a budget used under an open dialog, or the session ended
+#   abandoned (and the CANCEL of sending)    the replay holds the call only until it has checked the screen and cannot press "Vazgeç" in between
+#   NAVIGATE                    bound to a blank page, as the other nazar bindings do
+# Vars: `upload` is the file the scenario's walk would choose; `cardsAfter` the cards a clean file leaves in its deck; `hadeeth` how many of them are
+# HADEETH (the template has one; clean.csv none).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.decks.import
+
+scenarios:
+  sends:
+    given: { entry: list, template: served, file: clean }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.template}', cardsAfter: '2', hadeeth: '1' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  badRows:
+    given: { entry: list, template: served, file: badRows }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.bad}' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  tooMany:
+    given: { entry: list, template: served, file: tooMany }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.tooMany}' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  refused:
+    given: { entry: list, template: served, file: refused }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.empty}' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  notSheet:
+    given: { entry: list, template: served, file: notSheet }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.notSheet}' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  tooBig:
+    given: { entry: list, template: served, file: tooBig }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.tooBig}' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  midSize:
+    given: { entry: list, template: served, file: midSize }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.midSize}' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  # a course with no deck: nothing for `up` to open, so the page draws the empty state and the button is off
+  noDeck:
+    given: { entry: noDeck, template: served, file: clean }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.clean}', cardsAfter: '2', hadeeth: '0' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, none]
+        expect: 'import-data up none'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'
+
+  # a deck's own page, reached by its card on the list (the first deck, A): the dialog has no deck field and the cards go to A
+  onDeckPage:
+    given: { entry: deckPage, template: served, file: clean }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars: { upload: '{files.clean}', cardsAfter: '2', hadeeth: '0' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'

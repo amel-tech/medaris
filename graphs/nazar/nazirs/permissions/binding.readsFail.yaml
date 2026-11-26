@@ -1,0 +1,34 @@
+# nazar.nazirs.permissions, the nazır is dismissed after the roster was drawn. Written without a replay; see locators.binding.yaml for the data and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/nazirs/permissions \
+#     --bind graphs/nazar/nazirs/permissions/binding.readsFail.yaml --cover transitions --absent --out <dir>
+# The roster still lists the nazır (it was read when the page opened); `before` on "İzin ver" dismisses her through the API, so the four reads of
+# the editor find no nazır (MADRASAH_NAZIR_NOT_FOUND): "İzinler okunamadı" with "Yeniden dene", which fails again, and Vazgeç. Nothing is written
+# by the page; `dismiss` records `gone`, so that the check of "nothing was written" at Vazgeç finds her gone.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.nazirs.permissions
+
+scenarios:
+  readsFail:
+    given: { row: awaiting, reads: failed, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, clean]
+      - run: [node, helpers/course.mjs, make, nzperm, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzperm"'
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, up]
+        expect: permissions-data up
+    teardown:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, down]
+        expect: permissions-data down
+      - run: [node, helpers/course.mjs, remove, nzperm]
+        expect: course remove nzperm
+
+nodes:
+  giveButton:
+    role: button
+    name: 'İzin ver: {perm.name}'
+    before: [{ run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, dismiss], expect: permissions-data dismiss }]

@@ -1,0 +1,113 @@
+# landing.site.readLegal on the local stack: the site on :4003, nobody signed in. Three scenarios, one for each of the
+# flow's starts; each opens the home page and arrives the way a visitor does from any landing page, by the footer's link
+# (the navigation graph's entry frame:site->terms, ->cookies, ->privacy).
+#   node apps/engine/src/cli.ts replay graphs/landing/site/readLegal --bind graphs/landing/site/readLegal/binding.yaml --out <dir>
+# Landing has no sign-in: the visitor account is an empty map and `signIn` is emptied so the base's real sign-in through
+# Keycloak never runs (the same as landing.site.contact and the navigation graph).
+#
+# WHICH BUILD IS WALKED. The stack runs landing-web with `next dev`, so the replay sees two draft notes that a production
+# build hides (L15: IS_DRAFT, content/aydinlatma-metni.ts:35): a role=note on the terms and a paragraph under the date of the
+# notice. The graph draws the production build and has no node for them; the replay checks only what the graph shows (no
+# `--absent`), so it does not mind. A walk on a production build was not made.
+#
+# Nothing is created and nothing is removed: the walk only reads. What is not walked: the exits `contact_opened` and
+# `faq_opened` (a click on the footer's or the page's link to them; they lead to the pages landing.site.contact and
+# landing.site.faq walk), the footer's "GitHub" (it opens a new tab, which this phase's replay does not follow) and the
+# other two starts' main story: this phase walks the main story of the first scenario once.
+#
+# The words each node must hold are checked in two ways. A node found by its role and name or its exact text is checked by
+# the engine as it is. The repeated nodes (the contents links, the headings, the cookie rows) are found by a pattern of all
+# their texts and a count: the engine finds a `oneOf` node by its first text only. The cookie patterns are written out by a
+# script from content/cerezler.ts (`^(text|text|...)$`, every character that a pattern reads escaped) so that a row that
+# changes in the code stops being found.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.landing.binding.yaml
+flow: landing.site.readLegal
+
+accounts:
+  visitor: {}
+signIn: []
+
+scenarios:
+  # The main story: the visitor presses "Kullanım şartları" in the footer of the home page.
+  fromFooterTerms:
+    given: { start: terms }
+    as: visitor
+    open: '{landing}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:site->terms' }
+  # The same, for the other two pages (not walked in this phase).
+  fromFooterCookies:
+    given: { start: cookies }
+    as: visitor
+    open: '{landing}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:site->cookies' }
+  fromFooterPrivacy:
+    given: { start: privacy }
+    as: visitor
+    open: '{landing}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:site->privacy' }
+
+events:
+  NAVIGATE: [{ goto: '{landing}/' }]
+
+# A contents link of the terms moves the page to a section, so the address gains a fragment: `**` takes it.
+states:
+  terms: { url: '{landing}/kullanim-sartlari**' }
+  cookies: { url: '{landing}/cerezler**' }
+  privacy: { url: '{landing}/aydinlatma-metni**' }
+  contact_opened: { url: '{landing}/iletisim' }
+  faq_opened: { url: '{landing}/sss' }
+  left: { url: '{landing}/' }
+
+nodes:
+  # ---- the pages' <main>: a bare role matches the page the walk leaves for too, so each is told by a text of its own ----
+  termsPage: { role: main, hasText: İçindekiler }
+  cookiesPage: { role: main, hasText: Tarayıcı depolaması }
+  privacyPage: { role: main, hasText: Veri sorumlusu }
+
+  # ---- the footer: the same words are links on the pages themselves, so the footer's are asked for inside its navigation;
+  # the page's own link is the one marked aria-current="page" ----
+  footerPrivacy: { role: link, name: Aydınlatma Metni, within: { role: navigation, name: Alt bilgi } }
+  footerTerms: { role: link, name: Kullanım şartları, within: { role: navigation, name: Alt bilgi } }
+  footerCookies: { role: link, name: Çerezler, within: { role: navigation, name: Alt bilgi } }
+  footerFaq: { role: link, name: Sık sorulan sorular, within: { role: navigation, name: Alt bilgi } }
+  footerContact: { role: link, name: İletişim, within: { role: navigation, name: Alt bilgi } }
+  footerGithub: { role: link, name: GitHub, within: { role: navigation, name: Alt bilgi } }
+  footerPrivacyHere: { css: 'footer a[aria-current="page"]', hasText: Aydınlatma Metni }
+  footerTermsHere: { css: 'footer a[aria-current="page"]', hasText: Kullanım şartları }
+  footerCookiesHere: { css: 'footer a[aria-current="page"]', hasText: Çerezler }
+
+  # ---- the terms: eleven contents links and eleven headings, all numbered; the links under the contents list sit in the
+  # <aside>; the link to the cookies page is the one inside section 8 ----
+  tocLink: { role: link, name: '/^\d+\. /', within: { role: navigation, name: İçindekiler }, count: 11 }
+  termsHeading: { role: heading, name: '/^\d+\. /', count: 11 }
+  asideContact: { role: link, name: İletişim, within: { css: aside } }
+  asidePrivacy: { role: link, name: Aydınlatma Metni, within: { css: aside } }
+  termsCookiesLink: { role: link, name: Çerezler, within: { css: '#cihaz' } }
+
+  # ---- the cookies page: the column headers are one of each in each of three tables; "Daha fazla bilgi" is a region and
+  # its three links are inside it ----
+  columnName: { role: columnheader, name: Ad, count: 3 }
+  columnPurpose: { role: columnheader, name: Ne için kullanılır, count: 3 }
+  columnSetBy: { role: columnheader, name: Kim yerleştirir, count: 3 }
+  columnLifetime: { role: columnheader, name: Süre, count: 3 }
+  morePrivacy: { role: link, name: Aydınlatma Metni, within: { role: region, name: Daha fazla bilgi } }
+  moreTerms: { role: link, name: Kullanım şartları, within: { role: region, name: Daha fazla bilgi } }
+  moreContact: { role: link, name: İletişim, within: { role: region, name: Daha fazla bilgi } }
+  # the rows of the three tables, from content/cerezler.ts (script-made):
+  requiredName: { role: rowheader, name: '/^(tedris\.session, nizam\.session, nazar\.session|tedris\.auth-flow\.\*, nizam\.auth-flow\.\*, nazar\.auth-flow\.\*|tedris\.auth-starts, nizam\.auth-starts, nazar\.auth-starts|KEYCLOAK_IDENTITY, KEYCLOAK_SESSION|AUTH_SESSION_ID, KC_RESTART, KC_STATE_CHECKER|KC_AUTH_SESSION_HASH)$/', within: { role: table, name: Zorunlu çerezler }, count: 6 }
+  requiredPurpose: { css: 'td[data-label="Ne için kullanılır"]', hasText: '/^(Giriş yaptığınızı hatırlar\. Yalnızca rastgele bir oturum numarası tutar; giriş bilgileriniz Medaris’in Türkiye’deki sunucusunda şifrelenmiş olarak saklanır\. Tarayıcıdaki betikler okuyamaz\.|Kimlik sunucusuna gidip gelen giriş adımını güvenceye alır; girişten sonra döneceğiniz sayfayı ve dili tutar\. Her giriş denemesinin ayrı ve şifrelenmiş bir çerezi olur\.|Beş dakika içinde kaç kez giriş başlatıldığını sayar ve girişin durmadan kendini tekrarlamasını önler; yalnız bir sayı ve bir zaman tutar\.|Medaris’in uygulamalarına tek girişle açılan oturumu tutar\.|Süren bir girişi tutar, zaman aşımına uğrayan girişi yeniden başlatır\.|Başka bir sekmede tamamlanan girişi giriş sayfasının fark etmesini sağlar\.)$/', within: { role: table, name: Zorunlu çerezler }, count: 6 }
+  requiredSetBy: { css: 'td[data-label="Kim yerleştirir"]', hasText: '/^(Tedris, Nizam ve Nazar|Tedris, Nizam ve Nazar|Tedris, Nizam ve Nazar|Medaris kimlik sunucusu|Medaris kimlik sunucusu|Medaris kimlik sunucusu)$/', within: { role: table, name: Zorunlu çerezler }, count: 6 }
+  requiredLifetime: { css: 'td[data-label="Süre"]', hasText: '/^(Kimlik sunucusundaki oturum kadar \(sunucu bir süre bildirmezse 30 gün\): oturum 5 saat işlem yapılmazsa, en geç 10 saat sonra sona erer; “Beni hatırla”yı işaretlediyseniz 14 gün işlem yapılmazsa, en geç 30 gün sonra|10 dakika; giriş sonuçlanınca silinir|En çok 5 dakika|Tarayıcıyı kapatana kadar, “Beni hatırla”yı işaretlediyseniz 30 gün; oturum 5 saat işlem yapılmazsa, en geç 10 saat sonra sona erer; “Beni hatırla”yı işaretlediyseniz 14 gün işlem yapılmazsa, en geç 30 gün sonra|Tarayıcıyı kapatana kadar|60 saniye)$/', within: { role: table, name: Zorunlu çerezler }, count: 6 }
+  preferenceName: { role: rowheader, name: '/^(medaris-tz|nazar-scope|medaris-locale|NEXT_LOCALE|KEYCLOAK_REMEMBER_ME|KEYCLOAK_LOCALE)$/', within: { role: table, name: Tercih çerezleri }, count: 6 }
+  preferencePurpose: { css: 'td[data-label="Ne için kullanılır"]', hasText: '/^(Saatlerin hangi saat diliminde gösterileceğini hatırlar: hesabınızdaki seçim, yoksa tarayıcınızınki\.|En son açtığınız medreseyi ya da dersi hatırlar\.|Dil menüsünde seçtiğiniz dili hatırlar; Tedris, Nizam ve Nazar sonraki ziyaretinizde doğrudan o dilde açılır\.|Sayfaların dilini hatırlar\.|“Beni hatırla”yı işaretlediğinizde kullanıcı adınızı giriş formuna yeniden yazar\.|Giriş sayfasının dilini hatırlar\.)$/', within: { role: table, name: Tercih çerezleri }, count: 6 }
+  preferenceSetBy: { css: 'td[data-label="Kim yerleştirir"]', hasText: '/^(Tedris ve Nizam|Nazar|Tedris ve Nizam|Tedris ve Nizam|Medaris kimlik sunucusu|Medaris kimlik sunucusu)$/', within: { role: table, name: Tercih çerezleri }, count: 6 }
+  preferenceLifetime: { css: 'td[data-label="Süre"]', hasText: '/^(1 yıl|1 yıl|1 yıl|Tarayıcıyı kapatana kadar|1 yıl|Tarayıcıyı kapatana kadar)$/', within: { role: table, name: Tercih çerezleri }, count: 6 }
+  storageName: { role: rowheader, name: '/^(medaris-theme|medaris\.auth\.sign-in|medaris\.auth\.tab, medaris\.auth\.auto-retry, medaris\.auth\.auto-start, medaris\.auth\.go-on, medaris-tz-synced)$/', within: { role: table, name: Tarayıcı depolaması }, count: 3 }
+  storagePurpose: { css: 'td[data-label="Ne için kullanılır"]', hasText: '/^(Açık ya da koyu görünüm seçiminizi hatırlar\.|Aynı anda birden fazla sekmede giriş yapılmaya çalışılmasını önler\.|Bir sekmenin kendiliğinden yaptığı giriş denemelerini sınırlayan ve saat dilimini bir kez göndermesini sağlayan kısa süreli işaretler\.)$/', within: { role: table, name: Tarayıcı depolaması }, count: 3 }
+  storageSetBy: { css: 'td[data-label="Kim yerleştirir"]', hasText: '/^(Bütün Medaris uygulamaları|Tedris, Nizam ve Nazar|Tedris, Nizam ve Nazar)$/', within: { role: table, name: Tarayıcı depolaması }, count: 3 }
+  storageLifetime: { css: 'td[data-label="Süre"]', hasText: '/^(Siz silene kadar|Siz silene kadar; 30 saniye sonra geçersiz sayılır|Sekmeyi kapatana kadar)$/', within: { role: table, name: Tarayıcı depolaması }, count: 3 }
+
+  # ---- the privacy notice: seven numbered headings ----
+  privacyHeading: { role: heading, name: '/^\d\. /', count: 7 }

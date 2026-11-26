@@ -1,0 +1,821 @@
+# PLANNED, NO CODE: live lessons run through YouTube, written graph-first. `status: proposed`, no binding, nothing in it was seen in a browser.
+# It draws what the owner's issues say the product must do (MDRS-195 and its children MDRS-237, 238, 239, 240; MDRS-241, the optional chat feed
+# in Medaris's own UI, is a need and no state), and the screens that already exist around it. The API it calls is sketched in
+# graphs/domain/planned-youtube.yaml.
+#
+# What exists today, and carries a real `source:` here:
+#   - the nizam menu entry "YouTube bağlantısı" (apps/nizam/lib/shell-nav.ts:149), the başnazım's, which opens /ayarlar/youtube. That page is NOT
+#     there: no folder under apps/nizam/app/ayarlar, so the catch-all (apps/nizam/app/[...rest]/page.tsx:9) answers "Sayfa bulunamadı" inside the
+#     shell (F-P0-4, F-W3-10, F-X-11). The nizam nav graph gives the page the kind `missing`. This flow starts on the entry and draws the page it
+#     must lead to.
+#   - the permission platform.youtube_manage ("YouTube bağlantısını yönet") is in the catalogue and no handler asks for it (MDRS-208).
+#   - on nazar-web, the hoca's pages: Celseler (nazar.sessions.manage), where "Canlı yayın ekle" stores a pasted YouTube link (MDRS-228, done and
+#     kept as the fallback), Ders ayarları (nazar.courseSettings.access) and Ders kayıtları (nazar.recordings.add), where "Yayını kayıt olarak ekle"
+#     stores the stream's link as a READY recording at once (RECADD-2 there).
+#
+# The phases of MDRS-195 are the states:
+#   phase 0 (MDRS-237): the owner's setup in Google Cloud and on YouTube. No code and no state: it is the world (`connect: notConfigured` is what an
+#     environment without it answers) and a need.
+#   phase 1 (MDRS-238): connect the channel (reading ... connected), the course's choice (courseSetting, savingSetting), a broadcast per celse
+#     (creating, noBroadcast, waiting) and the stream key panel (panel, revealingKey, panelShown).
+#   phase 2 (MDRS-239): follow the broadcast's life (waiting, missedStart, live, weak, ended, neverWent), and the reschedule and cancel that reach it
+#     (rescheduling, removing).
+#   phase 3 (MDRS-240): attach the recording (ended, archiving, recorded, archiveFailed, recordingKept). RECADD-2 is answered here: the recording is
+#     written PROCESSING when YouTube says the broadcast is complete and becomes READY, and the talebe are told, only when YouTube has processed the
+#     video. Until then the row says "Hazırlanıyor".
+#   phase 4 (MDRS-241, optional): not drawn.
+#
+# Two persons, one story. The başnazım connects the channel (states up to `connected`); a hoca or a ders nazırı runs the lessons (the rest). The
+# hand-over is an event that someone else causes (OPEN_COURSE_SETTINGS), as the SPEC allows; the person of each state is in its description.
+# Where the stream key, the connection and the broadcast are concerned the flow draws the simplest reading of the issues and lists every choice
+# the issues leave open under `decisions` (D1 to D16), which the report repeats. OPEN DECISIONS, in one line each:
+#   D1 where the hoca runs it (nazar-web drawn; MDRS-238 names nizam)      D9  a "Bağlantıyı kes" button (not in the issues; not drawn)
+#   D2 automatic at plan, or a button, or both (both drawn)                 D10 Google's callback in tedrisat (drawn) or in nizam's web app
+#   D3 how the stream key is shown: once, masked with copy (drawn), ...    D11 the state by polling (drawn) or SSE
+#   D4 whose stream a ders nazırı's celse uses                              D12 paid courses and the embedded player (MDRS-237 item 9)
+#   D5 PUBLIC under the platform policy "Ders kayıtları herkese açılamaz"   D13 who may connect: the başnazım, or a holder of platform.youtube_manage
+#   D6 the manual link beside a broadcast                                   D14 YouTube does not answer a reschedule or a cancel
+#   D7 RECORDING_ADDED or the new notification type MDRS-240 asks for       D15 a broadcast nobody started; one in flight when the token is revoked
+#   D8 a recording the hoca already added                                   D16 the proposed routes, refusal codes and permission names
+schema: delurio-graph/0
+kind: flow
+id: nizam.youtube.liveBroadcasts
+status: proposed
+domain: medaris.api
+ui: nizam.youtube.liveBroadcasts
+title: Run live lessons through YouTube (planned)
+summary: >-
+  The başnazım opens "YouTube bağlantısı" in the nizam menu and connects the Medaris channel: "YouTube'u bağla" takes them to Google, the channel's
+  owner gives the consent, and the page then shows the channel and whether YouTube has opened live streaming on it. Later a hoca turns "YouTube ile
+  canlı yayın" on in the course's settings and chooses the visibility. From then on, every live celse the hoca plans gets a YouTube broadcast made by
+  Medaris, bound to the hoca's own stream; a celse that has none (planned before, or a try that failed) has a button to make it. A holder of
+  session.live_link opens "Yayın bilgileri" on the celse and finds the RTMPS address, the stream key (masked, with show and copy) and the OBS
+  settings. Medaris follows the broadcast: waiting, live, weak connection, ended; it warns when the broadcast is not live five minutes after its
+  time; it moves the broadcast when the celse is moved and deletes it when the celse is cancelled. When the broadcast ends, Medaris attaches the
+  video to the celse as its recording, "Hazırlanıyor" until YouTube has processed it and "Hazır" after, and only then are the talebe told.
+
+scope:
+  shows: >-
+    The nizam menu entry and the page it must lead to (the connection), the card "Canlı yayın" of Ders ayarları, the hoca's Celseler row with its
+    badge and "Yayın bilgileri" dialog, and the Ders kayıtları row the recording appears on
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "phase 0, the owner's setup (MDRS-237): the Google Cloud project, the verified OAuth app, the channel with live streaming enabled, the privacy notice and terms that name YouTube API Services, the secrets in Coolify, and the answer whether any course will be paid (the Developer Policies forbid charging to watch an embedded player). None of it is a screen of Medaris; `connect: notConfigured` is the environment without it"
+    - "Google's consent screen itself (state atGoogle has no node): Google's page, its words and its sign-in are not Medaris's"
+    - "the planner, 'Celse planla' (nazar.sessions.plan) and a batch of celses: the broadcast is made inside them; the flow starts there with the event CELSE_PLANNED and does not draw the planner"
+    - "'Tarihi değiştir' and 'İptal et' (nazar.sessions.manage, nazar.sessions.cancel): the flow starts at the event that reaches the broadcast (CELSE_RESCHEDULED, CELSE_CANCELLED) and draws no form"
+    - "the talebe's side: the live player and its state on the celse page (tedris.celse.watchStream, MDRS-239 and the embedded chat that is built), the recording they then watch (tedris.celse.watchRecording, tedris.course.recordings), and the notification 'Kayıt eklendi' they get once"
+    - "what the hoca does with the recording afterwards: 'Düzenle', 'Kayıt erişimi', adding a link or uploading to Bunny (nazar.recordings.add, nazar.recordings.upload); the exit handed_over.recordings starts the first"
+    - "the manual stream link 'Canlı yayın ekle / Canlı yayını güncelle' (nazar.sessions.manage, MDRS-228): it stays as the fallback for a course that does not use YouTube; what it does beside a broadcast is D6"
+    - "the broadcast while its dialog is open: its status line follows the world, but the dialog states draw no world events (ENCODER_STARTED, HEALTH_WEAK and the rest are drawn on the row only)"
+    - "a broadcast in flight when the token is revoked (the encoder keeps streaming and Medaris cannot follow, D15), a broadcast deleted in YouTube Studio (lifeCycleStatus revoked), and the test-before-going-live flow of MDRS-239 (enableAutoStart false, a monitor stream, manual transitions: 'out of scope unless asked')"
+    - "the monitor preview of MDRS-239 (monitorStreamEmbedHtml) and the live chat feed of MDRS-241: needs.yaml, no state"
+    - "the loading skeleton of the page, an ended session (the person is sent to sign in: realm.auth.sessionEnded), the phone layout, and en and ar, which no screen of nizam or nazar can show"
+    - "the quota's own screen: the day's budget is not shown anywhere; only the refusal is (YOUTUBE_QUOTA_EXHAUSTED on the row)"
+
+decisions:
+  D1:
+    question: >-
+      Where does the hoca run it? MDRS-238 names nizam (the course's settings, the stream key panel), and was written before nazar-web existed; the
+      people named in the story, a müderris and a ders nazırı, work in nazar-web. This graph draws the hoca's half on nazar's Ders ayarları and Celseler,
+      where "Canlı yayın ekle" already is, and the API is the same for both apps.
+    recommend: >-
+      nazar-web first (the hoca's app), and the same control on nizam's course pages for a köşk nazımı, as MDRS-228 did for the manual link.
+    affects: [courseSetting, noBroadcast, waiting, panel]
+  D2:
+    question: >-
+      Is the broadcast made when the celse is planned, or when the hoca asks? MDRS-238 says made when a LIVE celse is planned or generated in a batch;
+      the story says a hoca "creates a broadcast per celse". Drawn: both, the automatic one (CELSE_PLANNED) as the rule and a button 'YouTube yayını
+      oluştur' for a celse that has none. The choice could be two columns of courses or a table of its own (CourseBroadcastSetting).
+    recommend: >-
+      Keep both: automatic for the plan the hoca makes, the button for a celse planned before the choice or one whose try failed.
+    affects: [creating, noBroadcast]
+  D3:
+    question: >-
+      How is the stream key shown? MDRS-238 says "masked, with copy"; the owner's words for this graph list three readings: shown once, masked, copy. Drawn:
+      masked in the dialog, "Göster" reads it from YouTube and shows it, "Kopyala" copies it, closing the dialog masks it again; the key is never stored by
+      Medaris. A key shown once cannot work for a stream a hoca reuses for every celse (it would have to be recreated each time).
+    recommend: >-
+      Masked with show and copy, read on demand and never stored; add 'copy without showing', a timeout that masks it again, and a 'new key' button (delete and
+      recreate the stream, MDRS-238) so that a leaked key can be replaced. Audit who read it.
+    affects: [panel, revealingKey, panelShown]
+  D4:
+    question: >-
+      Whose stream does a celse use? MDRS-238 binds one reusable stream per müderris, and says only the stream's müderris and the course's staff see the key.
+      A celse whose broadcast a ders nazırı creates has no müderris of its own: it could use the stream of the course's first müderris, of the imam, or give
+      the ders nazırı a stream of their own. Drawn: the stream of whoever creates the broadcast (the plan's author, or the button's).
+    recommend: >-
+      The stream of the hoca who teaches the celse; for a course with several, the one who planned it; a ders nazırı's own stream only when no hoca is set.
+    affects: [creating, revealingKey]
+  D5:
+    question: >-
+      May a course choose a public YouTube broadcast while the platform policy 'Ders kayıtları herkese açılamaz' is on? The policy says no recording is made
+      public and "YouTube'a yüklenemez". Drawn: refused (409 PLATFORM_POLICY_LOCKED), as the other course writes refuse a rule that policy closes. Nothing reads that
+      policy for recordings today (RECADD-1).
+    recommend: >-
+      Refuse, and say so with the existing sentence of Ders ayarları ('Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.').
+    affects: [savingSetting]
+  D6:
+    question: >-
+      What does 'Canlı yayın ekle' (the manual link) do on a celse that has a broadcast? MDRS-195 keeps it as the fallback. Drawn: the broadcast's link is
+      the celse's stream link and the manual button is not offered while a broadcast exists; a course that does not use YouTube keeps it.
+    recommend: >-
+      Hide the manual button on a celse with a broadcast; deleting the broadcast gives it back.
+    affects: [waiting, live, weak]
+  D7:
+    question: >-
+      Which notification does the talebe get when the recording is ready? MDRS-240 asks for a new type (SESSION_ADDED reads 'ders kaydı eklendi'); the
+      code has RECORDING_ADDED ('Kayıt eklendi'), sent once when a recording is READY, released and the celse has begun. Drawn: that one, at READY.
+    recommend: >-
+      Reuse RECORDING_ADDED: its rule is already the one RECADD-2 needs.
+    affects: [archiving, recorded]
+  D8:
+    question: >-
+      What if the hoca already added a recording to the celse (pasted a link, uploaded to Bunny, or pressed 'Yayını kayıt olarak ekle')? A celse holds one
+      recording. Drawn: the worker leaves it and attaches nothing (RECORDING_EXISTS), and says so.
+    recommend: >-
+      Never replace a hoca's recording; and hide 'Yayını kayıt olarak ekle' on a celse whose broadcast Medaris follows, since the worker attaches it.
+    affects: [ended, recordingKept]
+  D9:
+    question: >-
+      Can the başnazım disconnect the channel? The issues have connect and reconnect only. The YouTube policies ask for a link to the revocation page in the
+      privacy notice. Not drawn.
+    recommend: >-
+      A 'Bağlantıyı kes' button that deletes the refresh token and revokes it at Google; the celses keep their stream links, no new broadcast is made.
+    affects: [connected]
+  D10:
+    question: >-
+      Where is Google's callback? MDRS-237 says tedrisat's callback URLs, and the callback carries no token; the nizam web app could own it instead (it has
+      the session cookie) as it owns the sign-in callbacks. Drawn: tedrisat, with a one-time state.
+    recommend: >-
+      tedrisat, as MDRS-237 registers, with the state bound to the caller's sub.
+    affects: [starting, connecting]
+  D11:
+    question: >-
+      Does the state reach the screens by polling or by SSE? MDRS-239 says 'over SSE (or polling)'. Drawn: the page reads the list about every 30 seconds
+      (GET /courses/{id}/live-broadcasts); no state of SSE.
+    recommend: >-
+      Polling first: one worker already reads YouTube every 30 seconds and the page may as well.
+    affects: [waiting, live, weak]
+  D12:
+    question: >-
+      Will any course be paid? The Developer Policies forbid charging users to watch content in an embedded YouTube player (MDRS-237 item 9 asks the owner
+      to record the answer). Not drawn: it decides whether a paid course may turn the choice on.
+    recommend: >-
+      Record the answer in MDRS-237; if any course may be paid, refuse the choice for it.
+    affects: [courseSetting]
+  D13:
+    question: >-
+      Who connects? The menu entry is the başnazım's alone (MDRS-238 says SYSTEM_ADMIN); the permission platform.youtube_manage can be given to a Medaris
+      nazımı, who would then reach the page only by its address (the same shape as POL-7 of nizam.platform.policies). Drawn: the başnazım, or a holder of
+      the code, by the API.
+    recommend: >-
+      Show the menu entry to a holder of the code, or keep the code undelegable.
+    affects: [reading, refused]
+  D14:
+    question: >-
+      When YouTube does not answer a reschedule or a cancel, which wins? Drawn: the celse's own save stands; the row warns that the broadcast still has the
+      old time, and a cancelled celse's broadcast stays on the channel (exit cancelled.left_on_youtube) for a later sweep to delete.
+    recommend: >-
+      The celse's save always wins; a retried job fixes the broadcast, and the warning stays until it does.
+    affects: [rescheduling, removing, cancelled.left_on_youtube]
+  D15:
+    question: >-
+      What of a broadcast nobody started, and one in flight when the token is revoked? Drawn: a broadcast not live at the end of the celse is marked
+      'Yayın yapılmadı' and nothing is attached; in-flight is not drawn.
+    recommend: >-
+      Delete a never-started broadcast after the celse (it costs 50 units and clutters Studio); on a revoked token keep the last known state and say the
+      connection is lost.
+    affects: [neverWent, live]
+
+  D16:
+    question: >-
+      The names. Every route, body, refusal code and permission name of planned-youtube.yaml is a proposal: GET /nizam/youtube/connection, POST
+      /nizam/youtube/connection/start, GET /nizam/youtube/callback, PUT /courses/{id}/live-broadcast-settings, POST /lessons/{id}/live-broadcast, GET
+      /courses/{id}/live-broadcasts, GET /lessons/{id}/live-stream-key; the codes YOUTUBE_NOT_CONFIGURED, YOUTUBE_NOT_CONNECTED, YOUTUBE_RECONNECT_NEEDED,
+      YOUTUBE_LIVE_NOT_ENABLED, YOUTUBE_QUOTA_EXHAUSTED, YOUTUBE_API_ERROR, YOUTUBE_BROADCAST_EXISTS, YOUTUBE_BROADCAST_NOT_FOUND, YOUTUBE_CONSENT_DENIED,
+      YOUTUBE_NO_CHANNEL, YOUTUBE_STATE_INVALID, YOUTUBE_TOKEN_EXCHANGE_FAILED, YOUTUBE_VIDEO_FAILED. The permissions are the existing ones: platform.youtube_manage for
+      the connection, session.live_link for a celse's broadcast and key, course.settings for the course's choice; no new code is asked for.
+    recommend: >-
+      Keep the existing permission codes; settle the routes and codes when the first phase is written.
+    affects: [starting, connecting, savingSetting, creating, revealingKey]
+
+context:
+  # ---- case variables (what the world is): they pick the branch a walk takes ----
+  opening:
+    values: [none, ready, waiting, revoked, forbidden, failed]
+    initial: any
+    say:
+      none: "no channel is connected yet"
+      ready: "a channel is connected and YouTube has opened live streaming on it"
+      waiting: "a channel is connected and YouTube has not yet opened live streaming on it (the first time takes up to 24 hours)"
+      revoked: "the connection is REVOKED: a refresh answered invalid_grant"
+      forbidden: "tedrisat answers 403: the person neither is the başnazım nor holds platform.youtube_manage"
+      failed: "the read does not answer (a 5xx, a network error)"
+  connect:
+    values: [notConfigured, denied, noChannel, failed, storedLive, storedWaiting]
+    initial: any
+    say:
+      notConfigured: "the Google client is not set in this environment (phase 0 is not done): the start refuses"
+      denied: "the person presses İptal at Google"
+      noChannel: "the Google account owns no channel, or manages it by channel permission only"
+      failed: "the state is spent or expired, or Google refuses the code"
+      storedLive: "the consent is given, the channel is stored and YouTube has opened live streaming on it"
+      storedWaiting: "the consent is given and the channel is stored, but live streaming is not open yet"
+  holds:
+    values: [key, none]
+    initial: any
+    say:
+      key: "the person holds session.live_link on the course: the müderris, the köşk nazımı, or a ders nazırı who was given it"
+      none: "the person holds session.manage but not session.live_link: the row shows the state and no 'Yayın bilgileri'"
+  policy:
+    values: [free, locked]
+    initial: any
+    say:
+      free: "the platform policy 'Ders kayıtları herkese açılamaz' is off"
+      locked: "the platform policy 'Ders kayıtları herkese açılamaz' is on"
+  setting:
+    values: [saved, notConnected, forbidden, failed]
+    initial: any
+    say:
+      saved: "tedrisat takes the course's choice"
+      notConnected: "no channel is connected (409 YOUTUBE_NOT_CONNECTED)"
+      forbidden: "the person lost course.settings since the page opened (403)"
+      failed: "anything else: a 5xx, a refused body, a course that is gone"
+  creation:
+    values: [created, notReady, quota, failed, forbidden]
+    initial: any
+    say:
+      created: "YouTube takes the stream, the broadcast and the bind"
+      notReady: "the connection is missing or revoked (YOUTUBE_NOT_CONNECTED, YOUTUBE_RECONNECT_NEEDED) or live streaming is not open (YOUTUBE_LIVE_NOT_ENABLED)"
+      quota: "the day's budget cannot pay the calls (503 YOUTUBE_QUOTA_EXHAUSTED)"
+      failed: "YouTube refuses or does not answer, or the celse is gone, cancelled or has no time"
+      forbidden: "the person lost session.live_link since the page opened (403)"
+  update:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "YouTube takes the update of the time, or the delete"
+      failed: "YouTube refuses or does not answer (502 YOUTUBE_API_ERROR)"
+  reveal:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "YouTube answers the stream and its key"
+      failed: "the key cannot be read (YouTube down, the connection revoked, the person lost the code)"
+  archive:
+    values: [succeeded, failed, kept]
+    initial: any
+    say:
+      succeeded: "YouTube processes the video (processingStatus succeeded)"
+      failed: "YouTube fails to process it (failed or terminated)"
+      kept: "the celse already holds a recording the hoca added: the worker leaves it"
+
+  # ---- shown-state variables (what the screens remember) ----
+  link: { values: [none, ready, waiting, revoked], initial: none, say: { none: "the page says no channel is connected", ready: "the page says connected and live streaming open", waiting: "connected, live streaming not open yet", revoked: "the page says the connection is lost" } }
+  problem:
+    values: [none, notConfigured, denied, noChannel, failed]
+    initial: none
+    say:
+      none: "no problem under the connect button"
+      notConfigured: "'YouTube bağlantısı bu ortamda kurulmamış.'"
+      denied: "'İzin verilmedi, kanal bağlanmadı.'"
+      noChannel: "the account owns no channel"
+      failed: "'Kanal bağlanamadı. Biraz sonra yeniden deneyin.'"
+  use: { values: [off, on], initial: off, say: { off: "the switch 'YouTube ile canlı yayın' is off", on: "the switch is on" } }
+  stored: { values: [off, on], initial: off, say: { off: "the course does not use YouTube", on: "the course uses YouTube (the choice was saved)" } }
+  privacy: { values: [unlisted, public], initial: unlisted, say: { unlisted: "'Liste dışı'", public: "'Herkese açık'" } }
+  sprivacy: { values: [unlisted, public], initial: unlisted, say: { unlisted: "the saved visibility is 'Liste dışı'", public: "the saved visibility is 'Herkese açık'" } }
+  why:
+    values: [none, notReady, quota, failed]
+    initial: none
+    say:
+      none: "the row has no creation problem to say"
+      notReady: "'Yayın hazırlanamadı: Medaris’in YouTube bağlantısı hazır değil.'"
+      quota: "'Yayın hazırlanamadı: bugünkü YouTube kotası doldu.'"
+      failed: "'Yayın hazırlanamadı. Biraz sonra yeniden deneyin.'"
+  phase:
+    values: [waiting, live, weak, missed]
+    initial: waiting
+    say: { waiting: "the row says 'Yayın bekleniyor'", live: "'Yayında'", weak: "'Bağlantı zayıf'", missed: "'Yayın başlamadı'" }
+  key: { values: [masked, shown], initial: masked, say: { masked: "the key field shows dots", shown: "the key field shows the key" } }
+  recording:
+    values: [none, processing, ready]
+    initial: none
+    say: { none: "the celse has no recording of its broadcast", processing: "its row says 'Hazırlanıyor'", ready: "its row says 'Hazır' and the talebe can watch it" }
+  told: { values: [untold, told], initial: untold, say: { untold: "the talebe have not been told", told: "the talebe were told 'Kayıt eklendi'" } }
+  toast:
+    values: [none, connected, settingSaved, settingNotConnected, settingPolicy, settingForbidden, settingFailed, createForbidden, stale, copiedAddress, copiedKey, keyFailed]
+    initial: none
+    say:
+      none: "no toast"
+      connected: "'YouTube bağlandı' with the channel's name"
+      settingSaved: "'Ders ayarları kaydedildi'"
+      settingNotConnected: "the course's choice is refused: no channel is connected"
+      settingPolicy: "'Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.'"
+      settingForbidden: "'Bunu yapma izniniz yok.'"
+      settingFailed: "'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.'"
+      createForbidden: "'Bunu yapma izniniz yok.'"
+      stale: "the celse was saved but YouTube's broadcast still has the old time"
+      copiedAddress: "'Adres kopyalandı'"
+      copiedKey: "'Anahtar kopyalandı' (the key itself is never in the toast)"
+      keyFailed: "'Anahtar alınamadı'"
+
+guards:
+  anyToast: "toast != 'none'"
+  mayOpenPanel: "holds == 'key'"
+  # PLATFORM_POLICY_LOCKED is checked first: it is a rule on the choice itself, with no call to YouTube
+  lockedPublic: "policy == 'locked' and privacy == 'public' and use == 'on'"
+  # a broadcast is made only on a channel that can stream; the page's read can be stale, so a channel that was not open when the page was read cannot give one
+  madeOk: "creation == 'created' and link == 'ready'"
+  notReadyAnswer: "creation == 'notReady' or (creation == 'created' and link != 'ready')"
+
+effects:
+  linkNone: { set: { link: none } }
+  linkReady: { set: { link: ready } }
+  linkWaiting: { set: { link: waiting } }
+  linkRevoked: { set: { link: revoked } }
+  problemNone: { set: { problem: none } }
+  problemNotConfigured: { set: { problem: notConfigured } }
+  problemDenied: { set: { problem: denied } }
+  problemNoChannel: { set: { problem: noChannel } }
+  problemFailed: { set: { problem: failed } }
+  clearToast: { set: { toast: none } }
+  toastConnected: { set: { toast: connected } }
+  useOn: { set: { use: on } }
+  useOff: { set: { use: off } }
+  privacyPublic: { set: { privacy: public } }
+  privacyUnlisted: { set: { privacy: unlisted } }
+  storedOnUnlisted: { set: { stored: on, sprivacy: unlisted, toast: settingSaved } }
+  storedOnPublic: { set: { stored: on, sprivacy: public, toast: settingSaved } }
+  storedOff: { set: { stored: off, toast: settingSaved } }
+  settingNotConnected: { set: { toast: settingNotConnected } }
+  settingPolicy: { set: { toast: settingPolicy } }
+  settingForbidden: { set: { toast: settingForbidden } }
+  settingFailed: { set: { toast: settingFailed } }
+  whyNone: { set: { why: none, toast: none } }
+  whyNotReady: { set: { why: notReady } }
+  whyQuota: { set: { why: quota } }
+  whyFailed: { set: { why: failed } }
+  createForbidden: { set: { toast: createForbidden } }
+  stale: { set: { toast: stale } }
+  phaseWaiting: { set: { phase: waiting } }
+  phaseLive: { set: { phase: live } }
+  phaseWeak: { set: { phase: weak } }
+  phaseMissed: { set: { phase: missed } }
+  keyShown: { set: { key: shown, toast: none } }
+  keyMasked: { set: { key: masked, toast: none } }
+  copiedAddress: { set: { toast: copiedAddress } }
+  copiedKey: { set: { toast: copiedKey } }
+  keyFailed: { set: { toast: keyFailed } }
+  recordingProcessing: { set: { recording: processing } }
+  recordingReady: { set: { recording: ready, told: told } }
+  recordingTaken: { set: { recording: none } }
+
+failures:
+  reading: { from: getYoutubeConnection, refused: [AUTHZ_FORBIDDEN], unreadable: [] }
+  starting: { from: startYoutubeConnection, notConfigured: [YOUTUBE_NOT_CONFIGURED] }
+  connecting:
+    from: finishYoutubeConnection
+    denied: [YOUTUBE_CONSENT_DENIED]
+    noChannel: [YOUTUBE_NO_CHANNEL]
+    failed: [YOUTUBE_STATE_INVALID, YOUTUBE_TOKEN_EXCHANGE_FAILED]
+  savingSetting:
+    from: setCourseLiveBroadcastSettings
+    locked: [PLATFORM_POLICY_LOCKED]
+    notConnected: [YOUTUBE_NOT_CONNECTED]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, COURSE_NOT_FOUND]
+  creating:
+    from: createLiveBroadcast
+    notReady: [YOUTUBE_NOT_CONNECTED, YOUTUBE_RECONNECT_NEEDED, YOUTUBE_LIVE_NOT_ENABLED]
+    quota: [YOUTUBE_QUOTA_EXHAUSTED]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [YOUTUBE_API_ERROR, YOUTUBE_BROADCAST_EXISTS, LESSON_NOT_FOUND, COURSE_NOT_FOUND, LESSON_NOT_LIVE, LESSON_CANCELLED, LESSON_NOT_SCHEDULED]
+  rescheduling: { from: rescheduleLiveBroadcast, failed: [YOUTUBE_API_ERROR, YOUTUBE_RECONNECT_NEEDED, YOUTUBE_QUOTA_EXHAUSTED] }
+  removing: { from: removeLiveBroadcast, failed: [YOUTUBE_API_ERROR, YOUTUBE_RECONNECT_NEEDED] }
+  revealingKey: { from: getLiveStreamKey, failed: [YOUTUBE_API_ERROR, YOUTUBE_RECONNECT_NEEDED, YOUTUBE_BROADCAST_NOT_FOUND, AUTHZ_FORBIDDEN, LESSON_NOT_FOUND] }
+  ended: { from: attachBroadcastRecording, kept: [RECORDING_EXISTS] }
+  archiving: { from: settleBroadcastRecording, failed: [YOUTUBE_VIDEO_FAILED, YOUTUBE_RECONNECT_NEEDED] }
+
+# The main story, as the issues tell it: the başnazım connects the channel; a hoca turns the choice on and plans a celse; the broadcast is made; she
+# opens "Yayın bilgileri", shows the key and copies it; she starts OBS and stops it; Medaris attaches the video, which is "Hazır" once YouTube has
+# processed it; she goes on to the recording.
+main:
+  given: { opening: none, connect: storedLive, holds: key, policy: free, setting: saved, creation: created, update: ok, reveal: ok, archive: succeeded }
+  events: [OPEN_YOUTUBE, DONE, CONNECT, DONE, GOOGLE_RETURNS, DONE, OPEN_COURSE_SETTINGS, TOGGLE_USE, SAVE, DONE, CELSE_PLANNED, DONE, OPEN_PANEL, REVEAL_KEY, DONE, COPY_KEY, CLOSE, ENCODER_STARTED, ENCODER_STOPPED, DONE, DONE, OPEN_RECORDINGS]
+
+initial: menu
+states:
+  # ===== phase 1a: the başnazım connects the channel (nizam, /ayarlar/youtube) =====
+  menu:
+    title: The menu says "YouTube bağlantısı"
+    by: human
+    description: >-
+      The başnazım is on a nizam page and the sidebar lists "YouTube bağlantısı" under Ayarlar (lib/shell-nav.ts:149, the başnazım's menu alone; a
+      Medaris nazımı with platform.youtube_manage is not given it, D13). THE ENTRY EXISTS TODAY and opens a page that does not: the catch-all route
+      answers "Sayfa bulunamadı" inside the shell (F-P0-4, F-W3-10, F-X-11; nizam nav page `youtube`, kind missing). Every state below, up to `connected`,
+      is the page it must lead to.
+    source: apps/nizam/lib/shell-nav.ts:149
+    on:
+      OPEN_YOUTUBE: { target: reading, source: apps/nizam/lib/shell-nav.ts:149, say: "the başnazım presses 'YouTube bağlantısı': today the address falls through to apps/nizam/app/[...rest]/page.tsx:9 and notFound(); planned: the page below" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  reading:
+    title: Read the connection
+    description: >-
+      The page's server component reads GET /nizam/youtube/connection: the channel, whether it is connected or revoked, whether YouTube has opened live
+      streaming on it, who connected it and when. 403 for a person who may not manage it (the section refusal); any other failure is the page's error
+      box with "Tekrar dene".
+    invoke: { action: getYoutubeConnection }
+    on:
+      DONE:
+        - { guard: "opening == 'none'", target: notConnected, effect: [linkNone, problemNone], say: "no channel is connected: the page offers 'YouTube’u bağla'" }
+        - { guard: "opening == 'ready'", target: connected, effect: [linkReady, problemNone], say: "the channel is connected and can stream" }
+        - { guard: "opening == 'waiting'", target: connected, effect: [linkWaiting, problemNone], say: "the channel is connected and YouTube has not yet opened live streaming on it" }
+        - { guard: "opening == 'revoked'", target: reconnect, effect: [linkRevoked, problemNone], say: "the connection is lost: the page shows the reconnect alert" }
+      FAIL.refused: { guard: "opening == 'forbidden'", target: refused, say: "tedrisat answers 403 and the page shows 'Bu bölüm için izniniz yok'" }
+      FAIL.unreadable: { guard: "opening == 'failed'", target: loadFailed, say: "the page keeps its title and says the connection could not be read" }
+
+  notConnected:
+    title: No channel is connected
+    by: human
+    description: >-
+      The page: its title "YouTube bağlantısı", an introduction, "Kanal" with the status "Bağlı değil", what that means for the hocas, and the button
+      "YouTube’u bağla". After a failed try an alert under it says why (not configured, not allowed, no channel, failed). The consent must come from
+      the channel's owner or a Brand Account manager, which the page says before the press (MDRS-195: a channel-permission delegate cannot manage through the API).
+    on:
+      CONNECT: { target: starting, say: "they press 'YouTube’u bağla'" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  reconnect:
+    title: The connection is lost
+    by: human
+    description: >-
+      The same page with the status "Bağlantı koptu" and an alert "YouTube bağlantısı geçersiz": the token was revoked or expired (MDRS-238: 'show nizam a
+      reconnect alert'). No new broadcast can be made until it is fixed. "Yeniden bağla" is the same start as the first connect.
+    on:
+      CONNECT: { target: starting, say: "they press 'Yeniden bağla'" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  starting:
+    title: Ask for Google's address
+    description: >-
+      The server action calls POST /nizam/youtube/connection/start: tedrisat mints a one-time state bound to the caller and answers Google's authorization
+      address (scope youtube.force-ssl, access_type offline, prompt consent); nizam sends the browser there. An environment without the Google client set
+      (phase 0 not done) refuses with 503 YOUTUBE_NOT_CONFIGURED and the page says so.
+    invoke: { action: startYoutubeConnection }
+    on:
+      DONE: { guard: "connect != 'notConfigured'", target: atGoogle, say: "the browser leaves for accounts.google.com" }
+      FAIL.notConfigured: { guard: "connect == 'notConfigured'", target: connectBack, effect: [problemNotConfigured], say: "the page says the connection is not set up in this environment" }
+
+  atGoogle:
+    title: Google's consent screen
+    by: human
+    description: >-
+      Google's own page, not drawn: the account is chosen, the permission to manage the YouTube account is read, and the person presses 'İzin ver' or
+      'İptal'. Either way Google sends the browser to tedrisat's callback address, which phase 0 registered. Whatever Google shows is Google's.
+    on:
+      GOOGLE_RETURNS: { target: connecting, say: "Google returns the browser to the callback with a code, or with error=access_denied" }
+      NAVIGATE: { target: left, say: "they close the tab" }
+
+  connecting:
+    title: Take Google's answer
+    description: >-
+      GET /nizam/youtube/callback?code&state: the state is spent, the code is exchanged, the channel is read (title, id, whether live streaming is
+      enabled) and the refresh token is stored encrypted; then the browser is redirected to /ayarlar/youtube (?bagli=1 or ?hata=<kod>). A refusal
+      leaves nothing stored: denied, no channel, or a state that is spent or older than ten minutes.
+    invoke: { action: finishYoutubeConnection }
+    on:
+      DONE:
+        - { guard: "connect == 'storedLive'", target: connected, effect: [linkReady, problemNone, toastConnected], say: "the channel is connected and can stream; a toast says so" }
+        - { guard: "connect == 'storedWaiting'", target: connected, effect: [linkWaiting, problemNone, toastConnected], say: "the channel is connected; the page says YouTube has not yet opened live streaming on it" }
+      FAIL.denied: { guard: "connect == 'denied'", target: connectBack, effect: [problemDenied], say: "nothing is stored; the page says the permission was not given" }
+      FAIL.noChannel: { guard: "connect == 'noChannel'", target: connectBack, effect: [problemNoChannel], say: "nothing is stored; the page says the account owns no channel" }
+      FAIL.failed: { guard: "connect == 'failed'", target: connectBack, effect: [problemFailed], say: "nothing is stored; the page says the channel could not be connected" }
+
+  connectBack:
+    title: Back to the page, as it was
+    description: "Not a screen: after a failed start or callback the page is the one the person came from, the reconnect page when the connection was lost, else the not-connected page."
+    always:
+      - { guard: "link == 'revoked'", target: reconnect, say: "the connection was lost before: the reconnect page, now with the problem" }
+      - { target: notConnected, say: "no channel was connected: the first page, now with the problem" }
+
+  connected:
+    title: The channel is connected
+    by: human
+    goal: true
+    description: >-
+      The page: "Kanal" with the channel's name, the status "Bağlı", who connected it and when, and one line on live streaming: "Kanal canlı yayına
+      hazır." or, while YouTube has not yet opened it (up to 24 hours the first time, MDRS-237), that no broadcast can be made until it does. No
+      disconnect button (D9). Later, in nazar-web, a hoca opens Ders ayarları of a course (OPEN_COURSE_SETTINGS, caused by another person).
+    on:
+      OPEN_COURSE_SETTINGS: { target: courseSetting, say: "later, a hoca (or a ders nazırı who holds course.settings) opens Ders ayarları of her course in nazar-web: another person, another app" }
+      TOKEN_REVOKED: { target: reconnect, effect: [linkRevoked], say: "the owner removes Medaris's access at Google, or the token expires: the next read of the page shows the reconnect alert" }
+      CLOSE_TOAST: { guard: anyToast, target: connected, effect: [clearToast], say: "they close the toast" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  loadFailed:
+    title: The connection could not be read
+    by: human
+    description: "The page keeps its title and introduction and replaces the rest with one error box and 'Tekrar dene'."
+    on:
+      RETRY: { target: reading, say: "they press 'Tekrar dene': the page reads again" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  refused:
+    title: Bu bölüm için izniniz yok
+    by: human
+    description: >-
+      forbidden() draws the shell's refusal in place of the page (nizam.shell.noAccessAndNotFound): a person who is neither the başnazım nor holds
+      platform.youtube_manage. The screen exists; only its being asked here is planned.
+    on:
+      GO_HOME: { target: home_opened, source: apps/nizam/components/errors/no-access.tsx:38, say: "'Ana sayfaya dön' goes to '/'" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  # ===== phase 1b: the course's choice and a broadcast per celse (nazar, Ders ayarları and Celseler) =====
+  courseSetting:
+    title: Ders ayarları, the card "Canlı yayın"
+    by: human
+    description: >-
+      THE PAGE EXISTS (nazar.courseSettings.access: /ders/<id>/ayarlar); the card is new. A hoca (or a ders nazırı who holds course.settings) finds
+      "Canlı yayın": the switch "YouTube ile canlı yayın", and under it the visibility, stated explicitly, "Liste dışı" or "Herkese açık" (MDRS-238;
+      YouTube's policy asks that visibility is the user's explicit choice). "Kaydet" writes it. It changes nothing for celses already planned. The page's
+      own card "Erişim, kayıt ve saat dilimi" and its Kaydet are another flow's. D12: a paid course.
+    on:
+      TOGGLE_USE:
+        - { guard: "use == 'off'", target: courseSetting, effect: [useOn], say: "they switch 'YouTube ile canlı yayın' on" }
+        - { target: courseSetting, effect: [useOff], say: "they switch it off" }
+      PICK_PUBLIC: { target: courseSetting, effect: [privacyPublic], say: "they choose 'Herkese açık'" }
+      PICK_UNLISTED: { target: courseSetting, effect: [privacyUnlisted], say: "they choose 'Liste dışı'" }
+      SAVE: { target: savingSetting, say: "they press 'Kaydet'" }
+      CELSE_PLANNED: { guard: "stored == 'on'", target: creating, say: "later, the hoca plans a celse or a batch (nazar.sessions.plan) for a course that uses YouTube: Medaris makes its broadcast at once (MDRS-238)" }
+      CLOSE_TOAST: { guard: anyToast, target: courseSetting, effect: [clearToast], say: "they close the toast" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  savingSetting:
+    title: Save the course's choice
+    description: >-
+      PUT /courses/{id}/live-broadcast-settings with {enabled, privacy}. Refused when no channel is connected, or for PUBLIC while the platform policy
+      'Ders kayıtları herkese açılamaz' is on (D5). A success is the page's own toast "Ders ayarları kaydedildi"; a refusal is a toast and the card keeps
+      what was pressed.
+    invoke: { action: setCourseLiveBroadcastSettings }
+    on:
+      DONE:
+        - { guard: "setting == 'saved' and not lockedPublic and use == 'on' and privacy == 'public'", target: courseSetting, effect: [storedOnPublic], say: "the choice is on and public: celses planned from now on get a public broadcast" }
+        - { guard: "setting == 'saved' and not lockedPublic and use == 'on'", target: courseSetting, effect: [storedOnUnlisted], say: "the choice is on, 'Liste dışı': celses planned from now on get a broadcast" }
+        - { guard: "setting == 'saved' and not lockedPublic", target: courseSetting, effect: [storedOff], say: "the choice is off: no broadcast is made for a new celse; the ones made stay" }
+      FAIL.locked: { guard: lockedPublic, target: courseSetting, effect: [settingPolicy], say: "the platform policy locks 'Herkese açık': a toast says so and nothing is saved" }
+      FAIL.notConnected: { guard: "setting == 'notConnected' and not lockedPublic", target: courseSetting, effect: [settingNotConnected], say: "no channel is connected: a toast says to ask the başnazım" }
+      FAIL.forbidden: { guard: "setting == 'forbidden' and not lockedPublic", target: courseSetting, effect: [settingForbidden], say: "the person lost the permission" }
+      FAIL.failed: { guard: "setting == 'failed' and not lockedPublic", target: courseSetting, effect: [settingFailed], say: "any other refusal: the generic toast" }
+
+  creating:
+    title: Make the celse's broadcast
+    description: >-
+      POST /lessons/{id}/live-broadcast, called inside the plan (createLesson, createSessionBatch) when the course uses YouTube and by the button 'YouTube
+      yayını oluştur': the quota guard, the hoca's stream (created and kept on her first YouTube lesson), liveBroadcasts.insert (title, the celse's time,
+      the course's visibility, embed on, made-for-kids off, auto start and auto stop, DVR and record-from-start on), bind, and the celse's stream link
+      written from the broadcast id, about 100 units. A batch checks the quota for the whole course first. A refusal leaves the celse planned and with no
+      broadcast: the row says why and keeps the button.
+    invoke: { action: createLiveBroadcast }
+    on:
+      DONE: { guard: madeOk, target: waiting, effect: [whyNone, phaseWaiting], say: "the broadcast exists and is bound to the hoca's stream; the celse's Katılım says 'YouTube yayını'" }
+      FAIL.notReady: { guard: notReadyAnswer, target: noBroadcast, effect: [whyNotReady], say: "no channel, a lost connection or live streaming not yet open: the row says the connection is not ready" }
+      FAIL.quota: { guard: "creation == 'quota'", target: noBroadcast, effect: [whyQuota], say: "the day's quota is spent: the row says so" }
+      FAIL.failed: { guard: "creation == 'failed'", target: noBroadcast, effect: [whyFailed], say: "YouTube refused or did not answer: the row says to try again" }
+      FAIL.forbidden: { guard: "creation == 'forbidden'", target: noBroadcast, effect: [createForbidden], say: "the person lost session.live_link: a toast says so" }
+
+  noBroadcast:
+    title: A celse with no broadcast
+    by: human
+    description: >-
+      THE PAGE EXISTS (nazar.sessions.manage: Celseler). A celse of a course that uses YouTube, still ahead, has no broadcast: because its creation failed
+      (the row says why: connection, quota or YouTube) or because it was planned before the choice. The row keeps "Eksik" if it has no other way in, and
+      offers "YouTube yayını oluştur" to a holder of session.live_link. 'Canlı yayın ekle' (the manual link) is still there (D6).
+    on:
+      CREATE: { target: creating, effect: [whyNone], say: "they press 'YouTube yayını oluştur'" }
+      CLOSE_TOAST: { guard: anyToast, target: noBroadcast, effect: [clearToast], say: "they close the toast" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  # ===== phase 2: follow the broadcast (the row on Celseler, until the celse has ended) =====
+  waiting:
+    title: Yayın bekleniyor
+    by: human
+    description: >-
+      The celse's row says "Yayın bekleniyor" and "YouTube yayını" in Katılım (the stream link is the broadcast's: the same field the manual link writes).
+      A holder of session.live_link has "Yayın bilgileri". The worker reads YouTube from 15 minutes before the start. Nobody calls transition: when the
+      hoca starts the encoder, YouTube starts the broadcast; five minutes past the celse's time with no encoder, the row warns. A moved or cancelled
+      celse reaches the broadcast through the events below (nazar.sessions.manage, nazar.sessions.cancel).
+    on:
+      OPEN_PANEL: { guard: mayOpenPanel, target: panel, effect: [phaseWaiting], say: "they press 'Yayın bilgileri'" }
+      ENCODER_STARTED: { target: live, effect: [phaseLive], say: "the hoca starts OBS: YouTube starts the broadcast by itself and the worker reads LIVE" }
+      START_MISSED: { target: missedStart, effect: [phaseMissed], say: "five minutes after the scheduled start the broadcast is not live: the row warns (MDRS-239)" }
+      CELSE_RESCHEDULED: { target: rescheduling, say: "the hoca moves the celse (nazar.sessions.manage: 'Tarihi değiştir'): the broadcast is to follow" }
+      CELSE_CANCELLED: { target: removing, say: "the celse is cancelled (nazar.sessions.cancel): the broadcast is to be deleted" }
+      CLOSE_TOAST: { guard: anyToast, target: waiting, effect: [clearToast], say: "they close the toast" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  rescheduling:
+    title: Move the broadcast
+    description: >-
+      After updateLesson saves the new time, liveBroadcasts.update is called with the whole part (it overwrites the part), 50 units. If YouTube
+      refuses, the celse's own save stands and the row warns that the broadcast still has the old time (D14).
+    invoke: { action: rescheduleLiveBroadcast }
+    on:
+      DONE: { guard: "update == 'ok'", target: waiting, effect: [clearToast], say: "the broadcast has the new time" }
+      FAIL.failed: { guard: "update == 'failed'", target: waiting, effect: [stale], say: "the celse is moved and the broadcast is not: a toast says so" }
+
+  removing:
+    title: Delete the broadcast
+    description: >-
+      After cancelLesson saves, liveBroadcasts.delete is called (50 units) and the celse's stream link is cleared: a cancelled session takes no live stream link.
+      If YouTube refuses, the celse stays cancelled and the broadcast stays on the channel (D14).
+    invoke: { action: removeLiveBroadcast }
+    on:
+      DONE: { guard: "update == 'ok'", target: cancelled.removed, say: "the broadcast is deleted and the celse says 'İptal edildi'" }
+      FAIL.failed: { guard: "update == 'failed'", target: cancelled.left_on_youtube, say: "the celse is cancelled and the broadcast stays on the channel" }
+
+  missedStart:
+    title: Yayın başlamadı
+    by: human
+    description: >-
+      Five minutes after the scheduled start the broadcast is not live. The row says "Yayın başlamadı" and "Celse başladı ama yayın gelmiyor. OBS’te yayını
+      başlatın." (MDRS-239: warn if the broadcast is not live 5 minutes after the scheduled start). The hoca can still start late.
+    on:
+      OPEN_PANEL: { guard: mayOpenPanel, target: panel, effect: [phaseMissed], say: "they press 'Yayın bilgileri'" }
+      ENCODER_STARTED: { target: live, effect: [phaseLive], say: "the hoca starts OBS late: the broadcast goes live" }
+      END_PASSED: { target: neverWent, say: "the celse's time is over and no encoder ever started" }
+      CELSE_CANCELLED: { target: removing, say: "the celse is cancelled" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  neverWent:
+    title: Yayın yapılmadı
+    by: human
+    description: >-
+      The celse is over and the broadcast was never live. The row says "Yayın yapılmadı"; nothing is attached. What happens to the unused broadcast on the
+      channel is open (D15). A recording of the celse can still be added by hand (nazar.recordings.add).
+    on:
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  live:
+    title: Yayında
+    by: human
+    description: >-
+      The row says "Yayında". On the talebe's celse page the player shows the same state (MDRS-239; tedris.celse.watchStream). The worker keeps reading the
+      stream's health: a bad or silent stream is "Bağlantı zayıf".
+    on:
+      OPEN_PANEL: { guard: mayOpenPanel, target: panel, effect: [phaseLive], say: "they press 'Yayın bilgileri'" }
+      HEALTH_WEAK: { target: weak, effect: [phaseWeak], say: "YouTube reports the stream's health bad or no data" }
+      ENCODER_STOPPED: { target: ended, say: "the hoca stops OBS: about a minute later YouTube ends the broadcast by itself" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  weak:
+    title: Bağlantı zayıf
+    by: human
+    description: >-
+      The row says "Bağlantı zayıf" with the stream's configuration issues in plain words (YouTube's healthStatus and configurationIssues, worded for
+      people). The lesson goes on.
+    on:
+      OPEN_PANEL: { guard: mayOpenPanel, target: panel, effect: [phaseWeak], say: "they press 'Yayın bilgileri'" }
+      HEALTH_GOOD: { target: live, effect: [phaseLive], say: "the stream recovers" }
+      ENCODER_STOPPED: { target: ended, say: "the hoca stops OBS" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  # ===== the stream key panel (a dialog over the Celseler row) =====
+  panel:
+    title: Yayın bilgileri, the key masked
+    by: human
+    description: >-
+      A dialog "{celse} celsesinin YouTube yayını": the state, the RTMPS address with "Kopyala", the stream key as dots with "Göster", the OBS settings
+      (the stream's resolution and frame rate), a line that YouTube starts and ends the broadcast when OBS starts and stops, and a warning that whoever has
+      the key can broadcast in the hoca's name. Only a holder of session.live_link opens it. The key is not in the dialog until "Göster" reads it (D3).
+    on:
+      REVEAL_KEY: { target: revealingKey, say: "they press 'Göster'" }
+      COPY_ADDRESS: { target: panel, effect: [copiedAddress], say: "they press 'Kopyala' by the address: a toast says it is copied" }
+      CLOSE: { target: back, effect: [keyMasked], say: "they close the dialog (the close button or Escape): the key is forgotten" }
+
+  revealingKey:
+    title: Read the key from YouTube
+    by: human
+    description: >-
+      GET /lessons/{id}/live-stream-key reads the stream (liveStreams.list, 1 unit) and answers the key with no-store; an audit row says who read it and
+      never what it was. The button is busy meanwhile. The key is never stored by Medaris.
+    invoke: { action: getLiveStreamKey }
+    on:
+      DONE: { guard: "reveal == 'ok'", target: panelShown, effect: [keyShown], say: "the field shows the key; 'Göster' becomes 'Gizle'" }
+      FAIL.failed: { guard: "reveal == 'failed'", target: panel, effect: [keyFailed], say: "a toast says the key could not be read; the field stays dots" }
+      CLOSE: { target: back, effect: [keyMasked], say: "they close the dialog while the key is read: the answer is dropped and the key is never shown" }
+
+  panelShown:
+    title: Yayın bilgileri, the key shown
+    by: human
+    description: >-
+      The same dialog with the key in the field, "Gizle" and "Kopyala" by it. A copy puts the key on the clipboard and a toast says so without saying the
+      key. Closing the dialog masks it again.
+    on:
+      HIDE_KEY: { target: panel, effect: [keyMasked], say: "they press 'Gizle': the field is dots again" }
+      COPY_KEY: { target: panelShown, effect: [copiedKey], say: "they press 'Kopyala' by the key: a toast says it is copied" }
+      COPY_ADDRESS: { target: panelShown, effect: [copiedAddress], say: "they copy the address" }
+      CLOSE: { target: back, effect: [keyMasked], say: "they close the dialog: the key is forgotten" }
+
+  back:
+    title: Back to the row
+    description: "Not a screen: the dialog closed, the row is as the world left it."
+    always:
+      - { guard: "phase == 'waiting'", target: waiting, say: "the broadcast is still waiting" }
+      - { guard: "phase == 'live'", target: live, say: "it is live" }
+      - { guard: "phase == 'weak'", target: weak, say: "its connection is weak" }
+      - { target: missedStart, say: "it did not start" }
+
+  # ===== phase 3: the recording (nazar, Ders kayıtları) =====
+  ended:
+    title: Bitti
+    description: >-
+      The worker reads lifeCycleStatus complete. The row says "Bitti". The celse's recording is attached now: a lesson_recordings row of provider YOUTUBE,
+      the broadcast's watch link, status PROCESSING. That is when the recording is attached; it is not yet "Hazır" (RECADD-2). The talebe are not told.
+      When the hoca already added a recording (D8) nothing is written.
+    invoke: { action: attachBroadcastRecording }
+    on:
+      DONE: { guard: "archive != 'kept'", target: archiving, effect: [recordingProcessing], say: "the row is written PROCESSING: Ders kayıtları says 'Hazırlanıyor'" }
+      FAIL.kept: { guard: "archive == 'kept'", target: recordingKept, say: "the celse already has a recording: the worker leaves it alone" }
+
+  archiving:
+    title: YouTube is processing the video
+    by: human
+    description: >-
+      THE PAGE EXISTS (nazar.recordings.add: Ders kayıtları). The celse's row shows the recording, a YouTube chip and "Hazırlanıyor", with the existing
+      sentence "YouTube yayını arşivleyince kayıt olarak oynar." beside it, until the worker reads processingStatus succeeded (videos.list, owner's
+      token). With DVR and record-from-start on, playback is available right away; without them it can take about a day (MDRS-240). The talebe cannot
+      watch it and are not told. Not 'Yayını kayıt olarak ekle': that one-click is for a link the hoca gave (D8).
+    invoke: { action: settleBroadcastRecording }
+    on:
+      DONE: { guard: "archive == 'succeeded'", target: recorded, effect: [recordingReady], say: "YouTube has processed the video: the row is READY with its length, and RECORDING_ADDED goes to the enrolled talebe, once" }
+      FAIL.failed: { guard: "archive == 'failed'", target: archiveFailed, effect: [recordingTaken], say: "YouTube could not process the video: the row is taken off and the page says so" }
+
+  recorded:
+    title: Hazır
+    by: human
+    goal: true
+    description: >-
+      The recording is READY: the row says "Hazır" with the visibility the course chose, "Kayıt eklendi" has gone to the enrolled talebe once, and they can
+      watch it from the celse page (tedris.celse.watchRecording). What the hoca can still do with it, 'Düzenle' and 'Kayıt erişimi', is nazar.recordings.add's.
+    on:
+      OPEN_RECORDINGS: { target: handed_over.recordings, starts: { flow: nazar.recordings.add }, say: "they go on to edit the recording or when the talebe may watch it" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  archiveFailed:
+    title: YouTube could not process the video
+    by: human
+    description: >-
+      The celse has no recording again ("Kayıt yok") and an alert says YouTube could not process the video: add the recording by hand, with its link or by
+      uploading (nazar.recordings.add, nazar.recordings.upload). A FAILED recording is listed to no one, so the row is taken off.
+    on:
+      OPEN_RECORDINGS: { target: handed_over.recordings, starts: { flow: nazar.recordings.add }, say: "they press 'Kayıt ekle'" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  recordingKept:
+    title: The hoca's own recording stands
+    by: human
+    description: >-
+      The celse already held a recording when the broadcast ended: the one the hoca pasted, uploaded or made from the stream's link. Medaris attaches
+      nothing and says so; the existing row is shown as it is (D8).
+    on:
+      OPEN_RECORDINGS: { target: handed_over.recordings, starts: { flow: nazar.recordings.add }, say: "they go on to nazar.recordings.add" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  # ===== exits =====
+  handed_over.recordings:
+    type: final
+    title: Ders kayıtları goes on
+    leavesPage: true
+    description: "nazar.recordings.add draws what follows: editing the recording, 'Kayıt erişimi', adding a link or uploading."
+  home_opened:
+    type: final
+    title: The home page is open
+    leavesPage: true
+    description: "'Ana sayfaya dön' of the refusal goes to '/'; where the person lands is nizam.shell.landingByRole's."
+  cancelled.removed:
+    type: final
+    title: The celse is cancelled and its broadcast is gone
+    leavesPage: true
+    description: "nazar.sessions.cancel draws the celse as cancelled; its stream link is cleared and the YouTube broadcast is deleted."
+  cancelled.left_on_youtube:
+    type: final
+    title: The celse is cancelled and its broadcast stays on the channel
+    leavesPage: true
+    description: "YouTube did not answer the delete; the cancel stands and the broadcast stays on the channel (D14)."
+  left:
+    type: final
+    title: The person went to another page
+    leavesPage: true
+
+assertions:
+  - { id: the-key-is-for-its-people-only, never: "key == 'shown' and holds == 'none'", say: "The stream key is never on a screen of a person who does not hold session.live_link" }
+  - { id: the-key-does-not-outlive-the-dialog, never: "key == 'shown' and state != 'panelShown'", say: "The key is shown only while the dialog is open and shows it; closing it, hiding it or a failed read leaves dots" }
+  - { id: no-broadcast-on-a-dead-connection, never: "state == 'waiting' and link != 'ready'", say: "A broadcast exists only on a channel the page knew was connected and open for live streaming" }
+  - { id: no-broadcast-without-the-choice, never: "state == 'creating' and stored != 'on'", say: "No broadcast is made for a course whose choice 'YouTube ile canlı yayın' was not saved on" }
+  - { id: no-public-broadcast-under-the-policy, never: "stored == 'on' and sprivacy == 'public' and policy == 'locked'", say: "A public YouTube broadcast is never saved while the platform policy 'Ders kayıtları herkese açılamaz' is on (D5)" }
+  - { id: the-talebe-are-told-only-when-ready, never: "told == 'told' and recording != 'ready'", say: "The talebe are told 'Kayıt eklendi' only for a recording that is READY (RECADD-2)" }
+  - { id: ready-only-after-processing, never: "state == 'recorded' and archive != 'succeeded'", say: "A recording of a broadcast is READY only when YouTube has processed the video" }
+  - { id: a-hocas-recording-is-kept, never: "state == 'archiving' and archive == 'kept'", say: "The worker never writes over a recording the hoca added" }

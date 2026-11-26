@@ -1,0 +1,259 @@
+# The screens of nizam.kosks.manage: the Medaris management's view of one köşk (/kosks/<id>, features/kosks/components/
+# kosk-manage-page.tsx), the box that stands for it when it cannot be read, the four dialogs it opens (Köşkü gizle, Köşkü pasife
+# al, Köşk nazımı ekle, Barındırma hakkını geri al) and the toasts of their answers. Read from apps/nizam/features/kosks/components/
+# {kosk-manage-page,hide-kosk-dialog,add-nazim-dialog,nazim-picker,kosk-course-table,load-failed}.tsx, features/passivation/components/
+# passivate-scope-dialog.tsx and features/hosting/components/revoke-dialog.tsx on 16 Nov 2026; the words are copied from
+# libs/i18n/src/locales/tr/nizam.json (namespaces KoskManage, KoskNazims, KoskNazimPicker, HostingPage, KoskCourses, HideKoskDialog,
+# PassivateScopeDialog, AddNazimDialog, RevokeDialog, KoskDirectory).
+#
+# The page behind a dialog is drawn only in the states where no dialog is open: a modal dialog makes the page inert. The shell
+# (sidebar, menu, bell) is nizam.shell.menuPerPersona's; the view is drawn as the one <main>, which is the shell's own and has no name.
+#
+# Composed words, in no i18n file, are `composed.<Namespace>.<name>` and the catalog says so:
+#   composed.KoskManage.name         "{kosk}": the köşk's name, as the h1, the last crumb and the dialogs' eyebrow draw it (kosk-manage-page.tsx:354,359)
+#   composed.KoskManage.handle       "{handle}": "@" and the short name (admin-present.ts:165, kosk-manage-page.tsx:361)
+#   composed.KoskManage.publicPageName  the public-page link's name: its text and the hidden "(yeni sekmede açılır)" (kosk-manage-page.tsx:375)
+#   composed.KoskManage.breakdown    "{publishedLine} · {draftLine} · {hiddenLine}": three catalog messages joined (overview-present.ts:157)
+#   composed.KoskManage.hostingNames "{medrese}": the names of the medreses that hold a right, joined (kosk-manage-page.tsx:433)
+#   composed.KoskManage.opened       "{date} · {opener}": the opening date and who opened (kosk-manage-page.tsx:317)
+#   composed.KoskManage.person       "{person}": a person's name in the nazım table and in the picker's chosen list
+#   composed.RevokeDialog.medrese    "{medrese}": the dialog's eyebrow, the medrese's name (revoke-dialog.tsx:103)
+#   composed.AddNazimDialog.required "* zorunlu alan": a star before the catalog's "zorunlu alan" (add-nazim-dialog.tsx:133)
+# `Changes.note` is the one message authored here: no message of the app says what the five actions change together.
+schema: delurio-graph/0
+kind: ui
+id: nizam.kosks.manage
+flow: nizam.kosks.manage
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  kosk: Deneme köşkü kmanage
+  name: Deneme köşkü kmanage # {name} of the hide, restore and passivation toasts is the köşk's; the picker's and the hosting table's {name} are a person's and a medrese's (the binding finds those by pattern)
+  handle: "@deneme-kmanage"
+  koskGenitive: Deneme köşkü kmanage köşkünün
+  koskLocative: Deneme köşkü kmanage köşkünde
+  publishedLine: 1 yayında
+  draftLine: 0 taslak
+  hiddenLine: 0 gizli
+  medrese: Hadis ve Siyer Medresesi
+  date: 16 Kasım 2026
+  opener: Vedat Başnazım
+  person: Betül Başvuran
+  since: 16 Kasım’dan beri
+  count: "1"
+  published: "1"
+  draft: "0"
+  days: "7"
+  names: Dilek Başvuran
+  countWord: bir
+
+# No page or dialog of the view sets a focus of its own on load, and none after a write: nothing in kosk-manage-page.tsx calls focus()
+# or sets autoFocus, so there is no `initialFocus` on the page and no `focus` here (focus-not-set, MANAGE-3). A dialog gives it to the
+# node its component names (Vazgeç, or the e-mail field), and hands it back to what opened it (`returnsFocus`).
+nodes:
+  # ---- the page ----
+  managePage: { type: page, component: Page, role: main, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:348 } # the shell's one <main id="main">, with no name; the view is a div inside it (data-testid kosk-manage)
+  loadFailedPage: { type: page, component: Page, role: main, in: [loadFailed], source: "apps/nizam/app/kosks/[id]/page.tsx:72" } # the same <main>, holding only the box
+  breadcrumb: { type: page, component: Page, role: navigation, name: { key: KoskManage.breadcrumbLabel }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:352 }
+  crumbKosks: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: KoskManage.kosks }, text: { key: KoskManage.kosks }, in: [viewing, restoring], emits: OPEN_KOSKS, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:354 } # live while "Köşkü geri al" runs: only that button is busy (kosk-manage-page.tsx:494)
+  crumbCurrent: { type: text, component: Text, text: { key: composed.KoskManage.name, params: { kosk: kosk.name } }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:354 } # the last crumb, aria-current=page, never a link
+  koskTitle: { type: text, component: Heading, role: heading, text: { key: composed.KoskManage.name, params: { kosk: kosk.name } }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:358 } # h1; the tab says only "Köşk" (F-W3-9)
+  koskHandle: { type: text, component: Text, text: { key: composed.KoskManage.handle, params: { handle: kosk.handle } }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:361 }
+  nazimView: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskManage.nazimView }, in: [viewing, restoring], emits: OPEN_DERSLER, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:364 }
+  publicPage: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.KoskManage.publicPageName }, text: { key: KoskManage.publicPage }, in: [viewing, restoring], emits: OPEN_PUBLIC, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:367 } # opens tedris-web in a new tab (target=_blank); left out when the deployment has no TEDRIS_URL, which the local stack has
+  notice: { type: alert, component: Alert, role: status, text: { key: KoskManage.notice }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:382 } # a neutral Alert is a status
+  hiddenNote: { type: alert, component: Alert, role: status, text: { key: KoskManage.hiddenNote, params: { since: kosk.since } }, in: [viewing, restoring], when: "view == 'hidden'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:385 } # a warning, still a status
+  passiveNote: { type: alert, component: Alert, role: status, text: { key: KoskManage.passiveNote, params: { since: kosk.since } }, in: [viewing, restoring], when: "view == 'passive'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:387 }
+
+  # ---- the four numbers ----
+  summaryRegion: { type: page, component: Page, role: region, name: { key: KoskManage.summaryLabel }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:391 } # <section aria-label>
+  statCourses: { type: text, component: Text, text: { key: KoskManage.stats.courses }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:396 }
+  statCoursesBreakdown: { type: text, component: Text, text: { key: composed.KoskManage.breakdown, params: { publishedLine: overview.published, draftLine: overview.draft, hiddenLine: overview.hidden } }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:400 }
+  statStudents: { type: text, component: Text, text: { key: KoskManage.stats.students }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:408 }
+  statStudentsNote: { type: text, component: Text, text: { key: KoskManage.stats.studentsNote }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:412 }
+  statNazims: { type: text, component: Text, text: { key: KoskManage.stats.nazims }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:415 } # its caption ("Köşk nazımı yok", "Köşkün tek nazımı", "Köşkün nazımları") follows the count and is not drawn
+  statHosting: { type: text, component: Text, text: { key: KoskManage.stats.hosting }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:428 }
+  statHostingNone: { type: text, component: Text, text: { key: KoskManage.stats.hostingNone }, in: [viewing, restoring], when: "rows == 'none'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:434 }
+  statHostingNames: { type: text, component: Text, text: { key: composed.KoskManage.hostingNames, params: { medrese: right.name } }, in: [viewing, restoring], when: "rows == 'some'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:433 } # from the overview's own list, so the editor reads it too
+
+  # ---- the köşk's info (name and short name are the h1 and the line under it) ----
+  infoRegion: { type: page, component: Page, role: region, name: { labelledBy: infoHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:440 }
+  infoHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.infoHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:446 } # h2
+  infoDescription: { type: text, component: Text, text: { literal: "—" }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:295 } # the walk's köşk has no description
+  infoStatusActive: { type: text, component: Text, text: { key: KoskDirectory.status.ACTIVE }, in: [viewing, restoring], when: "view == 'active'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:301 } # a badge
+  infoStatusHidden: { type: text, component: Text, text: { key: KoskDirectory.status.HIDDEN }, in: [viewing, restoring], when: "view == 'hidden'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:305 } # the word with an eye-off glyph; colour is not the only cue
+  infoStatusPassive: { type: text, component: Text, text: { key: KoskDirectory.status.PASSIVE }, in: [viewing, restoring], when: "view == 'passive'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:301 }
+  infoVisibility: { type: text, component: Text, text: { key: KoskManage.listed }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:312 }
+  infoOpened: { type: text, component: Text, text: { key: composed.KoskManage.opened, params: { date: overview.openedAt, opener: overview.openedBy } }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:317 }
+  infoPolicy: { type: text, component: Text, text: { key: KoskManage.policyNone }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:332 }
+  openSettings: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskManage.openSettings }, in: [viewing, restoring], emits: OPEN_SETTINGS, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:466 } # a plain <a class=mds-link>
+
+  # ---- the management actions ----
+  actionsRegion: { type: page, component: Page, role: region, name: { labelledBy: actionsHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:472 }
+  actionsHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.actionsHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:477 } # h2
+  actionsIntro: { type: text, component: Text, text: { key: KoskManage.actionsIntro }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:480 }
+  restoreHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.restoreHeading }, in: [viewing, restoring], when: "view == 'hidden'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:486 } # h3
+  restoreBody: { type: text, component: Text, text: { key: KoskManage.restoreBody }, in: [viewing, restoring], when: "view == 'hidden'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:487 }
+  restoreButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskManage.restore }, in: [viewing, restoring], disabledIn: [restoring], when: "view == 'hidden'", emits: RESTORE, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:490 } # drawn only where the API says the reader may bring it back (overview.canRestore), which is always true for the başnazım and a kosk_edit holder; busy (aria-disabled, "Yükleniyor") in `restoring`
+  hideHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.hideHeading }, in: [viewing, restoring], when: "view != 'hidden'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:510 } # h3
+  hideBody: { type: text, component: Text, text: { key: KoskManage.hideBody }, in: [viewing, restoring], when: "view != 'hidden'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:511 }
+  hideButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskManage.hide }, in: [viewing, restoring], when: "view != 'hidden'", emits: HIDE, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:513 }
+  deactivateHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.deactivateHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:525 } # h3
+  deactivateBody: { type: text, component: Text, text: { key: KoskManage.deactivateBody }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:526 }
+  deactivateButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskManage.deactivate }, in: [viewing, restoring], when: "view == 'active'", emits: PASSIVATE, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:528 }
+  deactivateOff: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskManage.deactivate }, in: [viewing, restoring], disabledIn: [viewing, restoring], when: "view != 'active'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:531 } # natively disabled for a hidden or a passive köşk, and nothing says why (F-X-3)
+  deleteHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.deleteHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:539 } # h3
+  deleteBody: { type: text, component: Text, text: { key: KoskManage.deleteBody }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:540 } # there is no delete button on this page (e2e kosk-view#2)
+  toArchive: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskManage.toArchive }, in: [viewing, restoring], emits: OPEN_ARCHIVE, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:542 } # drawn for the editor too, who is refused there (MANAGE-1)
+
+  # ---- the nazımları ----
+  nazimsRegion: { type: page, component: Page, role: region, name: { labelledBy: nazimsHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:550 }
+  nazimsHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.nazimsHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:552 } # h2
+  addNazim: { type: action, component: Button, role: button, intent: confirm, text: { key: KoskNazims.add }, in: [viewing, restoring], emits: ADD_NAZIM, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:555 } # not gated: drawn for the editor, whose add is refused (F-W3-4)
+  nazimsTable: { type: list, component: List, role: table, name: { key: KoskManage.nazimsCaption }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:565 }
+  nazimRow: { type: text, component: Text, text: { key: composed.KoskManage.person, params: { person: nazim.name } }, in: [viewing, restoring], when: "nazims == 'some'", repeat: kosk.nazims, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:144 }
+  nazimsEmpty: { type: text, component: Text, text: { key: KoskNazims.empty }, in: [viewing, restoring], when: "nazims == 'none'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:570 }
+
+  # ---- the hosting rights ----
+  hostingRegion: { type: page, component: Page, role: region, name: { labelledBy: hostingHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:576 }
+  hostingHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.hostingHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:581 } # h2
+  hostingLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskManage.hostingLink }, in: [viewing, restoring], emits: OPEN_HOSTING, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:584 } # opens a refusal for the editor (F-W3-4)
+  hostingIntro: { type: text, component: Text, text: { key: KoskManage.hostingIntro }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:588 }
+  hostingTable: { type: list, component: List, role: table, name: { key: HostingPage.caption, params: { koskLocative: kosk.locative } }, in: [viewing, restoring], when: rightsRead, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:592 }
+  hostingEmpty: { type: text, component: Text, text: { key: HostingPage.empty }, in: [viewing, restoring], when: "rightsRead and rows == 'none'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:601 }
+  hostingMedrese: { type: text, component: Text, text: { key: composed.KoskManage.hostingNames, params: { medrese: right.name } }, in: [viewing, restoring], when: hasRows, repeat: kosk.rights, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:205 } # the row's first cell: the medrese's name (its başmüderris, grantor, date and open courses follow and are not drawn)
+  revokeButton: { type: action, component: Button, role: button, intent: secondary, name: { key: HostingPage.revokeLabel, params: { name: right.name } }, text: { key: HostingPage.revoke }, in: [viewing, restoring], when: hasRows, repeat: kosk.rights, emits: REVOKE, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:262 } # the name carries the medrese's, the text does not (WCAG 2.5.3 holds)
+  hostingUnavailable: { type: alert, component: Alert, role: alert, name: { key: KoskManage.loadFailedTitle }, text: { key: KoskManage.loadFailed }, in: [viewing, restoring], when: rightsDown, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:123 } # the editor's hosting read answers 403 and the page draws the box it has for an outage (F-W3-4)
+  hostingRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskManage.retry }, in: [viewing, restoring], when: rightsDown, emits: RETRY_HOSTING, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:126 } # reads the page again; the answer cannot change
+
+  # ---- the courses ----
+  coursesRegion: { type: page, component: Page, role: region, name: { labelledBy: coursesHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:606 }
+  coursesHeading: { type: text, component: Heading, role: heading, text: { key: KoskManage.coursesHeading }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:611 } # h2
+  archiveLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskManage.archive }, in: [viewing, restoring], emits: OPEN_KOSK_ARCHIVE, duringStep: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:614 }
+  coursesIntro: { type: text, component: Text, text: { key: KoskManage.coursesIntro }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:618 }
+  coursesTabs: { type: list, component: List, role: tablist, name: { key: KoskCourses.tabsLabel }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:347 } # Tümü, Yayında, Taslak, Gizli, each with its number; a tab narrows the rows and is not drawn as a transition
+  coursesTable: { type: list, component: List, role: table, name: { key: KoskManage.coursesCaption }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:361 } # "manage" mode: no row buttons; a published course's title links to its overview
+  coursesEmpty: { type: text, component: Text, text: { key: KoskCourses.emptyAll }, in: [viewing, restoring], when: "hosting != 'courses'", source: apps/nizam/features/kosks/components/kosk-course-table.tsx:367 }
+  hiddenInArchive: { type: text, component: Text, text: { key: KoskManage.hiddenInArchive }, in: [viewing, restoring], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:629 }
+
+  # ---- the page could not be read ----
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: KoskManage.loadFailedTitle }, text: { key: KoskManage.loadFailed }, in: [loadFailed], source: apps/nizam/features/kosks/components/load-failed.tsx:23 }
+  loadFailedRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskManage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/kosks/components/load-failed.tsx:25 }
+
+  # ---- Köşkü gizle: an alertdialog ----
+  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: hideTitle }, in: [hideConfirm, hiding], initialFocus: hideCancel, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57 }
+  hideEyebrow: { type: text, component: Text, text: { key: composed.KoskManage.name, params: { kosk: kosk.name } }, in: [hideConfirm, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:60 }
+  hideTitle: { type: text, component: Heading, role: heading, text: { key: HideKoskDialog.title }, in: [hideConfirm, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:61 }
+  hideDialogBody: { type: text, component: Text, text: { key: HideKoskDialog.body, params: { name: kosk.name } }, in: [hideConfirm, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:70 }
+  hideWay: { type: text, component: Text, text: { key: HideKoskDialog.way }, in: [hideConfirm, hiding], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:71 }
+  hideCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: HideKoskDialog.cancel }, in: [hideConfirm, hiding], emits: CANCEL, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:65 } # the focus starts here; it does nothing while the köşk is being hidden
+  hideConfirmButton: { type: action, component: Button, role: button, intent: confirm, text: { key: HideKoskDialog.confirm }, in: [hideConfirm, hiding], disabledIn: [hiding], emits: CONFIRM_HIDE, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:64 } # busy (aria-disabled) while it hides
+  hideClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: HideKoskDialog.close }, in: [hideConfirm, hiding], emits: CLOSE, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:66 } # an icon button named only by aria-label
+
+  # ---- Köşkü pasife al: a dialog that reads what it takes along first ----
+  passiveDialog: { type: page, component: Page, role: dialog, name: { labelledBy: passiveTitle }, in: [passiveLoading, passiveReady, passivating, passiveChanged], initialFocus: passiveCancel, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184 }
+  passiveEyebrow: { type: text, component: Text, text: { key: composed.KoskManage.name, params: { kosk: kosk.name } }, in: [passiveLoading, passiveReady, passivating, passiveChanged], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:187 }
+  passiveTitle: { type: text, component: Heading, role: heading, text: { key: PassivateScopeDialog.titleKosk }, in: [passiveLoading, passiveReady, passivating, passiveChanged], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:188 }
+  passiveLoadingText: { type: text, component: Text, text: { key: PassivateScopeDialog.loading }, in: [passiveLoading], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:210 } # the body has aria-busy meanwhile
+  passiveChangedNote: { type: alert, component: Alert, role: status, text: { key: PassivateScopeDialog.changed }, in: [passiveChanged], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:129 }
+  passiveWarning: { type: alert, component: Alert, role: status, name: { key: PassivateScopeDialog.warningTitle }, in: [passiveReady, passivating, passiveChanged], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:130 } # a warning Alert is a status; its lines are the next nodes
+  impactStaff: { type: text, component: Text, text: { key: PassivateScopeDialog.staffKosk, params: { count: impact.staffLeaving } }, in: [passiveReady, passivating, passiveChanged], source: apps/nizam/features/passivation/present.ts:49 }
+  impactCourses: { type: text, component: Text, text: { key: PassivateScopeDialog.courses, params: { count: impact.courses.total, published: impact.courses.published, draft: impact.courses.draft } }, in: [passiveReady, passivating, passiveChanged], when: coursesOpen, source: apps/nizam/features/passivation/present.ts:60 }
+  impactLive: { type: text, component: Text, text: { key: PassivateScopeDialog.coursesLive, params: { count: impact.courses.withLiveMuderris } }, in: [passiveReady, passivating, passiveChanged], when: coursesOpen, source: apps/nizam/features/passivation/present.ts:68 }
+  impactCoursesNone: { type: text, component: Text, text: { key: PassivateScopeDialog.coursesNone }, in: [passiveReady, passivating, passiveChanged], when: "hosting != 'courses'", source: apps/nizam/features/passivation/present.ts:57 }
+  impactSessions: { type: text, component: Text, text: { key: PassivateScopeDialog.sessions, params: { days: impact.sessions.windowDays, count: impact.sessions.count } }, in: [passiveReady, passivating, passiveChanged], when: coursesOpen, source: apps/nizam/features/passivation/present.ts:84 }
+  impactSessionsNone: { type: text, component: Text, text: { key: PassivateScopeDialog.sessionsNone, params: { days: impact.sessions.windowDays } }, in: [passiveReady, passivating, passiveChanged], when: "hosting != 'courses'", source: apps/nizam/features/passivation/present.ts:87 }
+  passiveWay: { type: text, component: Text, text: { key: PassivateScopeDialog.wayKosk }, in: [passiveReady, passivating, passiveChanged], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:176 }
+  passiveCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: PassivateScopeDialog.cancel }, in: [passiveLoading, passiveReady, passivating, passiveChanged], emits: CANCEL, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:197 } # the focus starts here
+  passiveConfirmButton: { type: action, component: Button, role: button, intent: confirm, text: { key: PassivateScopeDialog.confirm }, in: [passiveLoading, passiveReady, passivating, passiveChanged], disabledIn: [passiveLoading, passivating], emits: CONFIRM_PASSIVE, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:198 } # natively disabled while it reads, busy while it saves
+  passiveClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: PassivateScopeDialog.close }, in: [passiveLoading, passiveReady, passivating, passiveChanged], emits: CLOSE, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184 }
+
+  # ---- Köşk nazımı ekle: a form dialog ----
+  addDialog: { type: page, component: Page, role: dialog, name: { labelledBy: addTitle }, in: [addForm, looking, addReady, adding], initialFocus: addEmail, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109 }
+  addEyebrow: { type: text, component: Text, text: { key: composed.KoskManage.name, params: { kosk: kosk.name } }, in: [addForm, looking, addReady, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:117 }
+  addTitle: { type: text, component: Heading, role: heading, text: { key: AddNazimDialog.title }, in: [addForm, looking, addReady, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:118 }
+  addIntro: { type: text, component: Text, text: { key: AddNazimDialog.intro, params: { koskGenitive: kosk.genitive } }, in: [addForm, looking, addReady, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:131 }
+  addRequired: { type: text, component: Text, text: { key: composed.AddNazimDialog.required }, in: [addForm, looking, addReady, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:133 }
+  addEmail: { type: field, component: TextField, role: textbox, text: { key: KoskNazimPicker.label }, value: { literal: "" }, in: [addForm, looking, addReady, adding], disabledIn: [looking, adding], source: apps/nizam/features/kosks/components/nazim-picker.tsx:122 } # type=email; disabled while it searches, so it loses the focus (F-W2-3); looked up on Enter and when left (F-W3-14)
+  addEmailHelp: { type: text, component: Text, text: { key: KoskNazimPicker.help }, in: [addForm, looking, addReady, adding], source: apps/nizam/features/kosks/components/nazim-picker.tsx:121 }
+  searching: { type: status, component: Status, role: status, text: { key: KoskNazimPicker.searching }, in: [looking], source: apps/nizam/features/kosks/components/nazim-picker.tsx:154 } # the picker's hidden <output>
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: KoskNazimPicker.chosenTitle }, in: [addReady, adding], source: apps/nizam/features/kosks/components/nazim-picker.tsx:164 } # h3
+  chosenPerson: { type: text, component: Text, text: { key: composed.KoskManage.person, params: { person: person.name } }, in: [addReady, adding], source: apps/nizam/features/kosks/components/nazim-picker.tsx:173 }
+  removeChosen: { type: action, component: Button, role: button, intent: secondary, name: { key: KoskNazimPicker.remove, params: { name: person.name } }, in: [addReady, adding], disabledIn: [adding], source: apps/nizam/features/kosks/components/nazim-picker.tsx:183 } # an icon button named by aria-label; nizam.kosks.nazims draws what it does
+  addFootnote: { type: text, component: Text, text: { key: AddNazimDialog.footnote }, in: [addForm, looking, addReady, adding], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:168 }
+  addCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: AddNazimDialog.cancel }, in: [addForm, looking, addReady, adding], emits: CANCEL, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123 }
+  addSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: AddNazimDialog.submit }, in: [addForm, looking, addReady, adding], disabledIn: [addForm, looking, adding], emits: SUBMIT, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:124 } # natively disabled until somebody is chosen, with nothing saying why (F-W3-1); busy while it adds
+  addClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: AddNazimDialog.close }, in: [addForm, looking, addReady, adding], emits: CLOSE, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109 }
+
+  # ---- Barındırma hakkını geri al: a form dialog ----
+  revokeDialog: { type: page, component: Page, role: dialog, name: { labelledBy: revokeTitle }, in: [revokeForm, revokeReady, revoking], initialFocus: revokeCancel, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95 }
+  revokeEyebrow: { type: text, component: Text, text: { key: composed.RevokeDialog.medrese, params: { medrese: right.name } }, in: [revokeForm, revokeReady, revoking], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:103 }
+  revokeTitle: { type: text, component: Heading, role: heading, text: { key: RevokeDialog.title }, in: [revokeForm, revokeReady, revoking], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:104 }
+  revokeIntro: { type: text, component: Text, text: { key: RevokeDialog.intro, params: { name: right.name, koskLocative: kosk.locative, count: right.openCourses, countWord: right.countWord } }, in: [revokeForm, revokeReady, revoking], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:122 } # rich text: the medrese's name is bold
+  revokeCourses: { type: list, component: List, role: list, in: [revokeForm, revokeReady, revoking], when: coursesOpen, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:134 } # the open courses, each with its status badge (not drawn one by one)
+  revokeLegend: { type: list, component: List, role: radiogroup, name: { key: RevokeDialog.coursesLegend }, in: [revokeForm, revokeReady, revoking], when: coursesOpen, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:163 } # required, no default
+  revokeKeep: { type: field, component: ListItem, role: radio, text: { key: RevokeDialog.keep }, checked: "choice == 'keep'", in: [revokeForm, revokeReady, revoking], disabledIn: [revoking], when: coursesOpen, emits: CHOOSE_KEEP, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:170 } # its description ("Ders bu köşkte sürer; ...") is a plural message, not drawn
+  revokeHide: { type: field, component: ListItem, role: radio, text: { key: RevokeDialog.hide }, checked: "choice == 'hide'", in: [revokeForm, revokeReady, revoking], disabledIn: [revoking], when: coursesOpen, emits: CHOOSE_HIDE, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:176 }
+  revokeNone: { type: text, component: Text, text: { key: RevokeDialog.noOpenCourses }, in: [revokeReady, revoking], when: "hosting != 'courses'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:192 }
+  revokeAudit: { type: text, component: Text, text: { key: RevokeDialog.auditNote }, in: [revokeForm, revokeReady, revoking], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:107 }
+  revokeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: RevokeDialog.cancel }, in: [revokeForm, revokeReady, revoking], emits: CANCEL, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:110 } # the focus starts here
+  revokeSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: RevokeDialog.submit }, in: [revokeForm, revokeReady, revoking], disabledIn: [revokeForm, revoking], emits: SUBMIT, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:111 } # natively disabled until an answer is chosen, with nothing saying why (F-W3-1)
+  revokeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: RevokeDialog.close }, in: [revokeForm, revokeReady, revoking], emits: CLOSE, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:105 }
+
+  # ---- the toasts: sonner's region "Bildirimler"; a success closes by itself, an error stays until closed ----
+  toastHidden: { type: status, component: Status, name: { key: HideKoskDialog.hidden }, text: { key: HideKoskDialog.hiddenBody, params: { name: kosk.name } }, in: [viewing], when: "toast == 'hidden'", source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:48 }
+  toastHideSettled: { type: status, component: Status, name: { key: HideKoskDialog.failed }, text: { key: HideKoskDialog.errors.alreadyHidden }, in: [hideConfirm], when: "toast == 'hideSettled'", source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:41 }
+  toastRestored: { type: status, component: Status, name: { key: KoskManage.restored }, text: { key: KoskManage.restoredBody, params: { name: kosk.name } }, in: [viewing], when: "toast == 'restored'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:112 }
+  toastRestoreSettled: { type: status, component: Status, name: { key: KoskManage.restoreFailed }, text: { key: KoskManage.errors.notHidden }, in: [viewing], when: "toast == 'restoreSettled'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:106 }
+  toastPassivated: { type: status, component: Status, name: { key: PassivateScopeDialog.doneKosk }, text: { key: PassivateScopeDialog.doneKoskBody, params: { name: kosk.name } }, in: [viewing], when: "toast == 'passivated'", source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:91 }
+  toastAdded: { type: status, component: Status, name: { key: AddNazimDialog.saved }, text: { key: AddNazimDialog.savedBody, params: { names: person.name, kosk: kosk.genitive } }, in: [viewing], when: "toast == 'added'", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98 }
+  toastAddExists: { type: status, component: Status, name: { key: AddNazimDialog.failed }, text: { key: AddNazimDialog.errors.nazimExists }, in: [addReady], when: "toast == 'addExists'", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:92 }
+  toastAddRefused: { type: status, component: Status, name: { key: AddNazimDialog.failed }, text: { key: AddNazimDialog.errors.forbidden }, in: [addReady], when: "toast == 'addRefused'", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:92 }
+  toastRevoked: { type: status, component: Status, name: { key: RevokeDialog.revoked }, in: [viewing], when: "toast == 'revoked'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87 } # its description names the medrese and the köşk and is not drawn (two {name}s in one catalog)
+
+edges:
+  - { labelledBy: [infoRegion, infoHeading] }
+  - { labelledBy: [actionsRegion, actionsHeading] }
+  - { labelledBy: [nazimsRegion, nazimsHeading] }
+  - { labelledBy: [hostingRegion, hostingHeading] }
+  - { labelledBy: [coursesRegion, coursesHeading] }
+  - { labelledBy: [hideDialog, hideTitle] }
+  - { labelledBy: [passiveDialog, passiveTitle] }
+  - { labelledBy: [addDialog, addTitle] }
+  - { labelledBy: [revokeDialog, revokeTitle] }
+  - { triggers: [hideButton, hideConfirm] }
+  - { triggers: [hideConfirmButton, hiding] }
+  - { triggers: [restoreButton, restoring] }
+  - { triggers: [deactivateButton, passiveLoading] }
+  - { triggers: [passiveConfirmButton, passivating] }
+  - { triggers: [addNazim, addForm] }
+  - { triggers: [addSubmit, adding] }
+  - { triggers: [revokeButton, revokeForm] }
+  - { triggers: [revokeSubmit, revoking] }
+  - { returnsFocus: [hideDialog, hideButton] } # Base UI hands the focus back to what had it; after a hide that button has been replaced by "Köşkü geri al" (MANAGE-3; not verified in a browser)
+  - { returnsFocus: [passiveDialog, deactivateButton] } # after a passivation the button is off (MANAGE-3)
+  - { returnsFocus: [addDialog, addNazim] }
+  - { returnsFocus: [revokeDialog, revokeButton] } # after a withdrawal the button leaves with its row (MANAGE-3)
+
+rules:
+  - { id: F-W3-4, rule: "A Medaris nazımı who holds only platform.kosk_edit is given the view by koskEntry (kosk-entry.ts:51) and meets what only the başnazım can use: 'Köşk nazımı ekle' (kosk-manage-page.tsx:555, not gated) ends in an error toast 'Köşk nazımı eklenemedi: Bunu yapma izniniz yok.' because POST /kosks/:id/nazims asks platform.kosk_nazim_manage (kosk-admin.service.ts:117); the hosting section's read asks kosk.hosting or platform.hosting_grant and answers 403, which the page turns into rights = null, the box 'Bölüm yüklenemedi' with a 'Yeniden dene' that can never succeed (page.tsx:90, kosk-manage-page.tsx:589); and the link 'Barındırma hakları' next to it opens the page that refuses the same person (app/kosks/[id]/ayarlar/barindirma/page.tsx:40-45 reads the same rights; the nav graph's koskHosting opensFor needs kosk.hosting or platform.hosting_grant). kosk-abilities.ts:1-12 says no visible button should end in a 403. Fix: pass the held codes to KoskManagePage, draw only what the person can call, and say 'izniniz yok' for a section whose read answers 403, with no retry (decision D1)." }
+  - { id: MANAGE-1, rule: "new: 'Arşiv’e git' (kosk-manage-page.tsx:542, href /arsiv) is drawn for everyone who has the view, but the platform archive is the başnazım's alone (app/arsiv/page.tsx:24, archive.controller.ts, SYSTEM_ADMIN only) and the sentence above it says so ('yalnız Medaris başnazımı görür'). A Medaris nazımı with platform.kosk_edit presses it and meets 'Bu bölüm için izniniz yok'. The nav graph (nizam.nav entry koskManage->archive) draws it for the chief only; the code does not. Fix: draw the link for the başnazım alone, as the sentence implies." }
+  - { id: MANAGE-2, rule: "new: when the API says the köşk is already in the state the person asked for (409 KOSK_ALREADY_HIDDEN on 'Gizle', 409 KOSK_NOT_HIDDEN on 'Köşkü geri al'), the page says so in a toast and is not read again (hide-kosk-dialog.tsx:41-47 returns; kosk-manage-page.tsx:105-111 returns), so it goes on offering the action it was told is done, and the hide dialog stays open over it, until the person reloads. The Dersler table does read again after its own stale refusal (kosk-course-table.tsx:68). Fix: router.refresh() on those two codes and close the dialog (decision D2)." }
+  - { id: MANAGE-3, rule: "new, from the code and not verified in a browser: after each of the four writes the button that was pressed is replaced or off when the focus is handed back, so it falls to the page: 'Köşkü gizle' becomes 'Köşkü geri al' (kosk-manage-page.tsx:483-522), 'Köşkü geri al' becomes 'Köşkü gizle', 'Köşkü pasife al' is natively disabled once the köşk is passive (:531), and a revoked right's 'Barındırma hakkını geri al' leaves with its row. The only word of what happened is a toast of a few seconds (success) and nothing moves the focus to it or to the changed row. Fix: move the focus to the page's h1 or to the replaced control's successor, and say the result in a status line that stays." }
+  - { id: F-W3-9, rule: "The tab and history title is 'Köşk' for every köşk (app/kosks/[id]/page.tsx:34-37, KoskManage.title): a nazım of several köşks, or the başnazım with two tabs open, cannot tell them apart by the tab; only the h1 names the köşk. Fix: put the köşk's name in generateMetadata." }
+  - { id: F-W3-1, rule: "'Ekle' (add-nazim-dialog.tsx:124) and 'Barındırma hakkını geri al' (revoke-dialog.tsx:111-115) are natively disabled until the form is valid and nothing says why. The messages written for a submit try ('En az bir köşk nazımı seçin.' of the picker) can never show, since a disabled default button blocks implicit submission. A keyboard or screen-reader user meets a dead button. Fix: keep the button enabled and say what is missing on submit, or tie the reason to the button with aria-describedby." }
+  - { id: F-X-3, rule: "The family of F-W3-1: natively disabled submit buttons with no reason given, here in the add and revoke dialogs, and 'Köşkü pasife al' of a hidden or passive köşk (deactivateOff), whose reason ('only an active köşk') is not said anywhere." }
+  - { id: F-W3-14, rule: "The nazım's address is looked up when the field is left, not only on Enter (nazim-picker.tsx:65, onBlur), and tedrisat writes every lookup to the audit log; the help text says searches are audited. Tabbing through the field makes audited lookups. Fix: search on Enter or an explicit 'Ara' button." }
+  - { id: F-X-14, rule: "The family of F-W3-14: e-mail lookups on blur in the four pickers of nizam." }
+  - { id: F-W2-3, rule: "The picker's field is disabled while it searches (nazim-picker.tsx:128), so the focused field loses the focus, and 'not found' is an error that is not a live region while nobody is chosen." }
+  - { id: F-UI-W1-1, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx), so a screen reader reads the intro and every field as the dialog's description when it opens; true of the add and revoke dialogs here, and of the alertdialog." }
+  - { id: F-5, rule: "'Köşk sayfasını gör' (kosk-manage-page.tsx:367) is drawn for a hidden and a passive köşk too and opens tedris-web's page for it: GET /kosks/:id answers a hidden köşk to the başnazım and to a kosk_edit holder, so the page opens, and on it POST /kosks/:id/follow takes a follow of a hidden köşk and answers 201 (kosk.service.ts:276 checks that the köşk exists, not that it is shown; ledger/security.md F-5, tedris.discover.followKosk). The management view offers the way in; the fix is the API's." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Barındırma hakkını geri al' in 'Barındırma hakkını geri al: {medrese}', 'Köşk sayfasını gör' in 'Köşk sayfasını gör (yeni sekmede açılır)' (WCAG 2.5.3). Holds. The link that opens a new tab says so in its name (the opposite of ACC-08)." }
+  - { id: heading-order, rule: "h1 (the köşk's name), h2 (Köşk bilgileri, Yönetim eylemleri, Köşk nazımları, Medreseler ve barındırma hakları, Dersler), h3 inside the actions (Geri al or Listelerden gizle, Pasife al, Kalıcı silme): no level is skipped. Holds." }
+  - { id: focus-not-set, rule: "Neither the view nor the box that stands for it sets a focus: no autoFocus or focus() in kosk-manage-page.tsx or load-failed.tsx, so the graph says nothing of the focus when they open (see MANAGE-3 for after a write). Recorded so the silence is not read as an omission." }
+  - { id: no-permanent-delete-here, rule: "The page has no 'Kalıcı olarak sil' button and no row buttons in the course table ('manage' mode); the block 'Kalıcı silme' only explains that the delete is in the Arşiv and links there (e2e kosk-view#2: both absences). The graph draws no such control; the replay cannot check the absence of what is not drawn." }
+  - { id: toast-is-the-only-word, rule: "The result of a write is said by a toast in the 'Bildirimler' live region: a success closes after a few seconds, an error stays until closed (duration Infinity). Nothing on the page says what was done, the page just changes (see MANAGE-3)." }
+  - { id: F-W3-4b-not-here, rule: "FLOWS.md lists F-W3-4b for this flow; it is the audit log's export link ('Dışa aktar' is an <a download>, audit-view.tsx:194-201), which this page does not draw: nizam.platform.auditLog carries it. Likewise F-W3-16 (TaughtCourses) is on a block no page imports." }

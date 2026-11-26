@@ -1,0 +1,11 @@
+# The way into tedris.learn.questions on the watch page: the course's tab "Ders kayıtları", then the row's link to the watch page (the
+# tedris navigation graph's entry course->celseWatch). tedris.nav's own binding gives no locator for an entry that needs an item
+# (`data: true`), because the item is the walk's to choose, so this file extends it and names the row by its address: the walk's own
+# course and its first celse, both scenario variables of binding.yaml.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  course->celseWatch: { css: 'a[href="/courses/{course}/lessons/{lesson}/izle"]' }

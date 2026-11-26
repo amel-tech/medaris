@@ -1,0 +1,167 @@
+# The screens of nazar.account.settings: nazar-web's Hesap ve ayarlar (/hesap, app/(global)/hesap/page.tsx) with its four cards,
+# the two time-zone lists, the toasts of a save, and the imam star's bubble. Read from apps/nazar/features/account and the kit's
+# Select, Table, Toast and ImamStar (libs/ui/src/mds); the words are copied from libs/i18n/src/locales/tr/nazar.json and common.json.
+# The frame around the page (sidebar, picker, menu, the person row that links here) is nazar.shell.scopeAndMenu's and is not drawn.
+#
+# Words that are in no i18n file are `composed.*`, with the line of the code that makes each:
+#   composed.Account.scope, grantor, grantedAt, expiresAt   a value the API gives, shown as it is (assignments-table.tsx:54, 86, 88, 99)
+#   composed.Account.scopeMeta / scopeMetaKosk              the köşk and the medrese joined by " · " (assignments-table.tsx:60;
+#                                                           assignments-view.ts:35-40)
+#   composed.Account.groupTitle                             "<scope> · <role in lower case>" (permissions.ts:47)
+#   composed.Account.personName / roleLine / email          the session's name, the roles held joined by " · ", the session's e-mail
+#                                                           (account-page.tsx:173, 175, 180)
+#   composed.Account.tableEmpty                             the kit Table's own default text (libs/ui/src/mds/table.tsx:54; F-E-13)
+#   composed.Account.zones.*                                the eight cities' names, from the kit (libs/ui/src/mds/locale.tsx:94-103)
+#   composed.Account.listedZone                             a zone of the second list, "Asia / Tokyo" (time-zone.ts:otherZoneLabel)
+#   composed.Toast.close                                    the toast's close button, a literal of the kit (libs/ui/src/mds/toast.tsx:97; F-E-14)
+# `changes` is the app's own help line under the first list: what the choice sets, and that it is saved at that moment. No message
+# was authored for this catalog.
+# Samples are invented and neutral; the binding gives each scenario the real person's name, roles and e-mail.
+schema: delurio-graph/0
+kind: ui
+id: nazar.account.settings
+flow: nazar.account.settings
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Account.timeZoneHelp }
+samples:
+  scope: Örnek ders
+  kosk: Örnek köşk
+  madrasah: Örnek medrese
+  grantor: Örnek kişi
+  granted: 3 Kasım 2026
+  expires: 3 Aralık 2026
+  date: 3 Aralık 2026
+  role: hoca
+  names: Örnek ders ve Başka ders
+  name: Örnek Kişi
+  roles: Hoca
+  email: kisi@ornek.test
+  zone: Asia / Tokyo
+
+# Hesap sets no focus of its own (nothing in features/account calls focus() or sets autoFocus), so the page node has no
+# `initialFocus` and there is no `focus` here: after a pick the focus is Base UI's and was not seen (rule focus-not-set).
+nodes:
+  # --- the page ------------------------------------------------------------------------------------------------------------------
+  accountPage: { type: page, component: Page, role: main, in: [settings, savingZone, starOpen], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Account.pageTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:116 } # h1
+  pageSubtitle: { type: text, component: Text, text: { key: Account.pageSubtitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:117 }
+
+  # --- "Görevleriniz": the roles held ---------------------------------------------------------------------------------------------
+  tasksRegion: { type: page, component: Page, role: region, name: { labelledBy: tasksTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:33 }
+  tasksTitle: { type: text, component: Heading, role: heading, text: { key: Account.tasksTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:37 } # h2
+  tasksIntro: { type: text, component: Text, text: { key: Account.tasksIntro }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:124 }
+  tasksTable: { type: list, component: List, role: table, name: { key: Account.tasksTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/assignments-table.tsx:107 } # named by its hidden caption, the card's title again
+  columnRole: { type: text, component: Text, role: columnheader, text: { key: Account.columns.role }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/assignments-table.tsx:34 }
+  columnScope: { type: text, component: Text, role: columnheader, text: { key: Account.columns.scope }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/assignments-table.tsx:49 }
+  columnGrantor: { type: text, component: Text, role: columnheader, text: { key: Account.columns.grantor }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/assignments-table.tsx:82 }
+  columnExpires: { type: text, component: Text, role: columnheader, text: { key: Account.columns.expires }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/assignments-table.tsx:96 }
+  rowRole: { type: text, component: Text, text: { oneOf: [Roles.MEDRESE_BASMUDERRIS, Roles.MEDRESE_NAZIR, Roles.MUDERRIS, Roles.DERS_NAZIR, Roles.MEDARIS_NAZIM, Roles.KOSK_NAZIM] }, in: [settings, savingZone, starOpen], when: rows, repeat: assignments, source: apps/nazar/features/account/components/assignments-table.tsx:37 } # the role in the Görev cell; the medrese rows first, then the courses
+  imamStar: { type: action, component: Button, role: button, intent: secondary, name: { key: common.imamStar.title }, in: [settings, savingZone, starOpen], when: isImam, duringStep: true, emits: OPEN_STAR, source: libs/ui/src/mds/imam-star.tsx:67 } # after the role, only on a course with more than one hoca where the person is the imam (showsImamStar)
+  rowScope: { type: text, component: Text, text: { key: composed.Account.scope, params: { scope: assignment.scopeName } }, in: [settings, savingZone, starOpen], when: rows, repeat: assignments, source: apps/nazar/features/account/components/assignments-table.tsx:54 }
+  rowBadgeActive: { type: text, component: Text, text: { key: Account.scopeBadge.active }, in: [settings, savingZone, starOpen], when: medreseRows, repeat: assignments, source: apps/nazar/features/account/assignments-view.ts:31 } # "Etkin": a scope that is not a course and has a name
+  rowBadgeCourse: { type: text, component: Text, text: { oneOf: [Account.scopeBadge.published, Account.scopeBadge.draft, Account.scopeBadge.hidden] }, in: [settings, savingZone, starOpen], when: courseRows, repeat: assignments, source: apps/nazar/features/account/assignments-view.ts:26 } # a course's state; hidden wins over published and draft
+  rowMeta: { type: text, component: Text, text: { oneOf: [composed.Account.scopeMeta, composed.Account.scopeMetaKosk] }, in: [settings, savingZone, starOpen], when: courseRows, repeat: assignments, source: apps/nazar/features/account/components/assignments-table.tsx:60 } # the köşk, then the medrese when the course has one
+  rowGrantor: { type: text, component: Text, text: { oneOf: [composed.Account.grantor, Account.self, Account.unknownPerson] }, in: [settings, savingZone, starOpen], when: rows, repeat: assignments, source: apps/nazar/features/account/components/assignments-table.tsx:86 } # the giver's name, "Kendiniz" when the person gave it to themselves, "Bilinmiyor" when the giver has no name
+  rowGranted: { type: text, component: Text, text: { key: composed.Account.grantedAt, params: { granted: assignment.grantedAt } }, in: [settings, savingZone, starOpen], when: rows, repeat: assignments, source: apps/nazar/features/account/components/assignments-table.tsx:88 } # a <time>, the long date in the zone saved
+  rowExpires: { type: text, component: Text, text: { oneOf: [Account.noExpiry, composed.Account.expiresAt] }, in: [settings, savingZone, starOpen], when: rows, repeat: assignments, source: apps/nazar/features/account/components/assignments-table.tsx:97 } # a date, or "Süresiz"
+  emptyRow: { type: text, component: Text, role: cell, text: { key: composed.Account.tableEmpty }, in: [settings, savingZone, starOpen], when: "holds == 'chief'", source: libs/ui/src/mds/table.tsx:54 } # the kit's default, not a message of this app (F-E-13)
+  noNazirNote: { type: text, component: Text, text: { key: Account.noNazirNote }, in: [settings, savingZone, starOpen], when: noNazirNote, source: apps/nazar/features/account/components/account-page.tsx:137 }
+
+  # --- "Etkin izinleriniz": what the roles give, in sentences ----------------------------------------------------------------------
+  permissionsRegion: { type: page, component: Page, role: region, name: { labelledBy: permissionsTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:60 }
+  permissionsTitle: { type: text, component: Heading, role: heading, text: { key: Account.permissionsTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:60 } # h2
+  permissionsIntro: { type: text, component: Text, text: { key: Account.permissionsIntro }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:61 }
+  permissionsFailed: { type: alert, component: Alert, role: alert, name: { key: Account.loadFailedTitle }, text: { key: Account.loadFailed }, in: [settings, savingZone, starOpen], when: "read == 'permissionsFailed'", source: apps/nazar/features/account/components/account-page.tsx:63 } # titled "Görevleriniz yüklenemedi", the roles' title (F-E-16); no retry control: the text says to reload
+  permissionsEmpty: { type: text, component: Text, text: { key: Account.permissionsEmpty }, in: [settings, savingZone, starOpen], when: noSentences, source: apps/nazar/features/account/components/account-page.tsx:67 } # the engine returned no group (a nazır with no grant, NAZSET-2), or none with a sentence
+  permissionGroup: { type: page, component: Page, role: region, name: { labelledBy: groupTitle }, in: [settings, savingZone, starOpen], when: groupsListed, repeat: permissions.groups, source: apps/nazar/features/account/components/permissions-list.tsx:47 } # a landmark for every group (F-E-19)
+  groupTitle: { type: text, component: Heading, role: heading, text: { oneOf: [composed.Account.groupTitle, Roles.MEDRESE_BASMUDERRIS, Roles.MEDRESE_NAZIR, Roles.MUDERRIS, Roles.DERS_NAZIR, Roles.MEDARIS_NAZIM, Roles.KOSK_NAZIM, Account.grantedRole] }, in: [settings, savingZone, starOpen], when: groupsListed, repeat: permissions.groups, source: apps/nazar/features/account/components/permissions-list.tsx:52 } # h3: "<scope> · <role>" for a role in one named scope, the role alone for several, "Verilen izinler" for a grant no role covers
+  groupScopeLine: { type: text, component: Text, text: { oneOf: [Account.eachScope.MUDERRIS, Account.eachScope.default] }, in: [settings, savingZone, starOpen], when: severalCourses, repeat: permissions.groups, source: apps/nazar/features/account/permissions.ts:54 } # names the courses a role of several holds in
+  permissionLine: { type: text, component: Text, role: listitem, text: { oneOf: [Account.permissions.ban_course, Account.permissions.ban_lift_course, Account.permissions.ban_manage_kosk, Account.permissions.course_edit, Account.permissions.course_manage_all, Account.permissions.course_nazir_assign, Account.permissions.course_nazir_assign_kosk, Account.permissions.course_open_standalone, Account.permissions.course_partner_codes, Account.permissions.course_publish, Account.permissions.course_settings, Account.permissions.course_view_unpublished, Account.permissions.deck_manage_course, Account.permissions.deck_manage_kosk, Account.permissions.deck_propose_kosk, Account.permissions.enrollment_complete, Account.permissions.enrollment_decide, Account.permissions.enrollment_remove, Account.permissions.kosk_hosting, Account.permissions.kosk_manage, Account.permissions.madrasah_admission_rules, Account.permissions.madrasah_appeal_open, Account.permissions.madrasah_ban, Account.permissions.madrasah_course_hide, Account.permissions.madrasah_course_open, Account.permissions.madrasah_muderris_manage, Account.permissions.madrasah_nazir_appoint, Account.permissions.madrasah_offsite_course_request, Account.permissions.madrasah_permanent_ban_request, Account.permissions.madrasah_settings_edit, Account.permissions.madrasah_students_view, Account.permissions.permission_group_define, Account.permissions.question_answer, Account.permissions.recording_manage, Account.permissions.recording_upload, Account.permissions.recording_watch_restricted, Account.permissions.session_live_link, Account.permissions.session_manage, Account.permissions.session_view_content, Account.permissions.submission_read, Account.permissions.user_lookup, Account.permissions.week_hide] }, in: [settings, savingZone, starOpen], when: groupsListed, repeat: permissions.codes, source: apps/nazar/features/account/components/permissions-list.tsx:58 } # a code with no sentence is left out, and so is a group that has none
+  permissionCourseEdit: { type: text, component: Text, role: listitem, text: { key: Account.permissions.course_edit }, in: [settings, savingZone, starOpen], when: severalCourses, source: apps/nazar/features/account/components/permissions-list.tsx:58 } # the sentence e2e account#2 names, in the hoca's group
+  permissionNote: { type: text, component: Text, text: { oneOf: [Account.permissionNotes.ban_lift_course, Account.permissionNotes.course_manage_all, Account.permissionNotes.course_nazir_assign_kosk, Account.permissionNotes.user_lookup] }, in: [settings, savingZone, starOpen], when: noted, repeat: permissions.noted, source: apps/nazar/features/account/components/permissions-list.tsx:68 } # a second, smaller line under four codes' sentences
+  defaultsNote: { type: text, component: Text, text: { key: Account.defaultsNote.MUDERRIS }, in: [settings, savingZone, starOpen], when: severalCourses, source: apps/nazar/features/account/components/permissions-list.tsx:83 } # under the hoca's list; the köşk nazımı's own note is not drawn here
+  expiryLine: { type: text, component: Text, text: { oneOf: [Account.expiryNone, Account.expiryAt, Account.expiryEarliest] }, in: [settings, savingZone, starOpen], when: groupsListed, repeat: permissions.groups, source: apps/nazar/features/account/components/permissions-list.tsx:87 } # "Bitiş: süresiz." for every role the seed gives
+
+  # --- "Saat dilimi": the zone the celse times are shown in ------------------------------------------------------------------------
+  timeRegion: { type: page, component: Page, role: region, name: { labelledBy: timeTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:146 }
+  timeTitle: { type: text, component: Heading, role: heading, text: { key: Account.timeTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:146 } # h2; the first list has the same words for its label
+  timeUnreadable: { type: alert, component: Alert, role: alert, text: { key: Account.timeZoneUnreadable }, in: [settings, savingZone, starOpen], when: "read == 'meFailed'", source: apps/nazar/features/account/components/account-page.tsx:161 } # in place of both lists; no retry control
+  zoneField: { type: field, component: TextField, role: combobox, text: { key: Account.timeZone }, in: [settings, savingZone, starOpen], when: readable, duringStep: true, emits: OPEN_ZONES, source: apps/nazar/features/account/components/time-zone-form.tsx:85 } # the kit's Select, a button with role combobox, named by its label; it stays enabled while a save is out (F-E-12)
+  zoneHelp: { type: text, component: Text, text: { key: Account.timeZoneHelp }, in: [settings, savingZone, starOpen], when: readable, source: apps/nazar/features/account/components/time-zone-form.tsx:84 }
+  zoneReadsIstanbul: { type: text, component: Text, text: { key: composed.Account.zones.istanbul }, in: [settings, starOpen], when: "readable and box == 'hidden' and zone == 'istanbul'", source: apps/nazar/features/account/components/time-zone-form.tsx:87 } # the first list's own words: the zone it holds
+  zoneReadsNewYork: { type: text, component: Text, text: { key: composed.Account.zones.newYork }, in: [settings, starOpen], when: "readable and box == 'hidden' and zone == 'newYork'", source: apps/nazar/features/account/components/time-zone-form.tsx:87 }
+  zoneReadsOther: { type: text, component: Text, text: { key: Account.timeZoneOther }, in: [settings, starOpen], when: "readable and box == 'shown'", source: apps/nazar/features/account/components/time-zone-form.tsx:87 } # "Diğer…" while the second list is drawn
+  zoneOtherField: { type: field, component: TextField, role: combobox, text: { key: Account.timeZoneOtherLabel }, in: [settings, savingZone, starOpen], when: "readable and box == 'shown'", duringStep: true, emits: OPEN_LISTED, source: apps/nazar/features/account/components/time-zone-form.tsx:101 } # drawn under the first list with no announcement and no move of focus (F-E-12)
+  zoneOtherReadsEmpty: { type: text, component: Text, text: { key: Account.timeZoneOther }, in: [settings, starOpen], when: "readable and box == 'shown' and zone != 'tokyo'", source: apps/nazar/features/account/components/time-zone-form.tsx:104 } # its placeholder, while no zone of it is held
+  zoneOtherReadsTokyo: { type: text, component: Text, text: { key: composed.Account.listedZone, params: { zone: zone } }, in: [settings, starOpen], when: "readable and box == 'shown' and zone == 'tokyo'", source: apps/nazar/features/account/components/time-zone-form.tsx:103 } # the zone held, "Asia / Tokyo" for the walk's
+
+  # --- the toasts of a save: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays -----------------------------------
+  toastZoneSaved: { type: status, component: Status, role: dialog, name: { key: Account.timeZoneSaved }, in: [settings, starOpen], when: "toast == 'saved'", source: apps/nazar/features/account/components/time-zone-form.tsx:68 } # closes by itself after six seconds
+  toastZoneFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Account.timeZoneFailedTitle }, text: { key: Account.timeZoneFailed }, in: [settings, savingZone, starOpen], when: alerting, source: apps/nazar/features/account/components/time-zone-form.tsx:73 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [settings, savingZone, starOpen], when: alerting, duringStep: true, emits: CLOSE_ALERT, source: libs/ui/src/mds/toast.tsx:95 } # an icon button named only by a literal aria-label of the kit (F-E-14)
+
+  # --- the first list, open: nine options; the page behind it is inert -----------------------------------------------------------------
+  zoneList: { type: list, component: List, role: listbox, in: [choosingZone], source: libs/ui/src/mds/select.tsx:80 } # no name of its own
+  optIstanbul: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.istanbul }, in: [choosingZone], emits: PICK_ISTANBUL, source: apps/nazar/features/account/time-zone.ts:21 }
+  optBerlin: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.berlin }, in: [choosingZone], source: apps/nazar/features/account/time-zone.ts:21 }
+  optAmsterdam: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.amsterdam }, in: [choosingZone], source: apps/nazar/features/account/time-zone.ts:21 }
+  optBrussels: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.brussels }, in: [choosingZone], source: apps/nazar/features/account/time-zone.ts:21 }
+  optParis: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.paris }, in: [choosingZone], source: apps/nazar/features/account/time-zone.ts:21 }
+  optVienna: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.vienna }, in: [choosingZone], source: apps/nazar/features/account/time-zone.ts:21 }
+  optLondon: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.london }, in: [choosingZone], source: apps/nazar/features/account/time-zone.ts:21 }
+  optNewYork: { type: field, component: ListItem, role: option, text: { key: composed.Account.zones.newYork }, in: [choosingZone], emits: PICK_NEW_YORK, source: apps/nazar/features/account/time-zone.ts:21 }
+  optOther: { type: field, component: ListItem, role: option, text: { key: Account.timeZoneOther }, in: [choosingZone], emits: PICK_OTHER, source: apps/nazar/features/account/time-zone.ts:22 } # the ninth: it saves nothing
+
+  # --- the second list, open: every other zone (about four hundred); one is drawn, the one the e2e chooses ---------------------------------------------
+  listedZones: { type: list, component: List, role: listbox, in: [choosingListed], source: libs/ui/src/mds/select.tsx:80 }
+  optTokyo: { type: field, component: ListItem, role: option, text: { key: composed.Account.listedZone, params: { zone: zone } }, in: [choosingListed], emits: PICK_TOKYO, source: apps/nazar/features/account/time-zone.ts:30 }
+
+  # --- "Hesap": the person and the e-mail the account is signed in with -------------------------------------------------------------------
+  accountRegion: { type: page, component: Page, role: region, name: { labelledBy: accountTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:168 }
+  accountTitle: { type: text, component: Heading, role: heading, text: { key: Account.accountTitle }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:168 } # h2
+  personName: { type: text, component: Text, text: { key: composed.Account.personName, params: { name: person.name } }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:173 }
+  roleLine: { type: text, component: Text, text: { oneOf: [composed.Account.roleLine, Roles.STUDENT] }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:175 } # every role held, once each, with the placeholder {roles}; "Talebe" (Roles.STUDENT) for a person who holds none, even the başnazım (F-E-4)
+  emailField: { type: field, component: TextField, role: textbox, text: { key: Account.email }, value: { key: composed.Account.email, params: { email: person.email } }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:180 } # readOnly, in the mono face; not drawn when the session has no e-mail
+  emailHelp: { type: text, component: Text, text: { key: Account.emailHelp }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:179 }
+
+  # --- the way out: a sentence and a button that signs out at once --------------------------------------------------------------------------------
+  signOutNote: { type: text, component: Text, text: { key: Account.signOutNote }, in: [settings, savingZone, starOpen], source: apps/nazar/features/account/components/account-page.tsx:185 }
+  signOutButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Account.signOut }, in: [settings, savingZone, starOpen], emits: SIGN_OUT, source: apps/nazar/features/account/components/sign-out-button.tsx:32 } # busy after the press (aria-disabled, aria-busy, a hidden <output> "Çıkış yapılıyor") while the page unloads; the graph passes the moment
+
+  # --- the star's bubble (non-modal) ----------------------------------------------------------------------------------------------------------------------
+  starBubble: { type: page, component: Page, role: dialog, name: { labelledBy: starBubbleTitle }, in: [starOpen], source: libs/ui/src/mds/imam-star.tsx:99 } # Base UI Popover.Popup; the focus does not move into it (initialFocus false) and does not return (finalFocus false)
+  starBubbleTitle: { type: text, component: Text, text: { key: common.imamStar.title }, in: [starOpen], source: libs/ui/src/mds/imam-star.tsx:105 }
+  starBubbleBody: { type: text, component: Text, text: { key: common.imamStar.body }, in: [starOpen], source: libs/ui/src/mds/imam-star.tsx:108 }
+
+edges:
+  - { labelledBy: [tasksRegion, tasksTitle] }
+  - { labelledBy: [permissionsRegion, permissionsTitle] }
+  - { labelledBy: [permissionGroup, groupTitle] }
+  - { labelledBy: [timeRegion, timeTitle] }
+  - { labelledBy: [accountRegion, accountTitle] }
+  - { labelledBy: [starBubble, starBubbleTitle] }
+  - { triggers: [zoneField, choosingZone] }
+  - { triggers: [zoneOtherField, choosingListed] }
+  - { triggers: [imamStar, starOpen] }
+  - { triggers: [optIstanbul, savingZone] }
+  - { triggers: [optNewYork, savingZone] }
+  - { triggers: [optTokyo, savingZone] }
+
+rules:
+  - { id: F-E-3, rule: "The Dil field was removed (commit 1c9cbdc7) and the page has no language control, but its two messages are still in the catalog: Account.language and Account.languageHelp (libs/i18n/src/locales/tr/nazar.json:198-199), used nowhere, and not copied here. e2e account#3 a3 to a5 ('Dil' reads 'Türkçe', is read-only, 'Medaris şimdilik yalnız Türkçe görünür.') are STALE and are not carried; test/account-page.spec.tsx:258-262 asserts the opposite. Fix: delete a3 to a5 and the two dead keys." }
+  - { id: F-E-4, rule: "For the başnazım with no seat the person card's role line falls back to 'Talebe' (account-page.tsx:109) while the layout's own frame says 'Medaris başnazımı' (portal-layout.tsx:73-74) and the table is empty: two answers for one person. Seen as the data: GET /me/assignments is [] and /me says systemAdmin true for the seeded başnazım. Fix: use the layout's SYSTEM_ADMIN fallback here." }
+  - { id: F-E-11, rule: "The skeleton under 'Etkin izinleriniz' is an <output aria-busy> with only aria-hidden bars (account-page.tsx:81-89): silent while the card streams, unlike the root skeleton, which has a hidden 'Yükleniyor'. Not drawn in this graph. Fix: add the hidden Shell.loadingLabel." }
+  - { id: F-E-12, rule: "The time-zone lists have no pending state: useTransition's `pending` is discarded (time-zone-form.tsx:44), so both stay enabled while PATCH /me runs and a second choice races the first and its rollback; and choosing 'Diğer…' draws the second list with no announcement and no move of focus. Fix: mark the card busy during the save and focus (or announce) the second list when it appears." }
+  - { id: F-E-13, rule: "A person with no row (the başnazım with no seat) reads 'Bu listede henüz bir şey yok.', the kit Table's hard-coded default (libs/ui/src/mds/table.tsx:54), not a message of this app. Fix: pass `empty` from nazar.Account (assignments-table.tsx:107-113)." }
+  - { id: F-E-14, rule: "The toast's close button is named by the literal aria-label 'Kapat' and the region by the literal 'Bildirimler' (libs/ui/src/mds/toast.tsx:97,127), not by the catalog; the region has the same name as this app's notification page and bell, which a screen-reader user hears as two things called 'Bildirimler'. Cross-cutting (the lead's). Fix: pass catalog labels and a distinct region name." }
+  - { id: F-E-16, rule: "When only the permissions read fails the alert is titled 'Görevleriniz yüklenemedi' (account-page.tsx:62-65) although the roles table above loaded: the wording says more failed than did. Fix: title it for the permissions ('İzinleriniz yüklenemedi'). Not seen on the stack: no way to make the read fail." }
+  - { id: F-E-18, rule: "'Çıkış yap' posts to /api/auth/signout at once (sign-out-button.tsx:26-29); the confirmation page /auth/signout exists and nothing links to it, and e2e account#7 still names the confirmation window in its title though it asserts none. Fix: link the button to /auth/signout (decision D2 of the flow and of realm.auth.signOut)." }
+  - { id: F-E-19, rule: "Every permission group is a <section aria-labelledby> (permissions-list.tsx:47-51), that is a region landmark; with several roles and courses the page gets many landmarks next to the four cards' regions. Fix: a div with the h3, and keep landmarks for the cards." }
+  - { id: NAZSET-1, rule: "A failed save of a choice made in the second list, where the zone before was one of the eight, takes the second list out of the page (time-zone-form.tsx:72 setOpenOther(!isCommonZone(previous))) while its button holds the focus, so the focus falls to the document; the toast is all that says anything, and the person has lost the list they had opened (tedris's Hesap puts it back). From the code; not seen in a browser (no way to make the save fail on the stack). Fix: keep the second list open after a refusal, or move the focus to the first list. New finding, proposed id." }
+  - { id: NAZSET-2, rule: "A medrese nazırı who has been given no permission reads 'Görevlerinizden gelen ya da size verilmiş bir izin henüz yok.' under 'Etkin izinleriniz' and nothing says who gives one, although the Pano's refusal names the başmüderris ('İzne ihtiyacınız varsa medresenin başmüderrisine başvurun'). Seen on the stack: GET /me/effective-permissions answers no group for the seeded nazır. Fix: end the sentence with whom to ask. New finding, proposed id; product wording." }
+  - { id: focus-not-set, rule: "Hesap sets no initial focus (no autoFocus and no focus() in features/account), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens; after a pick, after the toast and after the star's bubble closes the focus is Base UI's (the list's button, the star) and was not seen. Recorded so the silence is not read as an omission." }
+  - { id: saves-at-once, rule: "There is no Kaydet on this page: a zone chosen from either list is saved at that moment (e2e account#4 a2 asserts no button matching /Kaydet/). The toast and the help line 'Seçtiğiniz an kaydedilir.' are the only words about it; the graph carries the rule by sending every pick straight to savingZone." }
+  - { id: label-in-name, rule: "Where a control's visible text is part of its name, the name contains it (WCAG 2.5.3): 'Çıkış yap', 'Kapat' and the star's 'Dersin imamı'. Holds." }

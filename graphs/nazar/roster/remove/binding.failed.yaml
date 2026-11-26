@@ -1,0 +1,52 @@
+# nazar.roster.remove where the course is gone: the müderris presses "Dersten çıkar" on Esma Başvuran's row, and the başnazım deletes the
+# course while the removal is on its way, so the server answers COURSE_NOT_FOUND ("Bir şeyler ters gitti. Biraz sonra yeniden deneyin.")
+# and the dialog stays open with the reason.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/remove --bind graphs/nazar/roster/remove/binding.failed.yaml --cover transitions --out <dir>
+# NOT RUN, and the least sure of the bindings: the deletion is the `before` of the state `submitting`, which the replay runs while the server
+# action is held, so the POST reaches the API after the course is gone. It assumes the guard answers 404 COURSE_NOT_FOUND for a missing
+# course (the domain says so, apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:400); if it answers 403 the toast says "Bunu yapma
+# izniniz yok." and the walk ends in `formReady` with the other toast. A file of its own because that `before` would run in every walk of a
+# file that holds the other scenarios.
+#
+# `setup` makes the course as binding.yaml does. The title is a literal: the made file is gone after the deletion, and the screen still draws
+# it. The deletion takes the seats, the course and the notices that point at it; `teardown` cleans again, which finds nothing (a second
+# `remove` says `none`).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.remove
+
+scenarios:
+  failed:
+    given: { viewer: remover, answer: failed, others: some }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosterremove, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove
+      - run: [node, helpers/sql.mjs, "select count(*) as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+    vars:
+      who: applicantC
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      otherName: Salih Başvuran
+      courseTitle: Deneme dersi rosterremove
+      reason: Ders silinmeden önce yazıldı
+      reasonSaved: Ders silinmeden önce yazıldı
+      removerName: Hamdi Müderris
+
+states:
+  # the course is deleted while the call waits: the page keeps what it drew, and the API no longer knows the course
+  submitting:
+    call: '{nazar}/ders/*/talebeler**'
+    before:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove

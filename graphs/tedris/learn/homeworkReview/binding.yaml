@@ -1,0 +1,97 @@
+# tedris.learn.homeworkReview on the local stack (graphs/bindings/local.tedris.binding.yaml): tedris-web on :4000, the spare talebe
+# `applicantH` signed in through Keycloak's real form, on the celse page of a course of its own.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkReview \
+#     --bind graphs/tedris/learn/homeworkReview/binding.yaml [--to <state>] --out <dir>
+#
+# Data. Each scenario's `setup` makes a published course of its own (helpers/course.mjs make hwreview: one week, two celses, the first
+# tomorrow at 21:00 Istanbul, in the second köşk) with applicantH holding a seat, and review-data.mjs gives it the hoca's homework, the
+# talebe's hand-in and, as the scenario needs, a returned file and the sent review; `teardown` removes the course with everything under
+# it (course.mjs remove hwreview). Both are idempotent, so a walk that died leaves nothing the next one trips on (make removes an old
+# hwreview first). The seeded courses, the seeded hand-in of TALEBE and every other account are never touched. The one SQL write is
+# the returned file's row (the route that makes it needs a file store the stack lacks): review-data.mjs says so. The hoca is the
+# seed's MUDERRIS, who is the course's müderris and imam; the walk signs nobody else in, because the hoca's steps are API calls.
+#
+# Scenarios, each with a `given` of its own:
+#   afterReview  (the main story) the review is sent, a note and a file. The page holds it; the talebe changes their note and saves, and
+#                the notice "Ödevin değerlendirmeden sonra değişti" appears. Enters through the course page's "Devam et".
+#   beforeSent   the review is not sent yet, though its file is attached: the page shows none of it. The hoca sends it (an event), the page
+#                is loaded again and now holds it. e2e: none
+#   refused      the review has no note and one file; the file's link is pressed. The local stack has no file store, so tedrisat answers 503
+#                (`download: unavailable`), the page loads again and says "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene." in a
+#                toast, which the talebe then closes.
+# binding.noteOnly.yaml: the review has a note and no file.
+#
+# Not bound, with the reason:
+#   - `download: served` (the file is saved): the stack has no file store (Bunny Storage unset), so a returned file never comes out. The
+#     transition downloading -> reviewShown is read from the code (file-proxy.ts:373-401, tedrisat's streamStoredFile) and not walked.
+#   - `download: forbidden`, `notFound`, `failed`: the link is the talebe's own and every download answers 503 first (assertConfigured
+#     precedes every check, lesson-submission.service.ts:307), so the stack cannot make tedrisat answer 403 or 404 to this page.
+#   - `answer: refused` (the note is refused), a failed read, an ended session (`sent_to_sign_in`): the stack cannot make tedrisat refuse
+#     a talebe who holds a seat, and a session cannot be ended on request here.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkReview
+
+scenarios:
+  afterReview:
+    given: { reviewed: true, content: both, download: unavailable, answer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      edited: 'Çekimleri yazdım; ikinci tablodaki iki satırı düzelttim.'
+    setup:
+      - run: [node, helpers/course.mjs, make, hwreview, --weeks, '1', --lessons, '2', --talebe, applicantH]
+        expect: '"tag":"hwreview"'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, hand, hwreview, applicantH]
+        expect: 'review-data hand'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, file, hwreview]
+        expect: 'review-data file'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, send, hwreview, note]
+        expect: 'review-data send'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hwreview]
+        expect: course remove hwreview
+
+  beforeSent:
+    given: { reviewed: false, content: both, download: unavailable, answer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      edited: 'Çekimleri yazdım; ikinci tablodaki iki satırı düzelttim.'
+    setup:
+      - run: [node, helpers/course.mjs, make, hwreview, --weeks, '1', --lessons, '2', --talebe, applicantH]
+        expect: '"tag":"hwreview"'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, hand, hwreview, applicantH]
+        expect: 'review-data hand'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, file, hwreview]
+        expect: 'review-data file'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hwreview]
+        expect: course remove hwreview
+
+  refused:
+    given: { reviewed: true, content: filesOnly, download: unavailable, answer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      edited: 'Çekimleri yazdım; ikinci tablodaki iki satırı düzelttim.'
+    setup:
+      - run: [node, helpers/course.mjs, make, hwreview, --weeks, '1', --lessons, '2', --talebe, applicantH]
+        expect: '"tag":"hwreview"'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, hand, hwreview, applicantH]
+        expect: 'review-data hand'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, file, hwreview]
+        expect: 'review-data file'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, send, hwreview, none]
+        expect: 'review-data send'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hwreview]
+        expect: course remove hwreview

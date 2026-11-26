@@ -1,0 +1,29 @@
+# tedris.decks.manageCards on a Hadis deck, on the local stack, as the spare talebe `applicantF`:
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/manageCards --bind graphs/tedris/decks/manageCards/binding.hadith.yaml --absent --out <dir>
+#
+# A file of its own because its scenario has the same `given` as `emptyDeck` of binding.yaml and a walk takes the first scenario of a file whose `given`
+# fits. It differs in the deck's kind only: cardType HADEETH (cards-deck.mjs make --kind hadith), which changes the help lines under the faces ("Hadisten bir
+# parça.", "Tam metni ve kaynağı.") and the type of the card the add form sends (HADEETH, which the effect `createCards` checks against the deck's). The graph
+# draws the kinds with one node (a `oneOf`), so the binding's locators accept either line.
+# The faces are the hadith "Ameller ancak niyetlere göredir" with its source, as the Hadis help line asks ("Tam metni ve kaynağı").
+schema: delurio-graph/0
+kind: binding
+extends: ./walk.common.binding.yaml
+flow: tedris.decks.manageCards
+
+scenarios:
+  hadithDeck:
+    given: { deck: empty, fields: valid, answer: saved }
+    as: applicantF
+    open: '{tedris}/decks/{mc.deck}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'deck->deckCards Decks.tabCards' }
+    samples: { front: 'إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ', back: 'Ameller ancak niyetlere göredir. Buhârî, Müslim' }
+    vars: { cardFront: 'إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ', cardBack: 'Ameller ancak niyetlere göredir. Buhârî, Müslim', revised: 'Ameller niyetlere göredir. Buhârî, Müslim' }
+    setup:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, make, --cards, '0', --kind, hadith]
+        expect: 'manage-cards made'
+    teardown:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, remove]
+        expect: 'manage-cards removed'
+      - run: [node, helpers/sql.mjs, "select count(*) = 0 as gone from decks where author_id = '{secret.E2E_APPLICANT_F_SUB}' and title = 'Kart yönetimi denemesi'"]
+        expect: '"gone":true'

@@ -79,9 +79,7 @@ async function openWatchPage(
 const blockBunny = (page: Page) =>
   page.route(
     (url) =>
-      url.hostname.endsWith("mediadelivery.net") ||
-      url.hostname.endsWith("bunnycdn.com") ||
-      url.hostname.endsWith("b-cdn.net"),
+      /(^|\.)(mediadelivery\.net|bunnycdn\.com|b-cdn\.net)$/.test(url.hostname),
     (route) => route.abort()
   );
 

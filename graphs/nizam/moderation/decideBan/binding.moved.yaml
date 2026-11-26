@@ -1,0 +1,51 @@
+# nizam.moderation.decideBan at the köşk's list, the lift answered 409 BAN_ALREADY_LIFTED: another hand lifted the ban between the list and the
+# send (lifting FAIL.moved: the sticky toast "Bu yasak zaten kaldırılmış; sayfayı yenileyin.", the dialog stays open and the list is not read again,
+# NDB-6).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.moved.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# How the world is made to refuse. Three course bans stand (applicantC, D, E). When the dialog's reason is filled in, the binding first has the
+# köşk nazım lift the newest ban through the API (helpers/kosk-bans.mjs lift --newest): a second hand that decided first. The newest is the first row of
+# the list, the one the press chose. The submit then reaches a lifted ban and tedrisat answers 409 BAN_ALREADY_LIFTED; the page shows the error
+# toast and keeps the dialog open. A second FILL_IN in the same dialog finds the next ban and lifts it too (the helper cannot tell the dialogs
+# apart): `--cover transitions` takes FILL_IN once in a dialog.
+# `call` is left off the server-action state: a refusal of a server action answers 200 on the page's own address, so its status cannot be
+# compared with the 409 (binding.yaml holds `call` for the walks that end in DONE).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+states:
+  listed: { url: '{nizam}/kosks/*/yasaklamalar' }
+  empty: { url: '{nizam}/kosks/*/yasaklamalar' }
+  liftedTab: { url: '{nizam}/kosks/*/yasaklamalar' }
+
+# the other hand first, then the reason: this file's FILL_IN replaces the shared one
+events:
+  FILL_IN:
+    - run: [node, helpers/kosk-bans.mjs, lift, decideBan, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_E', --newest]
+      expect: 'lifted APPLICANT_'
+    - fill: { role: textbox, within: { role: dialog }, value: '{reasonText}' }
+
+scenarios:
+  alreadyLifted:
+    given: { viewer: kosk, read: ok, row: low, answer: moved, after: more }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+        expect: 'ready: 3 open'
+    teardown:
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: 'APPLICANT_C,APPLICANT_D,APPLICANT_E'
+      liftHas: 'COURSE lifted'
+      widenHas: KOSK open

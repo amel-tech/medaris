@@ -1,0 +1,102 @@
+# The screens of nizam.madrasahs.restore: the Medreseler page (/medreseler) as it bears on a hidden medrese: the table with its row, the
+# row's "Geri al" (or what stands in its place), the busy state, the row after the restore, and the toasts of each answer. Read from
+# apps/nizam/features/madrasahs/components/madrasahs-view.tsx, present.ts and app/medreseler/page.tsx on 15 Nov 2026; nothing was opened
+# in a browser. The words are copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as `nizam.MadrasahsPage` and
+# `nizam.HideLevel`) and common.json (`toast.close`); a key is the path inside the file's root.
+#
+# Words that are NOT in an i18n file, so they are `composed.*` or authored:
+#   composed.MadrasahsPage.name     the medrese's name as the API gives it (madrasahs-view.tsx:158)
+#   composed.MadrasahsPage.handle   "@" and its short name (madrasahs-view.tsx:159-161)
+#   composed.MadrasahsPage.head     the başmüderris's name as the API gives it (madrasahs-view.tsx:172)
+#   composed.Button.loading         the hidden status text of a busy button, a hard-coded default of libs/ui/src/mds/button.tsx:62 (RESTORE-3)
+#   Changes.note                    AUTHORED, the only one: the app's own toast says "{name} yeniden listelerde." and nothing of the courses
+#                                   that come back with the medrese, of what stays hidden, of a medrese that is passive as well, or of the
+#                                   audit row; the sentences are the API's own (MadrasahController.restore's description)
+# The words under "Gizli" ("{date}'den beri") are built in code (present.ts: dateWithCase) from `madrasah.since`, the day the walk hides the
+# medrese; the sample `dateAblative` is the day this was written, and the binding finds that node by its ending, not by the sample.
+# A node whose text is a number ("0", "1") is the Ders column's count of courses that are not hidden: 0 while the medrese is hidden, 1 once
+# it is back (the walk's medrese holds one course).
+schema: delurio-graph/0
+kind: ui
+id: nizam.madrasahs.restore
+flow: nizam.madrasahs.restore
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Geri Alma Denemesi Medresesi
+  handle: geri-alma-denemesi
+  head: Dilek Başvuran
+  level: medrese yönetimi
+  dateAblative: 15 Kasım’dan
+
+nodes:
+  # ---- the page: the shell's one <main>, the heading and what stands in it ----
+  page: { type: page, component: Page, role: main, in: [list, restoring, restored], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">, no name and no initialFocus: nothing in features/madrasahs or app/medreseler moves the focus when the page opens (rule focus-not-set)
+  title: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.title }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:332 } # h1
+  intro: { type: text, component: Text, text: { key: MadrasahsPage.intro }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:333 }
+  listRegion: { type: page, component: Page, role: region, name: { labelledBy: listHeading }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:371 } # <section aria-labelledby="madrasahs-heading">
+  listHeading: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.heading }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:376 } # h2; the same words as the caption of Tümü's table
+
+  # ---- the tabs and the search, which this flow only stands on ----
+  tabs: { type: list, component: List, role: tablist, name: { key: MadrasahsPage.tabsLabel }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:386 }
+  tabAll: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.ALL }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:391 } # a tab's name is its label with the count glued on ("Gizli1"); the binding finds it by its beginning
+  tabActive: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.ACTIVE }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:391 }
+  tabPassive: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.PASSIVE }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:391 }
+  tabHidden: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.HIDDEN }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:391 }
+  search: { type: field, component: TextField, role: searchbox, text: { key: MadrasahsPage.searchLabel }, value: { literal: "" }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:406 } # an aria-label, a placeholder and a leading icon
+
+  # ---- the table; the caption is visually hidden and names it ----
+  tableHidden: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.HIDDEN }, in: [list, restoring, restored], when: "tab == 'hidden'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 }
+  tableAll: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.ALL }, in: [list, restoring, restored], when: "tab == 'all'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 }
+
+  # ---- the walk's hidden medrese, one row of it (the others rows of the table are not drawn) ----
+  rowName: { type: text, component: Text, text: { key: composed.MadrasahsPage.name, params: { name: madrasah.name } }, in: [list, restoring, restored], when: rowListed, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:158 } # the row header (<th scope=row>)
+  rowHandle: { type: text, component: Text, text: { key: composed.MadrasahsPage.handle, params: { handle: madrasah.handle } }, in: [list, restoring, restored], when: rowListed, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:159 }
+  rowHead: { type: text, component: Text, text: { key: composed.MadrasahsPage.head, params: { head: madrasah.head } }, in: [list, restoring, restored], when: rowListed, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:172 }
+  rowCoursesNone: { type: text, component: Text, text: { literal: "0" }, in: [list, restoring], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:189 } # its course is hidden with it, and a hidden course is not counted
+  rowCoursesBack: { type: text, component: Text, text: { literal: "1" }, in: [restored], when: "tab == 'all'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:189 }
+  rowStatusHidden: { type: text, component: Text, text: { key: MadrasahsPage.status.HIDDEN }, in: [list, restoring], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:219 } # plain text with an eye-off glyph, no badge
+  rowSince: { type: text, component: Text, text: { key: MadrasahsPage.since, params: { dateAblative: madrasah.since } }, in: [list, restoring], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:224 }
+  rowStatusActive: { type: text, component: Text, text: { key: MadrasahsPage.status.ACTIVE }, in: [restored], when: "tab == 'all'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:210 } # a badge; a medrese that was passive as well would read "Pasif" (a warning badge)
+
+  # ---- the last cell of the hidden row: the button, or what stands in its place ----
+  rowRestore: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.restoreLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.restore }, in: [list, restoring], when: mayPress, disabledIn: [restoring], emits: RESTORE, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:239 } # the visible words are in the name (label in name holds); busy (aria-busy, aria-disabled) while the call runs
+  restoreBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [restoring], source: libs/ui/src/mds/button.tsx:114 } # the button's hidden <output>; every row's button carries an empty one (RESTORE-3)
+  lockedNote: { type: text, component: Text, text: { key: HideLevel.locked, params: { level: madrasah.hiddenLevelName } }, in: [list], when: "viewer == 'nazimUnread'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:251 } # in place of the button; only when the page could not read the viewer's permissions (RESTORE-1, F-W2-2)
+
+  # ---- the same row once it is back, on Tümü: the buttons of an active row ----
+  openInNazar: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: MadrasahsPage.openInNazarLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.openInNazar }, in: [restored], when: "tab == 'all' and viewer == 'chief'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:270 } # the başnazım's alone, and only while NAZAR_URL is set (the local stack sets it); opens nazar's Pano in a new tab
+  changeHead: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.changeLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.change }, in: [restored], when: "tab == 'all' and viewer == 'chief'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:283 } # platform.head_muderris_manage (the başnazım holds everything); nizam.madrasahs.headMuderris walks it
+  passivate: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.passivateLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.passivate }, in: [restored], when: "tab == 'all' and mayPress", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:300 } # platform.madrasah_edit; nizam.madrasahs.passivate walks it
+
+  # ---- the footnote under the table ----
+  footnote: { type: text, component: Text, text: { key: MadrasahsPage.footnote }, in: [list, restoring, restored], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:450 }
+
+  # ---- the toasts: sonner's, a list item with a title, a description and a close button (the unified kit's other toaster is another one, F-X-5) ----
+  toastRestored: { type: status, component: Status, text: { key: MadrasahsPage.restored }, in: [restored], when: "last == 'restored'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:128 } # a success: it goes by itself after 6 seconds
+  toastRestoredBody: { type: status, component: Status, text: { key: MadrasahsPage.restoredBody, params: { name: madrasah.name } }, in: [restored], when: "last == 'restored'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:129 }
+  toastFailed: { type: status, component: Status, text: { key: MadrasahsPage.restoreFailed }, in: [list], when: errorToast, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:122 } # an error: it stays until it is closed (duration Infinity, :124)
+  toastNotHidden: { type: status, component: Status, text: { key: MadrasahsPage.errors.notHidden }, in: [list], when: "last == 'notHidden'", source: apps/nizam/features/madrasahs/present.ts:303 }
+  toastGone: { type: status, component: Status, text: { key: MadrasahsPage.errors.notFound }, in: [list], when: "last == 'gone'", source: apps/nizam/features/madrasahs/present.ts:302 }
+  toastForbidden: { type: status, component: Status, text: { key: MadrasahsPage.errors.forbidden }, in: [list], when: "last == 'forbidden'", source: apps/nizam/features/madrasahs/present.ts:309 }
+  toastGeneric: { type: status, component: Status, text: { key: MadrasahsPage.errors.generic }, in: [list], when: "last == 'failed'", source: apps/nizam/features/madrasahs/present.ts:320 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: common.toast.close }, in: [list], when: errorToast, emits: CLOSE_TOAST, source: libs/ui/src/components/sonner.tsx:62 } # sonner's own close button on each toast, named "Kapat" from common.toast.close
+
+edges:
+  - { labelledBy: [listRegion, listHeading] }
+  - { triggers: [rowRestore, restoring] }
+
+rules:
+  - { id: focus-not-set, rule: "The page sets no initial focus (nothing in features/madrasahs or app/medreseler does), so a person who arrives starts at the top of the document, and no `focus` is drawn after the press: the button that had the focus leaves the page (F-W2-10). The graph says nothing of where the focus is." }
+  - { id: label-in-name, rule: "'Geri al: {name}' contains the visible 'Geri al' (WCAG 2.5.3 holds); so do 'Başmüderrisi değiştir: {name}' and 'Pasife al: {name}'. 'Nazar’da aç, yeni sekmede: {name}' contains 'Nazar’da aç'." }
+  - { id: F-W2-2, rule: "present.ts:103: when the roles or the permission codes could not be read (me or held is null), madrasahAbilities switches every ability on, so a Medaris nazımı who holds none of them is drawn 'Geri al' (or, on a row whose canRestore the API says is false, the kademe sentence, RESTORE-1) and the API refuses the press. Here only the sentence is reachable that way, and it is what `nazimUnread` stands for. Fix: keep the failure visible (a notice) or hide the buttons." }
+  - { id: F-W2-10, rule: "madrasahs-view.tsx:116-131: after 'Geri al' the row is read again; on the Gizli tab it leaves the table, on Tümü the button is replaced by the buttons of an active row, so the element that had the focus is removed either way and the focus falls to the page; only a toast of six seconds says what happened. Not verified in a browser. Fix: move the focus to the next row's control, or to the table's heading, once the page is read again." }
+  - { id: F-X-7, rule: "the family of F-W2-10: rows that leave the page after an action and the focus that is lost with them, in every table of nizam." }
+  - { id: F-X-5, rule: "this flow's toasts are sonner's (madrasahs-view.tsx:8), which the app mounts beside the unified kit's own Toaster (client-providers.tsx): two toast hosts with two looks and two region names, as the account page and the notification page use the other one." }
+  - { id: RESTORE-1, rule: "new: the kademe sentence (madrasahs-view.tsx:249-255, HideLevel.locked) and the toast for ARCHIVE_RESTORE_LEVEL (present.ts:311) cannot be reached by anyone who is offered 'Geri al'. The cell is drawn only for `can.restore` (platform.madrasah_edit, present.ts:107), and the API's canRestore (madrasah.controller.ts:177-195, mayRestoreHidden, archive/hide-level.ts:206-216) asks whether the viewer acts at or above the level that hid it; a holder of platform.madrasah_edit, like the başnazım (actingLevel, hide-level.ts:178), acts at the platform level, the top rung of MADRASAH_HIDE_LADDER (hide-level.ts:101-104), and a medrese is hidden only at the platform or the medrese level (madrasah.controller.ts:148-155, 495-513). The sentence can only appear through the fail-open of F-W2-2, where it names a level to a person who lacks the permission, which is not why they cannot restore. The unit spec draws it with canRestore false made by hand (test/madrasahs.spec.tsx:404-419); the e2e checks no such state. Not verified in a browser. Fix: say what is true instead (RESTORE-2), and keep the kademe words for the tables where a lower level really can look at a higher one's hide (the köşk's, the course's)." }
+  - { id: RESTORE-2, rule: "new: madrasahs-view.tsx:238 (`!can.restore ? null`): a Medaris nazımı who opens the page by platform.madrasah_create or platform.head_muderris_manage, as the seeded one does (platform.madrasah_create), sees a hidden row with an empty last cell and no word of why; the footnote under the table says 'Medreseyi gizleyen kademe ya da üstü bu tablodan geri alır' and does not say that platform.madrasah_edit is what they lack. The column's header is visually hidden ('İşlemler'). Fix: a caption in the cell ('Geri almak için platform.madrasah_edit izni gerekir' in the app's own words), or leave the hidden rows out for them." }
+  - { id: RESTORE-3, rule: "new: madrasahs-view.tsx:243 gives the button `loading` and no `loadingLabel`, so its hidden <output> says the hard-coded default 'Yükleniyor' (libs/ui/src/mds/button.tsx:62,114), which is in no catalog; every other row's button carries an empty <output> too. Same as nazar's F-A-14. Fix: pass the label from the catalog." }
+  - { id: RESTORE-4, rule: "new: madrasahs-view.tsx:121-127: a refused restore toasts and returns, and unlike a success it does not call refresh(). After 409 MADRASAH_NOT_HIDDEN (someone else brought it back) or 404 MADRASAH_NOT_FOUND (it was deleted) the row keeps 'Gizli' and its 'Geri al', the sticky toast is the only word, and the same press is refused again until the person reloads (F-X-4). Nazar's own restore reads the page again after every answer. Not verified in a browser. Fix: refresh() on those two codes." }

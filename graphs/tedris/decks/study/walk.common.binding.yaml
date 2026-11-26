@@ -1,0 +1,82 @@
+# What every walk of tedris.decks.study shares (graphs/README.md, "The stack and the bindings"): the walk's own deck as data, the two events a person
+# causes without a node (the space bar, opening the address again), the checks of what a rating writes, and the places the walk finds nodes by. The
+# scenarios are in binding.yaml (the main story and a missing deck) and in binding.unstarted.yaml, binding.single.yaml, binding.nothing.yaml and
+# binding.failed.yaml: one file for each kind of round, so that a `--to` run is bound to one of them (a scenario that adds no transition of its own is
+# walked only from a file of its own).
+#
+# Data. Every scenario makes its own private deck "Deneme destesi study" for the spare talebe `applicantD` (study-data.mjs make), studies it, and
+# removes it with the progress rows of its cards (study-data.mjs remove). The seeded decks ("Kelime Defterim", "Sarf Kavramları") and every other
+# person's rows are never read for a write, changed or deleted. study-data.mjs writes graphs/.local/study.json, read here as {study.deck},
+# {study.title} and {study.cards.N.id|front|back}.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.study
+
+data:
+  study: { json: ../.local/study.json }
+
+events:
+  # The space bar is a window listener that React attaches once the page has hydrated (e2e learn#9 retries the key for that reason): one second of
+  # patience before it, since the walk has only just arrived.
+  FLIP: [{ run: [sleep, '1'] }, { key: Space }]
+  # the address typed again: the page reads a new round
+  STUDY_AGAIN: [{ goto: '{tedris}/decks/study/{study.deck}' }]
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  # An exit has no nodes, so its address is all the replay can check.
+  deck_page_opened: { url: '{tedris}/decks/{study.deck}' }
+  decks_page_opened: { url: '{tedris}/decks' }
+  home_opened: { url: '{tedris}/home' }
+  left: { url: '{tedris}/notifications' }
+
+# What a rating leaves in the person's progress row of the card (the newest `reviewed_at` of the walk's own deck): the schedule is the API's decision
+# (invariant card-review-schedule). The cards the walk makes have no earlier interval (a bare LEARNING row has interval 0), so HARD is one day, MEDIUM is
+# max(3, 0) = 3 and EASY is max(7, 2 x 0) = 7. Read through the stack's own Postgres (sql.mjs), as the account that rated.
+effects:
+  wroteHard:
+    - run: [node, helpers/sql.mjs, "select status, interval_days from flashcard_progress where user_id = '{secret.E2E_APPLICANT_D_SUB}' and flashcard_id in (select id from flashcards where deck_id = '{study.deck}') order by reviewed_at desc nulls last limit 1"]
+      expect: '"status":"LEARNING","interval_days":1'
+  wroteMedium:
+    - run: [node, helpers/sql.mjs, "select status, interval_days from flashcard_progress where user_id = '{secret.E2E_APPLICANT_D_SUB}' and flashcard_id in (select id from flashcards where deck_id = '{study.deck}') order by reviewed_at desc nulls last limit 1"]
+      expect: '"status":"LEARNING","interval_days":3'
+  wroteEasy:
+    - run: [node, helpers/sql.mjs, "select status, interval_days from flashcard_progress where user_id = '{secret.E2E_APPLICANT_D_SUB}' and flashcard_id in (select id from flashcards where deck_id = '{study.deck}') order by reviewed_at desc nulls last limit 1"]
+      expect: '"status":"MASTERED","interval_days":7'
+
+# Where role and name cannot find a node. The numbers on the page move with every card ("Bu tur: 0 / 3 kart" and after the first rating "1 / 3"), and
+# the card's words are the deck's own, so those nodes are found by a pattern. The page's <main> is told from the segment's skeleton (<main aria-busy>,
+# no heading) by its h1.
+nodes:
+  studyPage: { css: 'main:has(h1)', hasText: Çalışma }
+  crumbRoot: { role: link, name: Desteler, within: { role: navigation, name: Sayfa yolu } }
+  crumbDeck: { role: link, name: Deneme destesi study, within: { role: navigation, name: Sayfa yolu } }
+  crumbCurrent: { css: '.mds-breadcrumb__current' }
+  subtitleDue: { css: 'header p.mds-caption', hasText: '/^Deneme destesi study · Bugün tekrar bekleyen \d+ kart$/' }
+  subtitleNew: { css: 'header p.mds-caption', hasText: '/^Deneme destesi study · \d+ yeni kart$/' }
+  subtitleAll: { css: 'header p.mds-caption', hasText: '/^Deneme destesi study · \d+ kart$/' }
+  roundBar: { role: progressbar, name: '/^Bu tur: \d+ \/ \d+ kart$/' }
+  cardRegion: { role: region, name: '/^Kart \d+ \/ \d+$/' }
+  cardCaption: { css: 'section[aria-label^="Kart"] span.mds-caption', hasText: '/^Kart \d+ \/ \d+$/' }
+  badgeLearning: { text: Öğreniliyor, within: { role: region, name: '/^Kart \d+ \/ \d+$/' } }
+  badgeNew: { text: Yeni, within: { role: region, name: '/^Kart \d+ \/ \d+$/' } }
+  # the card's face is a <span> inside a <div> with the click handler; the deck's three faces are the walk's own
+  frontFace: { css: 'section[aria-label^="Kart"] div.cursor-pointer > span', hasText: '/^(فعل|اسم|حرف)$/' }
+  backEyebrow: { css: 'section[aria-label^="Kart"] .mds-eyebrow', hasText: Arka yüz }
+  backFace: { css: 'section[aria-label^="Kart"] p.mds-reading', hasText: '/^(fiil|isim|harf)$/' }
+  hard: { role: button, name: '/^Zor$/' }
+  medium: { role: button, name: '/^Orta$/' }
+  easy: { role: button, name: '/^Kolay$/' }
+  # an EmptyState is one <p> with a <strong> and a text, then the link
+  doneTitle: { css: 'p.mds-empty__text strong', hasText: Tur bitti }
+  doneText: { css: 'p.mds-empty__text', hasText: '/\d+ kartı çalıştın\.$/' }
+  doneBack: { role: link, name: Desteye dön }
+  nothingTitle: { css: 'p.mds-empty__text strong', hasText: Bugün için bitti }
+  nothingText: { css: 'p.mds-empty__text', hasText: Yarın yeniden bak. }
+  nothingBack: { role: link, name: Desteye dön }
+  # Base UI's toast: a high-priority one is an alertdialog and aria-hidden until it is focused, so it is found by its role attribute
+  failedToast: { css: '[role=alertdialog]', hasText: İlerlemen kaydedilemedi }
+  failedTitle: { css: '[role=alertdialog] p', hasText: İlerlemen kaydedilemedi }
+  failedText: { css: '[role=alertdialog] p', hasText: Kart yerinde duruyor }
+  failedClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }

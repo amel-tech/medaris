@@ -1,0 +1,227 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.platform.auditLog
+status: proposed
+summary: >-
+  What must exist for the başnazım (and a Medaris nazımı who holds platform.audit_read) in nizam.platform.auditLog: the flow's
+  product list, written from the flow's story and its open decisions, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Gaps of this file, for that merge:
+# missing:   the-log-says-how-long-it-is-kept (F-W3-2), the-export-says-how-much-it-holds (AUDIT-1), a-failed-export-says-so (F-W3-4b),
+# a-change-of-rows-is-announced (F-W3-12), a-granted-medaris-nazim-finds-the-page (AUDIT-7), every-kind-the-log-lists-can-be-chosen (AUDIT-5),
+# a-deleted-scope-is-named-as-deleted (AUDIT-3), a-name-too-long-is-refused-in-words (AUDIT-4), the-notice-says-who-sees-the-log (AUDIT-6),
+# the-filter-form-keeps-its-place (AUDIT-2)
+# unwalked:  the-downloaded-file-is-the-filtered-log (the replay cannot read a download: the file the browser saves is not checked, only the row the export
+# writes and the same CSV through the API), an-older-page-that-fails-says-so (nothing on the stack makes that one read fail),
+# the-log-cannot-be-changed (a property of the API, with no check on any page), a-page-with-few-rows-offers-no-older-button (the stack's log
+# holds hundreds of rows, so a view that fits one page without the kind filter cannot be made)
+# No gender or kontenjan need: no seat is decided on this page. No Linear key is known for any of the missing needs: they are findings of this write-up, not of
+# planned work, so `missing` says `none`.
+
+needs:
+  - id: read-the-log-newest-first
+    need: >-
+      The başnazım, and a Medaris nazımı who was given the audit permission, read in one place everything that was read or changed
+      on the platform that matters to a person's rights: the record number and time, who did it and in what role, what kind of act
+      it was with a line of detail where its writer kept one, and where it happened (the platform, a köşk or a medrese). Newest
+      first.
+    evidence:
+      - state: listed
+      - state: listedMore
+      - node: rowRecord
+      - node: rowWhen
+      - node: rowActor
+      - node: rowKind
+      - node: rowScopeName
+      - node: rowScopeKind
+      - source: apps/tedrisat/src/audit/audit.controller.ts:45
+      - source: apps/nizam/features/platform-admin/components/audit-view.tsx:317
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/17 — newest first, the kind filter lives in the URL, and the export carries as many rows as the table has (criteria 1, 2, 4)"
+      - scenario: chief
+
+  - id: only-the-chief-and-the-granted-read
+    need: >-
+      Only the başnazım and a Medaris nazımı who holds platform.audit_read may read or export the log. A köşk nazımı, a
+      başmüderris, a talebe, and a Medaris nazımı without the permission are refused in words and see none of it.
+    evidence:
+      - state: reading
+      - state: handed_over.no_access
+      - source: apps/tedrisat/src/audit/audit.controller.ts:45
+      - source: apps/tedrisat/src/audit/audit.controller.ts:64
+      - source: apps/nizam/app/denetim-kaydi/page.tsx:31
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/17 — a köşk nazımı has no audit log: 'Bu bölüm için izniniz yok' (criterion 3)"
+      - scenario: stranger
+      - scenario: medaris
+        binding: graphs/nizam/platform/auditLog/binding.medaris.yaml
+
+  - id: narrow-by-person-kind-scope-and-time
+    need: >-
+      A reader narrows the log by person (a name or e-mail fragment), by kind of act, by scope (platform, köşk, medrese) and by
+      time (a preset or two days), the filters combine, and the address carries them, so that a link or a reload opens the same
+      view.
+    evidence:
+      - node: personField
+      - node: kindField
+      - node: kindAll
+      - node: kindPolicy
+      - node: scopeField
+      - node: scopeAll
+      - node: scopePlatform
+      - node: rangeField
+      - node: rangeAll
+      - node: rangeRecent
+      - node: rangeCustom
+      - node: fromField
+      - node: toField
+      - state: reading
+      - state: empty
+      - source: apps/tedrisat/src/audit/audit.controller.ts:45
+      - source: apps/nizam/features/platform-admin/present.ts:131
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/17 — newest first, the kind filter lives in the URL, and the export carries as many rows as the table has (criteria 1, 2, 4)"
+      - scenario: chief
+
+  - id: find-the-row-an-act-wrote
+    need: >-
+      After someone does an audited act, such as switching a platform policy, the reader finds the row it wrote by the kind
+      ("Politika değişikliği"), the person and the time, and every row the kind filter shows is of that kind.
+    evidence:
+      - node: kindPolicy
+      - node: rowKindPolicy
+      - node: myRecord
+      - state: listed
+      - source: apps/tedrisat/src/audit/audit.controller.ts:45
+      - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/19 — a switch is saved at once and written to the log, and the table lists the köşks that apply a rule themselves (criteria 1, 4)"
+      - scenario: chief
+
+  - id: read-older-rows
+    need: >-
+      Fifty rows are shown at a time and the reader can go back as far as the log goes, with the same filters, without losing the
+      rows already read.
+    evidence:
+      - state: listedMore
+      - state: loadingOlder
+      - node: olderButton
+      - node: olderBusy
+      - source: apps/tedrisat/src/audit/audit.controller.ts:45
+      - source: apps/nizam/features/platform-admin/components/audit-view.tsx:93
+      - scenario: chief
+
+  - id: an-older-page-that-fails-says-so
+    need: When the next fifty cannot be read, the reader is told in words and keeps what they have, and can try again.
+    evidence:
+      - state: loadingOlder
+      - node: olderToastTitle
+      - node: olderToastBody
+      - source: apps/nizam/features/platform-admin/components/audit-view.tsx:99
+
+  - id: the-downloaded-file-is-the-filtered-log
+    need: >-
+      "Dışa aktar" gives the reader a file with the same filters, in a form a spreadsheet opens (a header line, one row a line, a
+      UTF-8 mark, cells that cannot run as formulas), and the export is itself written to the log with its filters and its row
+      count.
+    evidence:
+      - node: exportLink
+      - state: exporting
+      - state: exportingMore
+      - source: apps/tedrisat/src/audit/audit.controller.ts:64
+      - source: apps/nizam/app/api/audit-log/export/route.ts:16
+      - source: apps/nizam/app/api/audit-log/export/route.ts:41
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/17 — newest first, the kind filter lives in the URL, and the export carries as many rows as the table has (criteria 1, 2, 4)"
+      - scenario: chief
+
+  - id: the-export-says-how-much-it-holds
+    need: >-
+      The reader is told that the file holds the newest 10 000 rows of the filters at most, on the link or in the file, so that a
+      cut file is never taken for the whole log.
+    missing: no Linear issue; AUDIT-1
+    note: >-
+      Drawn on the state exportingMore and on the node exportLink, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-export-says-so
+    need: >-
+      When the file cannot be made (the reader may no longer read the log, the session ended, the API is down), the page says so
+      and the reader is not left to read a JSON error in a download.
+    missing: no Linear issue; F-W3-4b
+    note: >-
+      Drawn on the state exportingBad and on the node exportLink, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-log-says-how-long-it-is-kept
+    need: Every reader is told how long the log is kept, in a real period, not a placeholder (KVKK).
+    missing: no Linear issue; F-W3-2
+    note: >-
+      Drawn on the node retentionLine, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-change-of-rows-is-announced
+    need: >-
+      A screen-reader user is told how many rows a filter or the next fifty left, so that choosing a kind or pressing the button
+      is never met with silence.
+    missing: no Linear issue; F-W3-12
+    note: >-
+      Drawn on the states reading and loadingOlder and on the node olderBusy, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-filter-form-keeps-its-place
+    need: >-
+      Choosing a filter does not replace the form the reader is working in: the focus stays where it was, so a keyboard user can
+      set the kind, then the scope, then the time without starting over from the top of the page.
+    missing: no Linear issue; AUDIT-2
+    note: >-
+      Drawn on the state reading and on the node filterForm, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-granted-medaris-nazim-finds-the-page
+    need: A Medaris nazımı who may read the log finds it from their menu, as the başnazım does.
+    missing: no Linear issue; AUDIT-7
+    note: >-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: every-kind-the-log-lists-can-be-chosen
+    need: Every kind of act a row can say is a choice of "Ne yaptı", the "other" kind included, and every choice can match a row.
+    missing: no Linear issue; AUDIT-5
+    note: >-
+      Drawn on the nodes kindField and rowKind, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-deleted-scope-is-named-as-deleted
+    need: A row whose köşk or medrese no longer exists says so in its scope, never the name "Platform".
+    missing: no Linear issue; AUDIT-3
+    note: >-
+      Drawn on the nodes rowScopeName and rowScopeKind, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-name-too-long-is-refused-in-words
+    need: >-
+      A person text the log cannot search for is stopped in the field, with the reason, instead of ending in the box that says the
+      log is unavailable.
+    missing: no Linear issue; AUDIT-4
+    note: >-
+      Drawn on the state loadFailed and on the nodes personField and failedAlert, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-notice-says-who-sees-the-log
+    need: >-
+      The notice names who may read the log truthfully: the başnazım and the Medaris nâzımları who were given the audit
+      permission.
+    missing: no Linear issue; AUDIT-6
+    note: >-
+      Drawn on the nodes noticeAlert and noticeBody, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-log-cannot-be-changed
+    need: No person and no screen edits or deletes a row of the log; the page says so and the API has no route that could.
+    evidence:
+      - node: pageIntro
+      - source: apps/tedrisat/src/audit/audit.controller.ts:32

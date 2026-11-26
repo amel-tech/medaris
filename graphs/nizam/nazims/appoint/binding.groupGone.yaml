@@ -1,0 +1,43 @@
+# nizam.nazims.appoint, the group the başnazım chose is deleted while the dialog is open (person: groupGone). Written without a replay; see
+# locators.binding.yaml for the data, the locators and the effects every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/nazims/appoint \
+#     --bind graphs/nizam/nazims/appoint/binding.groupGone.yaml --cover transitions --out <dir>
+# `before` on "Kaydet" has the başnazım delete the group through the API (./appoint-data.mjs gone: as someone else with the groups page
+# open would), so the save is refused with PERMISSION_GROUP_NOT_FOUND: an error toast "Medaris nazımı atanamadı" with "Bu grup artık yok.", the
+# dialog stays open with the person and the group still chosen, and nothing is written. When the walk chose no group (a cover path that does not),
+# the deletion changes nothing and the person is appointed, which is the graph's other case for this `given`. The helper treats a group that is
+# gone as done, so it does no harm if the replay presses "Kaydet" more than once. It is a file of its own because a `before` is the binding's and
+# not a scenario's, and the other scenarios must not have it.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.nazims.appoint
+
+scenarios:
+  groupGone:
+    given: { read: ok, roster: some, person: groupGone }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
+        expect: 'appoint up'
+    teardown:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
+        expect: 'appoint down'
+    vars:
+      typed: '{appt.email}'
+      foundName: '{appt.name}'
+      foundEmail: '{appt.email}'
+
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    before:
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, gone]
+        expect: 'appoint gone'

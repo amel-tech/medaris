@@ -202,6 +202,11 @@ const editor = () =>
   document.querySelector('[data-testid="session-edit"]') as HTMLElement;
 const save = () => buttonIn(editor(), "Kaydet");
 
+/** "Talebelere not" starts as the usual sentence (MDRS-248). */
+const NOTE = "Bu hafta ders yapılmayacak.";
+const noteField = () =>
+  document.querySelector("textarea[name=cancelNote]") as HTMLTextAreaElement;
+
 const L2 = "5 Eki Pzt 21:00";
 const L3 = "12 Eki Pzt 21:00";
 
@@ -522,6 +527,32 @@ describe("the link of a session", () => {
     expect(editor()).toBeNull();
   });
 
+  it("holds the link while it is written, so a refusal shows the link that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    changeSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await open();
+    await typeInto(field("meetingUrl"), "zoom.us/j/999");
+    await click(save());
+    await settle(20);
+    expect(field("meetingUrl").disabled).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      meetingUrl: "https://zoom.us/j/999",
+    });
+    expect(field("meetingUrl").disabled).toBe(false);
+    expect(field("meetingUrl").value).toBe("zoom.us/j/999");
+  });
+
   it("starts from the link the session has", async () => {
     await open(`${L2} celsesinin bağlantısını güncelle`);
     expect(field("meetingUrl").value).toBe("https://zoom.us/j/123456");
@@ -558,7 +589,12 @@ describe("the link of a session", () => {
     await settle(60);
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 8, undefined);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      8,
+      undefined,
+      NOTE
+    );
   });
 
   it("is told apart from an authorization refusal: the sentence says the caller may not, and nothing is read again", async () => {
@@ -615,6 +651,36 @@ describe("the time of a session", () => {
     expect(toast("success")).toContain("Celse zamanı değişti");
   });
 
+  it("holds the date and the time while they are written, so what is saved is what is shown", async () => {
+    state.viewer = { id: "u-1", timeZone: "Europe/Berlin" };
+    let answer: (value: unknown) => void = () => {};
+    changeSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await mount();
+    await click(byLabel("12 Eki Pzt 20:00 celsesinin tarihini değiştir"));
+    await settle(40);
+    await typeInto(field("time"), "19:30");
+    await click(save());
+    await settle(20);
+    expect(field("date").disabled).toBe(true);
+    expect(field("time").disabled).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      scheduledAt: "2026-10-12T17:30:00.000Z",
+    });
+    expect(field("date").disabled).toBe(false);
+    expect(field("time").disabled).toBe(false);
+  });
+
   it("asks for the date and the time when one is empty", async () => {
     await mount();
     await click(byLabel(`${L3} celsesinin tarihini değiştir`));
@@ -651,17 +717,42 @@ describe("İptal et", () => {
     await open();
     expect(dialog().textContent).toContain("12 Ekim 2026 Pazartesi 21:00");
     expect(dialog().textContent).toContain(
-      "İptal edilen celse programda kalır."
+      "programda “İptal edildi” olarak kalır."
     );
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
 
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7, undefined);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      7,
+      undefined,
+      NOTE
+    );
     expect(createSessions).not.toHaveBeenCalled();
     expect(toast("success")).toContain("Celse iptal edildi");
     expect(toast("success")).toContain("Hafta 3 iptal edildi.");
     expect(refresh).toHaveBeenCalledOnce();
     expect(dialog()).toBeNull();
+  });
+
+  it("sends the note to talebe as written, and none once it is emptied (MDRS-248)", async () => {
+    cancelSession.mockResolvedValue({
+      success: true,
+      data: { courseVersion: 8 },
+    });
+    await open();
+    expect(dialog().textContent).toContain("Talebelere not");
+    expect(noteField().value).toBe(NOTE);
+    expect(noteField().maxLength).toBe(500);
+    await typeInto(noteField(), "Hoca hasta; gelecek hafta telafi edilir.");
+    await click(buttonIn(dialog(), "Celseyi iptal et"));
+    await settle(80);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      7,
+      undefined,
+      "Hoca hasta; gelecek hafta telafi edilir."
+    );
   });
 
   it("adds no make-up unless asked, and shows its fields only then", async () => {
@@ -701,7 +792,12 @@ describe("İptal et", () => {
       title: "Hafta 3",
       durationMinutes: 60,
     });
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 8, "l-new");
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      8,
+      "l-new",
+      NOTE
+    );
     expect(createSessions.mock.invocationCallOrder[0]).toBeLessThan(
       cancelSession.mock.invocationCallOrder[0] ?? 0
     );
@@ -719,7 +815,12 @@ describe("İptal et", () => {
     await open();
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7, undefined);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      7,
+      undefined,
+      NOTE
+    );
   });
 
   it("asks for the make-up's date before it does anything", async () => {
@@ -846,6 +947,32 @@ describe("the live stream link", () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
+  it("holds the stream link while it is written, so a refusal shows the link that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    setLiveStream.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await open(`${L3} celsesine canlı yayın bağlantısı ekle`);
+    await typeInto(field("liveStreamUrl"), "https://youtu.be/zyxwvutsrqp");
+    await click(save());
+    await settle(20);
+    expect(field("liveStreamUrl").disabled).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(setLiveStream).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      "https://www.youtube.com/live/zyxwvutsrqp"
+    );
+    expect(field("liveStreamUrl").disabled).toBe(false);
+    expect(field("liveStreamUrl").value).toBe("https://youtu.be/zyxwvutsrqp");
+  });
+
   it("is removed with its own button, and only where there is a link", async () => {
     setLiveStream.mockResolvedValue({
       success: true,
@@ -914,6 +1041,16 @@ describe("Katılım (MDRS-283)", () => {
         .slice(1)
         .find((row) => textOf(row).includes(title)) ?? ""
     );
+
+  it("marks an exam session with the word Sınav, and no other row (MDRS-248)", async () => {
+    state.course = {
+      status: "ok",
+      data: withLesson("l-3", { exam: { maxScore: 100, isRetake: false } }),
+    };
+    const out = await markup();
+    expect(rowOf(out, "Hafta 3")).toContain("Sınav");
+    expect(out.match(/data-testid="session-exam-badge"/g)).toHaveLength(1);
+  });
 
   it("is one column instead of the link and the stream", async () => {
     const out = await markup();
@@ -1124,6 +1261,45 @@ describe("the in-person mark of a session (MDRS-283)", () => {
     });
     expect(toast("error")).toContain("Bunu yapma izniniz yok.");
     expect(editor()).not.toBeNull();
+  });
+
+  it("holds the choice while it is written, so a refusal shows the choice that was sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    changeSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    await open();
+    await pick("Yüz yüze");
+    await settle(20);
+    await click(save());
+    await settle(20);
+    const off = (label: string) => {
+      const control = radio(label).querySelector("[role=radio]");
+      return (
+        control?.getAttribute("aria-disabled") === "true" ||
+        control?.hasAttribute("data-disabled") === true
+      );
+    };
+    expect(off("Dersin ayarına uy")).toBe(true);
+    expect(off("Yüz yüze")).toBe(true);
+    expect(off("Yüz yüze değil")).toBe(true);
+    await pick("Yüz yüze değil");
+    await settle(20);
+    expect(picked("Yüz yüze")).toBe(true);
+
+    await act(async () => {
+      answer({ success: false, code: "AUTHZ_FORBIDDEN" });
+    });
+    await settle(40);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      inPersonOverride: true,
+    });
+    expect(picked("Yüz yüze")).toBe(true);
+    expect(off("Yüz yüze değil")).toBe(false);
   });
 });
 

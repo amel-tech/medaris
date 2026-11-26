@@ -40,10 +40,12 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
+import { lessonExams } from "../database/schema/lesson-exam.schema";
 import {
   madrasahSettings,
   madrasahs,
 } from "../database/schema/madrasah.schema";
+import { onlineExams } from "../database/schema/online-exam.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -86,11 +88,18 @@ import {
   IUpdateLesson,
   IWeekHide,
 } from "./course.repository.interface";
-import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
+import {
+  deleteSession,
+  IPurgeCounts,
+  purgeCourses,
+  recordDeletion,
+  Tx,
+} from "./course-purge";
 import { BULK_ENROLLMENT_ACTION } from "./domain/bulk-enrollment";
 import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import { EXAM_DEFAULT_MAX_SCORE, ExamFormat } from "./domain/exam";
 import { LessonType } from "./domain/lesson-type.enum";
 import {
   courseResourceOf,
@@ -113,6 +122,7 @@ import { ResourceIsFileError } from "./errors/resource-is-file.error";
 import { ResourceUrlRequiredError } from "./errors/resource-url-required.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
 import { findLessonAssignments } from "./lesson-assignment.repository";
+import { findLessonExams } from "./lesson-exams";
 
 /**
  * The deprecated free-text `duration`, kept in step with `durationMinutes`
@@ -226,13 +236,16 @@ export class CourseRepository implements ICourseRepository {
     archived = false
   ): Promise<ICourseSummary[]> {
     const rows = await this.db.query.courses.findMany({
-      // DRAFT courses are only visible to the köşk owner. `archived` picks
-      // the list: live courses, or the hidden ones for the "Arşiv" view
-      // (MDRS-124) — never both, so a hidden course is in no ordinary list.
+      // DRAFT and unlisted (MDRS-248) courses are only on the köşk managers'
+      // shelf (`includeDrafts`); everyone else finds an unlisted course by its
+      // link alone. `archived` picks the list: live courses, or the hidden
+      // ones for the "Arşiv" view (MDRS-124) — never both, so a hidden course
+      // is in no ordinary list.
       where: and(
         eq(courses.koskId, koskId),
         archived ? isNotNull(courses.archivedAt) : isNull(courses.archivedAt),
-        includeDrafts ? undefined : eq(courses.status, CourseStatus.PUBLISHED)
+        includeDrafts ? undefined : eq(courses.status, CourseStatus.PUBLISHED),
+        includeDrafts ? undefined : eq(courses.isUnlisted, false)
       ),
       with: {
         weeks: {
@@ -307,14 +320,16 @@ export class CourseRepository implements ICourseRepository {
 
     if (!row) return null;
     const { enrollments: enr, weeks, ...course } = row;
-    const [{ madrasahName, imamKeys }, assignments] = await Promise.all([
+    const lessonIds = weeks.flatMap((week) =>
+      week.lessons.map((lesson) => lesson.id)
+    );
+    const [{ madrasahName, imamKeys }, assignments, exams] = await Promise.all([
       this.madrasahsAndImamsOf([row]),
       // Each session's homework, apart from its resources; the content rule
       // decides who is sent it.
-      findLessonAssignments(
-        this.db,
-        weeks.flatMap((week) => week.lessons.map((lesson) => lesson.id))
-      ),
+      findLessonAssignments(this.db, lessonIds),
+      // Which sessions are exams (MDRS-248); content like the homework.
+      findLessonExams(this.db, lessonIds),
     ]);
     return {
       ...course,
@@ -331,6 +346,7 @@ export class CourseRepository implements ICourseRepository {
             ),
             resources: resources.map(lessonResourceOf),
             assignment: assignments.get(lesson.id) ?? null,
+            exam: exams.get(lesson.id) ?? null,
           })
         ),
       })),
@@ -1567,7 +1583,7 @@ export class CourseRepository implements ICourseRepository {
         set.duration = legacyDuration(fields.durationMinutes);
       }
       const [current] = await tx
-        .select({ weekId: lessons.weekId })
+        .select({ weekId: lessons.weekId, scheduledAt: lessons.scheduledAt })
         .from(lessons)
         .where(eq(lessons.id, lessonId));
       if (weekId !== undefined && weekId !== current.weekId) {
@@ -1584,6 +1600,17 @@ export class CourseRepository implements ICourseRepository {
         .set(set)
         .where(eq(lessons.id, lessonId))
         .returning();
+      // A moved exam is reminded again a day before its new start (MDRS-248);
+      // the same start sent again is no move, and reminds no one twice.
+      if (
+        fields.scheduledAt !== undefined &&
+        fields.scheduledAt.getTime() !== current.scheduledAt?.getTime()
+      ) {
+        await tx
+          .update(lessonExams)
+          .set({ remindedAt: null, updatedAt: set.updatedAt })
+          .where(eq(lessonExams.lessonId, lessonId));
+      }
       // Left out, the session's resources stay as they are (MDRS-286).
       if (resources != null) {
         await this.writeLessonResources(tx, lessonId, resources, {
@@ -1857,12 +1884,30 @@ export class CourseRepository implements ICourseRepository {
           meetingUrl: i === 0 ? batch.meetingUrl : undefined,
           isPreview: false,
           // No in-person mark of its own (MDRS-283): a planned session
-          // follows the course's, as it stands now and after any change.
-          inPersonOverride: null,
+          // follows the course's, as it stands now and after any change. An
+          // exam (MDRS-248) is where it says: in person at its place, else
+          // online.
+          inPersonOverride: batch.exam ? Boolean(batch.exam.location) : null,
           orderIndex,
         };
       });
       const rows = await tx.insert(lessons).values(values).returning();
+      if (batch.exam) {
+        await tx.insert(lessonExams).values(
+          rows.map((row) => ({
+            lessonId: row.id,
+            format: batch.exam?.format ?? ExamFormat.WRITTEN,
+            maxScore: batch.exam?.maxScore ?? EXAM_DEFAULT_MAX_SCORE,
+            topics: batch.exam?.topics ?? null,
+            location: batch.exam?.location ?? null,
+            isRetake: batch.exam?.isRetake ?? false,
+          }))
+        );
+      }
+      await batch.within?.(
+        tx,
+        rows.map((row) => row.id)
+      );
       const weekNumberOf = new Map(touched.map((w) => [w.id, w.weekNumber]));
       return {
         courseVersion: stamp.version,
@@ -1883,6 +1928,43 @@ export class CourseRepository implements ICourseRepository {
           ),
       };
     });
+  }
+
+  /**
+   * Deletes the celse a published online exam made (MDRS-299), when the team
+   * takes it back before it opens: `within` puts the exam back to a draft
+   * first, under the course row's lock, then the celse goes with whatever
+   * hangs off it.
+   */
+  async deleteExamSession(
+    lessonId: string,
+    actorId: string,
+    within: (tx: Tx) => Promise<void>
+  ): Promise<{ courseVersion: number }> {
+    return this.db.transaction(async (tx) => {
+      const courseId = await this.findLiveLessonCourseId(tx, lessonId);
+      const course = await this.bumpVersion(tx, courseId, undefined);
+      await within(tx);
+      await deleteSession(tx, lessonId, "lesson.purge");
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "lesson.delete",
+        entity: "lesson",
+        entityId: lessonId,
+        details: { courseId, via: "online_exam.unpublish" },
+      });
+      return { courseVersion: course.version };
+    });
+  }
+
+  /** The online exam a celse was planned for (MDRS-299); null for any other celse. */
+  async findOnlineExamOfLesson(lessonId: string): Promise<string | null> {
+    const [exam] = await this.db
+      .select({ id: onlineExams.id })
+      .from(onlineExams)
+      .where(eq(onlineExams.lessonId, lessonId))
+      .limit(1);
+    return exam?.id ?? null;
   }
 
   async findKoskId(id: string): Promise<string | null> {
@@ -1911,12 +1993,14 @@ export class CourseRepository implements ICourseRepository {
 
   /**
    * What decides whether a caller with no token may see the course
-   * (MDRS-122): its status, whether it is hidden, and whether its köşk is
-   * unlisted. One row, one join; null when the course is not there.
+   * (MDRS-122): its status, whether it is hidden, and whether it or its köşk
+   * is unlisted (MDRS-248). One row, one join; null when the course is not
+   * there.
    */
   async findPublicVisibility(id: string): Promise<{
     status: CourseStatus;
     archived: boolean;
+    unlisted: boolean;
     koskIsPrivate: boolean;
     koskHidden: boolean;
   } | null> {
@@ -1924,6 +2008,7 @@ export class CourseRepository implements ICourseRepository {
       .select({
         status: courses.status,
         archivedAt: courses.archivedAt,
+        isUnlisted: courses.isUnlisted,
         koskIsPrivate: kosks.isPrivate,
         koskArchivedAt: kosks.archivedAt,
       })
@@ -1936,6 +2021,7 @@ export class CourseRepository implements ICourseRepository {
     return {
       status: row.status,
       archived: row.archivedAt !== null,
+      unlisted: row.isUnlisted,
       koskIsPrivate: row.koskIsPrivate,
       koskHidden: row.koskArchivedAt !== null,
     };

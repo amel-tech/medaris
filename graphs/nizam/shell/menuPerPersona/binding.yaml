@@ -1,0 +1,52 @@
+# nizam.shell.menuPerPersona on the local stack, in a wide window: nizam-web on http://localhost:4001, 1440 x 900 (the sidebar shows from
+# 768 px). The phone is binding.phone.yaml and six other persons each have a small file; all of them extend locators.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.yaml \
+#     --main --cover transitions --absent --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code.
+#
+# Scenario `koskMany`: the stack's köşk nazımı (KOSK_NAZIM, "Cemal"), who manages TWO köşks, Süleymaniye and Kubbealtı (the stack's lib/seed.mjs:60), so
+# the picker is a menu and the main story can open it. Nothing of his is changed. `/` sends him to the köşk of his OLDEST role, Süleymaniye
+# (seed.kosk): that is the `landing` köşk. On a page whose address names no köşk the menu names the NEWEST köşk, Kubbealtı (seed.kosk2):
+# that is the `newest`, and the walk shows it on Bildirimler (MENU-2). The numbers on Başvurular are the waiting applications of the köşk
+# in scope: Süleymaniye holds the seed's one (TALEBE_MALE's, which this walk never touches), and `setup` makes the two of Kubbealtı:
+#   menuA  "Deneme dersi menuA": a published course of Kubbealtı (seed.kosk2, helpers/course.mjs' default köşk), opened by the köşk's
+#          nazım, that asks for approval, with applicantC and applicantD waiting. `teardown` has them leave and deletes the course
+#          (the API deletes everything under it); `make` removes a tag made before, so a crashed walk leaves nothing for the next one.
+#          What it cannot undo: the course's invitation mails to applicantC and applicantD are cleared by `remove` itself.
+# What the main story walks, in the e2e's words: shell#8 a3 (the sheet or the sidebar names the köşk), a4 (Başvurular carries a number), the
+# picker (new: no e2e opens it), and the entry Dersler; `--cover transitions` also takes the person's row, Ana sayfa and `left`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  koskMany:
+    given: { opensAt: wide, who: koskMany, unread: none, waiting: some }
+    as: koskNazim
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/course.mjs, make, menuA, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, menuA]
+        expect: 'course remove menuA'
+
+# What a step leaves outside the screen, read as the data the page draws: the numbers are the API's and the order of the köşks is the
+# database's. It is attached to the roles read because no state invokes the counts' own actions: the layout reads them on the server
+# with the roles. Each fails the walk if the stack is not as this file says (a köşk nazımı of a third köşk, a leftover application).
+effects:
+  getMyAssignments:
+    # the newest köşk of the two (the list the shell reads is ordered featured, then newest first): Kubbealtı
+    - run: [node, helpers/sql.mjs, "select id from kosks where id in ('{seed.kosk}', '{seed.kosk2}') order by featured desc, created_at desc limit 1"]
+      expect: '"id":"{seed.kosk2}"'
+    # the oldest KOSK_NAZIM role of the person (the order of GET /me/assignments, where "/" takes the landing köşk): Süleymaniye
+    - run: [node, helpers/sql.mjs, "select scope_id from role_assignments where user_id = '{secret.E2E_KOSK_NAZIM_SUB}' and role = 'KOSK_NAZIM' and revoked_at is null order by created_at, id limit 1"]
+      expect: '"scope_id":"{seed.kosk}"'
+    # the waiting applications the layout counts: one in Süleymaniye, two in Kubbealtı
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments e join courses c on c.id = e.course_id where c.kosk_id = '{seed.kosk}' and c.archived_at is null and e.status = 'PENDING'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments e join courses c on c.id = e.course_id where c.kosk_id = '{seed.kosk2}' and c.archived_at is null and e.status = 'PENDING'"]
+      expect: '"n":2'

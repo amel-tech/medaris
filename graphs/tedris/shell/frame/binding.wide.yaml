@@ -1,0 +1,25 @@
+# tedris.shell.frame on the local stack, in a wide window: tedris-web on http://localhost:4000, 1280 x 720 (the bar the style sheet
+# shows from 768 px). The phone is binding.yaml; both extend locators.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/tedris/shell/frame --bind graphs/tedris/shell/frame/binding.wide.yaml \
+#     --to left --to sign_in_opened --absent --out <dir>
+#
+#   memberWide    the seeded talebe on Ana sayfa: the five places with Ana sayfa current, the bell, Hesabım; `--to left` (NAVIGATE, about:blank)
+#                 leaves with no bar of a next page, which `--absent` would flag at an exit like schedule_opened
+#   visitorWide   nobody signed in, on Keşfet: Keşfet current, "Giriş yap" and "Kayıt ol"; reaches the sign-in page, which goes on to
+#                 Keycloak (e2e anonymous#21 and the bar half of #22-#26)
+# The default walk (the main story) is not bound here: it starts on a phone, so always give `--to`. Nothing is created and nothing is removed.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.shell.frame
+
+browser: { width: 1280, height: 720 }
+
+scenarios:
+  memberWide:
+    given: { viewer: home, opensAt: wide, unread: some, trouble: none }
+    as: talebe
+    open: '{tedris}/home'
+  visitorWide:
+    given: { viewer: visitor, opensAt: wide, unread: none, trouble: none }
+    open: '{tedris}/discover'

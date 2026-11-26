@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { withoutLinkKey } from "~/features/courses/attendance";
 import { CalendarMenu } from "~/features/courses/components/calendar-menu";
+import { examRunLabel } from "~/features/courses/exam-countdown";
 import { sessionStateOf, zoneLabel } from "~/features/courses/session-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
@@ -62,7 +63,8 @@ const ScheduleRow = ({
   const platform = session.meetingUrl
     ? resolveMeetingPlatform(session.meetingUrl)
     : null;
-  const href = `/courses/${session.courseId}/lessons/${session.id}`;
+  // MDRS-299: an online exam leads to its exam page, where it is taken.
+  const href = `/courses/${session.courseId}/lessons/${session.id}${session.isOnlineExam ? "/sinav" : ""}`;
 
   return (
     <li className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1 py-4 border-be border-neutral-subtle last:border-be-0 max-md:grid-cols-[3.5rem_minmax(0,1fr)]">
@@ -92,8 +94,31 @@ const ScheduleRow = ({
         >
           {session.title}
         </Link>
+        {session.isExam && !cancelled ? (
+          // MDRS-248: an exam is marked on the takvim as on the course page.
+          <p>
+            <span
+              className="mds-badge mds-badge--warning"
+              data-testid="exam-badge"
+            >
+              {examRunLabel(t, session.startsAt, now, timeZone)}
+            </span>
+          </p>
+        ) : null}
         {cancelled ? (
-          <p className="mds-caption">{t("SchedulePage.cancelledNote")}</p>
+          // MDRS-248: the müderris's note on one line, when one was written.
+          <p
+            className="mds-caption truncate"
+            dir="auto"
+            title={session.cancelReason?.trim() || undefined}
+            data-testid="cancel-note"
+          >
+            {session.cancelReason?.trim()
+              ? t("SessionPage.cancelNote", {
+                  note: session.cancelReason.trim(),
+                })
+              : t("SchedulePage.cancelledNote")}
+          </p>
         ) : platform && session.meetingUrl ? (
           <p>
             <PlatformChip
@@ -101,7 +126,7 @@ const ScheduleRow = ({
               host={hostOf(session.meetingUrl)}
             />
           </p>
-        ) : state === "ended" ? null : (
+        ) : state === "ended" || session.isOnlineExam ? null : (
           // MDRS-283: a stream or the in-person mark covers a celse without
           // a link; the row says which, as the join card does. An ended row
           // has no link either way and says nothing of one.
@@ -123,9 +148,20 @@ const ScheduleRow = ({
               <>
                 <span className="mds-badge mds-badge--live">
                   <span className="mds-badge__dot" aria-hidden="true" />
-                  {t("SessionPage.liveLabel")}
+                  {t(
+                    session.isOnlineExam
+                      ? "SchedulePage.examOpen"
+                      : "SessionPage.liveLabel"
+                  )}
                 </span>
-                {session.meetingUrl ? (
+                {session.isOnlineExam ? (
+                  <Link
+                    className="mds-btn mds-btn--small mds-btn--primary"
+                    href={href}
+                  >
+                    {t("SchedulePage.examEnter")}
+                  </Link>
+                ) : session.meetingUrl ? (
                   <a
                     className="mds-btn mds-btn--small mds-btn--primary mds-join__link"
                     href={session.meetingUrl}

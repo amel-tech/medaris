@@ -1,0 +1,283 @@
+# PLANNED, no code yet: the API of nizam.moderation.decidePermanentBan, written before it exists (MDRS-140, MDRS-197).
+#
+# A medrese's başmüderris (or a nazır given madrasah.permanent_ban_request) already asks Medaris administration to make a ban
+# permanent: requestPermanentBan (tedrisat-moderation.yaml) writes a BanPermanentRequest row and nothing reads it (invariant
+# ban-permanent-request-is-decided, holds: false). This file is the other half: Medaris administration reads the waiting requests, the ban
+# and its reason, and either accepts (a platform-wide ban is placed and the person's Keycloak account is disabled) or rejects with a note.
+#
+# This file has no `status` line (the domain's is given once, in domain.yaml, and a second one is a check error). Everything in it is
+# planned instead, and says so: nothing has a `source`, and each action carries `note: "planned (<key>): no code yet."`. An entity cannot
+# carry `note` (the format has no key for it on an entity), so each entity says the same in the comment above it and in a field note.
+#
+# What the existing domain would have to change for this to work (not edited here: another writer's files):
+#   - requestPermanentBan  gains the notice to the deciders (it notifies no one today) and, once decided, the request is closed for good.
+#   - liftBan              a lift of a lower ban that has a waiting request closes the request as WITHDRAWN, in the same transaction.
+#   - Ban.scope            gains PLATFORM (bans_scope_matches_course, bans_madrasah_scope_columns and listAllBans' scope filter follow);
+#                          the tier 4 of ban-tier.ts is a rank today, not a scope. A platform ban is lifted by Medaris administration alone.
+#   - BanPermanentRequest  the code's own note says the decision columns come with MDRS-194. PermanentBanDecision below is the same
+#                          information as a table of its own; which of the two is built is an open decision, not drawn here.
+#   - Notification         two new types, PERMANENT_BAN_REQUESTED (to the deciders) and PERMANENT_BAN_DECIDED (to the requester).
+#   - getNizamDashboard    pendingTotals.permanentBanRequests is a constant 0 today (F-W1-15); it becomes the real count.
+#   - keycloak-is-read-only (domain.yaml) stops being true: the service account `tedrisat-admin` gets `manage-users` from `realm-management`
+#                          (it holds view-users, query-users and view-realm today: docs/migration/mdrs-169-atama-temeli.md).
+#
+# The permission rule that this file draws on purpose, because the ban routes of today break it (ledger: ban-staff-check-gaps, BANDEC-3,
+# TRIAGE-1, TRIAGE-2; domain invariant ban-staff-cannot-be-barred, holds: false): the person whose account would close is checked WHEN THE
+# DECISION IS MADE, over every scope, against Keycloak as well as role_assignments, and the check fails closed. See the invariants at the end
+# and the action checkAccountMayBeClosed.
+#
+# Proposed codes, routes, audit keys and the permission name (platform.ban_account, which the code's own comment in ban-codes.ts already
+# calls "the platform's own scope: the account closes, MDRS-197") are open decisions: the report lists them.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+entities:
+  # planned (MDRS-140): no code yet. The answer to one BanPermanentRequest, kept apart from it (see the header on the two readings).
+  PermanentBanDecision:
+    required: [id, requestId, outcome, decidedAt]
+    fields:
+      id: { type: string, format: uuid, note: "planned (MDRS-140): no code yet." }
+      requestId: { type: string, format: uuid, unique: true, references: BanPermanentRequest, note: "one answer per request; no foreign key, as ban_permanent_requests has none to the ban" }
+      outcome: { enum: [APPROVED, REJECTED, WITHDRAWN], note: "WITHDRAWN: the lower ban was lifted while the request waited, so there is nothing left to make permanent" }
+      decidedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub of the decider; null for WITHDRAWN, which no person decides" }
+      decidedRole: { enum: [MEDARIS_NAZIM, SYSTEM_ADMIN, null], note: "the role the decider acted in, as Ban.bannedRole is kept" }
+      decidedAt: { type: string, format: date-time }
+      note: { type: [string, "null"], maxLength: 1000, sensitivity: internal, note: "the rejection's note, which the requester reads; null for an approval or a withdrawal" }
+      platformBanId: { type: [string, "null"], format: uuid, references: Ban, note: "the PLATFORM ban an approval placed, with the request's reason and the decider as banner (tier 4); null otherwise" }
+    lifecycle:
+      - "none -> APPROVED: a decider accepts a waiting request: the person's Keycloak account is disabled, then a PLATFORM ban, this row, an audit row (permanent_ban.approve) and the requester's notice are written together; the lower ban stays open"
+      - "none -> REJECTED: a decider rejects it with a note: this row, an audit row (permanent_ban.reject) and the requester's notice; no ban is touched"
+      - "none -> WITHDRAWN: the lower ban was lifted while the request waited (liftBan, same transaction): this row with no decider; nobody is told but the requester, as a plain notice"
+
+actions:
+  # ------------------------------------------------------------------------------------------------------------------------
+  # The page /talepler/kalici-yasak of nizam-web (menu "Kalıcı yasak talepleri", under Talepler)
+  # ------------------------------------------------------------------------------------------------------------------------
+  listPermanentBanRequests:
+    summary: Permanent-ban requests, waiting and decided (Bekleyen, Karara bağlanan)
+    route: GET /nizam/permanent-ban-requests
+    description: >-
+      Like the lists of the other Talepler pages (listAppeals, listDeckPublishRequests): at most 100 rows, the waiting ones oldest first, the
+      decided ones newest first by decidedAt. Each row carries what the decider needs to decide without another read: the person (name and
+      e-mail, as a BanResponse already shows them), the lower ban (its scope and place, who placed it in which role, when, and why), the
+      request (who asked in which role, when, why), and for a decided one the outcome, who decided, when, and the rejection's note. Each
+      waiting row also carries `mayApprove` and `blockedBy`, which are checkAccountMayBeClosed's answer for that person at the moment of
+      the read: the page offers "Kabul et" only where it is true, as the ban lists offer a lift only where `viewerMayLift` is. The decision
+      repeats the check, so the flag is a courtesy and never the guard.
+    needs: >-
+      signed in, then platform.ban_account asked in one place for the list and for both decisions (PlatformAccessService.assert, as
+      listAppeals does; the proposal is also to declare it with @Authz so that the route inventory carries it, MDRS-44): the başnazım
+      (SYSTEM_ADMIN), or a Medaris nazımı holding it by a grant or a group whose role is still held. A medrese nazır, a köşk nazım and a talebe
+      are refused. Open decision: platform.ban_account today only reads (listAllBans, listKoskBans), so every Medaris nazımı who holds it for
+      reading would also be able to close accounts the day this ships.
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        status: { enum: [PENDING, DECIDED], default: PENDING }
+    result:
+      status: 200
+      type: object
+      required: [items, pendingCount, decidedCount]
+      properties:
+        items:
+          type: array
+          note: "at most 100 rows"
+          items:
+            type: object
+            required: [id, status, requestedAt, requestReason, person, ban, mayApprove]
+            properties:
+              id: { type: string, format: uuid, references: BanPermanentRequest }
+              status: { enum: [PENDING, APPROVED, REJECTED, WITHDRAWN] }
+              requestedAt: { type: string, format: date-time }
+              requestedBy:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  name: { type: string }
+                  role: { enum: [MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, SYSTEM_ADMIN], note: "the role the request was made in (BanPermanentRequest records it in its audit row today)" }
+              requestReason: { type: string, sensitivity: internal }
+              person:
+                type: object
+                required: [id, name]
+                properties:
+                  id: { type: string, format: uuid }
+                  name: { type: string }
+                  email: { type: [string, "null"], sensitivity: personal }
+              ban:
+                type: object
+                required: [id, scope, bannedBy, bannedRole, createdAt, reason]
+                properties:
+                  id: { type: string, format: uuid, references: Ban }
+                  scope: { enum: [COURSE, MADRASAH], note: "only a ban in or over a medrese can be asked about today (requestPermanentBan); a köşk-wide ban cannot" }
+                  courseTitle: { type: [string, "null"] }
+                  madrasahName: { type: [string, "null"] }
+                  bannedBy: { type: object, properties: { id: { type: string, format: uuid }, name: { type: string } } }
+                  bannedRole: { enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR, SYSTEM_ADMIN] }
+                  createdAt: { type: string, format: date-time }
+                  reason: { type: string, sensitivity: internal }
+              mayApprove: { type: boolean, note: "false for a decided request, and for a waiting one whose person checkAccountMayBeClosed refuses" }
+              blockedBy: { enum: [SELF, SYSTEM_ADMIN, HOLDS_POST, null], note: "why mayApprove is false for a waiting request; null otherwise" }
+              decidedBy: { type: [object, "null"], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+              decidedAt: { type: [string, "null"], format: date-time }
+              decisionNote: { type: [string, "null"], sensitivity: internal }
+        pendingCount: { type: integer, minimum: 0, note: "the real total of waiting requests, which the Medaris home's card would also show (it is a constant 0 today, F-W1-15)" }
+        decidedCount: { type: integer, minimum: 0 }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.ban_account: the page shows 'Bu bölüm için izniniz yok'" }
+      HTTP_400: { status: 400, note: "status is neither PENDING nor DECIDED" }
+    sideEffects: ["none: reads only. Proposed: no audit row for the read, as listAppeals writes none; the person's e-mail is what a BanResponse shows already"]
+    note: "planned (MDRS-140): no code yet."
+
+  approvePermanentBanRequest:
+    summary: "Accept a permanent-ban request: place the platform ban and disable the account (Kabul et)"
+    route: POST /nizam/permanent-ban-requests/{requestId}/approve
+    description: >-
+      In this order, and each step reads the world as it is now, never as it was when the ban or the request was made:
+      (1) the caller holds platform.ban_account; (2) the request exists; (3) it is still PENDING; (4) checkAccountMayBeClosed(person, caller)
+      passes; (5) disableKeycloakAccount(person); (6) in one transaction, if the request is still PENDING: the PLATFORM ban (the request's
+      reason, the caller as banner, tier 4; one open platform ban per person, so a second is the first again), the PermanentBanDecision, the
+      audit row, and the lower ban left exactly as it was; (7) after the commit, best effort, the notice to the requester. A failure at step
+      (4) writes nothing and disables nothing. A failure at step (5) writes nothing: the request stays PENDING and the same press can be
+      repeated. A failure at step (6) after (5) leaves a disabled account and a PENDING request, and the repeat finishes it: the disable is
+      idempotent. Never the other way round, so there is no ban row for an account that is still open.
+    needs: >-
+      signed in, then platform.ban_account (PlatformAccessService.assert): the başnazım, or a Medaris nazımı holding it. Asked first, before
+      the request is even looked up, so a caller without it learns nothing about requests.
+    result: { status: 204 }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.ban_account" }
+      PERMANENT_BAN_REQUEST_NOT_FOUND: { status: 404, note: "no request with this id (a proposed code)" }
+      PERMANENT_BAN_REQUEST_DECIDED: { status: 409, note: "answered already, or withdrawn because its ban was lifted, or answered by someone else between the read and the write: the conditional update matched no waiting row (a proposed code)" }
+      BAN_TARGET_INVALID: { status: 400, note: "checkAccountMayBeClosed refused: the person is the caller ('You cannot close your own account'), holds SYSTEM_ADMIN in Keycloak, or holds a role anywhere (müderris, ders nazırı, medrese nazırı, başmüderris, köşk nazımı, Medaris nazımı). The existing code of createBan, reused; context.cause says which" }
+      KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503, note: "the service account's credentials are not set: neither the check nor the disable can run, so the request stays waiting" }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the directory did not answer in 5 s or answered an error, at the check or at the disable: nothing was written; the request stays waiting and the press can be repeated" }
+      HTTP_400: { status: 400, note: "requestId is not a uuid; answered before the permission is asked, as the appeals routes do" }
+    sideEffects:
+      - "keycloak: PUT /users/{sub} with enabled false, then POST /users/{sub}/logout (disableKeycloakAccount), before anything is written"
+      - "creates a PLATFORM Ban (reason = the request's, bannedBy = the caller, bannedRole MEDARIS_NAZIM or SYSTEM_ADMIN, bannedTier 4) and a PermanentBanDecision APPROVED, in one transaction with the audit row"
+      - "audit:permanent_ban.approve, details {requestId, banId, platformBanId, userId, role, reason}; the key falls under the audit page's existing type PERMANENT_BAN ('Kalıcı yasak talebi ve kararı', audit-types.ts:57, a LIKE rule that no code writes to today)"
+      - "notification:PERMANENT_BAN_DECIDED to the requester, params outcome approved and the person's name, no reason; best effort, a failure is logged and never undoes the decision"
+      - "no mail to the banned person from Medaris (MDRS-189 is the later e-mail notice); Keycloak's own sign-in screen is what they meet"
+    note: "planned (MDRS-140): no code yet."
+
+  rejectPermanentBanRequest:
+    summary: Reject a permanent-ban request with a note; the lower ban stays as it is (Reddet)
+    route: POST /nizam/permanent-ban-requests/{requestId}/reject
+    description: >-
+      Steps (1), (2) and (3) of the approval, then one transaction: the PermanentBanDecision REJECTED with the trimmed note, only while the
+      request is still PENDING, and the audit row. No ban is touched, nothing is called in Keycloak, and no check on the person is made: a
+      request may be rejected whoever the person is, which is how a request over a başnazım or a hoca is closed. The request is answered once;
+      the ban cannot be asked about again (ban_permanent_requests is unique per ban).
+    needs: "signed in, then platform.ban_account (PlatformAccessService.assert): the başnazım, or a Medaris nazımı holding it"
+    body:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note: { type: string, maxLength: 1000, pattern: '\S', sensitivity: internal, note: "required and not blank, trimmed; the requester reads it. 1000 as the other Talepler pages' notes, not the 500 of a ban's reason: an open decision" }
+    result: { status: 204 }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "no platform.ban_account" }
+      PERMANENT_BAN_REQUEST_NOT_FOUND: { status: 404, note: "no request with this id (a proposed code)" }
+      PERMANENT_BAN_REQUEST_DECIDED: { status: 409, note: "answered, withdrawn, or answered by someone else meanwhile (a proposed code)" }
+      VALIDATION_ERROR: { status: 400, note: "a note that is missing, blank after trimming or over 1000 characters, or an unknown property" }
+      HTTP_400: { status: 400, note: "requestId is not a uuid" }
+    sideEffects:
+      - "audit:permanent_ban.reject, details {requestId, banId, userId, role, note}"
+      - "notification:PERMANENT_BAN_DECIDED to the requester, params outcome rejected and the person's name, and the note; best effort"
+    note: "planned (MDRS-140): no code yet."
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Steps inside the service (no route): the two things this feature adds to tedrisat's own code
+  # ------------------------------------------------------------------------------------------------------------------------
+  checkAccountMayBeClosed:
+    summary: "May this person's account be closed by this caller? The one check, used by the list's flag and by every route that closes an account"
+    description: >-
+      Answers from the world now, over every scope, and fails closed. It refuses when (a) the person is the caller; (b) the person holds the
+      realm role SYSTEM_ADMIN in Keycloak, read by the person's id (not through a list of the role's members, which is cut at 50 and skips
+      disabled accounts, and not through role_assignments, where SYSTEM_ADMIN is never a row); (c) the person holds a role anywhere, in
+      role_assignments, at the platform, at any köşk, at any medrese or at any course: MUDERRIS, DERS_NAZIR, MEDRESE_NAZIR,
+      MEDRESE_BASMUDERRIS, KOSK_NAZIM, MEDARIS_NAZIM, held and not lapsed. It is not told which places the lower ban sits in: that is how
+      createMadrasahBan misses a person who runs a köşk or a course (BANDEC-3) and createBan misses a hoca of another course of the same köşk (NDB-1). A directory that fails to answer is a refusal (503), never a pass.
+      Reading Keycloak for the realm role is the same one GET the service account already makes (view-users).
+    needs: "the service itself: called by listPermanentBanRequests (for the flag) and approvePermanentBanRequest, and by any future route that disables an account"
+    result:
+      type: object
+      required: [mayClose]
+      properties:
+        mayClose: { type: boolean }
+        blockedBy: { enum: [SELF, SYSTEM_ADMIN, HOLDS_POST, null] }
+    refusals:
+      KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503, note: "no credentials: the check cannot answer, so it does not pass" }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the directory did not answer: the check does not pass" }
+    sideEffects: ["none: reads only"]
+    note: "planned (MDRS-140): no code yet."
+
+  disableKeycloakAccount:
+    summary: Disable a person's Keycloak account and end their sessions
+    description: >-
+      Two Admin API calls with the service account: PUT /users/{sub} with enabled false, then POST /users/{sub}/logout. The first is what
+      MDRS-113 and MDRS-140 ask for. The second is proposed: the API checks an access token offline against Keycloak's public key and a
+      token lives 300 s (config/keycloak/realms/_base.json accessTokenLifespan), so without it a closed account keeps working for up to five
+      minutes, and a web session renews with its refresh token until Keycloak refuses it. Both are idempotent: disabling a disabled account
+      and ending no sessions are not errors, which is what makes the approval safe to repeat.
+    needs: >-
+      the service account `tedrisat-admin`, client credentials, with the realm-management role `manage-users`. It holds view-users,
+      query-users and view-realm today and is documented as needing nothing more (docs/migration/mdrs-169-atama-temeli.md). Keycloak cannot
+      narrow manage-users to the enabled flag, so the same credential could also reset passwords and change e-mail addresses: an open
+      decision (a second client for this step alone, or the finer permissions of Keycloak 26.2 and later; not verified here).
+    result:
+      type: object
+      properties:
+        enabled: { type: boolean, enum: [false] }
+        sessionsEnded: { type: boolean }
+    refusals:
+      KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "transport, HTTP or 5 s timeout: the approval writes nothing and stays repeatable" }
+    sideEffects:
+      - "keycloak: the account stops signing in anywhere (tedris, nazar, nizam). Enabling it again, when a platform ban is lifted, is the other direction and belongs to the lift (nizam.moderation.decideBan), not drawn here"
+    note: "planned (MDRS-197): no code yet."
+
+invariants:
+  - id: permanent-ban-decider-holds-the-code
+    rule: >-
+      Reading the waiting requests, accepting one and rejecting one each need platform.ban_account, asked in one place, before anything about
+      a request is read. The başnazım bypasses it; a Medaris nazımı holds it by a grant or a group whose role is still held, and a lapsed
+      role or grant counts for nothing. A medrese nazır, a köşk nazım and a talebe are refused.
+    note: "planned (MDRS-140): no code yet. Open: the grant exists today for reading bans, so it widens in meaning (the code or a new one)."
+
+  - id: permanent-ban-target-is-checked-where-it-bites
+    rule: >-
+      The person whose account closes is checked when the decision is made, not when the ban or the request was: not the caller, not a holder
+      of SYSTEM_ADMIN (read from Keycloak), and not a holder of any role at any scope (read from role_assignments over every scope, not the
+      ban's own). One check serves the page's flag and every route that closes an account, and a directory that fails refuses. A request may
+      still be rejected whoever the person is.
+    note: "planned (MDRS-140): no code yet. Drawn so as not to repeat ban-staff-cannot-be-barred (holds: false): extendBan and escalateBan skip the check, rolesHeld never finds SYSTEM_ADMIN, createMadrasahBan reads only the ban's own place."
+
+  - id: permanent-ban-account-closes-before-the-record
+    rule: >-
+      The Keycloak account is disabled before the platform ban, the decision and the audit row are written, and only when the request is
+      still waiting. If the directory fails nothing is written and the request stays waiting; if the write fails after the disable, the
+      request stays waiting and repeating the approval finishes it. A ban row never exists for an account that is still open.
+    note: "planned (MDRS-197): no code yet."
+
+  - id: permanent-ban-is-answered-once
+    rule: >-
+      A request is answered once: the decision is a conditional write on a request that is still waiting, and a second decider, or a decision
+      after the lower ban was lifted, is 409 PERMANENT_BAN_REQUEST_DECIDED.
+    note: "planned (MDRS-140): no code yet."
+
+  - id: permanent-ban-lower-ban-stays
+    rule: >-
+      Accepting adds a PLATFORM ban beside the lower one and leaves the lower one open; rejecting touches no ban. Lifting a ban that has a
+      waiting request closes the request as WITHDRAWN, in the same transaction.
+    note: "planned (MDRS-140): no code yet. The lift's side is an open decision."
+
+  - id: permanent-ban-notices-go-to-those-who-decide
+    rule: >-
+      A new request is announced only to the holders of platform.ban_account and the başnazım, never to every Medaris nazımı, and the notice
+      carries no reason: the reason is read on the page, behind the permission. The requester is told the outcome, with the note when it was
+      rejected. The banned person is told nothing by Medaris.
+    note: "planned (MDRS-140): no code yet. Drawn so as not to repeat TRIAGE-1 (the başnazım is never told) and TRIAGE-2 (every Medaris nazımı is told every reason)."

@@ -1,0 +1,118 @@
+# What the walks of nazar.curriculum.sessionHomework share: the events a person causes by typing or by leaving, the addresses of the states, the checks of what
+# a write leaves in the database, and the locators role and name cannot give. It has no scenario: binding.yaml (the hoca's four, and the read-only reader)
+# and binding.sessionOnly.yaml (a ders nazırı who may change the block on a page that calls itself read-only) extend it and add theirs. Two files because
+# `--cover transitions` takes the shortest scenario per transition: the walk of a ders nazırı who adds no transition of their own would never be taken
+# beside the hoca's.
+#
+# NOT RUN: the graphs were written without a replay (the walk phase comes later); every locator below comes from the code and the catalog and is unverified
+# until a walk. What the code alone leaves in doubt is marked "not verified". The whole account of the data a walk makes, the scenarios and what is not
+# bound is in binding.yaml's header.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.curriculum.sessionHomework
+
+data:
+  made: { json: ../.local/made/sess-homework.json }
+
+events:
+  # the switch is pressed to turn it off as it is to turn it on: ui.yaml draws it on as homeworkSwitchOn (TURN_OFF), and the click is bound here
+  TURN_OFF:
+    - click: { role: switch, name: Bu celsenin ödevi var }
+  # a field the person types in has no node that sends an event: the binding fills it in
+  TYPE:
+    - fill: { role: textbox, name: Ödevin açıklaması, value: '{description}' }
+  # the text put back as it is stored: the box is clean again, and Açıklamayı kaydet is off
+  UNDO:
+    - fill: { role: textbox, name: Ödevin açıklaması, value: '{undoText}' }
+  # a person leaves for the overview, the page every course scope has
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+  # PICK_FILE has no action: the replay cannot set a file input (see the header)
+
+states:
+  folded: { url: '{nazar}/ders/*/mufredat' }
+  # Each write is a Next server action: a POST to the page's own address, held while the busy state is checked. The page's own reads are GETs, so
+  # this matches only the POST. The action answers 200 on that address whatever the API said, so a refusal cannot be compared here; none is walked.
+  turningOn: { call: '{nazar}/ders/{made.course}/mufredat' }
+  savingDescription: { call: '{nazar}/ders/{made.course}/mufredat' }
+  choosingFile: { call: '{nazar}/ders/{made.course}/mufredat' }
+  choosingRecital: { call: '{nazar}/ders/{made.course}/mufredat' }
+  takingOff: { call: '{nazar}/ders/{made.course}/mufredat' }
+  takingOffAsked: { call: '{nazar}/ders/{made.course}/mufredat' }
+  removingFile: { call: '{nazar}/ders/{made.course}/mufredat' }
+  # the upload is a fetch to the web route, which would hold the request and compare its status (503 here); unreachable until a file input can be set
+  uploading: { call: '{nazar}/api/files/lessons/*/assignment' }
+  left: { url: '{nazar}/ders/*' }
+
+# What a write leaves outside the screen, read from the database (helpers/sql.mjs), by the effect of the flow that names it.
+effects:
+  turnedOn:
+    # the homework exists, "Dosya", with no description
+    - run: [node, helpers/sql.mjs, "select kind, description from lesson_assignments where lesson_id = '{made.lessons.0}'"]
+      expect: '"description":null'
+  choseRecital:
+    - run: [node, helpers/sql.mjs, "select kind from lesson_assignments where lesson_id = '{made.lessons.0}'"]
+      expect: '"kind":"MEMORIZE"'
+  choseFile:
+    - run: [node, helpers/sql.mjs, "select kind from lesson_assignments where lesson_id = '{made.lessons.0}'"]
+      expect: '"kind":"FILE"'
+  descriptionSaved:
+    - run: [node, helpers/sql.mjs, "select description from lesson_assignments where lesson_id = '{made.lessons.0}'"]
+      expect: '{description}'
+  fileRemoved:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as files from lesson_assignment_files f join lesson_assignments a on a.id = f.assignment_id where a.lesson_id = '{made.lessons.0}'"]
+      expect: '"files":0'
+  offNow:
+    # the homework, its files and its marks are gone, and the audit row says how many marks went (the scenario's `marks`)
+    - run: [node, helpers/sql.mjs, "select count(*)::int as homework from lesson_assignments where lesson_id = '{made.lessons.0}'"]
+      expect: '"homework":0'
+    - run: [node, helpers/sql.mjs, "select details->>'evaluations' as marks from audit_log where action = 'lesson_assignment.delete' and details->>'lessonId' = '{made.lessons.0}'"]
+      expect: '"marks":"{marks}"'
+
+# Role and name find most nodes. Below are the ones they cannot find alone: names the block repeats, a message shared by two elements, and
+# the dialogs' buttons, which share names with the panel's and with each other (every one is looked for inside its own dialog or its own block).
+nodes:
+  # a bare role main is also matched on the page a walk leaves for (the overview, the planner): "Müfredat" is in this one's h1
+  page: { role: main, hasText: Müfredat }
+  # the strip of the page names the same words as the page's Kaydet bar and the block's own notes, so each is found by what is only in it
+  readOnlyNote: { role: status, hasText: '/yalnız okunur/' }
+  sessionsNote: { role: status, hasText: '/Celse eklemek, taşımak/' }
+  # the details of the celse are in one <div hidden>; the block is the fieldset in <div data-testid="assignment-lesson-0-0">
+  blockLegend: { css: legend, hasText: '/^Ödev$/' }
+  # a chip's name is the word and nothing else; "Dosya" is also a part of every name that has "dosya" in it, and role names match by part
+  kindFile: { role: button, name: '/^Dosya$/', within: { testId: assignment-lesson-0-0 } }
+  kindRecital: { role: button, name: '/^Ezber$/', within: { testId: assignment-lesson-0-0 } }
+  kindLegend: { css: '.mds-chips-field .mds-label', hasText: Teslim şekli }
+  # the description's own live regions (<output>) and the hidden one of the busy button
+  saving: { css: output, hasText: Kaydediliyor… }
+  descDirty: { css: output, hasText: '/Açıklamada kaydedilmemiş değişiklik var\./' }
+  descSaved: { css: output, hasText: '/Açıklama kaydedildi\./' }
+  # the list of files is a <ul> with a test id; the page has many lists
+  filesList: { testId: assignment-files-lesson-0-0 }
+  fileBadge: { text: PDF, within: { testId: assignment-files-lesson-0-0 } }
+  # the course's resources and the celse's own resources have a "Dosya yükle" too
+  uploadOpener: { role: button, name: '/^Dosya yükle$/', within: { testId: assignment-lesson-0-0 } }
+  uploadPanel: { testId: lesson-0-0-assignment-upload }
+  uploadLegend: { css: legend, hasText: Dosya yükle, within: { testId: lesson-0-0-assignment-upload } }
+  fileField: { css: 'input[type=file]', within: { testId: lesson-0-0-assignment-upload } }
+  sendButton: { role: button, name: '/^Yükle$/', within: { testId: lesson-0-0-assignment-upload } }
+  cancelUpload: { role: button, name: Vazgeç, within: { testId: lesson-0-0-assignment-upload } }
+  uploadBusy: { testId: lesson-0-0-assignment-uploading }
+  uploadAlert: { role: alert, hasText: '/Dosya yüklenemedi/' }
+  # "Ödevi kaldır" is the dialog's name and its button's; "Vazgeç" and "Kapat" are in both dialogs
+  offDialog: { role: alertdialog, name: Ödevi kaldır }
+  offTitle: { role: heading, name: Ödevi kaldır, within: { role: alertdialog, name: Ödevi kaldır } }
+  offCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Ödevi kaldır } }
+  offConfirm: { role: button, name: '/^Ödevi kaldır$/', within: { role: alertdialog, name: Ödevi kaldır } }
+  offClose: { role: button, name: Kapat, within: { role: alertdialog, name: Ödevi kaldır } }
+  fileDialog: { role: alertdialog, name: Dosyayı sil }
+  fileTitle: { role: heading, name: Dosyayı sil, within: { role: alertdialog, name: Dosyayı sil } }
+  fileDialogName: { css: bdi, within: { role: alertdialog, name: Dosyayı sil } }
+  fileCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Dosyayı sil } }
+  fileConfirm: { role: button, name: '/^Sil$/', within: { role: alertdialog, name: Dosyayı sil } }
+  fileClose: { role: button, name: Kapat, within: { role: alertdialog, name: Dosyayı sil } }
+  # a toast is a dialog (an error one an alertdialog) named by its title; the three error toasts share a title, so each is found by its words
+  toastRefused: { role: alertdialog, hasText: Bunu yapma izniniz yok. }
+  toastGone: { role: alertdialog, hasText: '/artık yok/' }
+  toastFailed: { role: alertdialog, hasText: Bir şeyler ters gitti }

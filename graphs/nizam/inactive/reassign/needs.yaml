@@ -1,0 +1,280 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.inactive.reassign
+status: proposed
+summary: >-
+  What must exist for the başnazım to give a köşk, a medrese or a course with no manager one again: the flow's product list. Each
+  need is what the product must do, from the flow's story (FLOWS.md), the inventory's findings (F-W2-1, F-W2-3, F-W2-10, F-W2-12,
+  F-X-3, F-X-14) and the flow's own (REASSIGN-1 to REASSIGN-5, and the security rule inactive-scope-accepts-new-scope), not from
+  what the page does today. Nothing planned in planned.md belongs to this flow.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the orchestrator's gaps merge (nothing here was replayed; the e2e checks, the API's e2e and the unit specs named under `walked` are
+# the only runs, and the replay scenarios of binding.yaml, binding.race.yaml and binding.unfinished.yaml are written and not run):
+# missing:  a-scope-that-never-had-a-manager-is-refused (none), a-permitted-medaris-nazim-has-a-menu-entry (none),
+# the-window-starts-on-the-first-field (none), the-button-says-why-it-is-off (none), a-search-says-what-it-did (none),
+# a-refusal-has-its-own-words (none), a-stale-row-goes-after-a-refusal (none), cancel-while-sending-answers (none),
+# a-filter-says-what-it-did (none), the-focus-goes-somewhere-after-an-assignment (none)
+# unwalked: the-scrim-does-nothing (e2e inactive#9 clicks at (5, 5); the replay cannot click at a position, so the transition CLICK_SCRIM
+# is written and not driven), a-passive-medrese-from-passivate-shows-here (nizam.madrasahs.passivate starts this flow; no check
+# reads the row after a "Pasife al"), the-list-says-why-and-since-when (e2e inactive#1 pins the clock and the dates with a seed
+# of SQL rows; the replay reads the days it set with the same SQL, written and not run), a-person-who-named-themselves-is-refused
+# (the API's own e2e walks it; the page words it as "Bir şeyler ters gitti", REASSIGN-2, and the walk uses the başnazım, who is
+# exempt)
+
+needs:
+  - id: the-list-says-why-and-since-when
+    need: >-
+      The başnazım sees every köşk, medrese and course that once had a manager and has none now, oldest first, each with why (a
+      term that ran out, or a post taken away and by whom), since which day and for how many days, and who the last manager was
+      and in which role; a scope that has a manager, a hidden one and one that never had a manager are not on the list, and the
+      count says how many rows there are.
+    evidence:
+      - state: listed
+      - state: empty
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:65
+      - source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:196
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.repository.ts:64
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — the list shows the scopes with no manager, why, since when and who the last one was, and leaves out the attended and the new (criterion 1)"
+      - test: apps/nizam/test/inactive-scopes.spec.tsx
+      - test: apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts
+    note: |-
+      Also drawn as the assertion a-list-with-rows-shows-one.
+      inactive#1: the three rows with their reason, day, "N gündür", last manager and role; the attended and the new left out; the
+      count; clock pinned
+      apps/nizam/test/inactive-scopes.spec.tsx: :162-225, the rows, the star, the empty and the error state
+      apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts: :264-348, the list, the reason, the filter by type
+
+  - id: filter-by-kind
+    need: >-
+      The başnazım narrows the list to köşks, medreses or courses and brings all of them back with "Tümü"; the count follows; a
+      kind with nothing left says so in words, and a person who cannot see the result is told that it changed.
+    evidence:
+      - state: listed
+      - state: empty
+      - state: view
+      - node: chipAll
+      - node: chipKosk
+      - node: chipMadrasah
+      - node: chipCourse
+      - source: apps/nizam/features/inactive-scopes/present.ts:22
+      - source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:224
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — the filter keeps one kind of scope, and 'Tümü' brings them all back (criterion 2)"
+      - test: apps/nizam/test/inactive-scopes.spec.tsx
+    note: |-
+      inactive#2: "Ders", "Medrese", "Köşk" each leave one of the three, "1 kapsam", "Tümü" brings them back
+      apps/nizam/test/inactive-scopes.spec.tsx: :85-92
+
+  - id: a-filter-says-what-it-did
+    need: When a chip changes the rows, the count or the empty line is announced to a screen reader.
+    missing: "no Linear issue; REASSIGN-5: the count is a plain span and the rows change in silence"
+    note: >-
+      Drawn on the nodes count and emptyLine, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-menu-opens-the-page
+    need: The başnazım reaches Pasif kapsamlar from the menu's Platform section.
+    evidence:
+      - state: reading
+      - source: apps/nizam/lib/shell-nav.ts:94
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — the menu's 'Pasif kapsamlar' opens the page"
+    note: "inactive#3: the menu's \"Pasif kapsamlar\" opens the page and the address is /pasif-kapsamlar"
+
+  - id: a-permitted-medaris-nazim-has-a-menu-entry
+    need: >-
+      A Medaris nazımı who holds platform.inactive_scopes_manage finds Pasif kapsamlar in the menu, as the permission map says,
+      and does not have to know the address.
+    missing: "no Linear issue; F-W2-1; decision D1: `inactive` is not in medarisGroups"
+    note: >-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: only-the-right-people-open-it
+    need: >-
+      Only the başnazım and a Medaris nazımı who holds platform.inactive_scopes_manage open the page; a köşk nazımı and a Medaris
+      nazımı without the permission get "Bu bölüm için izniniz yok", and the list is not drawn.
+    evidence:
+      - state: reading
+      - state: refused
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:65
+      - source: apps/nizam/app/pasif-kapsamlar/page.tsx:23
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:58
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — a köşk nazımı gets the 'izniniz yok' screen, not the list (criterion 5)"
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — a Medaris nazımı without 'Pasif kapsamları yönet' gets that screen, one with it gets the list (criterion 5)"
+      - test: apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts
+    note: |-
+      inactive#4: a köşk nazımı meets "Bu bölüm için izniniz yok", no list
+      inactive#5: a Medaris nazımı without the permission meets it, with the permission (by address) gets the list
+      apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts: :350-430, who passes and who does not, a lapsed appointment included
+
+  - id: give-a-scope-its-manager-by-email
+    need: >-
+      The başnazım gives a köşk its nazım, a medrese its başmüderris and a course its hoca (who is also its imam and is put on its
+      list of hocalar) by the exact e-mail address of an account in the realm, even one that never opened the app; the scope is
+      active again, the row leaves the list, a toast names the person and the scope, and the assignment and the search are written
+      to the audit log.
+    evidence:
+      - state: form
+      - state: formReady
+      - state: looking
+      - state: saving
+      - state: listed
+      - state: empty
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:84
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:69
+      - source: apps/nizam/features/inactive-scopes/actions.ts:12
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.repository.ts:288
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — 'Köşk nazımı ata' gives the köşk its nazım, the row leaves the list and the köşk is active again (criterion 3)"
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — 'Başmüderris ata' gives a medrese its başmüderris (criterion 3)"
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — 'Müderris ata' gives a course its müderris, the imam, and puts them on the course's list"
+      - test: apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts
+    note: |-
+      Also drawn as the assertion only-a-chosen-person-is-sent.
+      inactive#6: a köşk: no address, a past end, the end ahead, the row gone, the post, the passive mark, the audit row
+      inactive#7: a medrese: its başmüderris
+      inactive#8: a course: its müderris, the imam, on the course's list ("Hoca ata" in the catalog, "Müderris ata" in the test's
+      name)
+      apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts: :431-520, the API's side of the three, the 404s and the refusals
+
+  - id: an-end-is-optional-and-checked
+    need: >-
+      The başnazım may give the post an end; left empty it lasts until it is changed; an end in the past, and one half typed, are
+      said in words under the field and keep the button off, and the server's own check of the end is the last word.
+    evidence:
+      - state: form
+      - state: formReady
+      - node: endField
+      - node: endHelp
+      - node: endPastError
+      - node: endUnfinishedError
+      - source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:60
+      - source: libs/utils/src/end-instant.ts:141
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — 'Köşk nazımı ata' gives the köşk its nazım, the row leaves the list and the köşk is active again (criterion 3)"
+      - test: apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts
+    note: |-
+      Also drawn as the assertion only-a-right-end-is-sent.
+      inactive#6: "Bitiş zamanı şu andan sonra olmalı." and the button off, then the end ahead
+      apps/tedrisat/test/e2e/inactive-scope.e2e.spec.ts: :506, the API refuses an end in the past
+
+  - id: the-button-says-why-it-is-off
+    need: >-
+      A person who cannot send the window is told in words what is missing (nobody is chosen, the end is wrong), and a keyboard or
+      screen-reader user can reach the button and the message.
+    missing: "no Linear issue; F-X-3: the button is natively disabled and the footer says only that the assignment is audited"
+    note: >-
+      Drawn on the states form and settle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+
+  - id: the-window-starts-on-the-first-field
+    need: The window opens on the e-mail field, not on the close icon.
+    missing: "no Linear issue; F-W2-12: no initialFocus is passed"
+    note: >-
+      Drawn on the state form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-search-says-what-it-did
+    need: >-
+      A person's address is searched in the realm only when the person asks (Enter or a button), never because they tabbed through
+      the field, since every search is written to the audit log; the result, found or not found, is announced, whoever is already
+      chosen, and the focus is kept.
+    missing: >-
+      no Linear issue; F-W2-3, F-X-14, REASSIGN-1: the field searches on blur and is disabled while it does, and a second search
+      that finds nobody says nothing
+    note: >-
+      Drawn on the state looking and on the nodes personNotFound, personDown and searching, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-has-its-own-words
+    need: >-
+      Every refusal the API gives is worded for what it is: the scope has a manager already, the end is past, the account is
+      unknown, the caller may not, and a Medaris nazımı who named themselves is told that they may not, not that something went
+      wrong.
+    evidence:
+      - source: apps/nizam/features/inactive-scopes/present.ts:76
+    missing: >-
+      no Linear issue; REASSIGN-2: SELF_GRANT_REFUSED, VALIDATION_ERROR and the rest read "Bir şeyler ters gitti. Biraz sonra
+      yeniden deneyin."; code exists in part
+    note: >-
+      Drawn on the nodes failedTitle, failedNotPassive, failedExpiry, failedUnknownAccount, failedForbidden and failedGeneric,
+      which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
+
+  - id: a-stale-row-goes-after-a-refusal
+    need: >-
+      When the scope has a manager already (someone else gave it one), the page reads the list again and the row goes, so that the
+      same button does not give the same refusal.
+    missing: "no Linear issue; REASSIGN-4, decision D2: the window stays open and the list is not read again"
+    note: >-
+      Drawn on the states saving and formReady and on the node failedNotPassive, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: vazgec-and-the-scrim-change-nothing
+    need: >-
+      "Vazgeç", the close icon and Escape close the window and assign nothing, and the focus goes back to the row's button; a
+      click on the scrim does nothing, so a typed address is not lost to a stray click.
+    evidence:
+      - state: form
+      - state: formReady
+      - state: looking
+      - node: cancel
+      - node: closeIcon
+      - source: libs/ui/src/mds/dialog.tsx:74
+      - source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106
+      - test: apps/nizam/e2e/inactive.e2e.ts
+        name: "nizam/14 — 'Vazgeç' changes nothing, and the scrim does not close the window"
+    note: "inactive#9: the scrim click at (5, 5) leaves the window, \"Vazgeç\" closes it, the row stays, no post is written"
+
+  - id: cancel-while-sending-answers
+    need: >-
+      While an assignment is being sent, "Vazgeç", the close icon and Escape say that they wait (disabled or busy), instead of
+      being on and doing nothing.
+    missing: "no Linear issue; REASSIGN-3: the same as F-W3-open-2 in nizam.kosks.open"
+    note: >-
+      Drawn on the state saving and on the nodes cancel and closeIcon, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-focus-goes-somewhere-after-an-assignment
+    need: >-
+      After an assignment the row's button is gone with its row; the focus goes to the next row's button or to the list's heading,
+      and the toast is read.
+    missing: no Linear issue; F-W2-10, F-X-7
+    note: >-
+      Drawn on the states saving, listed and empty and on the node savedTitle, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-scope-that-never-had-a-manager-is-refused
+    need: >-
+      "… ata" and "İçeriği gör" are refused (404 INACTIVE_SCOPE_NOT_FOUND) for a köşk, medrese or course that never had a manager,
+      as the page never offers it, so that platform.inactive_scopes_manage alone cannot seat a manager in a new scope.
+    missing: >-
+      no Linear issue; security, from the code: inactive-scope.repository.ts:263 asks only that no manager is held now;
+      ledger/security.md
+    note: >-
+      Drawn on the state saving, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-passive-medrese-from-passivate-shows-here
+    need: >-
+      A medrese the başnazım has just made passive (nizam.madrasahs.passivate, "Pasife al") is on this list, with "Başmüderris
+      görevden alındı", its last başmüderris and the başnazım as the one who took the post away, and "Başmüderris ata" gives it a
+      head again.
+    evidence:
+      - node: madrasahScope
+      - node: madrasahReason
+      - node: madrasahRemover
+      - node: madrasahLast
+      - node: madrasahAssign
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:65
+      - source: apps/tedrisat/src/madrasah/madrasah.repository.ts:711

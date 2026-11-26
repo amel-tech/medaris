@@ -1,0 +1,55 @@
+# nizam.applications.decide, answered meanwhile: someone else settles the application after the page was read, so the decision the
+# başnazım takes is answered with 409 KOSK_APPLICATION_DECIDED, the row leaves and the toast "Karar kaydedilemedi: Bu başvuru az önce
+# karara bağlanmış." says why (FAIL.decided of both decisions).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/applications/decide \
+#     --bind graphs/nizam/applications/decide/binding.meanwhile.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the answer is made: no node sends it and the model has no event for it (the page is stale before the person presses), so a state's
+# `before` has the başnazım refuse the application through the API when the walk reaches the state the person decides from, as another
+# nazım would: `koskForm` for the approval (the form of nizam.kosks.open is open, the köşk is then made all the same, and the approval
+# is answered 409: the köşk stays, which is what F-W3-8 is about) and `rejectFormReady` for the refusal (the dialog is open with a reason
+# written). `--any` makes a second visit of a state, which finds the application answered already, answer 409 and not fail the step.
+# The status the replay compares on FAIL.decided is the server action's own 200 (an engine limit: see locators.binding.yaml).
+# Data: ./applications.mjs files `meetA` (applicantG) and `meetR` (applicantC) as tag ndm; the köşk the walk opens is "ornek-tefsir"
+# and `down` removes it with the applications and the notices their answers sent.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.applications.decide
+
+data:
+  made: { json: ../.local/made/ndm.json }
+
+samples:
+  name: '{made.meetA.name}'
+  applicant: '{made.meetA.applicant}'
+  email: '{made.meetA.email}'
+  phone: '{made.meetA.phone}'
+
+# the application the main story presses second is the one that is settled behind the page's back here
+nodes:
+  row: { role: button, name: '/^Örnek Siyer Köşkü /', within: { css: '[data-testid=application-list]' } }
+
+states:
+  koskForm:
+    before:
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/nizam/kosk-applications/{made.meetA.id}/reject', '{"reason":"Başka bir hesap karara bağladı."}', --any]
+        expect: HTTP
+  rejectFormReady:
+    before:
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/nizam/kosk-applications/{made.meetR.id}/reject', '{"reason":"Başka bir hesap karara bağladı."}', --any]
+        expect: HTTP
+
+scenarios:
+  meanwhile:
+    given: { read: ok, link: waiting, queue: some, phone: given, answered: rejected, answer: decided }
+    as: systemAdmin
+    open: '{nizam}/talepler/kosk-basvurulari?secili={made.meetA.id}'
+    vars: { koskHandle: ornek-tefsir, reason: 'Aynı alanda başka bir köşk var.' }
+    setup:
+      - run: [node, ../nizam/applications/decide/applications.mjs, up, ndm, 'meetA:applicantG', 'meetR:applicantC']
+        expect: '"tag":"ndm"'
+    teardown:
+      - run: [node, ../nizam/applications/decide/applications.mjs, down, ndm]
+        expect: 'applications down ndm'

@@ -1,0 +1,493 @@
+# "Ders talepleri" of a köşk in nizam-web (/kosks/<id>/ders-talepleri), read by the köşk's nazım (or the başnazım): the medreses'
+# requests for a course outside the medrese, waiting and answered. Read from the code of PR #394 (apps/nizam/app/kosks/[id]/ders-talepleri,
+# apps/nizam/features/platform-admin, the shared reject dialog of features/deck-review, apps/tedrisat/src/course-request); nothing was walked or
+# looked at in a browser (every behaviour below is "from the code"). It says what the code does today:
+#   - the page reads the köşk's waiting requests on the server (GET /kosks/:id/course-requests?status=PENDING, oldest first, at most 100) and
+#     draws two tabs with the counts the API gives, the list, and, for the selected request (the first on load), its detail;
+#   - "Kabul et" accepts nothing: it navigates to the Ders aç form with ?talep=<request id> (router.push). The request is accepted by that
+#     form, after the course exists (POST /course-requests/:id/accept, nizam.courses.open); if the nazım leaves the form the request keeps
+#     waiting (CREQ-4);
+#   - "Reddet" opens the shared reject dialog; its "Reddet" stays off until a reason is written; the request is answered REJECTED with the
+#     reason, the row leaves the waiting list, a toast says so, and the başmüderris finds the refusal on İtirazlar (nazar.appeals.open). Nobody
+#     is notified, although the toast says the reason "iletildi" (CREQ-1);
+#   - a request answered or removed meanwhile closes the dialog with an error toast and the row leaves; any other refusal keeps the dialog open;
+#   - a nazım of another köşk, a Medaris nazımı, and a köşk that is not there all get the same "Bu bölüm için izniniz yok" screen
+#     (nizam.shell.noAccessAndNotFound draws it for every way in; here it is drawn once, as far as its words and the way back).
+# It is started by nazar.offsite.requestCourse (its `starts` passes no `given`: the request just waits here) and starts nizam.courses.open
+# (fromRequest: true, on "Kabul et") and nazar.appeals.open (rejected: true, once a refusal is saved).
+# Findings this flow touches (ui.yaml `rules` carries the same ids): F-W3-5 (tabs with no panel; the same family as F-X-1), F-W3-9 (the page
+# never says which köşk), F-X-2 (the reason's error is not a live region), F-UI-W1-1 (the dialog's description wraps its whole body), and the
+# new CREQ-1 to CREQ-6.
+schema: delurio-graph/0
+kind: flow
+id: nizam.courseRequests.decide
+status: captured
+domain: medaris.api
+ui: nizam.courseRequests.decide
+title: Decide a medrese's course request outside the medrese
+summary: >-
+  The köşk's nazım opens "Ders talepleri" from the köşk menu. The Bekleyen tab holds the requests that wait, oldest first, with the first
+  one already selected: a card names the request, the medrese that asks, the köşk, the day it was sent, the başmüderris who sent it and her
+  reason, under the note "Kabul ettiğinizde Ders aç formu talebin adıyla dolu açılır; ders açılınca talep kabul sayılır. Reddettiğinizde
+  başmüderris gerekçeyi görür." Choosing another row changes the card. "Kabul et" leaves for the Ders aç form, filled in with the request's
+  name; the request is accepted there, once the course is made (nizam.courses.open). "Reddet" opens a dialog that asks for a "Ret gerekçesi":
+  the dialog's "Reddet" is off until there is one, and an empty field that is left says "Bir gerekçe yazın.". Sent, the dialog closes, a toast
+  says "Talep reddedildi", the row leaves the list, the next one is selected, and the başmüderris finds the refusal, with the reason, on
+  İtirazlar (nazar.appeals.open). The Karara bağlanan tab lists the answered requests, newest decision first, with the outcome and, for a
+  refusal, the reason. A request someone answered first, or one that is gone, is told in an error toast and leaves the list; a refusal of the
+  permission or any other failure keeps the dialog open. Someone who may not decide for this köşk, or a köşk that does not exist, meets "Bu
+  bölüm için izniniz yok". A failed read says "Talepler okunamadı" and offers "Tekrar dene".
+
+scope:
+  shows: >-
+    the page "Ders talepleri" of one köşk for its nazım: the header, the two tabs with their counts, the list and the card of the selected
+    request, the reject dialog and its toasts, the empty lines, the failed reads, and the screen that says no
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame (sidebar, köşk picker, bell, the menu's entry 'Ders talepleri'): nizam.shell.menuPerPersona, nizam.shell.landingByRole; a nazım of several köşks reads the köşk in scope, which the seed does not have"
+    - "the medrese's side: the başmüderris sending the request (nazar.offsite.requestCourse) and reading the refusal, appealing it, on İtirazlar (nazar.appeals.open); the appeal is decided in nizam.moderation.decideAppeal"
+    - "the Ders aç form opened with ?talep=<id>: its fields, its refusals, and the call that accepts the request once the course exists (POST /course-requests/:id/accept, COURSE_REQUEST_COURSE_NOT_FOUND, COURSE_REQUEST_COURSE_TAKEN): nizam.courses.open"
+    - "the screen 'Bu bölüm için izniniz yok' for every other way in, and the 'Sayfa bulunamadı' of an address no page answers: nizam.shell.noAccessAndNotFound"
+    - "the loading skeleton of app/kosks/[id]/loading.tsx, the list's limit of 100 requests per tab (the count can say more than the list holds, and nothing says so), and the one-column layout of a narrow screen"
+    - "a request that never reaches the server (no catch around the action: the dialog's button stays busy) and an ended session (the action answers unauthenticated and the page sends the person to sign in and back: realm.auth.signIn)"
+
+decisions:
+  D1:
+    question: >-
+      Should the başmüderris be told when her request is answered? The toast says the reason was conveyed ("gerekçe başmüderrise iletildi") and
+      the dialog says she will read it, but the API writes an audit row and sends nobody a notification or a mail; she finds the answer only if
+      she opens İtirazlar, and an accepted request is not shown to her at all (nazar.offsite.requestCourse, OFFSITE-1).
+    recommend: >-
+      Yes: notify the başmüderris (and the nazırs holding madrasah.offsite_course_request) when a request is accepted or refused, with the
+      reason, and until then say in the toast that the reason is recorded for her. Same decision as nazar.appeals.open D1.
+    affects: [rejecting, listed]
+  D2:
+    question: >-
+      Should "Kabul et" say that it only opens the form? It reads as an acceptance, the request is accepted only when a course is made from it,
+      and leaving the form leaves the request waiting; the sentence that says so is a caption under the card.
+    recommend: >-
+      Name the button after what it does ("Ders aç formunu aç") or accept the request at once and let the nazım open the course after, and show,
+      on an accepted request, the course that answers it (the API sends its id and the page ignores it).
+    affects: [listed, acceptHandOver]
+
+context:
+  # --- what the world is (case variables) ---
+  read:
+    values: [nothing, one, many, refused, missing, unreadable]
+    initial: any
+    say:
+      nothing: "the page may be read and no request waits"
+      one: "the page may be read and exactly one request waits"
+      many: "the page may be read and more than one request waits; the model never empties the list by deciding, which would take as many decisions as there are requests"
+      refused: "the API answers 403 COURSE_REQUEST_FORBIDDEN: the person is neither the başnazım nor a nazım of this köşk (a nazım of another köşk, a Medaris nazımı)"
+      missing: "the API answers 404 KOSK_NOT_FOUND: no such köşk; the page draws the same screen as for a refusal"
+      unreadable: "the read failed for another reason (a köşk id that is not a uuid is a 400, a server error): 'Talepler okunamadı' with a retry"
+  decidedTab:
+    values: [none, rejected, accepted, failed]
+    initial: any
+    say:
+      none: "the Karara bağlanan tab holds no request"
+      rejected: "its newest request is a refusal, with its reason"
+      accepted: "its newest request is an accepted one (the course made from it is not shown, CREQ-6)"
+      failed: "reading that tab fails (the API is down, the nazım lost the role since the page was read)"
+  answer:
+    values: [rejected, answered, gone, forbidden, other]
+    initial: any
+    say:
+      rejected: "the API takes the refusal: 204, the request is REJECTED with the trimmed reason"
+      answered: "someone answered the request while the dialog was open: 409 COURSE_REQUEST_NOT_PENDING"
+      gone: "the request is gone (its köşk or medrese was deleted): 404 COURSE_REQUEST_NOT_FOUND"
+      forbidden: "the nazım lost the role since the page was read: 403 COURSE_REQUEST_FORBIDDEN"
+      other: "any other refusal or failure (a reason over 1000 characters, a server error)"
+  retry:
+    values: [served, failed]
+    initial: any
+    say:
+      served: "the read that 'Tekrar dene' repeats works this time"
+      failed: "it fails again"
+  # --- what the screen remembers (shown-state variables) ---
+  settledHere:
+    values: [notYet, rejected, answered, vanished]
+    initial: notYet
+    say:
+      notYet: "nothing was decided in this visit"
+      rejected: "this visit refused a request"
+      answered: "this visit tried to refuse a request that someone had answered; it left the list"
+      vanished: "this visit tried to refuse a request that was gone; it left the list"
+  reason:
+    values: [blank, typed]
+    initial: blank
+    say: { blank: "the dialog's reason is blank (or only spaces)", typed: "the dialog's reason holds text" }
+  last:
+    values: [nothing, rejected, answered, gone, forbidden, failed, loadFailed]
+    initial: nothing
+    say:
+      nothing: "no toast of this page is up"
+      rejected: "the success toast 'Talep reddedildi' is up (it closes by itself after 6 seconds)"
+      answered: "an error toast says the request was answered a moment ago"
+      gone: "an error toast says the request is gone"
+      forbidden: "an error toast says the person may not do this; the dialog is still open"
+      failed: "an error toast says the action could not be completed; the dialog is still open"
+      loadFailed: "an error toast says the requests could not be read"
+
+guards:
+  nothingWaits: "read == 'nothing' or (read == 'one' and settledHere != 'notYet')"
+  nothingDecidedHere: "settledHere == 'notYet' or settledHere == 'vanished'"
+  decidedHere: "settledHere == 'rejected' or settledHere == 'answered'"
+  decidedEmptyNow: "decidedTab == 'none' and nothingDecidedHere"
+  firstRejected: "decidedHere or (nothingDecidedHere and decidedTab == 'rejected')"
+  firstAccepted: "nothingDecidedHere and decidedTab == 'accepted'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  openDialog: { set: { reason: blank, last: nothing } }
+  typedReason: { set: { reason: typed } }
+  clearedReason: { set: { reason: blank } }
+  # the request is gone from the waiting list and its toast comes up
+  refusedIt: { set: { last: rejected, settledHere: rejected } }
+  answeredElsewhere: { set: { last: answered, settledHere: answered } }
+  vanishedIt: { set: { last: gone, settledHere: vanished } }
+  forbiddenToast: { set: { last: forbidden } }
+  failedToast: { set: { last: failed } }
+  loadFailedToast: { set: { last: loadFailed } }
+  # "Kabul et" writes nothing; the toasts of this page do not outlive the navigation
+  openedCourseForm: { set: { last: nothing } }
+
+failures:
+  opened:
+    from: listCourseRequests
+    forbidden: [COURSE_REQUEST_FORBIDDEN]
+    missing: [KOSK_NOT_FOUND]
+    other: [HTTP_400]
+    signedOut: [HTTP_401]
+  retrying:
+    from: listCourseRequests
+    other: [COURSE_REQUEST_FORBIDDEN, KOSK_NOT_FOUND, HTTP_400]
+    signedOut: [HTTP_401]
+  loadingDecided:
+    from: listCourseRequests
+    other: [COURSE_REQUEST_FORBIDDEN, KOSK_NOT_FOUND, HTTP_400]
+    signedOut: [HTTP_401]
+  retryingDecided:
+    from: listCourseRequests
+    other: [COURSE_REQUEST_FORBIDDEN, KOSK_NOT_FOUND, HTTP_400]
+    signedOut: [HTTP_401]
+  rejecting:
+    from: rejectCourseRequest
+    answered: [COURSE_REQUEST_NOT_PENDING]
+    gone: [COURSE_REQUEST_NOT_FOUND]
+    forbidden: [COURSE_REQUEST_FORBIDDEN]
+    other: [VALIDATION_ERROR, HTTP_400]
+    signedOut: [HTTP_401]
+
+# The story the page tells first: the nazım reads the one waiting request, looks at the answered tab (empty), comes back, refuses the request
+# with a reason, and finds it on the answered tab.
+main:
+  given: { read: one, decidedTab: none, answer: rejected, retry: failed }
+  events: [DONE, OPEN_DECIDED, DONE, OPEN_PENDING, REJECT, TYPE_REASON, SUBMIT, DONE, OPEN_DECIDED, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The waiting requests are read
+    description: >-
+      The page (a server component, force-dynamic) reads GET /kosks/:id/course-requests?status=PENDING: the waiting requests oldest first
+      (at most 100) and both tab counts. The service asks that the caller be the başnazım or a held KOSK_NAZIM of this köşk (a Medaris nazımı
+      is refused) and that the köşk exist. A 403 is forbidden() and a 404 notFound(): both draw "Bu bölüm için izniniz yok"
+      (app/forbidden.tsx re-exports app/not-found.tsx, so the page never tells which ids exist). Any other failure (a köşk id that is not a uuid
+      is a 400) gives the page a null and the view draws "Talepler okunamadı" with a retry. A 401 sends the person to sign in and back. While it
+      reads, app/kosks/[id]/loading.tsx draws a skeleton (not drawn here). The page sets no initial focus (focus-not-set).
+    invoke: { action: listCourseRequests }
+    on:
+      DONE: { guard: "read == 'nothing' or read == 'one' or read == 'many'", target: waitingTab, source: "apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:33", say: "the page is read" }
+      FAIL.forbidden: { guard: "read == 'refused'", target: noAccess, source: "apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:28", say: "403: forbidden()" }
+      FAIL.missing: { guard: "read == 'missing'", target: noAccess, source: "apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:29", say: "404: notFound(), which draws the same screen" }
+      FAIL.other: { guard: "read == 'unreadable'", target: unreadable, source: apps/nizam/features/platform-admin/reads.ts:43, say: "any other failure: a null read" }
+      FAIL.signedOut: sent_to_sign_in
+    source: "apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:27"
+
+  waitingTab:
+    title: Is the Bekleyen tab empty?
+    description: >-
+      Not a screen: the Bekleyen tab shows its list, or its empty line when nothing waits any more (the last waiting request was answered here
+      or no request waited when the page was read).
+    always:
+      - { guard: nothingWaits, target: empty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302, say: "no request waits: 'Karar bekleyen ders talebi yok.'" }
+      - { target: listed, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:304, say: "at least one request waits: the list and the card of the selected one" }
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302
+
+  noAccess:
+    title: The page says the person has no permission here
+    by: human
+    description: >-
+      The shell stays and a section, "Bu bölüm için izniniz yok", takes the place of the page: a sentence that names the başnazım when the
+      directory knows who it is ("... gerekirse şu kişiden isteyin: {name}.") and otherwise says it in general terms, the account that is signed
+      in with its e-mail, and "Ana sayfaya dön" (a link to "/"). It is the answer for a nazım of another köşk (e2e platform-admin#11), for a
+      Medaris nazımı (assertKoskNazim refuses them) and for a köşk that does not exist; a person whose roles are not nizam's at all (a talebe, a
+      müderris) is refused one step earlier, by app/kosks/layout.tsx, with the same screen and before the list is read. The words are
+      nizam.shell.noAccessAndNotFound's; here they are drawn once.
+    on:
+      BACK: { target: home_opened, say: "'Ana sayfaya dön'" }
+      NAVIGATE: left
+    source: apps/nizam/components/errors/no-access.tsx:27
+
+  unreadable:
+    title: The requests could not be read
+    by: human
+    description: >-
+      The header stays and an error Alert, "Talepler okunamadı" / "Ders talepleri şu anda alınamıyor. Biraz sonra yeniden deneyin.", with
+      "Tekrar dene" takes the place of the tabs and the list (the view's `failed` is true and no tab has been read). After a failed retry a
+      sticky error toast says the same. The Alert has role alert, so it is announced when it appears.
+    on:
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene'" }
+      NAVIGATE: left
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:269
+
+  retrying:
+    title: The waiting requests are read again
+    description: >-
+      The server action loadCourseRequests calls the same GET from the browser. "Tekrar dene" is not busy and the Alert stays while it runs (`failed`
+      is cleared only by a success). A success draws the tabs and the list; a failure puts up the sticky error toast and leaves the Alert.
+    invoke: { action: listCourseRequests }
+    on:
+      DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:90, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:84, say: "it fails again: the sticky toast" }
+      FAIL.signedOut: sent_to_sign_in
+      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :69-98).
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
+    source: apps/nizam/features/platform-admin/actions.ts:95
+
+  listed:
+    title: The waiting requests are listed
+    by: human
+    goal: true
+    description: >-
+      The Bekleyen tab is selected and holds a list (a `ul`, no name of its own) of one button per waiting request, oldest first: the title, the
+      medrese and the sender, and the day. The selected one carries aria-current and is the first on load. Beside it, a card (a region named by
+      its title, an h2): the eyebrow "MEDRESE DIŞI DERS TALEBİ", the title, the badge "Karar bekliyor", the köşk, the medrese, the day, the
+      sender and the reason, a rule, the caption of what the two buttons do, and "Kabul et" and "Reddet". The tabs are `Tabs mode="tabs"` with no
+      TabsPanel, so the list and the card are not a tab panel; choosing a row or switching a tab announces nothing and moves no focus (F-W3-5).
+      Nothing on the page says which köşk it is (the köşk's name is in the card only, F-W3-9). A toast of the last decision may still be up.
+    on:
+      PICK: { guard: "read == 'many'", target: listed, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:156, say: "she chooses another row: the card shows that request" }
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she opens 'Karara bağlanan'" }
+      REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:245, say: "she presses 'Reddet': the dialog asks for the reason" }
+      ACCEPT: { target: acceptHandOver, effect: [openedCourseForm], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:241, say: "she presses 'Kabul et': the Ders aç form opens with the request's name; nothing is written yet (CREQ-4)" }
+      OPEN_PENDING: { target: listed, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
+      NAVIGATE: left
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:305
+
+  empty:
+    title: Nothing waits
+    by: human
+    description: >-
+      The Bekleyen tab is selected and says "Karar bekleyen ders talebi yok." (an EmptyState), with no card. This is the page when no request
+      was sent, and the page after the last waiting request was answered here: the counts follow, and the focus that the dialog gave back to
+      the card's "Reddet" is lost with the card (CREQ-2). A toast of the last decision may still be up.
+    on:
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she opens 'Karara bağlanan'" }
+      OPEN_PENDING: { target: empty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Bekleyen', the tab already open: nothing changes" }
+      NAVIGATE: left
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303
+
+  loadingDecided:
+    title: The answered requests are read
+    description: >-
+      The first time the Karara bağlanan tab is opened the server action loadCourseRequests reads GET /kosks/:id/course-requests?status=DECIDED
+      (newest decision first, at most 100); the tab is selected at once and a skeleton (an aria-busy block of three bars, no role) stands in the
+      list until the answer. A tab that was read is not read again until a decision empties the cache (a decision keeps only the Bekleyen list).
+    invoke: { action: listCourseRequests }
+    on:
+      DONE:
+        - { guard: decidedEmptyNow, target: decidedEmpty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303, say: "nothing was answered: 'Karara bağlanmış talep yok.'" }
+        - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:305, say: "the answered requests are listed, the newest decision selected" }
+      FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:82, say: "the read fails: the sticky toast, and the Alert replaces the tabs (CREQ-3)" }
+      FAIL.signedOut: sent_to_sign_in
+      # The tabs stay live while the answered requests are read, and 'Bekleyen' shows its list at once (it was kept). The read already sent
+      # is dropped when it lands (each read carries a ticket, course-requests-view.tsx:67-79, and a tab switch takes a new one, :102), so
+      # it no longer sets the selection to a request of the other tab and the card stays (fixed 23 Nov 2026; test:
+      # apps/nizam/test/requests-late-answers.spec.tsx).
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she goes back to 'Bekleyen' while the answered requests are read: its list is there at once" }
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:69
+
+  decidedList:
+    title: The answered requests are listed
+    by: human
+    description: >-
+      The Karara bağlanan tab is selected and lists the answered requests, newest decision first, each with the day it was decided and, after a
+      dot, its outcome ("Kabul edildi" or "Reddedildi"). The card of the selected one has the badge of its outcome, the same facts as a waiting
+      request, and no buttons; for a refusal, a neutral Alert "Ret gerekçesi" carries the reason the nazım wrote (a status, F-A-16 in nazar's
+      family). An accepted request does not link to the course made from it, though the API sends its id (CREQ-6). Within one visit a refusal
+      made here is the newest.
+    on:
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she goes back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
+      OPEN_DECIDED: { target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
+      NAVIGATE: left
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:305
+
+  decidedEmpty:
+    title: Nothing was answered
+    by: human
+    description: "The Karara bağlanan tab is selected and says \"Karara bağlanmış talep yok.\" (an EmptyState)."
+    on:
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:101, say: "she goes back to 'Bekleyen'" }
+      OPEN_DECIDED: { target: decidedEmpty, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:278, say: "she presses 'Karara bağlanan', the tab already open: nothing changes" }
+      NAVIGATE: left
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:303
+
+  decidedFailed:
+    title: The answered requests could not be read
+    by: human
+    description: >-
+      The tab that failed has no list (`lists[DECIDED]` is undefined), so the view draws the error Alert in place of the whole block, tabs
+      included: "Talepler okunamadı" with "Tekrar dene" and a sticky toast with the same words. The tabs are gone, so there is no way back to
+      the Bekleyen list that was read, except reloading the page (CREQ-3).
+    on:
+      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene'" }
+      NAVIGATE: left
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:269
+
+  retryingDecided:
+    title: The answered requests are read again
+    description: "The same call as loadingDecided; the Alert stays while it runs. A success draws the tabs with the Karara bağlanan tab selected and its list."
+    invoke: { action: listCourseRequests }
+    on:
+      DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:90, say: "the read works: the answered requests (the model draws a list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:84, say: "it fails again: the sticky toast" }
+      FAIL.signedOut: sent_to_sign_in
+      # "Tekrar dene" is not busy while the read runs: pressed again, it sends another read beside the first (load, :69-98).
+      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:272, say: "she presses 'Tekrar dene' again while the read runs: another read is sent" }
+    source: apps/nizam/features/platform-admin/actions.ts:95
+
+  confirmReject:
+    title: Reddet asks for the reason
+    by: human
+    description: >-
+      A modal form dialog over the page (the page is inert; the scrim does not close it): the request's title above the heading "Talebi reddet",
+      the sentence "Talep kapanır. Gerekçeyi medresenin başmüderrisi görür.", "* zorunlu alan", a textarea "Ret gerekçesi" of four rows (at most
+      1000 characters, empty each time the dialog opens) with the help "Başmüderris bu gerekçeyi okuyacak.", "Vazgeç", and "Reddet", which is
+      natively disabled while the reason is blank, with nothing but the help to say why. The focus starts in the textarea (the ref is passed
+      through Textarea's props; not verified in a browser). The dialog's description is the whole body (F-UI-W1-1). Vazgeç, the close icon and
+      Esc close it and nothing is written.
+    on:
+      TYPE_REASON: { target: confirmRejectReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "she writes the reason: 'Reddet' goes on" }
+      LEAVE_REASON: { target: confirmRejectTouched, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:114, say: "she leaves the empty field: 'Bir gerekçe yazın.' stands where the help was" }
+      CANCEL: { target: listed, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç, the close icon or Esc: the dialog closes and the focus goes back to the card's 'Reddet'" }
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
+
+  confirmRejectTouched:
+    title: Reddet says a reason is needed
+    by: human
+    description: >-
+      The same dialog after the empty field was left: "Bir gerekçe yazın." replaces the help line under the textarea, with no live region and no
+      focus move (F-X-2); "Reddet" is still off.
+    on:
+      TYPE_REASON: { target: confirmRejectReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "she writes the reason: the message goes at once" }
+      CANCEL: { target: listed, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç, the close icon or Esc" }
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:104
+
+  confirmRejectReady:
+    title: Reddet is on
+    by: human
+    description: >-
+      The same dialog with a reason in the textarea and "Reddet" on; the sent reason is the text trimmed. After a refusal of the permission
+      or a failure the dialog returns here with its error toast and what she wrote.
+    on:
+      SUBMIT: { target: rejecting, effect: [clearNote], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:72, say: "she presses 'Reddet'" }
+      CLEAR_REASON: { target: confirmReject, effect: [clearedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "she empties the field again: the button goes off (the error shows once she leaves the field, or at once if she had left it before: `touched` is never cleared)" }
+      CANCEL: { target: listed, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç, the close icon or Esc: the dialog closes, what she wrote is dropped" }
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92
+
+  rejecting:
+    title: The refusal is on its way
+    description: >-
+      The server action rejectCourseRequest calls POST /course-requests/:id/reject with the trimmed reason (at most 1000 characters). The
+      service asks the same as for the list (the başnazım or a nazım of the request's köşk), then makes one conditional update that applies
+      only while the request is PENDING: REJECTED, the reason, who decided and when, and an audit row (course_request.reject) in one
+      transaction. It makes no notification (CREQ-1). The dialog's "Reddet" is busy (aria-disabled and aria-busy, a spinner, and a hidden
+      status that says "Yükleniyor" from a hard-coded default); "Vazgeç" and the close icon stay on and do nothing while it runs.
+      COURSE_REQUEST_NOT_PENDING (answered first) and COURSE_REQUEST_NOT_FOUND (gone) take the row off the waiting list, close the dialog and
+      say so in a sticky error toast ("Karar kaydedilemedi" with "Bu talep az önce karara bağlanmış." or "Bu talep artık yok."); the gone
+      one also counts as decided in the Karara bağlanan tab's number (CREQ-5). COURSE_REQUEST_FORBIDDEN and any other failure leave the
+      dialog open with the error toast ("Bu işlem için izniniz yok." or "İşlem tamamlanamadı. Biraz sonra yeniden deneyin."). A session that
+      ended is sent to sign in, with no toast. If the call itself fails (no network) nothing catches it: the button stays busy (not verified).
+    invoke: { action: rejectCourseRequest }
+    on:
+      DONE: { guard: "answer == 'rejected'", target: rejectedHandOver, effect: [refusedIt], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:132, say: "204: the toast 'Talep reddedildi', the row leaves, the dialog closes" }
+      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125, say: "409: the row leaves, the dialog closes, an error toast says someone answered it" }
+      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125, say: "404: the row leaves, the dialog closes, an error toast says it is gone" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:126, say: "403: the dialog stays open with an error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:126, say: "any other failure: the dialog stays open with an error toast" }
+      FAIL.signedOut: sent_to_sign_in
+      CANCEL: { target: rejecting, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "she presses Vazgeç or Esc while the refusal is sent: nothing happens, the refusal goes on (onOpenChange is ignored while saving)" }
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:122
+
+  rejectedHandOver:
+    title: The refusal waits for the başmüderris
+    description: >-
+      A step with no screen: the request is REJECTED and not appealed, which is what the başmüderris's İtirazlar lists, with the köşk's reason
+      and "İtiraz aç" (nazar.appeals.open takes over, for her). Nothing is sent to her.
+    always:
+      - { target: waitingTab, starts: { flow: nazar.appeals.open, given: { rejected: "true" } }, source: apps/tedrisat/src/course-request/course-request.service.ts:173, say: "a refused request of the medrese, with no appeal, now exists" }
+    source: apps/tedrisat/src/course-request/course-request.service.ts:173
+
+  acceptHandOver:
+    title: The Ders aç form opens for the request
+    description: >-
+      A step with no screen: "Kabul et" calls router.push("/kosks/<id>/courses/new?talep=<request id>") and nothing else; no call is made and the
+      request stays PENDING. The form's page reads the köşk's waiting requests again and, if it finds this one, fills the course's name with
+      the request's title (an unknown or answered request leaves it empty); once the course is made, the form accepts the request with the new
+      course's id (nizam.courses.open takes over).
+    always:
+      - { target: handed_over.open_course, starts: { flow: nizam.courses.open, given: { fromRequest: "true" } }, source: apps/nizam/features/platform-admin/present.ts:292, say: "the course form takes the request's name" }
+    source: apps/nizam/features/platform-admin/present.ts:292
+
+  handed_over.open_course:
+    title: The Ders aç form is open
+    type: final
+    leavesPage: true
+    description: >-
+      The address is /kosks/<id>/courses/new?talep=<request id>. The request waits until a course is made from it (e2e platform-admin#9 a1);
+      that form's "Ders adı" starting with the request's title (a2) is nizam.courses.open's.
+
+  home_opened:
+    title: The home page opens
+    type: final
+    leavesPage: true
+    description: "'Ana sayfaya dön' is a plain link to \"/\", which sends the person where their role lands (nizam.shell.landingByRole)."
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The read, or an action, answered 401: the page sends the person to sign in (reauth) and back to this address (redirectIfUnauthenticated,
+      passOnSignIn) and draws no toast. realm.auth.signIn takes over. Not walked.
+
+  left:
+    title: She goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-reason-is-always-sent
+    never: "state == 'rejecting' and reason == 'blank'"
+    say: A refusal is never sent without a reason; the dialog's button stays off until one is written.
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92
+  - id: the-page-is-drawn-only-where-the-read-allows
+    never: "(state == 'listed' or state == 'empty' or state == 'loadingDecided' or state == 'decidedList' or state == 'decidedEmpty' or state == 'confirmReject' or state == 'confirmRejectTouched' or state == 'confirmRejectReady' or state == 'rejecting') and (read == 'refused' or read == 'missing')"
+    say: The list, the card and the dialog are drawn only for a person the API let through.
+    source: "apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:28"
+  - id: empty-means-nothing-waits
+    never: "state == 'empty' and read == 'many'"
+    say: The empty line shows only when no request waits.
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302
+  - id: rows-mean-something-waits
+    never: "state == 'listed' and read == 'nothing'"
+    say: The list is drawn only while a request waits.
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:302
+  - id: the-success-toast-comes-only-after-the-api-took-it
+    never: "last == 'rejected' and settledHere != 'rejected'"
+    say: '"Talep reddedildi" shows only after the API answered 204.'
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:132

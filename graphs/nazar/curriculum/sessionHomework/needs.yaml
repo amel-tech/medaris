@@ -1,0 +1,209 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.curriculum.sessionHomework
+status: proposed
+summary: >-
+  What must exist for a hoca to give a celse homework from Müfredat: the flow's product list. Each need is what the product must
+  do, from the flow's story (the homework a müderris sets, MDRS-248 and MDRS-290, and the owner's word of 2026-10-12 that homework
+  and resources are apart) and from the findings of the code, not from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Gaps of this file, for that merge:
+# missing:   take-off-names-the-marks (none), a-write-says-it-worked (none), page-says-what-the-nazir-may (none),
+# a-stale-write-does-not-replace (none), an-unsaved-description-is-not-lost (none). Each is a finding of ui.yaml (HWSET-1, -5, -2,
+# -4, -8); nothing is planned in Linear for them.
+# unwalked:  give-homework-at-once, choose-how-it-is-handed-in, describe-the-homework, attach-and-remove-files, take-off-asks,
+# a-reader-without-session-manage-reads-it, the-talebe-meets-the-homework. Code exists for each. No web e2e reaches any write of
+# Müfredat (nazar.md: "every WRITE of /mufredat ... homework" has none), and the replay has not been run: binding.yaml and
+# binding.sessionOnly.yaml bind the scenarios that will walk them (sets, kept, recital, viewing, sessionOnly) and none has run, so
+# none is named as walked. The unit specs (test:) and the API's own e2e pin what they pin; they are not a walk of this page.
+# Where the binding cannot make a case on the local stack, its header says so: a file cannot be chosen by the replay and the storage answers
+# 503 (the upload's DONE and the panel's chosen file), and a refusal of the API cannot be made on request (every FAIL branch).
+
+needs:
+  - id: give-homework-at-once
+    need: >-
+      A hoca, or a ders nazırı who may manage the course's sessions, gives a celse homework with one press and takes it off with
+      one press; each is stored when it is pressed, and nothing else has to be saved.
+    evidence:
+      - state: "off"
+      - state: turningOn
+      - state: "on"
+      - node: homeworkSwitch
+      - state: takingOff
+      - state: takingOffAsked
+      - source: apps/tedrisat/src/course/lesson-assignment.controller.ts:84
+      - source: apps/tedrisat/src/course/lesson-assignment.controller.ts:110
+      - source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:209
+      - test: apps/nazar/test/curriculum-assignment.spec.tsx
+      - test: apps/tedrisat/test/e2e/lesson-assignments.e2e.spec.ts
+    note: |-
+      curriculum-assignment.spec.tsx lines 268
+      apps/nazar/test/curriculum-assignment.spec.tsx:268: turns homework on at once, with no description
+      apps/tedrisat/test/e2e/lesson-assignments.e2e.spec.ts: the API: set, change, take off, audit rows
+
+  - id: choose-how-it-is-handed-in
+    need: >-
+      The hoca chooses whether the talebe hand the homework in as files ("Dosya") or recite it to the hoca ("Ezber", marked on
+      Değerlendirme), and changing the choice keeps what the talebe handed in and the marks given.
+    evidence:
+      - state: "on"
+      - node: kindFile
+      - node: kindRecital
+      - state: choosingRecital
+      - state: choosingFile
+      - node: recitalHelp
+      - source: apps/tedrisat/src/course/lesson-assignment.controller.ts:84
+      - source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164
+      - test: apps/nazar/test/curriculum-assignment.spec.tsx
+    note: |-
+      curriculum-assignment.spec.tsx lines 317
+      apps/nazar/test/curriculum-assignment.spec.tsx:317: sets Teslim şekli at once, Dosya first, with the description as stored
+      (MDRS-248)
+
+  - id: describe-the-homework
+    need: >-
+      The hoca writes what the talebe are to do, in plain text with its line breaks, up to 4000 characters, and stores it; a blank
+      text clears it.
+    evidence:
+      - state: "on"
+      - state: drafting
+      - state: savingDescription
+      - node: descriptionField
+      - node: saveDescription
+      - node: descDirty
+      - node: descSaved
+      - source: apps/tedrisat/src/course/lesson-assignment.controller.ts:84
+      - source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:154
+      - test: apps/nazar/test/curriculum-assignment.spec.tsx
+    note: |-
+      curriculum-assignment.spec.tsx lines 291
+      apps/nazar/test/curriculum-assignment.spec.tsx:291: saves the description on its own, trimmed, and says so
+
+  - id: an-unsaved-description-is-not-lost
+    need: >-
+      A description the hoca typed and did not store is not lost when the page's Kaydet saves another edit, and the page's own
+      "Kaydedilmemiş değişiklikler var" counts it, or the description is stored like the rest of the block (HWSET-8).
+    missing: >-
+      no issue: the editor is keyed by the course version (curriculum-page.tsx:64) and curriculumDirty reads the course form only
+      (curriculum.ts:331)
+    note: >-
+      Drawn on the state drafting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: attach-and-remove-files
+    need: >-
+      The hoca attaches files to the homework (a PDF, an image, an Office file or a text file, 25 MB at most), sees them listed,
+      and removes one after being asked; a file is stored the moment it is sent and the talebe can download it.
+    evidence:
+      - state: picking
+      - state: picked
+      - state: uploading
+      - node: uploadPanel
+      - node: uploadAlert
+      - node: filesList
+      - node: fileLink
+      - node: removeFile
+      - state: confirmFile
+      - state: removingFile
+      - source: apps/tedrisat/src/course/lesson-assignment.controller.ts:144
+      - source: "apps/nazar/app/api/files/lessons/[lessonId]/assignment/route.ts:17"
+      - source: apps/tedrisat/src/course/lesson-assignment.controller.ts:165
+      - test: apps/nazar/test/curriculum-assignment.spec.tsx
+    note: |-
+      curriculum-assignment.spec.tsx lines 366
+      curriculum-assignment.spec.tsx lines 417
+      apps/nazar/test/curriculum-assignment.spec.tsx:366: uploads a file to the homework's own route, the file alone
+      apps/nazar/test/curriculum-assignment.spec.tsx:417: removes a file after asking, for good
+      Locally the storage answers 503 STORAGE_NOT_CONFIGURED and the replay cannot choose a file: only the panel's opening, "Bir
+      dosya seçin." and the removal of a row the binding writes by SQL are walkable; the upload's success is walkable only on a
+      stack that has storage.
+
+  - id: take-off-asks
+    need: >-
+      Taking a homework off asks first whenever a description or a file would be lost, and the question can be answered with
+      Vazgeç, Esc or the close icon; what the talebe handed in is never deleted.
+    evidence:
+      - state: confirmOff
+      - node: offDialog
+      - state: takingOffAsked
+      - state: confirmFile
+      - node: fileDialog
+      - source: apps/tedrisat/src/course/lesson-assignment.controller.ts:110
+      - source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:397
+      - test: apps/nazar/test/curriculum-assignment.spec.tsx
+    note: |-
+      Also drawn as the assertion taking-off-asks-when-it-holds-something.
+      curriculum-assignment.spec.tsx lines 343
+      apps/nazar/test/curriculum-assignment.spec.tsx:343: asks before taking homework with a description or files off, then
+      removes it
+
+  - id: take-off-names-the-marks
+    need: >-
+      Taking a recital homework off asks too whenever the course team has marked a talebe on it, and the question says that the
+      marks go with the homework; a homework with marks is never taken off with no word (HWSET-1, decision D1).
+    missing: >-
+      no issue: the page asks only for a description or a file (lesson-assignment-editor.tsx:216) and the course read carries no
+      mark count
+    note: >-
+      Drawn on the states takingOff and confirmOff and on the node offBody, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-write-says-it-worked
+    need: >-
+      Giving the homework, choosing a kind and removing a file say that they worked (a status or a toast), and a write that fails
+      to leave the page answers in words; the focus stays where the person was (HWSET-5, HWSET-9).
+    missing: "no issue: no success is announced, and a call that throws says nothing"
+    note: >-
+      Drawn on the states turningOn, choosingRecital and removingFile, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: page-says-what-the-nazir-may
+    need: >-
+      A ders nazırı who may manage sessions and not edit the course is told what they may change on Müfredat, not that the page is
+      read-only (HWSET-2, decision D2).
+    missing: "no issue: Curriculum.readOnly is shown to every caller without course.edit"
+    note: >-
+      Drawn on the nodes readOnlyNote and homeworkSwitch, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-stale-write-does-not-replace
+    need: >-
+      A write from a page that was opened before another person changed the homework does not replace their change without a word:
+      the page is told of the change, or the write carries what it was based on (HWSET-4).
+    missing: "no issue: the writes carry no version; PUT /lessons/:id/assignment replaces the description whenever it differs"
+    note: >-
+      Drawn on the states turningOn, savingDescription and choosingRecital, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-reader-without-session-manage-reads-it
+    need: >-
+      A person who may see the course but not manage its sessions reads the homework (its kind, description and files) and is not
+      offered any control that changes it.
+    evidence:
+      - state: viewing
+      - node: captionView
+      - node: kindLineFile
+      - node: filesList
+      - source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:254
+      - test: apps/nazar/test/curriculum-assignment.spec.tsx
+    note: |-
+      Also drawn as the assertion writes-need-session-manage.
+      curriculum-assignment.spec.tsx lines 451
+      apps/nazar/test/curriculum-assignment.spec.tsx:451: is read-only without session.manage
+
+  - id: the-talebe-meets-the-homework
+    need: >-
+      What the hoca sets here is what the enrolled talebe read on the celse page, as files to hand in or as a recital to be
+      marked, and a homework taken off leaves their hand-ins in place.
+    evidence:
+      - state: "on"
+      - state: choosingRecital
+      - state: takingOffAsked
+      - source: apps/tedris/features/courses/components/session-homework.tsx:123
+    note: |-
+      apps/tedris/features/courses/components/session-homework.tsx:123: the card of a recited homework; the file homework is the
+      section Ödev on the same page
+      walked: []: tedris.learn.homeworkHandIn and tedris.learn.homeworkMemorize draw the other half; neither is walked yet

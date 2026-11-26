@@ -8,6 +8,7 @@ import { streamStoredFile } from "../storage/stored-file";
 import { acceptUpload } from "../storage/upload";
 import { UploadStore } from "../storage/upload-store";
 import { CourseService } from "./course.service";
+import type { AssignmentKind } from "./domain/assignment-kind.enum";
 import type { ILessonAssignment } from "./domain/lesson-assignment";
 import { LessonAssignmentFileNotFoundError } from "./errors/lesson-assignment-file-not-found.error";
 import { LessonAssignmentNotFoundError } from "./errors/lesson-assignment-not-found.error";
@@ -45,13 +46,14 @@ export class LessonAssignmentService {
   async save(
     lessonId: string,
     user: AuthenticatedUser,
-    description: string | null
+    description: string | null,
+    kind?: AssignmentKind
   ): Promise<ILessonAssignment> {
     const courseId = await this.courses.findWritableLessonCourse(
       lessonId,
       user
     );
-    return this.repo.save(lessonId, description, {
+    return this.repo.save(lessonId, description, kind, {
       courseId,
       actorId: user.sub,
     });

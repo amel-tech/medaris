@@ -1,0 +1,25 @@
+# nazar.shell.scopeAndMenu for a medrese nazır with no grant, on the local stack, in a wide window (1440 x 900): "Seher Medrese
+# Nazırı", MEDRESE_NAZIR of "Hadis ve Siyer Medresesi". One scope, so the picker is a card that cannot be opened (F-L-14); the medrese's
+# menu has all nine entries (MDRS-223); and the count behind "Dersler" is refused (403, madrasah.students_view is not hers), so the
+# link carries no number and the page draws no alert (shell#8 a1-a3).
+#   node apps/engine/src/cli.ts replay graphs/nazar/shell/scopeAndMenu --bind graphs/nazar/shell/scopeAndMenu/binding.nazir.yaml \
+#     --to wide --absent --out <dir>
+# NOT RUN: written without a replay. It makes and removes nothing: the stack's seed is the data (STACK.md). A walk that gave her a
+# grant must give it back (nazar.nazirs.permissions does).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.shell.scopeAndMenu
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  nazir:
+    given: { opensAt: wide, who: nazir, counts: none }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+
+nodes:
+  # the card is the picker's whole content: the medrese's name and her role under it
+  pickerCard: { css: 'aside .mds-card', hasText: Hadis ve Siyer Medresesi }
+  roleNazir: { css: 'aside .mds-card .mds-caption', hasText: Medrese nazırı }

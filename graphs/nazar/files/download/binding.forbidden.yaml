@@ -1,0 +1,78 @@
+# The 403 walks of nazar.files.download: the walk's ders nazırı holds ONE permission when the page is drawn and loses it just before a file link is followed, so
+# the page, drawn while they still held it, still lists the link and the route answers 403 AUTHZ_FORBIDDEN, which the 303 turns into ?fileError=forbidden.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/files/download \
+#     --bind graphs/nazar/files/download/binding.forbidden.yaml --cover transitions --out <dir>
+#
+# NOT RUN in the writing phase. The ders nazırı is the stack's `dersNazir` (DERS_NAZIR), appointed to the walk's OWN course by the müderris, so no seeded post is
+# touched (the seeded course's post is not read here: the helper looks the post up by account in the course it is given). The permission is set the way the hoca
+# does it on Ders nazırları (helpers/course-nazir-grants.mjs: appoint, then PATCH the whole set). Taking it away is the same helper with `--codes none`, run as
+# the `before` of the link, so it happens after the page was checked and before the click. Both scenarios end where the pages really end:
+#   homeworkForbidden    holds `submission.read`; Ödevler comes back as "Bu sayfaya izniniz yok" WITH the toast "Bu dosyayı indirme izniniz yok." (FileErrorNotice
+#                        is mounted before the body, homework-page.tsx:55)
+#   curriculumForbidden  holds `session.manage` (which brings course.view_details and opens Müfredat, read-only for the person without course.edit); Müfredat comes
+#                        back as "Bu sayfaya izniniz yok" with NO toast and ?fileError=forbidden still in the address (NFILES-1). All three links of the editor get
+#                        the hook, and only the one a walk presses runs it; the hook is idempotent.
+# A ders nazırı with `session.manage` also sees an info alert "read only" above the editor (Curriculum.readOnly): not drawn here, it is nazar.curriculum.edit's.
+schema: delurio-graph/0
+kind: binding
+extends: files.common.binding.yaml
+flow: nazar.files.download
+
+scenarios:
+  homeworkForbidden:
+    given: { view: homework, answer: forbidden }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nazarfiles, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, applicantF]
+        expect: '"tag":"nazarfiles"'
+      - run: [node, ../nazar/files/download/files-data.mjs, up, homework]
+        expect: 'files-data up homework'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, submission.read]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, ../nazar/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, nazarfiles]
+        expect: 'course remove nazarfiles'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+
+  curriculumForbidden:
+    given: { view: curriculum, answer: forbidden }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nazarfiles, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, applicantF]
+        expect: '"tag":"nazarfiles"'
+      - run: [node, ../nazar/files/download/files-data.mjs, up, curriculum]
+        expect: 'files-data up curriculum'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.manage]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, ../nazar/files/download/files-data.mjs, down]
+        expect: 'files-data down'
+      - run: [node, helpers/course.mjs, remove, nazarfiles]
+        expect: 'course remove nazarfiles'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+
+nodes:
+  submissionFileRow:
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+  courseFileRow:
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+  lessonFileRow:
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+  assignmentFileRow:
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'

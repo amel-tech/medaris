@@ -1,0 +1,278 @@
+# Desteler (tedris-web /decks): a talebe reads the decks they wrote, with the state of each, and the decks of other people they collected, narrows
+# the first by status and both by a word, and goes on to study a deck, open it, explore more or make a new one. Written from the code of the
+# branch (the tree of PR #394) on 15 Nov 2026, status captured; nothing here is approved and nothing was replayed (the owner's phase rule: no
+# replay while the graphs are written). Behaviour seen only in the code is marked "from the code".
+#
+# What it draws: the page's one server read (GET /flashcard/decks/summary, which gives both lists), the page with its two sections, each
+# list or the sentence that stands for it, the status chips, the search box, and the box that takes the page's place when the read fails.
+# The chips and the word work on what the page already holds (decks-page.tsx:105-108): no request follows a press or a key.
+#
+# What it does not draw: the decks "due today" of Ana sayfa (GET /flashcard/decks/due is read by features/home/reads.ts:44, not by this page:
+# tedris.shell.home draws it). This page carries the due number of each deck only, as "N kart tekrar bekliyor".
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   DCK-11   the "{n} deste" counts change as a chip is pressed or a word typed, with no live region.
+#   DCK-12   the failed read draws a heading of level 2 inside <main>: the page has no h1 then.
+#   DCK-23   words that are not in the catalog; on this page the Progress bar's "tamamlandı" (read after %100) and the toaster's "Bildirimler".
+#   DCK-25   the loading skeleton (app/decks/(medaris)/(liste)/loading.tsx) is an empty, unnamed <main aria-busy>; not a state of this flow.
+#   DECKLIST-1 (new)  an empty own list under a chip and a word says "Aramana uyan deste yok." although the word matches: the chip hides it.
+#   DECKLIST-2 (new)  "Çalış" is offered on a deck with no card, and the study page then says "Bugün için bitti" (DCK-27).
+#   DECKLIST-3 (new)  the summary read has no limit and no paging: every deck of the person, and every card counted, arrives in one answer.
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.browse
+status: captured
+domain: medaris.api
+ui: tedris.decks.browse
+title: Read my decks and my collection
+summary: >-
+  A signed-in talebe opens Desteler. The page reads their decks in one request and draws two sections: "Destelerim", the decks they wrote, each
+  with a badge for its publication state (private, waiting for review, published, refused), its card count and kind, how many of its cards
+  they have mastered, how many wait for a repeat and, for a deck whose publication was asked for, the day it was asked; and "Koleksiyonum", the
+  decks of other people they collected, each with where it comes from (a course, a köşk, a medrese or everyone), its progress and how many cards
+  were written after they collected it. Four chips narrow "Destelerim" by status (a refused deck is under "Özel") and a search box narrows both
+  sections by the words of the name and the description; neither asks the server. A section with nothing to show says so, and the empty ones
+  offer the way to make a deck or to find one. Each deck is one link to its page and has its own "Çalış" link. "Desteleri keşfet" and "Deste
+  oluştur" lead to the pages of those names. When the read fails, a box with a retry button stands in place of everything else.
+source: apps/tedris/features/flashcards/components/decks-page.tsx:42
+
+scope:
+  shows: the Desteler page, the one read behind it, its two sections, its chips and search box, and the links that leave it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the top bar, the phone sheet and the footer (tedris.shell.frame), and the toaster region, which this page never fills"
+    - "a visitor, who is sent to /auth/signin?callbackUrl=/decks before the page runs (checked on the stack: a 307), and a token tedrisat refuses, which sends the person to sign in again with reauth: realm.auth.signIn and realm.auth.sessionEnded"
+    - "the page of a deck, which for the author is the owner view (tedris.decks.editOrDelete, tedris.decks.publish, tedris.decks.manageCards) and for anyone else the reader view (tedris.decks.readAndCopy); this page only links to it"
+    - "the study round, the explore page and the create form: tedris.decks.study, tedris.decks.explore, tedris.decks.create"
+    - "the decks due today of Ana sayfa (tedris.shell.home): GET /flashcard/decks/due is not read here"
+    - "a deck with no card, which draws no progress bar, one with no description, which draws no line of it, and a collected deck whose author turned it private, which the API leaves out of the list: the graph draws decks that have both"
+    - "the loading skeleton, an <main aria-busy> of three bars with no word (DCK-25), which the page's own file replaces within a moment"
+    - "the phone layout, where the grid has one column: the same nodes"
+    - "the language: the page is Turkish only (lib/i18n/routing.ts:6)"
+
+decisions:
+  D1:
+    question: >-
+      Should a deck with no card be offered for study from this list (DECKLIST-2)?
+    recommend: >-
+      No: draw "Çalış" only for a deck that has at least one card, as the progress bar already is (deck-summary-card.tsx:132). Today the button is
+      on every card and the study page answers an empty deck with "Bugün için bitti. ... Yarın yeniden bak." (DCK-27).
+    affects: [list]
+
+context:
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the read of the person's decks answers"
+      failed: "the read fails (a tedrisat 5xx or a network error: the page draws the same box for both)"
+  own:
+    values: [none, fresh, active]
+    initial: any
+    say:
+      none: "the person wrote no deck"
+      fresh: "they wrote decks, all private, and studied none of their cards"
+      active: "they wrote decks of every status (private, waiting for review, published and refused), and in each one a card is mastered and one waits for a repeat"
+  collected:
+    values: [none, still, grown]
+    initial: any
+    say:
+      none: "they collected no deck of anyone else's"
+      still: "they collected decks of other people's (one of a course, one public) and no card was written in them since"
+      grown: "they collected the same, and a card was written in one of them after they collected it"
+  filter:
+    values: [all, private, pending, published]
+    initial: all
+    say:
+      all: "the chip \"Tümü\" is pressed"
+      private: "the chip \"Özel\" is pressed: the decks that are private or were refused"
+      pending: "the chip \"Yayın isteği bekliyor\" is pressed"
+      published: "the chip \"Yayında\" is pressed"
+  search:
+    values: [none, own, collection, both, nothing]
+    initial: none
+    say:
+      none: "the search box is empty"
+      own: "the box holds a word that every deck they wrote has, and no collected deck has"
+      collection: "the box holds a word that every collected deck has, and no deck they wrote has"
+      both: "the box holds a word that every deck of both sections has"
+      nothing: "the box holds a word that no deck has"
+
+guards:
+  hasOwn: "own != 'none'"
+  hasCollected: "collected != 'none'"
+  searching: "search != 'none'"
+  # the chip lets through the decks of its status; "Özel" also keeps the refused ones, so it finds a deck wherever the person has one,
+  # and "Tümü" finds all; "Yayın isteği bekliyor" and "Yayında" find one only where the person has decks of every status
+  chipKeeps: "filter == 'all' or filter == 'private' or own == 'active'"
+  ownKept: "hasOwn and chipKeeps and search in ['none', 'own', 'both']"
+  ownEmptyNone: "not hasOwn"
+  ownEmptySearch: "hasOwn and not ownKept and searching"
+  ownEmptyFilter: "hasOwn and not ownKept and not searching"
+  collectedKept: "hasCollected and search in ['none', 'collection', 'both']"
+  collectedEmptyNone: "not hasCollected"
+  collectedEmptySearch: "hasCollected and not collectedKept"
+  anyDeck: "ownKept or collectedKept"
+  waitingShown: "ownKept and own == 'active'"
+  pendingShown: "ownKept and own == 'active' and filter in ['all', 'pending']"
+  grownShown: "collectedKept and collected == 'grown'"
+
+effects:
+  filteredAll: { set: { filter: all } }
+  filteredPrivate: { set: { filter: private } }
+  filteredPending: { set: { filter: pending } }
+  filteredPublished: { set: { filter: published } }
+  typedSharedWord: { set: { search: both } }
+  typedOwnWord: { set: { search: own } }
+  typedCollectionWord: { set: { search: collection } }
+  typedUnknownWord: { set: { search: nothing } }
+  clearedSearch: { set: { search: none } }
+  again: { havoc: [read] } # "Yeniden dene" reads the page again, and the answer may differ
+
+failures:
+  reading: { from: listDeckSummaries, unreadable: [] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal code for the read (a 401 is the guard's and is left out of the
+# domain; reauthIfRefused sends that person to sign in again, out of view), and the page treats a 5xx, a 4xx and a rejected call alike
+# (reads.ts:36-41 returns null for each).
+
+# The main story: a person who wrote decks of every status and collected two reads their list, narrows it by each chip, takes the filter off by
+# pressing the pressed chip again, types a word of their own decks, a word of their collection and a word nothing has, empties the box, and studies.
+main:
+  given: { read: ok, own: active, collected: grown }
+  events:
+    - DONE
+    - PRESS_PENDING
+    - PRESS_PRIVATE
+    - PRESS_PRIVATE
+    - TYPE_OWN_WORD
+    - TYPE_COLLECTION_WORD
+    - TYPE_UNKNOWN_WORD
+    - CLEAR_SEARCH
+    - OPEN_STUDY
+
+initial: reading
+states:
+  reading:
+    title: Read the person's decks
+    description: >-
+      The page's server side (app/decks/(medaris)/(liste)/page.tsx) asks for a token (requireAccessToken, which sends a visitor to sign in) and
+      reads GET /flashcard/decks/summary once: the decks the person wrote, newest first and with the hidden ones left out, then the decks of other
+      people they collected and may still read, newest collected first, each row with its card counts and the person's own progress (mastered,
+      learning, new, due, and the cards written since they collected it). Any failure of the read gives null and the page draws the box that says so
+      (reads.ts:31-42); a refused token is not a failure here, it sends the person to sign in again. The read has no limit and no paging
+      (DECKLIST-3). While it runs the segment's loading file draws an <main aria-busy> of skeletons with no word (DCK-25); nothing of it is drawn
+      here.
+    includes: ["the decks of the person with their progress", "the decks of other people they collected, with where each comes from"]
+    source: apps/tedris/features/flashcards/reads.ts:31
+    invoke: { action: listDeckSummaries }
+    on:
+      DONE: { guard: "read == 'ok'", target: list }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read failed: the page draws the box and not an empty list", source: apps/tedris/features/flashcards/reads.ts:38 }
+
+  list:
+    title: The decks of the person and their collection
+    by: human
+    goal: true
+    description: >-
+      The page: the h1 "Desteler" and its sentence; the links "Desteleri keşfet" and "Deste oluştur"; the search box (a search landmark) with the
+      words "Destelerinde ara"; the section "Destelerim" (an h2, "{n} deste", its hint, the four chips "Tümü", "Özel", "Yayın isteği bekliyor",
+      "Yayında", then a list of the decks they wrote or one sentence in its place); and the section "Koleksiyonum" (an h2, "{n} deste", its hint,
+      then a list or one sentence). A deck is a card: its name, a link to /decks/<id> inside an h3, with a badge (the status of an own deck, where
+      a collected one comes from), the line of the course and its hoca for a deck of a course, the description, the progress bar "Tamamlanan: {done}
+      / {total} kart" with its percent, then "{n} kart tekrar bekliyor" for an own deck or "{n} yeni kart" for a collected one, and a footer with
+      "{n} kart", the kind (Kelime or Hadis), for a deck waiting for review "{day} istendi", and the link "Çalış" (named "Çalış: {name}").
+      The chips narrow "Destelerim" only (a refused deck is under "Özel"); pressing the pressed chip takes the filter off. The word narrows both
+      sections: every word of the box must be in the name or the description, compared in the Turkish alphabet. Both work on what the page holds,
+      so nothing is requested and nothing is announced (DCK-11). A section that shows nothing says why: no deck made ("Henüz bir deste
+      oluşturmadın..." with "Deste oluştur"), nothing collected ("Koleksiyonunda henüz deste yok..." with "Desteleri keşfet"), a chip that finds
+      nothing ("Bu durumda deste yok."), or a word that finds nothing ("Aramana uyan deste yok."). That last sentence is also said when the word
+      matches and the chip hides the deck (DECKLIST-1). "Çalış" is on every card, a deck with no card too (DECKLIST-2). The focus is not moved
+      by any of it.
+    source: apps/tedris/features/flashcards/components/decks-page.tsx:119
+    on:
+      PRESS_ALL: { guard: "filter != 'all'", target: list, effect: [filteredAll], say: "the chip \"Tümü\": every deck they wrote", source: apps/tedris/features/flashcards/components/decks-page.tsx:165 }
+      PRESS_PRIVATE:
+        - { guard: "filter != 'private'", target: list, effect: [filteredPrivate], say: "the chip \"Özel\": the decks that are private, and the refused ones with them", source: apps/tedris/features/flashcards/deck-model.ts:55 }
+        - { guard: "filter == 'private'", target: list, effect: [filteredAll], say: "the pressed chip pressed again takes the filter off: \"Tümü\" is pressed instead", source: apps/tedris/features/flashcards/components/decks-page.tsx:165 }
+      PRESS_PENDING:
+        - { guard: "filter != 'pending'", target: list, effect: [filteredPending], say: "the chip \"Yayın isteği bekliyor\"", source: apps/tedris/features/flashcards/deck-model.ts:55 }
+        - { guard: "filter == 'pending'", target: list, effect: [filteredAll], say: "the pressed chip pressed again takes the filter off", source: apps/tedris/features/flashcards/components/decks-page.tsx:165 }
+      PRESS_PUBLISHED:
+        - { guard: "filter != 'published'", target: list, effect: [filteredPublished], say: "the chip \"Yayında\"", source: apps/tedris/features/flashcards/deck-model.ts:55 }
+        - { guard: "filter == 'published'", target: list, effect: [filteredAll], say: "the pressed chip pressed again takes the filter off", source: apps/tedris/features/flashcards/components/decks-page.tsx:165 }
+      TYPE_SHARED_WORD: { guard: "(hasOwn or hasCollected) and search != 'both'", target: list, effect: [typedSharedWord], say: "they type a word that every deck has: each section keeps all it has", source: apps/tedris/features/flashcards/deck-model.ts:26 }
+      TYPE_OWN_WORD: { guard: "hasOwn and hasCollected and search != 'own'", target: list, effect: [typedOwnWord], say: "they type a word only their own decks have: the collection says that nothing matches", source: apps/tedris/features/flashcards/deck-model.ts:26 }
+      TYPE_COLLECTION_WORD: { guard: "hasOwn and hasCollected and search != 'collection'", target: list, effect: [typedCollectionWord], say: "they type a word only the collected decks have: \"Destelerim\" says that nothing matches", source: apps/tedris/features/flashcards/deck-model.ts:26 }
+      TYPE_UNKNOWN_WORD: { guard: "search != 'nothing'", target: list, effect: [typedUnknownWord], say: "they type a word that no deck has: both sections say so", source: apps/tedris/features/flashcards/deck-model.ts:26 }
+      CLEAR_SEARCH: { guard: searching, target: list, effect: [clearedSearch], say: "they empty the box; the chip stays as it was", source: apps/tedris/features/flashcards/components/decks-page.tsx:147 }
+      OPEN_DECK: { guard: anyDeck, target: deck_opened, say: "a deck's name is one link, to /decks/<id>: the owner view for a deck they wrote, the reader view for a collected one; a full page load", source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
+      OPEN_STUDY: { guard: anyDeck, target: study_opened, starts: { flow: tedris.decks.study }, say: "\"Çalış: {name}\" leads to /decks/study/<id>; a full page load", source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:167 }
+      OPEN_EXPLORE: { target: explore_opened, starts: { flow: tedris.decks.explore }, say: "\"Desteleri keşfet\", in the head of the page and in the empty collection, leads to /decks/explore", source: apps/tedris/features/flashcards/components/decks-page.tsx:126 }
+      OPEN_CREATE: { target: create_opened, starts: { flow: tedris.decks.create }, say: "\"Deste oluştur\", in the head of the page and in the empty list of their own decks, leads to /decks/create", source: apps/tedris/features/flashcards/components/decks-page.tsx:133 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  loadFailed:
+    title: The decks could not be read
+    by: human
+    description: >-
+      Inside <main> a section named "Desteler yüklenemedi" holds an h2 of that name (the page has no h1: DCK-12), the sentence "Bir şeyler ters
+      gitti. Birazdan yeniden dene." and a button "Yeniden dene". The button calls router.refresh() and says nothing while it works, so the person
+      sees the box again if the read fails again. The search box, the chips, both sections and the links to explore and create are gone with the
+      lists; the page's status is 200. This state cannot be made on the local stack (nothing makes tedrisat refuse the read); it is from the code.
+    source: apps/tedris/features/flashcards/components/decks-page.tsx:85
+    on:
+      RETRY: { target: reading, effect: [again], say: "\"Yeniden dene\" refreshes the route, which reads the decks again", source: apps/tedris/features/flashcards/components/decks-page.tsx:93 }
+      NAVIGATE: { target: left, say: "they go on to another page (the box offers no other)" }
+
+  deck_opened:
+    type: final
+    title: They open a deck
+    description: >-
+      The browser is on /decks/<id>. For a deck they wrote it is the owner view; for a collected one the reader view. What the page draws is
+      tedris.decks.editOrDelete, tedris.decks.publish, tedris.decks.manageCards (owner) and tedris.decks.readAndCopy (reader).
+
+  study_opened:
+    type: final
+    title: They go to study a deck
+    description: The browser is on /decks/study/<id>; tedris.decks.study draws the round.
+
+  explore_opened:
+    type: final
+    title: They go to explore decks
+    description: The browser is on /decks/explore; tedris.decks.explore draws it.
+
+  create_opened:
+    type: final
+    title: They go to make a deck
+    description: The browser is on /decks/create; tedris.decks.create draws the form.
+
+  left:
+    type: final
+    title: The person leaves Desteler
+    leavesPage: true
+
+assertions:
+  - id: a-failed-read-draws-no-list
+    never: "state == 'list' and read != 'ok'"
+    say: "A page whose read failed never shows a list, nor says the person has no deck: it shows the box"
+    source: apps/tedris/features/flashcards/components/decks-page.tsx:85
+  - id: box-only-after-a-failed-read
+    never: "state == 'loadFailed' and read == 'ok'"
+    say: "The box that says the decks could not be read is drawn only when the read failed"
+    source: apps/tedris/features/flashcards/components/decks-page.tsx:85
+  - id: no-deck-page-without-a-deck
+    never: "state in ['deck_opened', 'study_opened'] and own == 'none' and collected == 'none'"
+    say: "A person with no deck, own or collected, is never taken to a deck or to its study page from here"
+    source: apps/tedris/features/flashcards/components/decks-page.tsx:192
+  - id: no-filter-sentence-for-a-chip-that-finds-one
+    never: "state == 'list' and ownEmptyFilter and filter in ['all', 'private']"
+    say: "\"Bu durumda deste yok.\" is drawn only under a chip that can find nothing: Tümü and Özel find a deck wherever the person has one"
+    source: apps/tedris/features/flashcards/components/decks-page.tsx:111
+  - id: a-person-with-every-status-has-a-deck-under-every-chip
+    never: "state == 'list' and ownEmptyFilter and own == 'active'"
+    say: "A person who wrote a deck of every status never meets \"Bu durumda deste yok.\": each chip finds one"
+    source: apps/tedris/features/flashcards/deck-model.ts:48
+  - id: the-chips-leave-the-collection-alone
+    never: "state == 'list' and collected != 'none' and search == 'none' and not collectedKept"
+    say: "With the box empty the collection shows every deck in it, whichever chip is pressed: the chips narrow only the decks they wrote"
+    source: apps/tedris/features/flashcards/components/decks-page.tsx:106

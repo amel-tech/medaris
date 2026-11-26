@@ -1,0 +1,132 @@
+# What every binding file of nizam.inactive.reassign shares: the data a walk reads, the locators of the page's rows, the window and the
+# toasts, the events no node sends, the addresses of the states and the check of what an assignment leaves. It extends the local stack's
+# nizam base (graphs/bindings/local.nizam.binding.yaml); binding.yaml holds the scenarios, binding.race.yaml and binding.unfinished.yaml
+# the two that need a binding of their own (a `before` and an event belong to the binding, not to a scenario).
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator is from the code and
+# unverified until a walk; `replay <dir> --bind <file> --emit-spec --out <dir>` loads it and walks nothing.
+#
+# The rows. A row is found by the name of the scope it belongs to, which the walk made (helpers/inactive-scopes.mjs, `{scopes.*}`, and the course the shared
+# helper made, `{made.*}`): the list holds every other passive scope of the stack too, and a walk must never press another's button.
+# A name in a plain string is matched whole, a /regex/ is not filled in, so each name is spelled out in a string. The row is
+# `tbody tr` with the scope's name in it; the course's köşk is the seed's second one, which is not the name of a scope of the walk.
+#
+# Strings match exactly (the engine's getByRole(..., { exact: true })), so 'Köşk' is the chip and not 'Köşk nazımı ata: …'.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.inactive.reassign
+
+data:
+  scopes: { json: ../.local/made/inactive-reassign.json }
+  made: { json: ../.local/made/inreassign.json }
+
+# {person} is the name the picker finds (the spare talebe account the walk gives the scopes to) and what the toast names; the other
+# placeholders of the catalog ({name}, {count}, {scope}, {since}) match any text where a locator does not spell them out.
+samples:
+  person: '{scopes.person.name}'
+
+events:
+  # the address is searched on Enter (it is also searched when the field is left); the field is named by the kind of scope
+  SEARCH:
+    - fill: { role: textbox, name: '/^(Köşk nazımı|Başmüderris|Hoca)$/', value: '{typed}' }
+    - key: Enter
+  # a native datetime-local: found by its label, filled with 'YYYY-MM-DDTHH:mm' in the browser's zone (Europe/Istanbul, local.base)
+  SET_END:
+    - fill: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)', value: '{endValue}' }
+  # Vazgeç and the close icon both send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç }
+  NAVIGATE:
+    - goto: '{nizam}/'
+  # CLICK_SCRIM is not bound. e2e inactive#9 clicks the page at (5, 5) with the mouse (page.mouse.click(5, 5)); an action of a binding is a
+  # click on a locator, with no position: the centre of the backdrop is covered by the window, so a locator click either lands in the window
+  # or waits until it times out. The walk reports the transition as not driven. Ask: a `click` with a position.
+
+nodes:
+  # the shell's one <main>, found by what only this page holds inside it
+  page: { css: 'main:has([data-testid=inactive])' }
+  count: { testId: inactive-count }
+
+  # ---- the kosk's row ----
+  koskScope: { role: rowheader, hasText: '{scopes.koskName}' }
+  koskKind: { text: 'Köşk', within: { css: 'tbody tr', hasText: '{scopes.koskName}' } }
+  koskReason: { text: 'Son köşk nazımı görevden alındı', within: { css: 'tbody tr', hasText: '{scopes.koskName}' } }
+  koskRemover: { testId: removed-by, within: { css: 'tbody tr', hasText: '{scopes.koskName}' } }
+  koskSince: { text: '{scopes.koskSince}', within: { css: 'tbody tr', hasText: '{scopes.koskName}' } }
+  koskDays: { testId: days-passive, within: { css: 'tbody tr', hasText: '{scopes.koskName}' } }
+  koskLast: { text: '{scopes.prior.name}', within: { css: 'tbody tr', hasText: '{scopes.koskName}' } }
+  koskLastRole: { text: 'Köşk nazımı', within: { css: 'tbody tr', hasText: '{scopes.koskName}' } }
+  koskAssign: { role: button, name: 'Köşk nazımı ata: {scopes.koskName}' }
+  koskView: { role: button, name: 'İçeriği gör: {scopes.koskName}' }
+
+  # ---- the madrasah's row ----
+  madrasahScope: { role: rowheader, hasText: '{scopes.madrasahName}' }
+  madrasahKind: { text: 'Medrese', within: { css: 'tbody tr', hasText: '{scopes.madrasahName}' } }
+  madrasahReason: { text: 'Başmüderris görevden alındı', within: { css: 'tbody tr', hasText: '{scopes.madrasahName}' } }
+  madrasahRemover: { testId: removed-by, within: { css: 'tbody tr', hasText: '{scopes.madrasahName}' } }
+  madrasahSince: { text: '{scopes.madrasahSince}', within: { css: 'tbody tr', hasText: '{scopes.madrasahName}' } }
+  madrasahDays: { testId: days-passive, within: { css: 'tbody tr', hasText: '{scopes.madrasahName}' } }
+  madrasahLast: { text: '{scopes.prior.name}', within: { css: 'tbody tr', hasText: '{scopes.madrasahName}' } }
+  madrasahLastRole: { text: 'Başmüderris', within: { css: 'tbody tr', hasText: '{scopes.madrasahName}' } }
+  madrasahAssign: { role: button, name: 'Başmüderris ata: {scopes.madrasahName}' }
+
+  # ---- the course's row ----
+  courseScope: { role: rowheader, hasText: '{scopes.courseName}' }
+  courseKind: { text: 'Ders · {seed.titles.kosk2}', within: { css: 'tbody tr', hasText: '{scopes.courseName}' } }
+  courseReason: { text: 'Son hoca görevden alındı', within: { css: 'tbody tr', hasText: '{scopes.courseName}' } }
+  courseRemover: { testId: removed-by, within: { css: 'tbody tr', hasText: '{scopes.courseName}' } }
+  courseSince: { text: '{scopes.courseSince}', within: { css: 'tbody tr', hasText: '{scopes.courseName}' } }
+  courseDays: { testId: days-passive, within: { css: 'tbody tr', hasText: '{scopes.courseName}' } }
+  courseLast: { text: '{scopes.prior.name}', within: { css: 'tbody tr', hasText: '{scopes.courseName}' } }
+  courseLastRole: { text: 'Hoca', within: { css: 'tbody tr', hasText: '{scopes.courseName}' } }
+  courseAssign: { role: button, name: 'Hoca ata: {scopes.courseName}' }
+  courseView: { role: button, name: 'İçeriği gör: {scopes.courseName}' }
+
+  # ---- the window, whichever kind opened it ----
+  koskEyebrow: { css: '.mds-eyebrow', hasText: '{scopes.koskName}' }
+  koskPersonField: { role: textbox, name: '/^Köşk nazımı/' }
+  madrasahEyebrow: { css: '.mds-eyebrow', hasText: '{scopes.madrasahName}' }
+  madrasahPersonField: { role: textbox, name: '/^Başmüderris/' }
+  courseEyebrow: { css: '.mds-eyebrow', hasText: '{scopes.courseName}' }
+  coursePersonField: { role: textbox, name: '/^Hoca/' }
+  chosenName: { text: '{scopes.person.name}', within: { testId: chosen-head } }
+  chosenEmail: { text: '{scopes.person.email}', within: { testId: chosen-head } }
+  chosenAnnounce: { role: status, hasText: '{scopes.person.name} seçildi' }
+  endField: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)' }
+
+  # ---- toasts: sonner's own element; a toast holds its title and its description in one ----
+  savedTitle: { css: '[data-sonner-toast]', hasText: 'Atandı' }
+  savedKosk: { css: '[data-sonner-toast]', hasText: '{scopes.person.name}, {scopes.koskName} için köşk nazımı olarak atandı.' }
+  savedMadrasah: { css: '[data-sonner-toast]', hasText: '{scopes.person.name}, {scopes.madrasahName} için başmüderris olarak atandı.' }
+  savedCourse: { css: '[data-sonner-toast]', hasText: '{scopes.person.name}, {scopes.courseName} için hoca olarak atandı.' }
+  failedTitle: { css: '[data-sonner-toast]', hasText: 'Atama yapılamadı' }
+  failedNotPassive: { css: '[data-sonner-toast]', hasText: 'Bu kapsam artık pasif değil.' }
+  failedExpiry: { css: '[data-sonner-toast]', hasText: 'Bitiş tarihi geçmişte.' }
+  failedUnknownAccount: { css: '[data-sonner-toast]', hasText: 'Bu hesap bulunamadı.' }
+  failedForbidden: { css: '[data-sonner-toast]', hasText: 'Bunu yapma izniniz yok.' }
+  failedGeneric: { css: '[data-sonner-toast]', hasText: 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.' }
+
+# Every state of the page is at its own address; the exits with no screen of theirs are checked by it. `looking` holds the search, a server
+# action that posts to the page's own address (a Next server action answers 200 whatever it finds, so only the busy state is seen, never
+# a refusal's status). `saving` is held in binding.yaml, not here: binding.race.yaml walks a refusal through it, and a refusal's status
+# is not comparable on a server action. The routers (`view`, `settle`) have no screen.
+states:
+  listed: { url: '{nizam}/pasif-kapsamlar' }
+  empty: { url: '{nizam}/pasif-kapsamlar' }
+  form: { url: '{nizam}/pasif-kapsamlar' }
+  formReady: { url: '{nizam}/pasif-kapsamlar' }
+  looking: { url: '{nizam}/pasif-kapsamlar', call: '{nizam}/pasif-kapsamlar' }
+  saving: { url: '{nizam}/pasif-kapsamlar' }
+  # tedrisat's 403 draws the shell's refusal at the same address
+  refused: { url: '{nizam}/pasif-kapsamlar', text: 'Bu bölüm için izniniz yok' }
+  # NAVIGATE goes to the home page, where the başnazım lands
+  left: { url: '{nizam}/' }
+
+# What an assignment leaves outside the screen: the scope is held by the person the walk typed, a köşk and a medrese have lost their passive
+# mark, a course has its hoca as the imam and on its list (the checks of e2e inactive#6 to #8 that the page cannot show). It runs after
+# every state that invokes assignInactiveScope ends DONE.
+effects:
+  assignInactiveScope:
+    - run: [node, helpers/inactive-scopes.mjs, reassigned]
+      expect: 'reassigned ok'

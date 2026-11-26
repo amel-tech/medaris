@@ -1,0 +1,125 @@
+# The screens of nazar.roster.bulkAdd: a course's Talebeler page (/ders/<id>/talebeler) with the "Toplu talebe ekle" button, the dialog it opens
+# (the list of addresses, then the answer in the same dialog) and the toasts of a copy and of a refusal. Read from
+# apps/nazar/features/enrolments/components/{enrolments-page,enrolments-tabs,bulk-add-dialog}.tsx, features/enrolments/bulk.ts and the kit's
+# Dialog, Field, Textarea, Button, Tabs and Toast (libs/ui/src/mds); the words are copied from libs/i18n/src/locales/tr/nazar.json
+# (namespaces CourseStudents, Problems, Shell), letter for letter.
+#
+# `changes` is the dialog's own intro ("Medaris hesabı olan kişileri bu derse talebe olarak ekleyin. Onay beklemeden kaydolurlar; bekleyen
+# başvuruları da onaylanır."), which tells the person what the list does; no message was authored for this flow. It does not say that the
+# people added are not told (BULK-4, decision D1).
+#
+# Four entries are in no i18n file (`composed.*`), each a value the code puts on the screen:
+#   composed.BulkAdd.eyebrow       the course's name above the dialog's title (bulk-add-dialog.tsx:103)
+#   composed.BulkAdd.skippedLine   "{address}: {reason}", the address, ": " and the message of the skip reason (bulk-add-dialog.tsx:214-219);
+#                                  the reasons are CourseStudents.bulk.reasons.*, and `reason` is a sample (the walk's skipped talebe completed
+#                                  the course: "Dersi tamamlamış")
+#   composed.Button.loading        "Yükleniyor", the busy button's hidden status, the kit's default (libs/ui/src/mds/button.tsx:62, :114)
+#   composed.Toast.close           the toast's close button, a literal of the kit (libs/ui/src/mds/toast.tsx:95-97; F-L-6)
+#
+# The page behind the dialog is drawn only where the dialog is closed: the dialog is modal, so the page is inert while it is open.
+# `samples` give the one value each placeholder shows on the page; a number that changes with the list (the counter, the limit message) is
+# found by the binding with a pattern instead.
+schema: delurio-graph/0
+kind: ui
+id: nazar.roster.bulkAdd
+flow: nazar.roster.bulkAdd
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: CourseStudents.bulk.intro }
+samples:
+  course: Deneme dersi bulkadd
+  count: "1"
+  max: "500"
+  email: ornek.talebe@example.test
+  reason: Dersi tamamlamış
+
+# The page sets no focus of its own on load, and none after the dialog closes except what Base UI gives back (the opener). The dialog's
+# `initialFocus` is a ref to the box of addresses, and only before an answer; after the answer the focus is on nothing the code names
+# (F-D1-07). The graph says only what the code says.
+nodes:
+  # ---- Talebeler behind the dialog ----------------------------------------------------------------------------------------------------------
+  rosterPage: { type: page, component: Page, role: main, in: [roster, refreshed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  rosterTitle: { type: text, component: Heading, role: heading, text: { key: CourseStudents.title }, in: [roster, refreshed], source: apps/nazar/features/enrolments/components/enrolments-page.tsx:78 } # h1
+  rosterSubtitle: { type: text, component: Text, text: { key: CourseStudents.subtitle, params: { course: course.title } }, in: [roster, refreshed], source: apps/nazar/features/enrolments/components/enrolments-page.tsx:79 } # the unnamed variant when the course could not be read is not drawn
+  openBulk: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseStudents.bulk.open }, in: [roster, refreshed], when: "may == 'may'", emits: OPEN_FORM, source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:198 } # a secondary button with a plus icon, above the tabs; not drawn unless enrollment.decide is held
+  tabList: { type: list, component: List, role: tablist, name: { key: CourseStudents.tabsLabel }, in: [roster, refreshed], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:207 } # Base UI tabs, activateOnFocus: the arrow keys move and select
+  tabApplications: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.applications }, in: [roster, refreshed], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:213 } # its name is this word and the number of waiting applications (the count is a span right after it; the exact join is not verified in a browser); the first tab, selected
+  tabEnrolled: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.enrolled }, in: [roster, refreshed], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:217 } # with the number of enrolled talebe: it rises by what the answer enrolled and approved once the roster is read again
+  tabCompleted: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.completed }, in: [roster, refreshed], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:222 }
+  tabRemoved: { type: action, component: Button, role: tab, text: { key: CourseStudents.tabs.removed }, in: [roster, refreshed], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:227 } # a count only when the removed list could be read
+
+  # ---- the dialog ---------------------------------------------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [form, formReady, sending, answered], initialFocus: emailsField, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:95 } # a form dialog of size md; the scrim does not close it; the focus starts in the box before an answer (:106)
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.BulkAdd.eyebrow, params: { course: course.title } }, in: [form, formReady, sending, answered], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:103 } # above the title, outside the dialog's name; left out when the course has no name
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: CourseStudents.bulk.title }, in: [form, formReady, sending, answered], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:104 } # Base UI's Title, an h2
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [form, formReady], emits: CANCEL, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:105 } # an icon button named only by its aria-label; it stays on and does nothing while the list is sent (BULK-2)
+  closeIconAnswer: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [answered], emits: CLOSE, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:105 } # the same icon; with the footer's "Kapat" there are two buttons of one name (F-D1-07)
+
+  # The list
+  intro: { type: text, component: Text, text: { key: CourseStudents.bulk.intro }, in: [form, formReady, sending], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:128 }
+  emailsField: { type: field, component: TextField, role: textbox, text: { key: CourseStudents.bulk.label }, value: { literal: "" }, in: [form, formReady, sending], disabledIn: [sending], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:141 } # a textarea of 8 rows, left to right; no `required`, no asterisk, by design (F-D1-03); disabled while the list is sent
+  emailsHelp: { type: text, component: Text, text: { key: CourseStudents.bulk.help }, in: [form, formReady, sending], when: "box != 'many'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:131 } # the error replaces the help line
+  tooManyError: { type: text, component: Text, text: { key: CourseStudents.bulk.tooMany, params: { max: limit.max, count: list.count } }, in: [form], when: "box == 'many'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:133 } # a Field error: tied to the box by aria-describedby, no live region (F-D1-16)
+  counter: { type: status, component: Status, text: { key: CourseStudents.bulk.count, params: { count: list.count } }, in: [form, formReady, sending], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:151 } # a <p aria-live="polite" data-testid="bulk-count">: spoken on every keystroke and paste (F-D1-07)
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseStudents.bulk.cancel }, in: [form, formReady], emits: CANCEL, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:112 } # a ghost button that closes the dialog; on while the list is sent, and does nothing then (BULK-2)
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseStudents.bulk.submit }, in: [form, formReady, sending], disabledIn: [form, sending], emits: SUBMIT, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:113 } # natively disabled while the list is empty or too long; busy (aria-disabled, aria-busy) while it is sent; not drawn in the answer
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [sending], source: libs/ui/src/mds/button.tsx:114 } # the busy button's hidden <output>; the word is the kit's own, outside the catalog (F-D1-24)
+
+  # ---- the answer, in the same dialog -------------------------------------------------------------------------------------------------------
+  outcomesList: { type: list, component: List, role: list, in: [answered], source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:180 } # <ul data-testid="bulk-outcomes">: one line for each outcome that has people, in a fixed order; no name, no live region (F-D1-07)
+  lineEnrolled: { type: text, component: ListItem, role: listitem, text: { key: CourseStudents.bulk.outcomes.enrolled, params: { count: result.enrolled } }, in: [answered], when: "answer == 'mixed' or answer == 'added'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:182 }
+  lineApproved: { type: text, component: ListItem, role: listitem, text: { key: CourseStudents.bulk.outcomes.approved, params: { count: result.approved } }, in: [answered], when: "answer == 'mixed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:182 } # the waiting applications the list approved; each of those talebe is told (ENROLLMENT_APPROVED)
+  lineAlready: { type: text, component: ListItem, role: listitem, text: { key: CourseStudents.bulk.outcomes.already, params: { count: result.already } }, in: [answered], when: "answer == 'mixed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:182 }
+  lineNotFound: { type: text, component: ListItem, role: listitem, text: { key: CourseStudents.bulk.outcomes.notFound, params: { count: result.notFound } }, in: [answered], when: "answer == 'mixed' or answer == 'unmatched'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:182 }
+  lineInvalid: { type: text, component: ListItem, role: listitem, text: { key: CourseStudents.bulk.outcomes.invalid, params: { count: result.invalid } }, in: [answered], when: "answer == 'mixed' or answer == 'unmatched'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:182 }
+  lineSkipped: { type: text, component: ListItem, role: listitem, text: { key: CourseStudents.bulk.outcomes.skipped, params: { count: result.skipped } }, in: [answered], when: "answer == 'mixed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:182 }
+
+  # The addresses to copy: the ones with no account, then the ones that are not addresses
+  unmatchedField: { type: field, component: TextField, role: textbox, text: { key: CourseStudents.bulk.unmatchedLabel }, in: [answered], when: hasUnmatched, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:188 } # a read-only textarea, 2 to 8 rows, one address a line in a monospaced face
+  unmatchedNote: { type: text, component: Text, text: { key: CourseStudents.bulk.unmatchedNote }, in: [answered], when: hasUnmatched, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:187 } # the field's help: says no account was found for these addresses, also when an entry is not an address (BULK-3)
+  copyButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseStudents.bulk.copy }, in: [answered], when: hasUnmatched, emits: COPY, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:198 } # a small secondary button with a copy icon
+
+  # The skipped addresses, each with its reason
+  skippedTitle: { type: text, component: Text, text: { key: CourseStudents.bulk.skippedTitle }, in: [answered], when: "answer == 'mixed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:211 } # a bold paragraph, not a heading
+  skippedList: { type: list, component: List, role: list, in: [answered], when: "answer == 'mixed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:212 }
+  skippedLine: { type: text, component: ListItem, role: listitem, text: { key: composed.BulkAdd.skippedLine, params: { email: skipped.email, reason: skipped.reason } }, in: [answered], when: "answer == 'mixed'", repeat: result.skipped, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:214 } # the address in a monospaced <bdi>, then ": " and the reason's words
+
+  # the footer of the answer
+  closeButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseStudents.bulk.close }, in: [answered], emits: CLOSE, source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:109 } # the footer's one button; the roster is read again once it closes the dialog
+
+  # ---- the toasts: a region "Bildirimler", each toast a dialog; a warning or error toast is an alertdialog and stays ----------------------------
+  toastCopied: { type: status, component: Status, role: dialog, name: { key: CourseStudents.bulk.copied }, in: [answered], when: "toast == 'copied'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:83 } # success, 6 seconds; raised outside the dialog (BULK-1)
+  toastCopyFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseStudents.bulk.copyFailed }, in: [answered, refreshed], when: "toast == 'copyFailed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:90 } # tone warning: it stays until closed, also after the dialog is gone
+  toastForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: CourseStudents.bulk.failedTitle }, text: { key: Problems.actionForbidden }, in: [form, formReady, sending, roster], when: "toast == 'forbidden'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:72 } # tone error: it stays until closed, also when the dialog is closed after it
+  toastClosed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseStudents.bulk.failedTitle }, text: { key: CourseStudents.bulk.errors.closed }, in: [form, formReady, sending, roster], when: "toast == 'closed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:72 }
+  toastDirectory: { type: alert, component: Alert, role: alertdialog, name: { key: CourseStudents.bulk.failedTitle }, text: { key: CourseStudents.bulk.errors.directory }, in: [form, formReady, sending, roster], when: "toast == 'directory'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:72 }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseStudents.bulk.failedTitle }, text: { key: Problems.actionGeneric }, in: [form, formReady, sending, roster], when: "toast == 'failed'", source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:72 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [form, formReady, sending, roster, answered, refreshed], when: staying, source: libs/ui/src/mds/toast.tsx:95 } # an icon only, named by a literal of the kit (F-L-6): the only way to dismiss a toast that stays; no event is drawn
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { triggers: [openBulk, form] }
+  - { triggers: [submit, sending] }
+  - { triggers: [copyButton, answered] }
+  - { returnsFocus: [dialog, openBulk] } # Base UI gives the focus back to the element that was focused when it opened: the page's "Toplu talebe ekle", which the refresh keeps; the dialog is unmounted by its parent while still `open`, so this is not verified in a browser
+
+rules:
+  - { id: F-D1-07, rule: "The answer to 'Ekle' replaces the form in the same dialog with no focus move and no live region: the submit button, which had the focus, unmounts, no code moves it, and the outcome list is silent for a screen reader (bulk-add-dialog.tsx:68-69, 106, 124-125). The address counter is `aria-live=polite` and speaks on every keystroke and paste (:151-156). The header's close icon and the footer's button are both named 'Kapat' in the answer. Fix: wrap the answer in role=status and focus its first line or the footer button; drop aria-live from the counter or debounce it; name the footer button differently." }
+  - { id: BULK-1, rule: "new, read from the code and not verified in a browser: the dialog is modal and Base UI marks everything outside its portal aria-hidden (@base-ui/react 1.8.0, floating-ui-react/components/FloatingFocusManager.js:345, `markOthers` with `ariaHidden: modal`); the Toaster's region 'Bildirimler' is a portal of its own (libs/ui/src/mds/toast.tsx:125-131), outside the dialog's, so the toast of a refusal ('Talebeler eklenemedi') and the copy toasts are raised inside an aria-hidden region. A screen-reader user may hear nothing of a refusal until the dialog is closed, and the toast's own close button is outside the dialog's focus trap. The same holds for every dialog of the app that raises a toast while open (the ban dialog, the remove dialog). Fix: keep the toast viewport out of the modal's hidden set (a Base UI `ignoreElement`/keep marker), or say a refusal in the dialog itself with a role=alert." }
+  - { id: BULK-2, rule: "new: while the list is sent, 'Vazgeç', the close icon and Escape stay on and do nothing (`if (pending) return`, bulk-add-dialog.tsx:56-60), and nothing marks them; the box is disabled and the button is busy (aria-disabled), whose hidden status says 'Yükleniyor' from the kit's default (libs/ui/src/mds/button.tsx:62), not from the catalog (F-D1-24). The twin of BAN-3 (nazar.bans.ban) and F-W3-open-2 (nizam). Fix: disable the dialog's close controls with the rest of the form while `pending`." }
+  - { id: BULK-3, rule: "new: `unmatched(result)` joins the addresses no account was found for and the entries that are not addresses (bulk.ts:49-52) in one read-only box under 'Bu adreslerle Medaris hesabı bulunamadı. Hesap açıldıktan sonra yeniden ekleyebilirsiniz.' (the field's help); a mistyped entry such as 'adres-degil' is therefore told to have no account and to be added again after one is made. The lines above tell the two apart ('1 adresle hesap bulunamadı', '1 adres e-posta adresi değil'); the box does not. Fix: a note that covers both ('Bunlar eklenemedi: ...') or two boxes." }
+  - { id: BULK-4, rule: "new, the API: bulkEnroll gives a person with no seat an ENROLLED row and tells them nothing; only a waiting application it approves sends ENROLLMENT_APPROVED (bulk-enrollment.service.ts:98-110, :228-250). The people added learn of it from the calendar invitation mail of each celse still ahead (`invitations.kick()` at :116), or by finding the course in Derslerim; a course with no celse ahead tells them nothing. The dialog's own intro says nothing of it. Decision D1." }
+  - { id: BULK-5, rule: "new, the API: every address is looked up in the realm and the answer says which have an account ('hesap bulunamadı'), to anyone who holds enrollment.decide in any course, 500 addresses a time, and a person found is enrolled with no question to them (bulk-enrollment.service.ts:76-100). The audit row keeps the counts and the ids enrolled or approved, not the addresses searched. A person added can only leave afterwards. Decision D2; related MDRS-203." }
+  - { id: F-D1-03, rule: "No `required` on the box and no asterisk on its label: by design here, because the button simply stays off with nothing typed. The family finding is about the Field asterisk that is aria-hidden while the control carries no required." }
+  - { id: F-D1-16, rule: "The 'En fazla 500 adres ...' message is a Field error (no role=alert, libs/ui/src/mds/field.tsx:50-53): it is tied to the box by aria-describedby and announced by nothing when it appears; the counter beside it, a polite live region, speaks the number instead (F-D1-07). Fix: give the error role=alert, or let the counter carry it." }
+  - { id: F-D1-06, rule: "'Ekle' is natively disabled while the box is empty: nothing says why (the family of F-D1-06). The help line under the box says what to type." }
+  - { id: F-D1-20, rule: "No try/catch around the server action in `startTransition` (bulk-add-dialog.tsx:65-66): if the browser cannot reach the Next server, the rejection escapes, the button stays busy and the dialog cannot be closed (`pending` stays true). Not verified." }
+  - { id: F-D1-24, rule: "'Ekle' is busy with no `loadingLabel`, so its hidden status says 'Yükleniyor' from the kit's hard-coded default (bulk-add-dialog.tsx:113-119). The dialog does pass its own `closeLabel` ('Kapat' from the catalog); the toast's close button does not (F-L-6)." }
+  - { id: F-L-6, rule: "The toast's close button is named 'Kapat' from a literal in libs/ui/src/mds/toast.tsx:97, outside the catalog, in every language. It is the only way to dismiss an error or warning toast." }
+  - { id: focus-not-set, rule: "The page sets no focus of its own on load or after a refresh (nothing in features/enrolments does); the only focus the code names is the dialog's `initialFocus` on the box before an answer. After the answer the focus is on whatever falls to the dialog's panel when the submit button unmounts, which the graph does not say (F-D1-07)." }
+  - { id: no-default-accept, rule: "No node has initialFocus on the button that sends: the dialog starts in the box. The scrim does not close the dialog (a form dialog); Escape, 'Vazgeç' and the close icon do, unless the list is being sent (BULK-2)." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Toplu talebe ekle', 'Ekle', 'Vazgeç', 'Kopyala' and 'Kapat' are all their own names. The dialog's title and its opener have one name, so a test or a voice user has to scope them: the replay finds the buttons inside the dialog." }
+  - { id: F-B-12, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so a screen reader may read the intro, the box and its help as the dialog's description when it opens; the same family as F-UI-W1-1 (nizam)." }
+  - { id: skipped-reasons-not-drawn, rule: "A skipped address is told with one of five reasons (bulk.ts:55-66): 'Bu derse girişi yasaklı' (barred), 'Ders kadrosu dersten çıkarmış' (revoked), 'Dersi tamamlamış' (COMPLETED), 'Kaydı bu sırada değişti; yeniden deneyin' (changed) and 'Eklenmedi' (any other status). This graph draws 'Dersi tamamlamış' alone: the others need a ban, a removed talebe or a race, and differ only in their words (apps/nazar/test/enrolments-bulk.spec.ts)." }

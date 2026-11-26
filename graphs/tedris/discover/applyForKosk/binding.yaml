@@ -1,0 +1,136 @@
+# tedris.discover.applyForKosk on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe
+# `applicantB`: no enrolment and no köşk application anywhere, so the walk applies and nothing else is touched.
+#   node apps/engine/src/cli.ts replay graphs/tedris/discover/applyForKosk --bind graphs/tedris/discover/applyForKosk/binding.yaml --out <dir>
+#
+# What a walk writes, and how it is taken away. The main story really files an application (POST /kosk-applications): one row
+# of `kosk_applications`, PENDING, for applicantB. tedrisat has no route that deletes or withdraws an application (its
+# controller has POST only, and nizam's decide routes only answer it), so `setup` and `teardown` delete the walk's own row with
+# SQL through helpers/sql.mjs (the stack's Postgres container); the delete is scoped to applicantB and the walk's own köşk name,
+# so no other row can go. `setup` does it too, so a walk that died before its teardown leaves nothing behind. The application
+# writes no audit row and no notification (kosk-application.service.ts), so the row is the whole trace. The two `effects` read
+# the table with SQL as well, for the same reason.
+#
+# Not bound, with the reason: the signed-out answer (`sent_to_sign_in`: the stack cannot end the session in the middle of a send),
+# and `NAVIGATE`. `discover_opened` ("Vazgeç", "Keşfet’e dön") is bound by its address; `--to discover_opened` walks the way through
+# "Vazgeç" and checks that no row was written (effect `dropForm`).
+#
+# `sending` has a `call` to hold the busy state, and that call is why the walk `--to refused` ends with one mismatch: the server action
+# answers 200 whatever the API said, so the replay cannot compare the 400 of `serverRefuses` there (an engine limit, not the app's).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.discover.applyForKosk
+
+scenarios:
+  # The main story: Keşfet's link, an empty send (the four errors), the list of eleven fields, the form filled, the send.
+  sent:
+    given: { contact: valid }
+    as: applicantB
+    open: '{tedris}/discover'
+    samples: { email: '{secret.E2E_APPLICANT_B_EMAIL}' }
+    vars:
+      appName: Örnek Akaid Köşkü
+      appSummary: Akaid ve kelâm metinlerini şerhleriyle okuyan bir köşk.
+      appReason: Akaid halkamız yüz yüze yürüyor; ders verecek hocalarımız ve okunacak metinlerimiz belli.
+      contactEmail: '{secret.E2E_APPLICANT_B_EMAIL}'
+      contactPhone: ''
+    setup:
+      - run: [node, helpers/sql.mjs, "delete from kosk_applications where applicant_id = '{secret.E2E_APPLICANT_B_SUB}' and name = '{appName}'"]
+    teardown:
+      - run: [node, helpers/sql.mjs, "delete from kosk_applications where applicant_id = '{secret.E2E_APPLICANT_B_SUB}' and name = '{appName}'"]
+
+  # An address the page accepts and the API refuses (APPLYKOSK-1): the toast, and the form as it was. Nothing is filed.
+  serverRefuses:
+    given: { contact: serverRefuses }
+    as: applicantB
+    open: '{tedris}/discover'
+    samples: { email: '{secret.E2E_APPLICANT_B_EMAIL}' }
+    vars:
+      appName: Örnek Akaid Köşkü
+      appSummary: Akaid ve kelâm metinlerini şerhleriyle okuyan bir köşk.
+      appReason: Akaid halkamız yüz yüze yürüyor; ders verecek hocalarımız ve okunacak metinlerimiz belli.
+      contactEmail: ad@alan.c
+      contactPhone: ''
+    setup:
+      - run: [node, helpers/sql.mjs, "delete from kosk_applications where applicant_id = '{secret.E2E_APPLICANT_B_SUB}' and name = '{appName}'"]
+    teardown:
+      - run: [node, helpers/sql.mjs, "delete from kosk_applications where applicant_id = '{secret.E2E_APPLICANT_B_SUB}' and name = '{appName}'"]
+
+  # An address with nothing after the @ (the page says so under the field) and a number that is not digits. Nothing is sent.
+  badEmail:
+    given: { contact: badEmail }
+    as: applicantB
+    open: '{tedris}/discover'
+    samples: { email: '{secret.E2E_APPLICANT_B_EMAIL}' }
+    vars:
+      appName: Örnek Akaid Köşkü
+      appSummary: Akaid ve kelâm metinlerini şerhleriyle okuyan bir köşk.
+      appReason: Akaid halkamız yüz yüze yürüyor; ders verecek hocalarımız ve okunacak metinlerimiz belli.
+      contactEmail: kimse@
+      contactPhone: ''
+  badPhone:
+    given: { contact: badPhone }
+    as: applicantB
+    open: '{tedris}/discover'
+    samples: { email: '{secret.E2E_APPLICANT_B_EMAIL}' }
+    vars:
+      appName: Örnek Akaid Köşkü
+      appSummary: Akaid ve kelâm metinlerini şerhleriyle okuyan bir köşk.
+      appReason: Akaid halkamız yüz yüze yürüyor; ders verecek hocalarımız ve okunacak metinlerimiz belli.
+      contactEmail: '{secret.E2E_APPLICANT_B_EMAIL}'
+      contactPhone: abc
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills each one in
+  FILL_IN:
+    - fill: { role: textbox, name: Köşk adı, value: '{appName}' }
+    - fill: { role: textbox, name: Kısa açıklama, value: '{appSummary}' }
+    - fill: { role: textbox, name: Neden bu köşk, value: '{appReason}' }
+    - fill: { role: textbox, name: E-posta, value: '{contactEmail}' }
+    - fill: { role: textbox, name: Telefon (isteğe bağlı), value: '{contactPhone}' }
+  # the field is chosen from the open list: "Akaid ve kelâm", the one the e2e (profile#5) chooses
+  CHOOSE_FIELD:
+    - click: { role: option, name: Akaid ve kelâm }
+  DISMISS: [{ key: Escape }]
+
+states:
+  # the form page keeps one address through every state of the form
+  form: { url: '{tedris}/kosk-applications/new' }
+  # the server action is a POST to the page's own address and answers 200 whatever the API said, so the replay can hold the
+  # busy state with this `call` but cannot compare a refusal's status there
+  sending: { call: '{tedris}/kosk-applications/new' }
+  discover_opened: { url: '{tedris}/discover**' }
+
+effects:
+  # e2e profile#5: the row is PENDING, the field is the one chosen, and the empty telephone is stored as null
+  createKoskApplication:
+    - run: [node, helpers/sql.mjs, "select status, field, phone from kosk_applications where applicant_id = '{secret.E2E_APPLICANT_B_SUB}' and name = '{appName}'"]
+      expect: '"status":"PENDING","field":"AQEEDAH_KALAM","phone":null'
+  # e2e profile#5: "Vazgeç" goes back and writes nothing
+  dropForm:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from kosk_applications where applicant_id = '{secret.E2E_APPLICANT_B_SUB}' and name = '{appName}'"]
+      expect: '"n":0'
+
+nodes:
+  # the form page has two <main>: the shell's own and the page's inside it (DSC-06 = SHL-16)
+  formPage: { css: 'main:not([data-legacy-main])' }
+  # the shell's bar has a "Keşfet" link too, and the footer an "Aydınlatma Metni" one, and the shell may draw an <aside>: the page's
+  # own are found inside the page's <main>, and the breadcrumb's inside its navigation
+  trailDiscover: { role: link, name: Keşfet, within: { role: navigation, name: Sayfa yolu } }
+  # the breadcrumb's last item has the h1's words; it is the one marked as the current page
+  trailCurrent: { css: '[aria-current=page]', within: { css: 'main:not([data-legacy-main])' } }
+  privacyLink: { role: link, name: Aydınlatma Metni, within: { css: 'main:not([data-legacy-main])' } }
+  aside: { role: complementary, within: { css: 'main:not([data-legacy-main])' } }
+  # one sentence with the link inside it: found by its first words
+  privacyNotice: { text: '/^Bu bilgiler yalnız başvurunu değerlendirmek için kullanılır/' }
+  # "Fıkıh" is also the first word of "Fıkıh usûlü": an option is found by its whole name
+  optFiqh: { role: option, name: Fıkıh }
+  # Base UI's toast: a high-priority one is an alertdialog and aria-hidden until it is focused, so it is found by its role attribute
+  refusedToast: { css: '[role=alertdialog]', hasText: 'Başvurun gönderilemedi' }
+  refusedTitle: { css: '[role=alertdialog] p', hasText: 'Başvurun gönderilemedi' }
+  refusedBody: { css: '[role=alertdialog] p', hasText: 'Sunucu isteği tamamlayamadı' }
+  refusedClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }
+  # the busy button's hidden <output>
+  sendingStatus: { css: 'output', hasText: Gönderiliyor }
+  # the success alert of the kit
+  sentAlert: { css: '[data-testid=application-sent] [role=status]', hasText: Başvurun Medaris yönetimine ulaştı }

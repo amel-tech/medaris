@@ -1,6 +1,6 @@
 {
   "name": "@medaris/teskilat",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "",
   "author": "",
   "private": true,
@@ -31,7 +31,7 @@
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
     "@opentelemetry/auto-instrumentations-node": "catalog:",
-    "@opentelemetry/exporter-trace-otlp-grpc": "catalog:",
+    "@opentelemetry/exporter-trace-otlp-proto": "catalog:",
     "@opentelemetry/resources": "catalog:",
     "@opentelemetry/sdk-node": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:"

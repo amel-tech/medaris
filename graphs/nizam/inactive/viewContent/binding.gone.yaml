@@ -1,0 +1,62 @@
+# nizam.inactive.viewContent, the refusal: the list is read, then somebody gives the köşk a nazım behind the page's back, and the
+# başnazım presses "İçeriği gör" on the row the page still draws. The API answers 404 INACTIVE_SCOPE_NOT_FOUND, writes nothing, and
+# the page says so in a sticky toast "İçerik açılamadı" with "Bu kapsam artık pasif değil." under it, leaving the row where it was
+# (FAIL.notPassive, VIEWC-1). They close the toast, press again and are refused again.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/inactive/viewContent \
+#     --bind graphs/nizam/inactive/viewContent/binding.gone.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour is from the code; no unit spec or e2e draws this toast.
+#
+# How the answer is made: ATTENDED_ELSEWHERE is no node's, so the binding gives it. It is the page's own assign route, POST
+# /nizam/inactive-scopes/KOSK/<id>/assign, as the başnazım with a fake person made by `make` as the nazım (the route lets the başnazım
+# seat anyone but themselves), so the köşk really has a held nazım and the API's own check fails. The page, which was read before,
+# still draws the row. It is an event of the flow (the page is stale before the person presses), not a failure injected into a held
+# call; so this file holds no call, and the replay compares no HTTP status (a Server Action answers 200 on the page's address
+# whatever the API said: an engine limit, not the app).
+# What it does not walk, and why: FAIL.forbidden and FAIL.failed need a Medaris nazımı whose permission was withdrawn mid-session
+# and a server that fails: the stack makes neither on request, and no scenario gives `answer: forbidden` or `broken`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.inactive.viewContent
+
+events:
+  ATTENDED_ELSEWHERE:
+    - run: [node, helpers/passive-scopes.mjs, attend, viewContent, gone]
+      expect: 'passive-scopes attend viewContent gone'
+
+scenarios:
+  gone:
+    given: { scope: kosk, answer: normal }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    vars:
+      target: '{made.goneName}'
+      kindText: Köşk
+      koskId: '{made.gone}'
+      targetId: '{made.gone}'
+      targetEntity: kosk
+    samples: { name: '{made.goneName}', kind: Ders, kosk: '{made.hostName}' }
+    setup:
+      - run: [node, helpers/passive-scopes.mjs, make, viewContent]
+        expect: 'passive-scopes make viewContent ready'
+    teardown:
+      - run: [node, helpers/passive-scopes.mjs, remove, viewContent]
+        expect: 'passive-scopes remove viewContent'
+
+# What the event and the refusal leave outside the screen.
+effects:
+  # the köşk has a held nazım now: the one `attend` seated
+  attendedMeanwhile:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*)::int as n from role_assignments where scope_id = '{made.gone}' and role = 'KOSK_NAZIM' and revoked_at is null and (expires_at is null or expires_at > now())"
+      expect: '"n":1'
+  # and the refused press wrote no audit row for it (the route's own words: "nothing is written")
+  refusalWritesNothing:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*)::int as n from audit_log where action = 'inactive_scope.view' and entity_id = '{made.gone}'"
+      expect: '"n":0'

@@ -20,6 +20,7 @@ import {
  */
 const stored: CourseSettingsValues = {
   isClosed: false,
+  isUnlisted: false,
   requiresApproval: true,
   inPerson: false,
   timeZone: "Europe/Istanbul",
@@ -71,6 +72,7 @@ describe("what Kaydet sends to PATCH /courses/:id", () => {
     ).toEqual({ requiresApproval: false });
     const all = courseSettingsPatch(stored, {
       isClosed: true,
+      isUnlisted: false,
       requiresApproval: false,
       inPerson: true,
       timeZone: "Europe/Berlin",
@@ -84,6 +86,18 @@ describe("what Kaydet sends to PATCH /courses/:id", () => {
     });
     expect(Object.values(all ?? {})).not.toContain(null);
     expect(all).not.toHaveProperty("version");
+  });
+
+  it("sends 'Listelenmeyen ders' when it changes, either way (MDRS-248)", () => {
+    expect(
+      courseSettingsPatch(stored, { ...stored, isUnlisted: true })
+    ).toEqual({ isUnlisted: true });
+    expect(
+      courseSettingsPatch(
+        { ...stored, isUnlisted: true },
+        { ...stored, isUnlisted: false }
+      )
+    ).toEqual({ isUnlisted: false });
   });
 
   it("sends 'Celseler yüz yüze yapılır' when it changes, either way (MDRS-283)", () => {
@@ -127,6 +141,7 @@ describe("what the caller may change (controlsOf)", () => {
     );
     expect(controls).toEqual({
       closed: "open",
+      unlisted: "open",
       approval: "open",
       inPerson: true,
       zone: true,
@@ -140,6 +155,7 @@ describe("what the caller may change (controlsOf)", () => {
   it("opens neither box to course.edit alone, but the time zone and the in-person mark, and draws no publishing", () => {
     const controls = controlsOf(holding("course.edit"), stored);
     expect(controls.closed).toBe("shown");
+    expect(controls.unlisted).toBe("shown");
     expect(controls.approval).toBe("shown");
     expect(controls.zone).toBe(true);
     expect(controls.inPerson).toBe(true);
@@ -213,6 +229,7 @@ describe("what the caller may change (controlsOf)", () => {
   it("opens nothing to a caller who holds none of the page's codes", () => {
     expect(controlsOf(holding("course.view_details"), stored)).toEqual({
       closed: "shown",
+      unlisted: "shown",
       approval: "shown",
       inPerson: false,
       zone: false,

@@ -1,0 +1,177 @@
+# The screens of tedris.celse.attend: the celse page of tedris-web (/courses/<course>/lessons/<celse>, app/courses/[courseId]/lessons/[lessonId]/
+# page.tsx and features/courses/components/session-page.tsx) as a talebe with a seat reads it in its four standings: `ahead` (the join window is
+# closed), `opening` (it is open), `live` and `over`. The chrome around the page (the wide bar, the phone's app bar and sheet, the footer) is
+# tedris.shell.frame's and is not drawn here. The panels "Notlarım" and "Ödev", the Müfredat popup and the calendar menu are other flows'.
+#
+# Words: every `SessionPage.*`, `CoursePage.*` and `AddToCalendar.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.<key>`); the key is the path inside the file. The `composed.Attend.*` keys are NOT in any i18n file: they are the texts the app builds in
+# code from messages and data, written here with their placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.Attend.kosk          the first crumb, the köşk's name, a value the API gives                                   session-join-labels.ts:112
+#   composed.Attend.course        the second crumb, the course's title                                                      session-join-labels.ts:114
+#   composed.Attend.title         the celse's title (the h1)                                                                session-header.tsx:62
+#   composed.Attend.countdown     the badge before the start, Intl.RelativeTimeFormat ("8 dakika sonra", "Yarın")           libs/ui/src/mds/session-join.tsx:47
+#   composed.Attend.when          the day and the hours on the course's clock, "15 Kasım Pazar · 22:55–00:25"               session-join-labels.ts:136
+#   composed.Attend.hoca          formatHocaName: the name with the unvan, "Hoca" when it has none                          session-header.tsx:98
+#   composed.Attend.weekday       the date block's three lines, Intl on the course's clock                                  session-action-card.tsx:321-323
+#   composed.Attend.date
+#   composed.Attend.clock
+#   composed.Attend.platformChip  the platform's label and, for an unknown platform, its host                               session-action-card.tsx:216, libs/ui/src/mds/platform-chip.tsx:46-61
+#   composed.Attend.joinOpens     SessionPage.joinOpensText with JOIN_WINDOW_MINUTES (10) put in                            session-action-card.tsx:20, :221-224
+#   composed.Attend.joinName      SessionPage.joinMeeting and the hidden SessionPage.newTab, which make the link's name     session-action-card.tsx:201-202
+#   composed.Attend.meetingUrl    the raw address behind "Bağlantıyı göster", a value the API gives                          session-action-card.tsx:210
+#   composed.Attend.posterProvider the host the poster names, "YouTube"                                                     session-page.tsx:110 (RECORDING_PROVIDER_NAMES, liveEmbedUrlOf)
+#   composed.Attend.agendaStep    a step's time and title                                                                   session-agenda.tsx:62-66
+#   composed.Attend.kaynakLine    SessionPage.readingPlace and the kaynak the API gives                                     session-resources.tsx:88-92
+#   composed.Attend.resourceLink  a resource's name and the hidden SessionPage.newTab                                       course-resources.tsx:124
+#   composed.Attend.examPlace     the exam's place, a value the API gives                                                   session-exam.tsx:35
+#   composed.Attend.examTopics    the exam's topics, a value the API gives                                                  session-exam.tsx:44
+#   composed.Attend.previousLink  SessionPage.previousSr and the previous celse's title                                     session-pager.tsx:82-86
+#   composed.Attend.nextLink      SessionPage.nextSr and the next celse's title                                             session-pager.tsx:82-86
+# Samples are invented and neutral; they are the walk's own data (attend-data.mjs): the celse that begins in eight minutes. Where a walk's
+# text moves with the clock or with the celse (a countdown, the minutes that have passed, a title) the binding finds the node by a pattern.
+schema: delurio-graph/0
+kind: ui
+id: tedris.celse.attend
+flow: tedris.celse.attend
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  kosk: Örnek köşk
+  course: Örnek ders
+  title: Yaklaşan celse
+  week: "1"
+  weeks: "1"
+  number: "1"
+  count: "90"
+  countdown: 8 dakika sonra
+  day: 15 Kasım Pazar
+  clock: 22:55–00:25
+  hoca: Örnek Hoca
+  weekday: Pazar
+  date: 15 Kasım
+  time: 8 dakika
+  zone: İstanbul
+  minutes: "12"
+  platform: Bilinmeyen platform
+  host: meet.example.test
+  url: https://meet.example.test/ornek
+  stepTime: "22:55"
+  stepTitle: Giriş ve yoklama
+  kaynak: Mizan, sayfa 12
+  resource: Ders notları
+  max: "100"
+  place: Medrese binası, zemin kat
+  topics: Mâzî ve muzârî çekimleri.
+  previous: Örnek önceki celse
+  next: Başlamış celse
+
+nodes:
+  # ---- the page and its head ----
+  celsePage: { type: page, component: Page, role: main, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-page.tsx:337 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  crumbs: { type: page, component: Page, role: navigation, name: { key: SessionPage.breadcrumb }, in: [ahead, opening, live, over], source: libs/ui/src/mds/breadcrumb.tsx:36 } # nav "Sayfa yolu", an ordered list
+  crumbKosk: { type: action, component: LinkButton, role: link, text: { key: composed.Attend.kosk, params: { kosk: course.koskName } }, in: [ahead, opening, live, over], emits: OPEN_KOSK, source: apps/tedris/features/courses/session-join-labels.ts:112 } # dropped when the köşk read answers 400, 403 or 404; /kosks/<id>, a full page load
+  crumbCourse: { type: action, component: LinkButton, role: link, text: { key: composed.Attend.course, params: { course: course.title } }, in: [ahead, opening, live, over], emits: OPEN_COURSE, source: apps/tedris/features/courses/session-join-labels.ts:114 } # /courses/<id>
+  crumbWeek: { type: text, component: Text, text: { key: SessionPage.week, params: { number: week.number } }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/session-join-labels.ts:115 } # the current crumb, aria-current="page", never a link
+  eyebrowWeek: { type: text, component: Text, text: { key: SessionPage.weekCelse, params: { week: week.number, number: celse.number } }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-header.tsx:57 } # "Hafta 1 · 2. celse"; "Hafta 1" alone when the course does not list the celse
+  title: { type: text, component: Heading, role: heading, text: { key: composed.Attend.title, params: { title: session.title } }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-header.tsx:58 } # h1, dir="auto"
+  badgeCountdown: { type: status, component: Status, text: { key: composed.Attend.countdown, params: { countdown: session.startsAt } }, in: [ahead, opening], source: apps/tedris/features/courses/components/session-state-badge.tsx:59 } # a <time> in a secondary badge with a clock icon; moved on by a 30-second clock, never announced (CLS-15)
+  badgeLive: { type: status, component: Status, text: { key: SessionPage.liveBadge, params: { minutes: elapsed } }, in: [live], source: apps/tedris/features/courses/components/session-state-badge.tsx:47 } # "Canlı · 12 dk", a live badge; no role="status" and no aria-live (CLS-15)
+  badgeEnded: { type: status, component: Status, text: { key: SessionPage.endedLabel }, in: [over], source: apps/tedris/features/courses/components/session-state-badge.tsx:54 } # a secondary badge with a check icon
+  metaWhen: { type: text, component: Text, text: { key: composed.Attend.when, params: { day: session.day, clock: session.clock } }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-header.tsx:82 } # a <time>, then "İstanbul saatiyle" (SessionPage.courseZone) in the same span
+  metaLength: { type: text, component: Text, text: { key: SessionPage.minutes, params: { count: session.durationMinutes } }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-header.tsx:90 }
+  metaHoca: { type: text, component: Text, text: { key: composed.Attend.hoca, params: { hoca: session.muderris } }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-header.tsx:98 } # an avatar (decorative), the name, the imam's star only among several müderris
+
+  # ---- the main card: the date card or the stream card ----
+  sessionCard: { type: page, component: Page, role: region, name: { oneOf: [SessionPage.linkText, SessionPage.inPersonStreamText, SessionPage.streamText, SessionPage.inPersonText, SessionPage.noLinkText, SessionPage.noRecording, SessionPage.streamTitle, SessionPage.streamOpenTitle] }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-action-card.tsx:396 } # <section data-testid="session-action" data-case="date|stream"> named by its h2, whichever of these it is
+  dateWeekday: { type: text, component: Text, text: { key: composed.Attend.weekday, params: { weekday: session.weekday } }, in: [ahead, opening, live, over], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:321 }
+  dateDay: { type: text, component: Text, text: { key: composed.Attend.date, params: { date: session.date } }, in: [ahead, opening, live, over], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:322 }
+  dateClock: { type: text, component: Text, text: { key: composed.Attend.clock, params: { clock: session.clock } }, in: [ahead, opening, live, over], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:323 }
+  dateStartsIn: { type: text, component: Text, text: { key: SessionPage.startsIn, params: { time: timeUntil } }, in: [ahead, opening], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:327 } # the two largest units, "1 gün 23 saat", "8 dakika"; never less than a minute
+  dateElapsed: { type: text, component: Text, text: { key: SessionPage.elapsed, params: { minutes: elapsed } }, in: [live], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:329 }
+  dateEnded: { type: text, component: Text, text: { key: SessionPage.endedLabel }, in: [over], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:331 }
+
+  eyebrowLive: { type: text, component: Text, text: { key: SessionPage.joinLabel }, in: [ahead, opening, live, over], when: liveEyebrow, source: apps/tedris/features/courses/components/session-action-card.tsx:297 } # "Canlı ders": on the date card of an online celse (:339) and on the stream card of every celse, an in-person one too (ATT-1)
+  eyebrowInPerson: { type: text, component: Text, text: { key: SessionPage.inPersonKind }, in: [ahead, opening, live, over], when: inPersonEyebrow, source: apps/tedris/features/courses/components/session-action-card.tsx:339 } # "Yüz yüze" with a decorative users icon, on the date card only
+  eyebrowRecording: { type: text, component: Text, text: { key: SessionPage.recordingKind }, in: [over], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:357 } # "Ders kaydı"
+  platformChip: { type: text, component: Text, text: { key: composed.Attend.platformChip, params: { platform: meeting.platform, host: meeting.host } }, in: [ahead, opening, live], when: hasLink, source: apps/tedris/features/courses/components/session-action-card.tsx:216 } # the host is added only for a platform the kit does not know ("Bilinmeyen platform meet.example.test")
+
+  headingLink: { type: text, component: Heading, role: heading, text: { key: SessionPage.linkText }, in: [ahead, opening, live], when: "dateCard and byLink", source: apps/tedris/features/courses/components/session-action-card.tsx:382 } # h2; attendanceOf: a link wins over everything else
+  headingInPersonStream: { type: text, component: Heading, role: heading, text: { key: SessionPage.inPersonStreamText }, in: [ahead, opening, live], when: "dateCard and byInPersonStream", source: apps/tedris/features/courses/components/session-action-card.tsx:382 }
+  headingStream: { type: text, component: Heading, role: heading, text: { key: SessionPage.streamText }, in: [ahead, opening, live], when: "dateCard and byStream", source: apps/tedris/features/courses/components/session-action-card.tsx:382 }
+  headingInPerson: { type: text, component: Heading, role: heading, text: { key: SessionPage.inPersonText }, in: [ahead, opening, live], when: "dateCard and byInPerson", source: apps/tedris/features/courses/components/session-action-card.tsx:382 } # says where the recording will be, not where the room is: the page names no place for an in-person celse
+  headingNone: { type: text, component: Heading, role: heading, text: { key: SessionPage.noLinkText }, in: [ahead, opening, live], when: "dateCard and byNothing", source: apps/tedris/features/courses/components/session-action-card.tsx:382 }
+  headingNoRecording: { type: text, component: Heading, role: heading, text: { key: SessionPage.noRecording }, in: [over], when: dateCard, source: apps/tedris/features/courses/components/session-action-card.tsx:365 }
+  headingStreamLive: { type: text, component: Heading, role: heading, text: { key: SessionPage.streamTitle }, in: [live], when: streamCard, source: apps/tedris/features/courses/components/session-action-card.tsx:298 }
+  headingStreamOpen: { type: text, component: Heading, role: heading, text: { key: SessionPage.streamOpenTitle }, in: [over], when: streamCard, source: apps/tedris/features/courses/components/session-action-card.tsx:298 }
+  joinOpens: { type: text, component: Text, text: { key: composed.Attend.joinOpens }, in: [ahead], when: hasLink, source: apps/tedris/features/courses/components/session-action-card.tsx:221 } # "Katılım, celse başlamadan 10 dakika önce açılır." under the heading, only with a link and only before the window
+
+  # the stream card (a running celse with a stream, or an ended one while the stream is still sent)
+  posterLink: { type: action, component: LinkButton, role: link, name: { key: SessionPage.watchStream }, in: [live, over], when: streamCard, emits: OPEN_STREAM, source: apps/tedris/features/courses/components/session-action-card.tsx:239 } # a 16:9 link, aria-label "Yayını izle", tabIndex -1: a pointer target that a screen reader's link list still names twice (CLS-07)
+  posterLive: { type: status, component: Status, text: { key: SessionPage.liveLabel }, in: [live], when: streamCard, source: apps/tedris/features/courses/components/session-action-card.tsx:251 } # a live badge on the poster
+  posterProvider: { type: text, component: Text, text: { key: composed.Attend.posterProvider }, in: [live, over], when: streamCard, source: apps/tedris/features/courses/components/session-action-card.tsx:257 }
+  streamElapsed: { type: text, component: Text, text: { key: SessionPage.elapsed, params: { minutes: elapsed } }, in: [live], when: streamCard, source: apps/tedris/features/courses/components/session-action-card.tsx:308 } # the first piece of the line, then a sentence
+  streamWatchOrJoin: { type: text, component: Text, text: { key: SessionPage.watchOrJoin }, in: [live], when: "streamCard and hasLink", source: apps/tedris/features/courses/components/session-action-card.tsx:302 }
+  streamLiveText: { type: text, component: Text, text: { key: SessionPage.streamLiveText }, in: [live], when: "streamCard and not hasLink and not isInPerson", source: apps/tedris/features/courses/components/session-action-card.tsx:305 }
+  inPersonStreamLiveText: { type: text, component: Text, text: { key: SessionPage.inPersonStreamLiveText }, in: [live], when: "streamCard and not hasLink and isInPerson", source: apps/tedris/features/courses/components/session-action-card.tsx:304 }
+  watchStream: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: SessionPage.watchStream }, in: [live, over], when: streamCard, emits: OPEN_STREAM, source: apps/tedris/features/courses/components/session-action-card.tsx:270 } # the primary button, to /courses/<c>/lessons/<l>/izle
+  streamFootnote: { type: text, component: Text, text: { key: SessionPage.recordingLater }, in: [live, over], when: streamCard, source: apps/tedris/features/courses/components/session-action-card.tsx:313 } # "Ders kaydı eklenirse burada görünür."
+
+  # the way in and the calendar
+  joinLink: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: composed.Attend.joinName }, text: { key: SessionPage.joinMeeting }, in: [opening, live], when: hasLink, emits: JOIN, source: apps/tedris/features/courses/components/session-action-card.tsx:195 } # target=_blank rel="noopener noreferrer"; the new tab is said in a visually hidden span, so the visible text is in the name. The primary button on the date card, the outline button beside "Yayını izle" on the stream card
+  calendarButton: { type: action, component: Button, role: button, intent: secondary, text: { key: AddToCalendar.button }, in: [ahead, opening], emits: ADD_TO_CALENDAR, source: apps/tedris/features/courses/components/session-action-card.tsx:384 } # a Menu trigger (aria-haspopup="menu"); its menu is tedris.learning.addToCalendar
+  joinReveal: { type: action, native: summary, component: Button, text: { key: SessionPage.reveal }, in: [opening, live], when: hasLink, emits: REVEAL, source: apps/tedris/features/courses/components/session-action-card.tsx:207 } # the <summary> of a <details>; its role is not verified in assistive technology (a browser's tree calls the <details> a group), so the node has none
+  meetingAddress: { type: text, component: Text, text: { key: composed.Attend.meetingUrl, params: { url: meeting.url } }, in: [opening, live], when: addressShown, source: apps/tedris/features/courses/components/session-action-card.tsx:210 } # <p dir="ltr"> inside the open <details>
+
+  # ---- the exam block ----
+  examCard: { type: page, component: Page, role: region, name: { labelledBy: examTitle }, in: [ahead, opening, live, over], when: examHeld, source: apps/tedris/features/courses/components/session-exam.tsx:22 }
+  examTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.examBadge }, in: [ahead, opening, live, over], when: examHeld, source: apps/tedris/features/courses/components/session-page.tsx:278 } # h2 "Sınav" ("Telafi" for a retake, out of view)
+  examFormat: { type: text, component: Text, text: { key: SessionPage.examWritten }, in: [ahead, opening, live, over], when: examHeld, source: apps/tedris/features/courses/components/session-exam.tsx:29 } # "Yazılı" ("Şifahi" for an oral exam, out of view)
+  examScore: { type: text, component: Text, text: { key: SessionPage.examMaxScore, params: { max: exam.maxScore } }, in: [ahead, opening, live, over], when: examHeld, source: apps/tedris/features/courses/components/session-exam.tsx:33 } # "Tam puan 100": c0ca032d words it so; it read "100 puan", which sounded like the talebe's own score
+  examPlace: { type: text, component: Text, text: { key: composed.Attend.examPlace, params: { place: exam.location } }, in: [ahead, opening, live, over], when: examHeld, source: apps/tedris/features/courses/components/session-exam.tsx:35 } # a <bdi>; only when the exam has a place, which also makes the celse in person
+  examTopics: { type: text, component: Text, text: { key: composed.Attend.examTopics, params: { topics: exam.topics } }, in: [ahead, opening, live, over], when: examHeld, source: apps/tedris/features/courses/components/session-exam.tsx:44 } # typed text, never HTML, whitespace kept
+
+  # ---- "Gündem" ----
+  agendaCard: { type: page, component: Page, role: region, name: { labelledBy: agendaTitle }, in: [ahead, opening, live, over], when: agendaListed, source: apps/tedris/features/courses/components/session-agenda.tsx:42 }
+  agendaTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.agendaTitle }, in: [ahead, opening, live, over], when: agendaListed, source: apps/tedris/features/courses/components/session-agenda.tsx:46 } # h2
+  agendaZone: { type: text, component: Text, text: { key: SessionPage.agendaZone, params: { zone: course.zone } }, in: [ahead, opening, live, over], when: agendaListed, source: apps/tedris/features/courses/components/session-agenda.tsx:49 }
+  agendaList: { type: list, component: List, role: list, in: [ahead, opening, live, over], when: agendaListed, source: apps/tedris/features/courses/components/session-agenda.tsx:50 } # an <ol>
+  agendaStep: { type: text, component: Text, role: listitem, text: { key: composed.Attend.agendaStep, params: { stepTime: step.time, stepTitle: step.title } }, in: [ahead, opening, live, over], when: agendaListed, repeat: agenda.steps, source: apps/tedris/features/courses/components/session-agenda.tsx:62 } # a time and a title; an Arabic run is set in lang="ar" dir="rtl" (out of view)
+  agendaNow: { type: text, component: Text, text: { key: SessionPage.agendaNow }, in: [live], when: agendaListed, source: apps/tedris/features/courses/components/session-agenda.tsx:71 } # "şimdi" on the one step whose time has come (aria-current="step"), computed from the course's clock; read once per half minute and never announced (CLS-15)
+
+  # ---- "Kaynaklar" ----
+  resourcesCard: { type: page, component: Page, role: region, name: { labelledBy: resourcesTitle }, in: [ahead, opening, live, over], when: resourcesListed, source: apps/tedris/features/courses/components/session-resources.tsx:76 }
+  resourcesTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.resourcesTitle }, in: [ahead, opening, live, over], when: resourcesListed, source: apps/tedris/features/courses/components/session-resources.tsx:80 } # h2
+  kaynakLine: { type: text, component: Text, text: { key: composed.Attend.kaynakLine, params: { kaynak: session.kaynak } }, in: [ahead, opening, live, over], when: resourcesListed, source: apps/tedris/features/courses/components/session-resources.tsx:88 }
+  resourcesOwnTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.resourcesOwn }, in: [ahead, opening, live, over], when: resourcesListed, source: apps/tedris/features/courses/components/session-resources.tsx:63 } # h3 "Bu celse"; "Ders geneli" is the course's own group (out of view)
+  resourceRow: { type: action, component: LinkButton, role: link, text: { key: composed.Attend.resourceLink, params: { resource: resource.name } }, in: [ahead, opening, live, over], when: resourcesListed, repeat: resources.rows, emits: OPEN_RESOURCE, source: apps/tedris/features/courses/components/course-resources.tsx:124 } # a link row: target=_blank rel="noopener noreferrer", the new tab said in a hidden span
+
+  # ---- the pager: the previous celse, the Müfredat button, the next celse ----
+  pager: { type: page, component: Page, role: navigation, name: { key: SessionPage.neighbours }, in: [ahead, opening, live, over], source: apps/tedris/features/courses/components/session-pager.tsx:200 } # nav "Celseler arasında"
+  previousLink: { type: action, component: LinkButton, role: link, name: { key: composed.Attend.previousLink }, in: [ahead, opening, live, over], when: hasPrevious, emits: OPEN_NEIGHBOUR, source: apps/tedris/features/courses/components/session-pager.tsx:80 } # a card whose one link is the title; the visible "Önceki · Hafta n" is aria-hidden and the third line (the day, "Şu an canlı") is outside the name (CLS-09)
+  nextLink: { type: action, component: LinkButton, role: link, name: { key: composed.Attend.nextLink }, in: [ahead, opening, live, over], when: hasNext, emits: OPEN_NEIGHBOUR, source: apps/tedris/features/courses/components/session-pager.tsx:80 }
+  curriculumButton: { type: action, component: Button, role: button, name: { key: SessionPage.curriculumLabel }, in: [ahead, opening, live, over], emits: OPEN_CURRICULUM, source: apps/tedris/features/courses/components/session-pager.tsx:207 } # aria-haspopup="listbox"; its popup is tedris.celse.browseCurriculum
+
+edges:
+  - { labelledBy: [examCard, examTitle] }
+  - { labelledBy: [agendaCard, agendaTitle] }
+  - { labelledBy: [resourcesCard, resourcesTitle] }
+  - { triggers: [joinLink, meeting_opened] }
+  - { triggers: [calendarButton, calendar_menu_opened] }
+  - { triggers: [watchStream, stream_opened] }
+  - { triggers: [curriculumButton, curriculum_opened] }
+
+rules:
+  - { id: ATT-1, rule: "The stream card's eyebrow is always SessionPage.joinLabel, \"Canlı ders\" (session-action-card.tsx:297), where the date card chooses it by `inPerson` and says \"Yüz yüze\" with a users icon (:339). A celse that is held in a room and streamed turns, when it begins, from \"Yüz yüze\" to \"Canlı ders\" over a heading that says it is running and a line that says \"Bu celse yüz yüze yapılıyor ve YouTube'da canlı yayınlanıyor\". Ana sayfa's HOME-2 is the same choice made once more (tedris.shell.home); this page's date card is right and only its stream card is wrong. Measured on the stack with an in-person celse that has a stream (attend-data.mjs, `inPersonStream`): the eyebrow reads \"Canlı ders\". Fix: choose the stream card's eyebrow as the date card's (decision D1). Proposed id." }
+  - { id: CLS-17, rule: "The ten-minute join window is a rule of display. `meetingUrl` is a prop of the client component whatever the time (session-page.tsx:227) and the API sends it for an upcoming celse (session-action-card.tsx:181 only decides whether it is drawn). Measured on the stack: the raw HTML of a celse two days ahead, fetched with no JavaScript, holds the meeting address once, while no link is on the page. A graph that says \"no meeting link before T-10\" says the drawn link only (decision D3)." }
+  - { id: CLS-15, rule: "The badge, the card, the agenda's \"şimdi\" and the join link all change by a 30-second clock (use-celse-clock.ts:10-18) and no part of the page is a live region or a status: grep of session-*.tsx finds no aria-live and no role=status. A person who stays on the page is never told that the window opened, that the celse began or that it ended; the three CLOCK transitions are silent (decision D2). Read from the code; the clock's flip was not waited for in the walk." }
+  - { id: CLS-07, rule: "The poster of the stream card is a second link with the same name as \"Yayını izle\" (session-action-card.tsx:239-246). tabIndex -1 takes it out of the tab order but not out of a screen reader's list of links, which names the destination twice. Measured: the accessibility tree has two links named \"Yayını izle\" in the card. Fix: aria-hidden on the poster." }
+  - { id: CLS-03, rule: "The celse page and the watch page export no metadata, so the tab and a screen reader say \"Medaris Tedris\" on every celse (WCAG 2.4.2); the phone bar's title is the celse's. Measured on the stack: document.title is \"Medaris Tedris\". Fix: generateMetadata with the celse's title." }
+  - { id: CLS-01, rule: "getSession answers null on any failure (public-reads.ts:50-56, :93-98) and the layout turns null into the 404 page (layout.tsx:27), so a tedrisat outage on a celse reads as a missing celse with no retry. Measured on the stack: a celse id that does not exist answers HTTP 200 with the not-found page, not 404 (`next dev`; the layout's own comment promises a real 404 and the e2e's comment says it stays 200, session.e2e.ts#8: a production build was not measured)." }
+  - { id: CLS-13, rule: "The page calls the uncached getCourse (page.tsx:19) where the layout calls the per-request loadCourse (layout.tsx:25), so GET /courses/{id} is made twice per request. An avoidable load, not an accessibility defect. Read from the code." }
+  - { id: CLS-09, rule: "The pager's state line (\"Şu an canlı\", \"İptal edildi\") and the Müfredat rows are computed once on the server at render (session-pager.tsx:51-56, :122-148) and never move, while the badge and the card tick every 30 seconds: a tab left open shows \"Canlı · 12 dk\" in the header and a pager that still lists the neighbour as it was. Read from the code." }
+  - { id: focus-not-set, rule: "The celse page sets no initial focus (no autoFocus and no focus() in session-*.tsx, calendar-menu.tsx or the page) and the first Tab stop is the chrome, so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. Measured on the stack: document.activeElement is the <body> after the page loads. There is no skip link in the app (CLS-14, tedris.shell.frame). Recorded so the silence is not read as an omission." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): \"Toplantıya katıl\" is inside \"Toplantıya katıl (yeni sekmede açılır)\"" }
+  - { id: no-attendance-write, rule: "Pressing \"Toplantıya katıl\" calls nothing: grep of session-*.tsx finds no join call and no attendance write, and the link is a plain <a target=_blank>. The app learns nothing of who joined; attendance is marked by the course team in nazar (apps/nazar/features/sessions/attendance.ts). The exit `meeting_opened` is where this app's part ends." }
+  - { id: in-person-names-no-place, rule: "A celse held face to face says only \"Bu celse yüz yüze yapılır. Kaydı eklenirse burada yayımlanır.\" The page has no field for where (the model has none: `inPerson` is a boolean), so the one place a talebe can read is the exam's location. The sentence also talks about the recording, which a person walking to a room did not ask. Read from the code and measured on the stack; the product need is in needs.yaml." }

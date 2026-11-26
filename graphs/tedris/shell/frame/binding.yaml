@@ -1,0 +1,44 @@
+# tedris.shell.frame on the local stack, in a phone's window: tedris-web on http://localhost:4000, 390 x 844.
+#   node apps/engine/src/cli.ts replay graphs/tedris/shell/frame --bind graphs/tedris/shell/frame/binding.yaml --absent \
+#     --main --to errorPage --to register_opened --out <dir>
+# Walked on 15 Nov 2026 (three walks of the replay's one run 3): the main story passes in every state that has a screen; its last
+# step, the exit `schedule_opened`, is flagged by --absent because the page it opens draws this very bar (bell, appBar, menuButton and
+# barTitle are "shown" where an exit shows nothing): a limit of --absent on an exit that is another page of the same frame, not of the app.
+# The wide bar is binding.wide.yaml (the window size is the binding's). Both extend locators.binding.yaml.
+#
+# Scenarios (the stack's seed, STACK.md; nothing is created and nothing is removed except the time zone of memberError):
+#   memberPhone    the seeded talebe on Ana sayfa, who has one unread notification: the main story, open the sheet and shut it with
+#                  "Kapat", open it and shut it with Esc, open it and follow "Programım" (e2e schedule#13, #14, anonymous#23)
+#   visitorPhone   nobody signed in, on Keşfet: the visitor's bar and sheet (anonymous#22-#24, #26); walked with `--to register_opened`,
+#                  which only the visitor's sheet reaches
+#   memberError    the same talebe on the course "Nahiv Metinleri", whose time zone `setup` sets to one no calendar knows (the way the
+#                  e2e system-pages#40 makes a page throw): the page throws, the root boundary draws the error box and the older
+#                  header and tab row show (SHL-06); `teardown` gives the zone back. Walked with `--to errorPage`. While it is set,
+#                  that course's pages throw for everyone, for the length of the walk.
+# Not walked in this binding: "Giriş yap" of the visitor's error page (the older buttons call signIn()), the older bell with nothing
+# unread, a member on a page of none of the five places (`apart`), and every `viewer` but `home` and `visitor` and `courses`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.shell.frame
+
+browser: { width: 390, height: 844 }
+
+scenarios:
+  memberPhone:
+    given: { viewer: home, opensAt: phone, unread: some, trouble: none }
+    as: talebe
+    open: '{tedris}/home'
+  visitorPhone:
+    given: { viewer: visitor, opensAt: phone, unread: none, trouble: none }
+    open: '{tedris}/discover'
+  memberError:
+    given: { viewer: courses, opensAt: phone, unread: some, trouble: throws }
+    as: talebe
+    open: '{tedris}/courses/{seed.courses.standalone}'
+    setup:
+      - run: [node, helpers/sql.mjs, "update courses set time_zone = 'Nope/Zone' where id = '{seed.courses.standalone}'"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/sql.mjs, "update courses set time_zone = 'Europe/Istanbul' where id = '{seed.courses.standalone}'"]
+        expect: '"rows":1'

@@ -1,0 +1,133 @@
+# The theme toggle of the four web apps (tedris-web, nazar-web, nizam-web, landing-web), read from the code of the branch (the
+# tree of PR #394) on 15 Nov 2026. Nothing here is approved.
+#
+# One kit component draws it in all four: ThemeToggle, libs/ui/src/mds/theme-toggle.tsx. Each app puts it in its own bar and
+# every behaviour below is the component's, not the app's; the head script that reads the choice back is ThemeScript
+# (libs/ui/src/mds/theme-script.tsx), in each app's root layout. So the flow, the ui and the catalog are drawn once and the
+# binding walks them in each app (binding.yaml is tedris-web, the others are binding.<app>.yaml).
+#
+# Where each app places it (the only thing that differs; the replay opens one visible toggle at 1280 px in each):
+#   tedris-web  desktop bar apps/tedris/components/phone-menu/desktop-bar.tsx:80; phone bar of a visitor phone-menu.tsx:40 and
+#               of a member member-phone-menu.tsx:82. Names from its catalog, tedris.json PhoneMenu.themeDark / themeLight.
+#   nazar-web   sidebar's brand row apps/nazar/features/shell/components/portal-frame.tsx:94; phone bar portal-menu.tsx:87.
+#               Passes no labels: the kit's Turkish defaults (theme-toggle.tsx:35-36), not its catalog (F-L-10).
+#   nizam-web   apps/nizam/components/shell/shell-frame.tsx:174 (sidebar and phone bar). Names from nizam.json Shell.themeDark /
+#               themeLight.
+#   landing-web apps/landing/components/site-header.tsx:44 (phone bar) and :59 (top bar). The kit's defaults; landing has no
+#               catalog.
+# The three sources of the words are the same two Turkish texts, letter for letter (checked by script), so one catalog serves.
+#
+# What it does that a person may not expect, each observed in a browser on 15 Nov 2026 (a probe, not the replay) unless said:
+#   - The page is light until the person chooses dark, whatever their system prefers: a context that prefers dark still got
+#     data-theme="light" (ThemeScript never reads prefers-color-scheme; MDRS-245).
+#   - The choice is kept in the browser's local storage under medaris-theme and a page that opens reads it back before first
+#     paint. Local storage belongs to one origin, so it holds in the same app only: dark chosen on landing, then tedris in the
+#     same browser, was light (decision D1).
+#   - Without JavaScript the toggle is drawn and does nothing (THEME-1; observed on landing).
+#   - The toggle's name flips with the theme and the button has no aria-pressed (F-UI-P0-3 of nizam's inventory, which is
+#     the kit's for all four apps; F-L-10 is nazar's words).
+schema: delurio-graph/0
+kind: flow
+id: common.shell.theme
+status: captured
+domain: medaris.api
+ui: common.shell.theme
+title: Switch the theme to dark and back
+summary: >-
+  In any of the four web apps, the person presses the round icon button in the bar, named "Koyu temaya geç" while the page
+  is light. The page turns dark at once, the button is now named "Açık temaya geç" and keeps the focus, and the choice is
+  written to the browser. A page of the same app that they open next is dark from its first paint, its toggle named "Açık
+  temaya geç" a moment after it loads. Pressing it again turns the page light and writes that. A person who has never
+  pressed it, or whose system prefers dark, meets the light page.
+source: libs/ui/src/mds/theme-toggle.tsx:34
+
+scope:
+  shows: the toggle, the colour scheme of the page it sets, and the choice a page that opens reads back, in a browser that keeps local storage
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "where each app puts the toggle and what else its bar holds: the navigation graphs draw the frames (tedris.nav, nazar.nav, nizam.nav, landing.nav); the placements are in the header comment"
+    - "the phone layout (below 768 px): the same component sits in the AppBar's actions and the replay's browser is 1280 px wide, so one toggle is drawn per page and the other bar is not walked"
+    - "a browser that refuses local storage (private modes, a policy, a full quota): a press still turns the page being looked at (theme-toggle.tsx:68-72, the comment says \"the choice holds for this page only\") and the next page is light, because ThemeScript falls back to light when the read throws (theme.ts:10-11); the assertion below holds only where storage works. No replay verb takes storage away from a browser"
+    - "another tab of the same app: its change arrives through the `storage` event and turns this page too (theme-toggle.tsx:45-51, covered by libs/ui/test/theme.spec.tsx); the replay has no second tab of one browser profile (an `as` person has a browser of their own)"
+    - "the other apps: dark chosen in one app is not dark in another, because local storage is per origin (probe: landing dark, then tedris, same browser: light). Decision D1"
+    - "pages with no toggle: the global-error page of tedris-web, nazar-web and nizam-web carries ThemeScript and no ThemeToggle (grep), and nizam-web draws /auth/* with no shell (isBarePath, apps/nizam/lib/shell-nav.ts:382); the page is still dark there if dark was chosen"
+    - "how dark looks: the colours come from the design tokens under html[data-theme=\"dark\"] (libs/tokens/medaris.css:92) and no graph states them; the flow draws only that the attribute is set"
+    - "the Keycloak pages the apps send a person to: a different origin, and not read for this flow"
+
+decisions:
+  D1:
+    question: >-
+      Should the choice follow the person from one Medaris app to another? Today it does not: each app is its own origin
+      with its own local storage, so a person who works in tedris and nazar sets dark twice (observed: landing, then
+      tedris).
+    recommend: >-
+      Leave it per app. Sharing it needs a cookie on the parent domain, and the cookies page promises that the choice is
+      not a cookie and is not sent to the server (apps/landing/content/cerezler.ts:150-151).
+    affects: [dark]
+
+context:
+  stored:
+    values: [none, light, dark]
+    initial: none
+    say:
+      none: "the person has never pressed the toggle in this app: nothing is stored"
+      light: "the person pressed it twice: light is stored"
+      dark: "the person's last press chose dark: dark is stored"
+
+effects:
+  chooseDark: { set: { stored: dark } }
+  chooseLight: { set: { stored: light } }
+
+# The main story: the page opens light, the person turns it dark, opens another page of the app (still dark) and turns it
+# light again.
+main: [TOGGLE, OPEN_ANOTHER_PAGE, TOGGLE]
+
+initial: light
+states:
+  light:
+    title: The page is light
+    by: human
+    goal: true
+    description: >-
+      The page as it opens when nothing, or light, is stored: <html data-theme="light"> (set in the markup and by
+      ThemeScript, which writes dark only when the stored value is exactly "dark"), whatever the system prefers. One
+      icon button, a moon, is drawn in the app's bar, named "Koyu temaya geç" (what pressing it does); hovering or focusing
+      it shows the same text as a tooltip. The page itself moves no focus when it opens. The name is a kit default
+      in nazar and landing and the app's own message in tedris and nizam (F-L-10: nazar's does not go through its catalog,
+      so en and ar could never reach it). Without JavaScript the button is there and a press does nothing (THEME-1).
+    source: libs/ui/src/mds/theme-toggle.tsx:41
+    on:
+      TOGGLE: { target: dark, effect: [chooseDark], say: "they press the toggle: the page turns dark and dark is stored", source: "libs/ui/src/mds/theme-toggle.tsx:64" }
+      OPEN_ANOTHER_PAGE: { target: light, say: "they open another page of the app: ThemeScript reads nothing or light and leaves it light", source: "libs/ui/src/lib/theme.ts:13" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  dark:
+    title: The page is dark
+    by: human
+    description: >-
+      <html data-theme="dark"> and medaris-theme="dark" in local storage. The button is now a sun named "Açık temaya geç",
+      and it is the same element the person pressed, so it keeps the focus while its name changes under it (F-UI-P0-3: the
+      name flips and there is no aria-pressed, which some screen readers read again). Opening another page of the same app
+      comes back here: ThemeScript sets dark before the first paint, and the toggle, which always renders as the light one
+      first (on the server and in the browser, so that hydration matches), takes the name "Açık temaya geç" once its effect
+      has read <html>, a moment after the page is drawn. The choice is the browser's and the app's origin's: another app
+      opens light (decision D1).
+    source: libs/ui/src/mds/theme-toggle.tsx:65
+    on:
+      TOGGLE: { target: light, effect: [chooseLight], say: "they press the toggle again: the page turns light and light is stored", source: "libs/ui/src/mds/theme-toggle.tsx:64" }
+      OPEN_ANOTHER_PAGE: { target: dark, say: "they open another page of the app: ThemeScript reads dark and the page is dark from its first paint", source: "libs/ui/src/lib/theme.ts:13" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  left:
+    type: final
+    leavesPage: true
+    title: The person leaves the page
+
+assertions:
+  - id: page-follows-the-stored-choice
+    never: "(state == 'dark' and stored != 'dark') or (state == 'light' and stored == 'dark')"
+    say: >-
+      The page is dark exactly when the stored choice is dark: a press writes the page and the storage together, and a page
+      that opens reads the storage back. It holds for a browser that keeps local storage; with storage refused the page
+      being looked at can be dark while nothing is stored (outOfView).
+    source: libs/ui/src/mds/theme-toggle.tsx:64

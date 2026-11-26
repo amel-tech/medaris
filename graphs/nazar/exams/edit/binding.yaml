@@ -1,0 +1,510 @@
+# nazar.exams.edit on the local stack: the Sınavlar page of a course the walk makes and the editor of a draft online exam on it, as
+# the course's hoca (muderris), at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/exams/edit --bind graphs/nazar/exams/edit/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# Each scenario makes its own course with helpers/course.mjs (published, in the seed's second köşk, the müderris as its hoca, one week
+# of one celse, no talebe); all but `fresh` also make a draft with helpers/exams.mjs ("Deneme sınavı xnEqOld": 20 minutes, three
+# complete questions "Soru n" in the topic "1. Deneme konusu", whose right option is "Doğru n", and the course's own zeroth question
+# "Bu hadisi daha önce duydun mu?" with "Evet", "Hayır" and "Emin değilim"). The teardown removes the course, with every exam on it,
+# the walk's own included. The scenarios on the draft share its tags (xnEdOld, xnEqOld): walks as one account go one at a time, and
+# `make` removes what a crashed walk left. Tags begin with xn; none is the start of another.
+#   fresh       the main story, on "Deneme dersi xnEdMain", which has no exam and no zeroth question: the course's own zeroth question
+#               is written, "Yeni sınav" makes "Deneme sınavı xnEdMain", its length is saved, the topic "Deneme konusu xnEdMain" is
+#               added, a question is written and saved, and the team turns to publishing. Its writes are also made to fail.
+#   draft       the draft "Deneme sınavı xnEqOld": a question edited with points of its own (50, a second write), a question
+#               deleted, the topic its questions carry refused, the settings saved and made to fail, then tried again.
+#   twoRight    the same draft with a second right option in its first question (SQL in `setup`): "Cevaplama" is asked, and
+#               "Çoklu seçim" asks "Puanlama".
+#   noTitle, zeroMinutes   the same draft with its title cleared, or 0 typed as its length: the field says why, and nothing is sent.
+#   badTopic, badPoints    a question with a topic number the course has not (99), or points that are not a number: the field says
+#               why and Kaydet is off.
+#   topicTaken, topicLong  "Deneme konusu" typed again, or a name of four words: tedrisat refuses it, the chip is taken off and the
+#               name is gone (EXM-EDIT-3).
+#   allPoints   100 own points for one question of three: nothing is left to share, so tedrisat refuses them (POINTS_OVER_TOTAL).
+#   zerothEmpty the same course, its zeroth question's text cleared: "Soruyu yazın."
+#   published   "Deneme sınavı xnEqLive", published two hours ahead: its page is nazar.exams.publish's, and the list leads to Sonuçlar.
+#   shutOut     the seeded ders nazırı (dersNazir) with no code on "Deneme dersi xnEdShut": the Sınavlar page refuses her.
+# Not bound, and why:
+#   - the states that are not built (readingCopies, copyPick, copying, renamingTopic, preview), and COPY, RENAME_TOPIC, PREVIEW.
+#   - FAIL.readAgain, FAIL.forbidden, FAIL.invalid, FAIL.mode and TOPIC_NUMBER_TAKEN of the writes: the page checks what it can before
+#     it sends, and nothing on the stack makes tedrisat refuse in between (someone else's write, a grant taken away). FAIL.other of
+#     each of the editor's writes is walked by aborting the page's server action in the browser (`fail: abort`): the toast says
+#     "Kaydedilemedi". Not that of "Yeni sınav" and of the zeroth question's Kaydet: they do not catch an aborted call (EXM-EDIT-9).
+#   - FAIL.gone and FAIL.other of the two reads, loadFailed's RETRY, and the exam's page refused (opening's FAIL.forbidden): a
+#     person refused the list never sees an exam's link.
+#   - removeAsk's CONFIRM on a question never saved: a new question's form drops it on Vazgeç before a row with "Sil" is drawn.
+# What a walk leaves that its teardown cannot undo: the audit rows of the writes.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.exams.edit
+
+browser: { width: 1440, height: 900 }
+
+data:
+  xnEdMain: { json: ../.local/made/xnEdMain.json }
+  xnEdOld: { json: ../.local/made/xnEdOld.json }
+  xnEqOld: { json: ../.local/made/xnEqOld.json }
+  xnEdLive: { json: ../.local/made/xnEdLive.json }
+  xnEqLive: { json: ../.local/made/xnEqLive.json }
+  xnEdShut: { json: ../.local/made/xnEdShut.json }
+
+samples:
+  title: Deneme sınavı xnEqOld
+
+scenarios:
+  fresh:
+    given: { may: yes, status: draft, examsSoFar: "none", zerothIs: none, zerothTyped: fit, settingsTyped: fit, topicCarried: "no", answer: fits, topicsSoFar: "none", questionsSoFar: "none", correct: one, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdMain.course}/sinavlar'
+    vars:
+      course: '{xnEdMain.course}'
+      newTitle: Deneme sınavı xnEdMain
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '0'
+      sTitle: Deneme sınavı xnEdMain
+      sMinutes: '30'
+      topicName: Deneme konusu xnEdMain
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '0'
+    samples: { title: Deneme sınavı xnEdMain, count: '1' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdMain, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdMain"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, xnEdMain]
+        expect: course remove xnEdMain
+  draft:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: changed }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: '50'
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  twoRight:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: several, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+      # the first question's "Yanlış 1-a" made right too, behind the page (no route of a walk's own makes a second right option
+      # without the editor's save, and the walk is to open such a question in its form)
+      - run: [node, helpers/sql.mjs, "update exam_options set correct = true where text = 'Yanlış 1-a' and question_id in (select id from exam_questions where exam_id = '{xnEqOld.exam}')"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  noTitle:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: noTitle, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: ''
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  zeroMinutes:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: zeroMinutes, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '0'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  badTopic:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: unknownTopic, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '99'
+      qPoints: ''
+      rightBadges: '3'
+    samples: { numbers: '99' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  badPoints:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: badPoints, pointsTyped: changed }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: beş
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  topicTaken:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: topicExists, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Deneme konusu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  topicLong:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: topicTooLong, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Çok uzun bir konu adı
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  allPoints:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: pointsOver, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: changed }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: '100'
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  zerothEmpty:
+    given: { may: yes, status: draft, examsSoFar: some, zerothIs: own, zerothTyped: unfit, settingsTyped: fit, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdOld.course}/sinavlar'
+    vars:
+      course: '{xnEdOld.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: ''
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdOld, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdOld"'
+      - run: [node, helpers/exams.mjs, make, xnEqOld, --course, xnEdOld]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqOld]
+      - run: [node, helpers/course.mjs, remove, xnEdOld]
+        expect: course remove xnEdOld
+  published:
+    given: { may: yes, status: scheduled, examsSoFar: some, zerothIs: own, zerothTyped: fit, settingsTyped: fit, topicCarried: "yes", answer: fits, topicsSoFar: some, questionsSoFar: some, correct: one, questionTyped: fit, pointsTyped: same }
+    as: muderris
+    open: '{nazar}/ders/{xnEdLive.course}/sinavlar'
+    vars:
+      course: '{xnEdLive.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    samples: { title: Deneme sınavı xnEqLive }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdLive, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdLive"'
+      - run: [node, helpers/exams.mjs, make, xnEqLive, --course, xnEdLive, --publish, '+120']
+        expect: '"status":"SCHEDULED"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnEqLive]
+      - run: [node, helpers/course.mjs, remove, xnEdLive]
+        expect: course remove xnEdLive
+  shutOut:
+    given: { may: "no", status: draft, examsSoFar: "none", zerothIs: none, zerothTyped: fit, settingsTyped: fit, topicCarried: "no", answer: fits, topicsSoFar: "none", questionsSoFar: "none", correct: one, questionTyped: fit, pointsTyped: same }
+    as: dersNazir
+    open: '{nazar}/ders/{xnEdShut.course}/sinavlar'
+    vars:
+      course: '{xnEdShut.course}'
+      newTitle: Deneme sınavı xnEdNew
+      zQuestion: Bu hadisi daha önce duydun mu?
+      zOption1: Evet
+      zOption2: Hayır
+      zRemovable: '3'
+      sTitle: Deneme sınavı xnEqOld
+      sMinutes: '25'
+      topicName: Ek konu
+      qText: Soru 1
+      qOption1: Doğru 1
+      qOption2: Yanlış 1-a
+      qTopics: '1'
+      qPoints: ''
+      rightBadges: '3'
+    setup:
+      - run: [node, helpers/course.mjs, make, xnEdShut, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnEdShut"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnEdShut.course}', --nazir, dersNazir, --codes, none]
+        expect: course-nazir-grants DERS_NAZIR
+    teardown:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnEdShut.course}', --dismiss]
+      - run: [node, helpers/course.mjs, remove, xnEdShut]
+        expect: course remove xnEdShut
+
+# What the walk types, from the scenario's vars; the presses are the nodes' own.
+events:
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+  TYPE_TITLE: [{ fill: { role: textbox, name: Yeni sınavın adı, value: '{newTitle}' } }]
+  TYPE_ZEROTH:
+    - fill: { role: textbox, name: Soru, value: '{zQuestion}', within: { role: form, name: Bu derse özel sıfırıncı soru } }
+    - fill: { role: textbox, name: 1. seçenek, value: '{zOption1}' }
+    - fill: { role: textbox, name: 2. seçenek, value: '{zOption2}' }
+  TYPE_SETTINGS:
+    - fill: { role: textbox, name: Sınavın adı, value: '{sTitle}' }
+    - fill: { role: textbox, name: Süre (dakika), value: '{sMinutes}' }
+  TYPE_TOPIC: [{ fill: { role: textbox, name: Konu (bir ile üç kelime), value: '{topicName}' } }]
+  TYPE_QUESTION:
+    - fill: { role: textbox, name: Soru, value: '{qText}', within: { role: form, name: '/^\d+\. soru$/' } }
+    - fill: { role: textbox, name: 1. şık, value: '{qOption1}' }
+    - fill: { role: textbox, name: 2. şık, value: '{qOption2}' }
+    - fill: { role: textbox, name: Konu numaraları, value: '{qTopics}' }
+    - fill: { role: textbox, name: Kendi puanı, value: '{qPoints}' }
+  # the section "Yayınla" is under the questions, on the same page: the team turns to it
+  PUBLISH: [{ waitText: Yayınla }]
+
+# The writes are server actions: a POST to the page's own address (the list's, or the exam's; their reads are GETs with a query, so
+# the anchored glob matches only the POST). The editor's writes run in its queue, so a step that writes twice (a new question is
+# added, then saved, then given its points) makes one POST per state. `abort` makes the browser's fetch fail: the page keeps what was
+# typed and says "Kaydedilemedi".
+states:
+  examsList: { url: '{nazar}/ders/*/sinavlar' }
+  zerothForm: { url: '{nazar}/ders/*/sinavlar' }
+  # no `fail` here: an aborted call is not caught by these two (EXM-EDIT-9), so the walk would wait on a button busy for good
+  creating: { call: '{nazar}/ders/*/sinavlar' }
+  savingZeroth: { call: '{nazar}/ders/*/sinavlar' }
+  editor: { url: '{nazar}/ders/*/sinavlar/*' }
+  questionForm: { url: '{nazar}/ders/*/sinavlar/*' }
+  removeAsk: { url: '{nazar}/ders/*/sinavlar/*' }
+  removeTopicAsk: { url: '{nazar}/ders/*/sinavlar/*' }
+  savingSettings: { call: '{nazar}/ders/*/sinavlar/*', fail: { FAIL.other: abort } }
+  addingTopic: { call: '{nazar}/ders/*/sinavlar/*', fail: { FAIL.other: abort } }
+  removingTopic: { call: '{nazar}/ders/*/sinavlar/*', fail: { FAIL.other: abort } }
+  addingQuestion: { call: '{nazar}/ders/*/sinavlar/*', fail: { FAIL.other: abort } }
+  savingQuestion: { call: '{nazar}/ders/*/sinavlar/*', fail: { FAIL.other: abort } }
+  settingPoints: { call: '{nazar}/ders/*/sinavlar/*', fail: { FAIL.other: abort } }
+  removingQuestion: { call: '{nazar}/ders/*/sinavlar/*', fail: { FAIL.other: abort } }
+  left: { url: '{nazar}/bildirimler' }
+  publish_opened: { url: '{nazar}/ders/*/sinavlar/*', text: Yayınla }
+  results_opened: { url: '{nazar}/ders/*/sinavlar/*/sonuclar' }
+
+# What a write leaves: "Yeni sınav" makes the course's one exam.
+effects:
+  createOnlineExam:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from online_exams where course_id = '{course}'"]
+      expect: '"n":1'
+
+nodes:
+  zerothShownText: { text: Bu hadisi daha önce duydun mu? }
+  zerothShownOption: { role: listitem, within: { testId: course-zeroth } }
+  zerothRemoveOption: { role: button, name: '/^\d+\. seçeneği kaldır$/', count: '{zRemovable}' }
+  zerothBusy: { css: output, hasText: Kaydediliyor… }
+  newExamBusy: { css: output, hasText: Yükleniyor }
+  topicChip: { text: '/^\d+\. .+$/', within: { role: region, name: Konular } }
+  rowMode: { text: '/^(Tek seçim|Çoklu seçim)/' }
+  rowPoints: { text: '/puan · (eşit pay|kendi puanı)$/' }
+  rowText: { text: '/^(Soru \d+|Soru metni yok\.)$/' }
+  rowOption: { text: '/^(Doğru|Yanlış) \d+(-[ab])?$/' }
+  rowCorrect: { text: Doğru, within: { role: region, name: '/^Sorular \(/' }, count: '{rightBadges}' }
+  topicNumbersHelp: { text: '/^(\d+\. .+|Örneğin 3, 7)$/' }
+  removeTopicX: { role: button, name: Kapat, within: { role: alertdialog, name: '/^\d+\. (?!soru silinsin).+ silinsin mi\?$/' } }
+  removeTopicCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: '/^\d+\. (?!soru silinsin).+ silinsin mi\?$/' } }
+  removeTopicConfirm: { role: button, name: Sil, within: { role: alertdialog, name: '/^\d+\. (?!soru silinsin).+ silinsin mi\?$/' } }
+  removeX: { role: button, name: Kapat, within: { role: alertdialog, name: '/^\d+\. soru silinsin mi\?$/' } }
+  removeCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: '/^\d+\. soru silinsin mi\?$/' } }
+  removeConfirm: { role: button, name: Sil, within: { role: alertdialog, name: '/^\d+\. soru silinsin mi\?$/' } }
+  toastClose: { role: button, name: Kapat, within: { role: region, name: Bildirimler } }

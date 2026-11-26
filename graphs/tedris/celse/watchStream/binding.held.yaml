@@ -1,0 +1,22 @@
+# tedris.celse.watchStream, a recording held back: the talebe on the celse whose recording is READY but opens in two days. The stream is still sent, the
+# header says "Ders kaydı {day} {time} açılır." and, once the player ended, the line says the recording will play "açılınca". It shares its state
+# (`streamLive`) with the main story, so it has a binding of its own. NOT RUN in this phase: probed by hand (the sentence is on the page).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/watchStream --bind graphs/tedris/celse/watchStream/binding.held.yaml --absent --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.watchStream
+
+scenarios:
+  held:
+    given: { watch: stream, viewer: talebe, link: framed, release: held }
+    as: applicantC
+    open: '{tedris}/courses/{ws.course}/lessons/{ws.held}/izle'
+    setup:
+      - run: [node, ../tedris/celse/watchStream/watchstream-data.mjs, up, --seat]
+        expect: 'watchstream-data up'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchstream]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

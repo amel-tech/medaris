@@ -121,6 +121,25 @@ describe("CourseNotifier (MDRS-213)", () => {
       ]);
     });
 
+    it("carries the note the müderris wrote for talebe (MDRS-248)", async () => {
+      const { notifier, notify } = build([TALEBE]);
+      await notifier.sessionCancelled(
+        session({
+          cancelledAt: new Date(),
+          cancelReason: "  Bu hafta ders yapılmayacak.  ",
+        }),
+        MUDERRIS
+      );
+      expect(notify.mock.calls[0][0].params).toMatchObject({
+        reason: "Bu hafta ders yapılmayacak.",
+      });
+      await notifier.sessionCancelled(
+        session({ cancelledAt: new Date(), cancelReason: "   " }),
+        MUDERRIS
+      );
+      expect(notify.mock.calls[1][0].params).not.toHaveProperty("reason");
+    });
+
     it("writes one notification per talebe in a single call", async () => {
       const { notifier, notify } = build([TALEBE, OTHER]);
       await notifier.sessionCancelled(session(), MUDERRIS);

@@ -1,0 +1,405 @@
+# Hesap ve ayarlar in nizam-web (/hesap), read by whoever works there and by anybody else who is signed in: the roles they hold, the
+# permissions those roles give them in words, the e-mail the account is signed in with, the time zone the celse times are shown in,
+# and the way out. Read from the code of PR #394 (apps/nizam/app/hesap, apps/nizam/features/account, the kit's Select, Table, Toast,
+# Alert and ImamStar) on 15 Nov 2026, and checked against the running stack with GETs only: /me, /me/assignments and
+# /me/effective-permissions as five of the seeded people, and a GET of /hesap without a session. Nothing was looked at in a browser:
+# every behaviour that no GET shows is "from the code". Nothing here is approved.
+#   - What it draws: the three reads, the page with its three cards and its aside, the two time-zone lists, the save at once with its
+#     toast, the failed save that puts the old zone back, the imam star's bubble, the link to Nazar, the link to the sign-out
+#     confirmation, and the page that stands in when a read fails.
+#   - Who. The case variable `holds` is the person, one value for each kind the stack's seed can open the page as: a köşk nazımı of two
+#     köşks (the main story), the Medaris başnazım, a Medaris nazımı, a person who holds no role, a hoca of three courses, and the
+#     same hoca where one course has a second hoca (the star). The page has no role guard: anybody signed in opens it. `read` says which
+#     of the three reads fails, if any; the stack has no way to make one fail.
+#   - Where it differs from its two twins. nazar.account.settings is the same page for staff in nazar (same table, same lists, one more
+#     card of its own and a sign-out that posts at once); tedris.account.profile and tedris.account.rolesOverview are the talebe's:
+#     tedris has names, a gender, a switch for invitation mails and a calendar link that nizam has not, and its roles table and
+#     permission list are a section of the same page. Here: no name or gender to edit, one read for the whole page that draws nothing
+#     else when it fails, a sign-out that asks first through /auth/signout, and a card for a hoca that opens Nazar in a new tab.
+#   - Findings it carries (the inventory's ids): F-W1-7, F-W1-8, F-W1-9, F-W1-9b, F-W1-14, F-UI-W1-3. Four more are its own, proposed as
+#     NIZSET-1 to NIZSET-4 (ui.yaml `rules`).
+#   - E2E carried: account#1, #2, #3, #4, #8, and #5 a1 to a3. #5 a4 to a6 are STALE (the Dil field is gone, F-W1-9b) and are not
+#     carried. #6 (the sign-out) and #7 (a visitor is sent to sign in) are realm.auth.signOut's and realm.auth.signIn's.
+schema: delurio-graph/0
+kind: flow
+id: nizam.account.settings
+status: captured
+domain: medaris.api
+ui: nizam.account.settings
+title: Read my roles and set my time zone
+summary: >-
+  A signed-in person opens Hesap ve ayarlar from the person row. The page reads their profile, the roles they hold and the
+  permissions those roles give, and draws three cards: "Görevleriniz" (a table: role, scope with its state, who gave it and when, until
+  when), "Etkin izinleriniz" (one group of plain sentences for each role and scope; for the başnazım one sentence, "Bütün izinler, her
+  kapsamda") and "Saat dilimi" (a list of eight cities and "Diğer…", which opens the full list). Beside them an aside holds "Hesap" (the
+  name, the roles held and the e-mail, read-only), "Hocalık" for a hoca, with a link that opens Nazar in a new tab, and a card with
+  "Çıkış yap", a link to the confirmation page. There is no Kaydet: a zone chosen from either list is saved at that moment, a toast
+  says so, and the choice is still there after a reload. A save that fails puts the old zone back and says so in a toast that stays
+  until it is closed. A hoca who shares a course with another hoca and is its imam has a star after "Hoca" that opens a bubble. A
+  person who holds no role reads "Henüz bir göreviniz yok." and has neither the permissions card nor a role line. When any of the three
+  reads fails the page keeps only its title, one alert and "Yeniden dene".
+
+scope:
+  shows: >-
+    Hesap ve ayarlar of one signed-in person: the table of roles, the permission sentences, the time-zone lists and their save, the
+    e-mail, the link to Nazar, the link to the sign-out confirmation, the imam star, and the three reads behind them
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame: the sidebar with its menu per kind of person and the person row that links here (nizam.shell.menuPerPersona), the phone bar and its sheet, the footer's legal link"
+    - "a visitor, who is sent to /auth/signin?callbackUrl=%2Fhesap by the proxy before the page runs (e2e account#7; seen as a 307 on the stack: realm.auth.signIn); a session that ends at any read or at the save sends the person to sign in again with a `reauth` mark and no toast (realm.auth.sessionEnded), drawn here only as the exit sent_to_sign_in for the save"
+    - "the confirmation page /auth/signout behind 'Çıkış yap' and what follows it (realm.auth.signOut; e2e account#6); the other app a hoca's link opens (nazar.access.landingScope)"
+    - "the skeleton while the three reads run (app/hesap/loading.tsx): a silent aria-busy <div> (F-W1-8), no state of the flow"
+    - "every kind of person the seed does not make: a başmüderris, a medrese nazırı or a ders nazırı (they open the page as a hoca does, with their own rows and groups), a role that has an end date (the line 'Atamanız {date} tarihinde bittiği için…'), a grant that no role covers (the group 'Verilen izinler'), a person who holds several kinds of role at once (the intro of a köşk nazımı wins)"
+    - "the dates of the table and of the end lines, which follow the zone the cookie holds (syncViewerTimeZone); they are not asserted"
+    - "the success toast's own six seconds and the limit of three toasts (toast.tsx:30, ToastProvider limit); the toast region's own name 'Bildirimler' (F-UI-W1-3)"
+    - "the phone layout, where each row of the table is a card and the aside falls under the cards; en and ar, which no screen of nizam can show"
+
+decisions:
+  D1:
+    question: >-
+      Should the page list a Medaris nazımı's permissions in words? Today the catalog has no sentence for any platform.* code, so the
+      group is dropped and the card says "Size ayrıca verilmiş bir izin grubu yok." to a person who holds five (NIZSET-2); the Medaris
+      home lists them.
+    recommend: >-
+      Yes: write the sentences once (the Medaris home already has them in Dashboard) and let Hesap list the group as it lists a köşk
+      nazımı's. Until then the empty card should say where the permissions are listed.
+    affects: [settings]
+  D2:
+    question: >-
+      When one of the three reads fails, should the page keep the cards that need no data (the time zone, the e-mail from the session,
+      and above all "Çıkış yap")? Today it keeps a title, an alert and a retry link, and the page is the only link to /auth/signout in
+      nizam (NIZSET-4).
+    recommend: >-
+      Yes: draw the sign-out card outside the branch that needs the read, and the time-zone card when only the other reads failed.
+    affects: [loadFailed]
+  D3:
+    question: >-
+      Should the save say what is saved and let the person see it work? Both lists are disabled while PATCH /me runs, so the focused
+      combobox is lost, and nothing says "saving" until the toast (F-W1-7); and a refusal can leave the second list out of the page
+      although the zone held needs it (NIZSET-1).
+    recommend: >-
+      Keep the lists enabled with aria-busy, derive the second list from the zone held, and move the focus to the second list when it
+      appears.
+    affects: [choosingZone, choosingListed, savingZone]
+
+context:
+  holds:
+    values: [koskNazim, chief, medarisNazim, none, hoca, hocaImam]
+    initial: any
+    say:
+      koskNazim: "a köşk nazımı of two köşks and nothing else: two rows 'Köşk nazımı' with the köşk's name, the giver and 'Süresiz', one group of nine sentences that names both köşks, and the note (the main story)"
+      chief: "the Medaris başnazım: the realm's SYSTEM_ADMIN holds no assignment, so the one row is the page's own ('Medaris başnazımı', 'Platform', 'Giriş sisteminde tanımlı', 'Süresiz') and the one group says 'Bütün izinler, her kapsamda'"
+      medarisNazim: "a Medaris nazımı: one row 'Medaris nazımı' on 'Platform', and no sentence at all under 'Etkin izinleriniz', because no platform.* code has one: the card says there is no group (NIZSET-2)"
+      none: "a person who holds no role, a talebe for instance: 'Henüz bir göreviniz yok.' in place of the table, no permissions card, no role line under the name"
+      hoca: "the hoca of several courses, alone in each: a row for each course with its state, its köşk and its medrese, one group 'Hoca' that names the courses, the Hocalık card with its link; no star"
+      hocaImam: "the same hoca where one course has a second hoca and the hoca is its imam: that row has the star after 'Hoca'"
+  read:
+    values: [ok, meFailed, assignmentsFailed, permissionsFailed]
+    initial: any
+    say:
+      ok: "the three reads answer"
+      meFailed: "GET /me fails with anything but a refused token: the page keeps its title, one alert and 'Yeniden dene'"
+      assignmentsFailed: "GET /me/assignments fails: the same page"
+      permissionsFailed: "GET /me/effective-permissions fails: the same page"
+  zone:
+    values: [istanbul, berlin, tokyo]
+    initial: istanbul
+    say:
+      istanbul: "tedrisat holds İstanbul, or no zone (the page then shows İstanbul): the first list reads 'İstanbul'"
+      berlin: "tedrisat holds Europe/Berlin, the one of the eight the walk chooses (e2e account#3); any other of the eight behaves the same: the first list reads 'Berlin'"
+      tokyo: "tedrisat holds Asia/Tokyo, a zone only the second list offers (e2e account#4); any other zone of it behaves the same: the first list reads 'Diğer…' and the second 'Asia/Tokyo'"
+  box:
+    values: [hidden, shown]
+    initial: hidden
+    say:
+      hidden: "the second list is not drawn"
+      shown: "the first list holds 'Diğer…' and the second list, 'Tüm saat dilimleri', is drawn under it"
+  picked:
+    values: [istanbul, berlin, tokyo]
+    initial: istanbul
+    say:
+      istanbul: "the choice in flight is İstanbul (only read while it is being saved)"
+      berlin: "the choice in flight is Berlin"
+      tokyo: "the choice in flight is Asia/Tokyo, from the second list"
+  toast:
+    values: [none, saved]
+    initial: none
+    say:
+      none: "no success toast"
+      saved: "the toast 'Saat diliminiz kaydedildi.' is up; it closes by itself after six seconds, which the graph says by the person's next step"
+  alert:
+    values: [none, saveFailed]
+    initial: none
+    say:
+      none: "no error toast"
+      saveFailed: "the error toast 'Saat dilimi kaydedilemedi.' with its sentence is up; it stays until it is closed"
+
+guards:
+  boxShown: "box == 'shown'"
+  zoneHeld: "(picked == 'istanbul' and zone == 'istanbul') or (picked == 'berlin' and zone == 'berlin') or (picked == 'tokyo' and zone == 'tokyo')"
+  alerting: "alert != 'none'"
+  isImam: "holds == 'hocaImam'"
+  teaches: "holds == 'hoca' or holds == 'hocaImam'" # the person holds MUDERRIS: the Hocalık card
+  hasRows: "holds != 'none'" # the table, the permissions card and the role line exist only for a person with a row
+  assigned: "holds != 'none' and holds != 'chief'" # one row for each assignment; the başnazım's own row is drawn by its own nodes
+  courseRows: "holds == 'hoca' or holds == 'hocaImam'" # the rows of a course carry its state and its köşk and medrese
+  listsGroups: "holds == 'koskNazim' or holds == 'hoca' or holds == 'hocaImam'" # a group with at least one sentence
+  noSentences: "holds == 'medarisNazim'" # the engine returns a group and the catalog has no sentence for any of its codes
+
+effects:
+  clearToast: { set: { toast: none } } # a success toast has closed itself by the person's next step
+  clearAlert: { set: { alert: none } }
+  boxOpened: { set: { box: shown } }
+  boxClosed: { set: { box: hidden } }
+  pickedIstanbul: { set: { picked: istanbul } }
+  pickedBerlin: { set: { picked: berlin } }
+  pickedTokyo: { set: { picked: tokyo } }
+  savedIstanbul: { set: { zone: istanbul, box: hidden, toast: saved } } # PATCH /me answered: the choice is what tedrisat holds, and the toast says so
+  savedBerlin: { set: { zone: berlin, box: hidden, toast: saved } }
+  savedTokyo: { set: { zone: tokyo, box: shown, toast: saved } }
+  saveRefused: { set: { alert: saveFailed } } # the lists go back to the zone before the choice (the code's `setZone(confirmed.current)`); the second list is not put back
+  reloaded: { set: { toast: none, alert: none } } # a reload draws the page from what tedrisat holds
+
+failures:
+  readingProfile: { from: getMe, unreadable: [USER_NOT_FOUND] }
+  readingAssignments: { from: getMyAssignments, unreadable: [] }
+  readingPermissions: { from: getMyEffectivePermissions, unreadable: [] }
+  savingZone: { from: updateMe, signedOut: [HTTP_401], failed: [VALIDATION_ERROR, USER_NOT_FOUND] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal code for the second and third read (a 401 is
+# the guard's and is left out of the domain), and getAccountData treats a 404, a 5xx and a network error alike (reads.ts:34-38).
+# `failed` stands for every answer but 401 that a save gets, and for a zone the page's own check refuses before the call
+# (isValidTimeZone, actions.ts:23): the server action answers only {success, error}, so the page draws one toast whatever the status was.
+# The three reads run together (Promise.all, reads.ts:23); the graph draws them one after the other because it cannot draw two at once.
+
+# The main story, as e2e account#1 to #4 walk it: the köşk nazımı reads the page, chooses Berlin from the first list (saved at once, a
+# toast), reloads and finds it kept, opens the full list and chooses Asia/Tokyo (saved), reloads and finds it kept with the second list
+# open, and goes to the sign-out confirmation.
+main:
+  given: { holds: koskNazim, read: ok }
+  events: [DONE, DONE, DONE, OPEN_ZONES, PICK_BERLIN, DONE, RELOAD, DONE, DONE, DONE, OPEN_ZONES, PICK_OTHER, OPEN_LISTED, PICK_TOKYO, DONE, RELOAD, DONE, DONE, DONE, SIGN_OUT]
+
+initial: readingProfile
+states:
+  readingProfile:
+    title: Read the profile
+    description: >-
+      GET /me through tedrisatApi, the first of the three reads getAccountData runs together. It gives the names (the person card
+      shows them; the session's name stands in for a person with none), the e-mail, the zone saved (the lists and the dates) and
+      whether the person is the başnazım (the table's first row and the permissions card's intro and group). Any of the three
+      failing with an answer other than a refused token makes the whole read null: the page keeps its title and says so
+      (loadFailed). A refused token (401) sends the person to sign in again (out of view).
+    source: apps/nizam/features/account/reads.ts:24
+    invoke: { action: getMe }
+    on:
+      DONE: { guard: "read != 'meFailed'", target: readingAssignments }
+      FAIL.unreadable: { guard: "read == 'meFailed'", target: loadFailed, say: "getAccountData answers null: the page draws its title, one alert and a retry link", source: apps/nizam/features/account/reads.ts:34 }
+
+  readingAssignments:
+    title: Read the roles
+    description: >-
+      GET /me/assignments: one row for each live role of the person, with its scope's name, who gave it and when, until when, whether
+      the person is the course's imam, and for a course its state, köşk, medrese and how many hocas it has.
+    source: apps/nizam/features/account/reads.ts:25
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "read != 'assignmentsFailed'", target: readingPermissions }
+      FAIL.unreadable: { guard: "read == 'assignmentsFailed'", target: loadFailed, say: "the same null: the whole page is replaced", source: apps/nizam/features/account/reads.ts:34 }
+
+  readingPermissions:
+    title: Read the permissions
+    description: >-
+      GET /me/effective-permissions: the engine's own computation of what the roles and grants give in each scope, one group for each
+      role and scope type. The page words each code from its catalog and leaves out a code with no sentence and a group none of whose
+      codes has one: every platform.* code is left out (NIZSET-2).
+    source: apps/nizam/features/account/reads.ts:26
+    invoke: { action: getMyEffectivePermissions }
+    on:
+      DONE: { guard: "read != 'permissionsFailed'", target: sorted }
+      FAIL.unreadable: { guard: "read == 'permissionsFailed'", target: loadFailed, say: "the same null: the whole page is replaced", source: apps/nizam/features/account/reads.ts:34 }
+
+  sorted:
+    title: Word what the person holds
+    description: >-
+      Classification only. The table's rows are worded and dated on the server (account-page.tsx:66-113): the başnazım's own row
+      first, then one for each assignment, the roles' names from the catalog, a course's state as a badge, the köşk and the medrese
+      under its name, the giver or "Kendiniz" or "Bilinmiyor", and the end or "Süresiz". The permissions card is drawn for a person
+      with a row, under the intro that fits (the başnazım's, the köşk nazımı's, or the plain one for everybody else), and says
+      there is no group when no code has a sentence. The star is drawn after "Hoca" on a course where the person is the imam among
+      more than one hoca (showsImamStar); the Hocalık card for a person who holds MUDERRIS. Six kinds of person, each its own
+      transition, so that each can be walked by itself.
+    source: apps/nizam/features/account/components/account-page.tsx:62
+    always:
+      - { guard: "holds == 'chief'", target: settings, say: "one row of the page's own and the one group 'Platform · medaris başnazımı'", source: apps/nizam/features/account/components/account-page.tsx:67 }
+      - { guard: "holds == 'medarisNazim'", target: settings, say: "one row on 'Platform', the plain intro, and the card that says there is no group", source: apps/nizam/features/account/components/account-page.tsx:62 }
+      - { guard: "holds == 'none'", target: settings, say: "no row: 'Henüz bir göreviniz yok.', no permissions card, no role line", source: apps/nizam/features/account/components/account-page.tsx:155 }
+      - { guard: "holds == 'hoca'", target: settings, say: "a row for each course, the role 'Hoca' with no star, and the Hocalık card", source: apps/nizam/features/account/components/account-page.tsx:88 }
+      - { guard: "holds == 'hocaImam'", target: settings, say: "the same, and the star after 'Hoca' on the course that has a second hoca", source: apps/nizam/features/account/components/account-page.tsx:88 }
+      - { target: settings, say: "the köşk nazımı: a row for each köşk and one group that names both", source: apps/nizam/features/account/components/permissions-list.tsx:30 }
+
+  settings:
+    title: Hesap ve ayarlar
+    by: human
+    goal: true
+    description: >-
+      /hesap in the shell's frame, under the h1 "Hesap ve ayarlar" and its subtitle, in two columns from the md width. Left:
+      "Görevleriniz" (an introduction and the table of Görev, Kapsam, Atayan, Süre, or a sentence for a person with no role), "Etkin
+      izinleriniz" (for a person with a row: an introduction and one group for each role and scope, each a titled section of
+      sentences with a check, then its notes, and its end line) and "Saat dilimi" (the first list with its help line, and the second
+      list under it while 'Diğer…' is chosen). Right, in an aside named "Hesap": the name, the roles and the e-mail box (read-only
+      with its help line); "Hocalık" with "Nazar’da aç" for a hoca; and a card with a sentence and "Çıkış yap". The page sets no
+      initial focus (focus-not-set). A success toast ('Saat diliminiz kaydedildi.') stays six seconds; an error toast stays until it
+      is closed. Findings read here: F-W1-9 (h4 groups under an h2), F-W1-9b (the dead Dil keys), F-W1-14 (the link to Nazar opens a
+      tab without saying so), NIZSET-2 (a Medaris nazımı's card is empty), NIZSET-3 (every group is a landmark).
+    source: apps/nizam/features/account/components/account-page.tsx:125
+    on:
+      OPEN_ZONES: { target: choosingZone, effect: [clearToast], say: "they open the first list, 'Saat dilimi'", source: apps/nizam/features/account/components/time-zone-form.tsx:85 }
+      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list, 'Tüm saat dilimleri'", source: apps/nizam/features/account/components/time-zone-form.tsx:103 }
+      OPEN_STAR: { guard: isImam, target: starOpen, effect: [clearToast], say: "they hover the star, focus it with the keyboard or press it: the bubble opens", source: libs/ui/src/mds/imam-star.tsx:67 }
+      CLOSE_ALERT: { guard: alerting, target: settings, effect: [clearAlert], say: "they press Kapat on the error toast", source: libs/ui/src/mds/toast.tsx:95 }
+      OPEN_NAZAR:
+        guard: teaches
+        target: settings
+        starts: { flow: nazar.access.landingScope }
+        say: "'Nazar’da aç' opens Nazar's root in a new tab (target=_blank), where the person lands in the scope they hold; this tab stays on Hesap (F-W1-14)"
+        source: apps/nizam/features/account/components/account-page.tsx:247
+      RELOAD:
+        - { guard: "zone == 'tokyo'", target: readingProfile, effect: [reloaded, boxOpened], say: "the page is drawn again from what tedrisat holds: the zone is kept, and a zone outside the eight opens the second list at once (e2e account#4 a3)", source: apps/nizam/features/account/components/time-zone-form.tsx:45 }
+        - { target: readingProfile, effect: [reloaded, boxClosed], say: "the page is drawn again: the first list reads the zone kept (e2e account#3 a3)", source: apps/nizam/features/account/components/time-zone-form.tsx:45 }
+      SIGN_OUT:
+        target: handed_over.sign_out
+        starts: { flow: realm.auth.signOut, given: { app: "'nizam'", entry: "'confirmationPage'" } }
+        say: "'Çıkış yap' is a link to /auth/signout, in the same tab: the confirmation page asks first, and nothing ends here (e2e account#6); what follows is realm.auth.signOut's"
+        source: apps/nizam/features/account/components/account-page.tsx:264
+      NAVIGATE: { target: left, say: "they go on to another page", source: apps/nizam/components/shell/shell-frame.tsx:159 }
+
+  choosingZone:
+    title: The first time-zone list is open
+    by: human
+    description: >-
+      The kit's Select, a Base UI listbox in a popup, with nine options: İstanbul, Berlin, Amsterdam, Brüksel, Paris, Viyana, Londra,
+      New York and "Diğer…". Base UI's Select is modal, so the page behind is taken to be inert and only the list is drawn here (not
+      verified in a browser). A city saves at once, with no Kaydet; choosing the zone already held sends nothing, though it still
+      hides the second list (`setFull(false)` runs before the check); "Diğer…" saves nothing and draws the second list; Esc closes the
+      list and changes nothing. The focus goes back to the list's button (Base UI; not verified).
+    source: libs/ui/src/mds/select.tsx:79
+    on:
+      PICK_ISTANBUL:
+        - { guard: "zone == 'istanbul'", target: settings, effect: [boxClosed], say: "İstanbul is the zone held: choose() returns at once and nothing is sent; the second list, if drawn, has already gone", source: apps/nizam/features/account/components/time-zone-form.tsx:51 }
+        - { target: savingZone, effect: [pickedIstanbul, boxClosed, clearToast], say: "they choose İstanbul: the list shows it at once and PATCH /me is called; the second list, if drawn, goes at once", source: apps/nizam/features/account/components/time-zone-form.tsx:95 }
+      PICK_BERLIN:
+        - { guard: "zone == 'berlin'", target: settings, effect: [boxClosed], say: "Berlin is the zone held: nothing is sent", source: apps/nizam/features/account/components/time-zone-form.tsx:51 }
+        - { target: savingZone, effect: [pickedBerlin, boxClosed, clearToast], say: "they choose Berlin: PATCH /me is called with Europe/Berlin (e2e account#3 a1)", source: apps/nizam/features/account/components/time-zone-form.tsx:95 }
+      PICK_OTHER: { target: settings, effect: [boxOpened], say: "'Diğer…': nothing is saved, the second list is drawn under the first, and nothing says so and the focus stays (e2e account#4 a1)", source: apps/nizam/features/account/components/time-zone-form.tsx:91 }
+      DISMISS: { target: settings, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
+
+  choosingListed:
+    title: The second time-zone list is open
+    by: human
+    description: >-
+      The same kit Select with every zone the runtime lists, each named by its id with the underscores as spaces ("Asia/Tokyo",
+      "America/New York"); about four hundred options, not drawn as nodes (the e2e names one). Choosing one saves it at once. The page
+      behind is inert, as for the first list (not verified in a browser).
+    source: apps/nizam/features/account/components/time-zone-form.tsx:103
+    on:
+      PICK_TOKYO:
+        - { guard: "zone == 'tokyo'", target: settings, say: "Asia/Tokyo is the zone held: nothing is sent", source: apps/nizam/features/account/components/time-zone-form.tsx:51 }
+        - { target: savingZone, effect: [pickedTokyo, clearToast], say: "they choose a zone from the second list: it shows at once and PATCH /me is called (e2e account#4 a2)", source: apps/nizam/features/account/components/time-zone-form.tsx:110 }
+      DISMISS: { target: settings, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
+
+  savingZone:
+    title: Save the time zone
+    description: >-
+      saveTimeZone(zone) is a server action: it checks the name with isValidTimeZone and calls PATCH /me with { timeZone } as the
+      caller, then writes the zone's cookie (a second GET /me) and revalidates the layout, and answers only { success, error }, never
+      the API's message. The lists show the choice at once (setZone before the call) and both are disabled while the call is out
+      (F-W1-7). A success draws the toast 'Saat diliminiz kaydedildi.' with 'Celse saatleri artık bu saat diliminde gösterilir.', and
+      the server parts are drawn again, so every date on the page follows the new zone. A refusal puts the zone before the choice back
+      in the lists (not the second list: NIZSET-1) and draws the error toast 'Saat dilimi kaydedilemedi.' with 'Önceki saat diliminiz
+      geçerli. Yeniden deneyin.', which stays until it is closed. A call that never reaches the server is a rejection the page does
+      not catch. A session that is over goes to sign in and back, with no toast.
+    source: apps/nizam/features/account/actions.ts:20
+    invoke: { action: updateMe }
+    on:
+      DONE:
+        - { guard: "picked == 'istanbul'", target: settings, effect: [savedIstanbul], say: "tedrisat holds İstanbul; the toast says so", source: apps/nizam/features/account/components/time-zone-form.tsx:57 }
+        - { guard: "picked == 'berlin'", target: settings, effect: [savedBerlin], say: "tedrisat holds Europe/Berlin; the toast says so, and the choice is still there after a reload (e2e account#3)", source: apps/nizam/features/account/components/time-zone-form.tsx:57 }
+        - { guard: "picked == 'tokyo'", target: settings, effect: [savedTokyo], say: "tedrisat holds Asia/Tokyo; the first list reads 'Diğer…' and the second 'Asia/Tokyo', also after a reload (e2e account#4)", source: apps/nizam/features/account/components/time-zone-form.tsx:57 }
+      FAIL.failed:
+        - { guard: "picked == 'tokyo'", target: settings, effect: [saveRefused], say: "the choice came from the second list, which is still drawn: it reads the zone before again, and the first list 'Diğer…'", source: apps/nizam/features/account/components/time-zone-form.tsx:66 }
+        - { guard: "zone == 'tokyo'", target: settings, effect: [saveRefused], say: "NIZSET-1: the choice came from the first list while the zone held was outside the eight: the second list went at the pick and is not put back, so the zone held is one the lists no longer show", source: apps/nizam/features/account/components/time-zone-form.tsx:95 }
+        - { target: settings, effect: [saveRefused], say: "the choice came from the first list: it reads the zone before again, and the second list is not drawn", source: apps/nizam/features/account/components/time-zone-form.tsx:66 }
+      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: handleUnauthenticated goes to sign in and back to /hesap, no toast", source: apps/nizam/features/account/components/time-zone-form.tsx:56 }
+
+  starOpen:
+    title: The imam star's bubble is open
+    by: human
+    description: >-
+      Base UI's Popover, non-modal, so the page stays as it was: a small bubble with the title "Dersin imamı" and what an imam is.
+      It opens on hover after 600 ms, on keyboard focus and on a press; Esc, a press outside and the focus leaving the star close
+      it. The focus never moves into the bubble. The star's own name is "Dersin imamı", described by the same text.
+    source: libs/ui/src/mds/imam-star.tsx:99
+    on:
+      CLOSE_STAR: { target: settings, say: "Esc, a press outside or the focus moving on", source: libs/ui/src/mds/imam-star.tsx:67 }
+      OPEN_STAR: { target: settings, say: "a second press on the star closes the bubble: the trigger's click toggles it", source: libs/ui/src/mds/imam-star.tsx:76 }
+      OPEN_ZONES: { target: choosingZone, effect: [clearToast], say: "they open the first list: the press is outside the bubble, which closes, and the page behind it was never inert", source: apps/nizam/features/account/components/time-zone-form.tsx:85 }
+      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list: the bubble closes as the list opens", source: apps/nizam/features/account/components/time-zone-form.tsx:103 }
+      CLOSE_ALERT: { guard: alerting, target: settings, effect: [clearAlert], say: "they press Kapat on the error toast: the press is outside the bubble, so both close", source: libs/ui/src/mds/toast.tsx:95 }
+      OPEN_NAZAR:
+        guard: teaches
+        target: settings
+        starts: { flow: nazar.access.landingScope }
+        say: "'Nazar’da aç' opens Nazar in a new tab, as from the page; the press is outside the bubble, which closes"
+        source: apps/nizam/features/account/components/account-page.tsx:247
+      SIGN_OUT:
+        target: handed_over.sign_out
+        starts: { flow: realm.auth.signOut, given: { app: "'nizam'", entry: "'confirmationPage'" } }
+        say: "'Çıkış yap' is a link to /auth/signout in the same tab, as from the page: the bubble does not hold it"
+        source: apps/nizam/features/account/components/account-page.tsx:264
+
+  loadFailed:
+    title: The page says a read failed
+    by: human
+    description: >-
+      app/hesap/page.tsx draws, in place of the cards, the h1 "Hesap ve ayarlar" and an Alert (role alert) titled "Hesabınız
+      yüklenemedi" with "Hesap bilgileriniz şu an okunamadı. Sayfayı yenileyerek yeniden deneyin." and a link "Yeniden dene" to /hesap.
+      Nothing else of the page is drawn: the time-zone card, the e-mail and "Çıkış yap" go with it, and that link is the only one to
+      the sign-out confirmation in nizam (NIZSET-4). The retry meets the same answer until the outage ends, which the graph draws as
+      lasting. The stack cannot make a read fail: this state is not walked.
+    source: apps/nizam/app/hesap/page.tsx:30
+    on:
+      RETRY: { target: readingProfile, say: "'Yeniden dene' is a link to /hesap: the page is asked for again", source: apps/nizam/app/hesap/page.tsx:36 }
+      NAVIGATE: { target: left, say: "they go on to another page by the frame", source: apps/nizam/components/shell/shell-frame.tsx:159 }
+
+  handed_over.sign_out:
+    type: final
+    title: The sign-out confirmation is opened
+    description: >-
+      The link leads to /auth/signout in the same tab and the person is asked "Çıkış yapılsın mı?"; realm.auth.signOut draws the way
+      (its scenario nizamFromHesap).
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    description: "The server action answered 'unauthenticated': sign-in, and back to /hesap, with no toast (realm.auth.sessionEnded)."
+  left:
+    type: final
+    title: The person leaves Hesap
+    leavesPage: true
+
+assertions:
+  - id: a-failed-read-draws-no-page
+    never: "state == 'settings' and read != 'ok'"
+    say: "The cards are drawn only when all three reads answered: any failure replaces the whole page"
+    source: apps/nizam/features/account/reads.ts:34
+  - id: the-second-list-needs-its-opening
+    never: "state == 'choosingListed' and box != 'shown'"
+    say: "The second list is open only while it is drawn, that is, while 'Diğer…' is chosen or a zone outside the eight was held at load"
+    source: apps/nizam/features/account/components/time-zone-form.tsx:101
+  - id: a-held-zone-is-never-saved
+    never: "state == 'savingZone' and zoneHeld"
+    say: "Choosing the zone that is already held sends nothing: choose() returns first"
+    source: apps/nizam/features/account/components/time-zone-form.tsx:51
+  - id: the-star-is-the-imams
+    never: "state == 'starOpen' and holds != 'hocaImam'"
+    say: "The star's bubble opens only for a hoca who is the imam of a course with more than one hoca"
+    source: libs/ui/src/lib/imam-star.ts:14

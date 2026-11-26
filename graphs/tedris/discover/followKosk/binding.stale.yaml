@@ -1,0 +1,57 @@
+# tedris.discover.followKosk, the stale page of finding F-5, on the local stack: `applicantA` has Keşfet open, a nazım hides the köşk, and
+# the follow button still works.
+#   node apps/engine/src/cli.ts replay graphs/tedris/discover/followKosk --bind graphs/tedris/discover/followKosk/binding.stale.yaml --to list_without_kosk --out <dir>
+#
+# NOT RUN as a replay: the three runs of this phase went to the main story. What it rests on was run on its own, under the replay lock, by a
+# helper and a one-off browser probe: the helpers (make, hide, remove), the API's answers to the stale follow (GET 404, POST 201 true, the row),
+# and the card leaving Keşfet after the follow. Keşfet is opened searched for the köşk, as binding.yaml does.
+#
+# A file of its own because the scenario has the same `given` as the main story's (the flow has no case variable: what the world did is
+# the shown-state variable `world`, set by KOSK_HIDDEN), and a replay takes the first scenario of a file whose `given` fits.
+#
+# What the walk makes and takes away. `setup` opens a köşk of its own, "Örnek Misafir Köşkü" (short name ornek-misafir), as the başnazım
+# (POST /kosks, helpers in spare-kosk.mjs), so that Keşfet lists a third card; the walk hides it as the başnazım while the page is open
+# (KOSK_HIDDEN, POST /kosks/:id/hide), presses "Takip et" on the stale card, and the API takes the follow (F-5). `teardown` deletes the köşk
+# with its followers (helpers/remove-kosk.mjs: DELETE /kosks/:id, the başnazım's alone, which also deletes the follow row), so the seed's
+# köşks and follow counts are untouched. `setup` removes an earlier köşk with that short name first. No SQL except the `effects` check.
+# The `effects` below are the evidence for F-5: after the API's DONE the follow row of a köşk the page no longer lists is there.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.discover.followKosk
+
+scenarios:
+  hiddenMeanwhile:
+    as: applicantA
+    open: '{tedris}/discover?q=Misafir'
+    samples: { kosk: Örnek Misafir Köşkü }
+    vars: { handle: ornek-misafir, koskName: Örnek Misafir Köşkü }
+    setup:
+      - run: [node, ../tedris/discover/followKosk/spare-kosk.mjs, make, '{handle}', Örnek Misafir Köşkü]
+        expect: 'spare-kosk made ornek-misafir'
+    teardown:
+      - run: [node, helpers/remove-kosk.mjs, '{handle}']
+
+events:
+  # the second person, in nizam: the köşk's nazım (or the başnazım) takes "Köşkü gizle". Done by the API, as the başnazım.
+  KOSK_HIDDEN:
+    - run: [node, ../tedris/discover/followKosk/spare-kosk.mjs, hide, '{handle}']
+      expect: 'spare-kosk hidden ornek-misafir'
+
+states:
+  cardFollowing: { call: '{tedris}/discover**' }
+
+effects:
+  # F-5: the API answered true to the follow of a hidden köşk, and the row is there
+  followKosk:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from kosk_followers f join kosks k on k.id = f.kosk_id where f.user_id = '{secret.E2E_APPLICANT_A_SUB}' and k.handle = '{handle}' and k.archived_at is not null"
+      expect: '"n":1'
+
+nodes:
+  discoverPage: { css: 'main:has(input[type=search])' }
+  cardLink: { role: link, name: '{koskName}' }
+  cardFollowButton: { role: button, name: 'Takip et: {koskName}' }
+  cardUnfollowButton: { role: button, name: 'Takip ediliyor: {koskName}' }

@@ -1,0 +1,161 @@
+# The screens of nizam.home.medarisNazimCut: nizam-web's Ana sayfa ("/") as a Medaris nazımı reads it (features/dashboard/components/
+# medaris-home.tsx, its `data-testid="home-medaris"` branch), the shell's sidebar around it (components/shell/shell-frame.tsx,
+# lib/shell-nav.ts) and the screen of a page she may not open (components/errors/no-access.tsx). Read from the code on 15 Nov 2026.
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/nizam.json, the key being the path in
+# that file (the app reads it as `nizam.<Namespace>…`). The two `composed.*` keys are NOT in any i18n file: they are the greeting's
+# paragraph, which the app builds from two messages and writes into one <p data-testid="home-greeting"> (medaris-home.tsx:302-305:
+# `{greeting} {total > 0 ? pending : pendingNone}`), written here with their placeholders so a replay can match them (a placeholder
+# with no sample matches any text). Samples are invented and neutral.
+#
+# What the page cuts, and by what: tedrisat's `sectionsFor` (apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts) turns a code
+# into a section, the shell's ITEM_PERMISSIONS (lib/shell-nav.ts:282) turns a code into a menu entry, and a section tedrisat sends as
+# `null` is not rendered at all (`data.latestDeckRequests ? <HomeSection/> : null`), so an absent card is absent from the DOM, not hidden.
+#   platform.kosk_application_decide  the applications card, the menu's "Köşk başvuruları", a share of the greeting's number
+#   platform.deck_publish             the deck requests card, "Deste yayın istekleri", a share of the number
+#   platform.appeal_decide            a share of the number and nothing else: no card, no menu entry (MCUT-2, F-X-12)
+#   platform.ban_account              the permanent-ban card, "Kalıcı yasak talepleri", the bans card, "Yasaklamalar"
+#   platform.ban_scoped               the bans card and "Yasaklamalar"
+#   platform.inactive_scopes_manage   the passive scopes card and no menu entry (F-X-12)
+#   madrasah_create | head_muderris_manage | madrasah_edit   "Medreseler"
+#   kosk_create | kosk_nazim_manage | kosk_edit | hosting_grant   "Köşkler" (and never "Köşk aç": can.openKosk is the başnazım's)
+# The nodes marked "never" have `when: "false"`: the graph says no Medaris nazımı is ever shown them, so a replay with --absent checks
+# they are not in the page (e2e dashboard#8 assertions 4, 5, 6 and 7, and dashboard#9).
+schema: delurio-graph/0
+kind: ui
+id: nizam.home.medarisNazimCut
+flow: nizam.home.medarisNazimCut
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Esma
+  count: "1"
+  givers: Örnek Kişi
+  date: 3 Kasım 2026
+  names: Örnek Medrese
+  application: Örnek Köşk
+  deck: Örnek Deste
+
+nodes:
+  # ---- the frame: <main>, the sidebar and what is in it ----
+  page: { type: page, component: Page, role: main, in: [homeShown, homeStale, homeCut, noAccess], source: libs/ui/src/mds/app-shell.tsx:41 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  menu: { type: page, component: Page, role: navigation, name: { key: Shell.nav }, in: [homeShown, homeStale, homeCut, noAccess], source: libs/ui/src/mds/app-shell.tsx:98 } # the sidebar's <nav aria-label>; below 768 px the same menu is a sheet (nizam.shell.menuPerPersona)
+  roleLine: { type: text, component: Text, text: { key: Shell.roles.medaris }, in: [homeShown, homeStale, homeCut, noAccess], source: apps/nizam/components/shell/shell-frame.tsx:165 } # the line under her name in the person row
+
+  # group captions go with their last entry: a group with no entry left is not drawn
+  groupGeneral: { type: text, component: Text, text: { key: Shell.groups.general }, in: [homeShown, homeStale, homeCut, noAccess], source: apps/nizam/components/shell/shell-frame.tsx:124 }
+  groupPlatform: { type: text, component: Text, text: { key: Shell.groups.platform }, in: [homeShown, homeStale, homeCut, noAccess], when: platformGroup, source: apps/nizam/lib/shell-nav.ts:180 }
+  groupRequests: { type: text, component: Text, text: { key: Shell.groups.requests }, in: [homeShown, homeStale, homeCut, noAccess], when: requestsGroup, source: apps/nizam/lib/shell-nav.ts:181 }
+  groupAudit: { type: text, component: Text, text: { key: Shell.groups.audit }, in: [homeShown, homeStale, homeCut, noAccess], when: bansHeld, source: apps/nizam/lib/shell-nav.ts:186 }
+
+  # the entries every nazım has, and the ones a code opens
+  menuHome: { type: action, component: LinkButton, role: link, text: { key: Shell.items.home }, in: [homeShown, homeStale, homeCut, noAccess], source: apps/nizam/lib/shell-nav.ts:62 }
+  menuNotifications: { type: action, component: LinkButton, role: link, text: { key: Shell.items.notifications }, in: [homeShown, homeStale, homeCut, noAccess], source: apps/nizam/lib/shell-nav.ts:63 } # a number and a hidden "okunmamış" follow the name when something is unread
+  menuMadrasahs: { type: action, component: LinkButton, role: link, text: { key: Shell.items.madrasahs }, in: [homeShown, homeStale, homeCut, noAccess], when: madrasahsHeld, source: apps/nizam/lib/shell-nav.ts:79 }
+  menuKosks: { type: action, component: LinkButton, role: link, text: { key: Shell.items.kosks }, in: [homeShown, homeStale, homeCut, noAccess], when: kosksHeld, source: apps/nizam/lib/shell-nav.ts:85 }
+  menuApplications: { type: action, component: LinkButton, role: link, text: { key: Shell.items.koskApplications }, in: [homeShown, homeStale, homeCut, noAccess], when: appsHeld, source: apps/nizam/lib/shell-nav.ts:104 }
+  menuDecks: { type: action, component: LinkButton, role: link, text: { key: Shell.items.deckRequests }, in: [homeShown, homeStale, homeCut, noAccess], when: decksHeld, source: apps/nizam/lib/shell-nav.ts:110 }
+  menuPermanentBans: { type: action, component: LinkButton, role: link, text: { key: Shell.items.permanentBans }, in: [homeShown, homeStale, homeCut, noAccess], when: accountBans, emits: OPEN_PERMANENT_BANS, source: apps/nizam/lib/shell-nav.ts:122 } # its page does not exist: "Sayfa bulunamadı" (F-P0-4)
+  menuBans: { type: action, component: LinkButton, role: link, text: { key: Shell.items.bans }, in: [homeShown, homeStale, homeCut, noAccess], when: bansHeld, source: apps/nizam/lib/shell-nav.ts:133 }
+
+  # never in a Medaris nazımı's menu, whatever she holds (they are the başnazım's entries; ITEM_PERMISSIONS lists six of them and medarisGroups none, F-X-12)
+  menuNazims: { type: action, component: LinkButton, role: link, text: { key: Shell.items.nazims }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:86 } # never
+  menuGrants: { type: action, component: LinkButton, role: link, text: { key: Shell.items.grants }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:92 } # never
+  menuInactive: { type: action, component: LinkButton, role: link, text: { key: Shell.items.inactive }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:93 } # never, though the passive scopes card is hers when she holds the code
+  menuAppeals: { type: action, component: LinkButton, role: link, text: { key: Shell.items.appeals }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:116 } # never, though platform.appeal_decide is hers (MCUT-2)
+  menuAuditLog: { type: action, component: LinkButton, role: link, text: { key: Shell.items.auditLog }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:134 } # never
+  menuArchive: { type: action, component: LinkButton, role: link, text: { key: Shell.items.archive }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:140 } # never
+  menuYoutube: { type: action, component: LinkButton, role: link, text: { key: Shell.items.youtube }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:146 } # never
+  menuPlatformSettings: { type: action, component: LinkButton, role: link, text: { key: Shell.items.platformSettings }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:152 } # never
+  menuPartners: { type: action, component: LinkButton, role: link, text: { key: Shell.items.partners }, in: [homeShown, homeStale, homeCut, noAccess], when: "false", source: apps/nizam/lib/shell-nav.ts:159 } # never
+
+  # ---- the header: the greeting counts only the queues she may decide ----
+  title: { type: text, component: Heading, role: heading, text: { key: Dashboard.title }, in: [homeShown, homeStale, homeCut], source: apps/nizam/features/dashboard/components/medaris-home.tsx:301 } # h1
+  greetingPending: { type: text, component: Text, text: { key: composed.Dashboard.greetingPending, params: { name: user.givenName, count: pending.total } }, in: [homeShown, homeStale, homeCut], when: anyWaiting, source: apps/nizam/features/dashboard/components/medaris-home.tsx:302 } # "… Bey. Karar bekleyen N talep var." (MCUT-1, MCUT-2)
+  greetingNone: { type: text, component: Text, text: { key: composed.Dashboard.greetingNone, params: { name: user.givenName } }, in: [homeShown, homeStale, homeCut], when: "not anyWaiting", source: apps/nizam/features/dashboard/components/medaris-home.tsx:302 }
+  openKosk: { type: action, component: LinkButton, role: link, text: { key: Dashboard.openKosk }, in: [homeShown, homeStale, homeCut], when: "false", source: apps/nizam/features/dashboard/components/medaris-home.tsx:307 } # never: data.can.openKosk is the başnazım's alone, even for a nazım who holds platform.kosk_create (e2e dashboard#9)
+  passiveAlert: { type: alert, component: Alert, role: status, text: { key: Dashboard.passive.alertBody, params: { names: scope.names } }, in: [homeShown, homeStale, homeCut], when: "false", source: apps/nizam/features/dashboard/components/medaris-home.tsx:315 } # never: the passive warning is drawn in the başnazım's branch only (medaris-home.tsx:330-337)
+
+  # ---- the numbers: the köşk and medrese counts only ----
+  stats: { type: page, component: Page, role: region, name: { key: Dashboard.counts.title }, in: [homeShown, homeStale, homeCut], source: apps/nizam/features/dashboard/components/medaris-home.tsx:250 } # <section aria-label>
+  statKosk: { type: text, component: Text, text: { key: Dashboard.counts.kosk }, in: [homeShown, homeStale, homeCut], source: apps/nizam/features/dashboard/components/medaris-home.tsx:259 }
+  statMadrasah: { type: text, component: Text, text: { key: Dashboard.counts.madrasah }, in: [homeShown, homeStale, homeCut], source: apps/nizam/features/dashboard/components/medaris-home.tsx:271 }
+  statCourse: { type: text, component: Text, text: { key: Dashboard.counts.course }, in: [homeShown, homeStale, homeCut], when: "false", source: apps/nizam/features/dashboard/components/medaris-home.tsx:283 } # never: platformCounts.course is null for a nazım (courseNumbers is chief only)
+  statStudents: { type: text, component: Text, text: { key: Dashboard.counts.students }, in: [homeShown, homeStale, homeCut], when: "false", source: apps/nizam/features/dashboard/components/medaris-home.tsx:292 } # never: enrolledStudents is null for a nazım
+  goKosks: { type: action, component: LinkButton, role: link, text: { key: Dashboard.counts.goKosks }, in: [homeShown, homeStale, homeCut], when: "false", source: apps/nizam/features/dashboard/components/medaris-home.tsx:265 } # never: the links under the numbers are the başnazım's (`chief ? <a>`)
+  goMadrasahs: { type: action, component: LinkButton, role: link, text: { key: Dashboard.counts.goMadrasahs }, in: [homeShown, homeStale, homeCut], when: "false", source: apps/nizam/features/dashboard/components/medaris-home.tsx:277 } # never
+
+  # ---- the cards: one for each queue a code opens, and none for any other ----
+  applicationsCard: { type: page, component: Page, role: region, name: { labelledBy: applicationsTitle }, in: [homeShown, homeStale, homeCut], when: appsHeld, source: apps/nizam/features/dashboard/components/home-parts.tsx:24 }
+  applicationsTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.applications.title }, in: [homeShown, homeStale, homeCut], when: appsHeld, source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  applicationsAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.seeAll }, in: [homeShown, homeStale, homeCut], when: appsHeld, emits: OPEN_APPLICATIONS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:63 } # "Tümünü gör": the same words on three cards, so the binding finds it inside its card
+  applicationsEmpty: { type: text, component: Text, text: { key: Dashboard.applications.empty }, in: [homeShown, homeStale, homeCut], when: "appsHeld and applications == 'empty'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:69 }
+  reviewApplication: { type: action, component: LinkButton, role: link, name: { key: Dashboard.reviewLabel, params: { name: application } }, text: { key: Dashboard.review }, in: [homeShown, homeStale, homeCut], when: appsWaiting, repeat: applications, emits: OPEN_APPLICATIONS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:87 } # a row of the card (name, field, applicant, moment: nizam.home.chiefOverview); /talepler/kosk-basvurulari?secili=<id>
+
+  decksCard: { type: page, component: Page, role: region, name: { labelledBy: decksTitle }, in: [homeShown, homeStale, homeCut], when: decksHeld, source: apps/nizam/features/dashboard/components/home-parts.tsx:24 }
+  decksTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.decks.title }, in: [homeShown, homeStale, homeCut], when: decksHeld, source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  decksAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.seeAll }, in: [homeShown, homeStale, homeCut], when: decksHeld, emits: OPEN_DECKS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:107 }
+  decksEmpty: { type: text, component: Text, text: { key: Dashboard.decks.empty }, in: [homeShown, homeStale, homeCut], when: "decksHeld and decks == 'empty'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:113 }
+  reviewDeck: { type: action, component: LinkButton, role: link, name: { key: Dashboard.reviewLabel, params: { name: deck } }, text: { key: Dashboard.review }, in: [homeShown, homeStale, homeCut], when: decksWaiting, repeat: decks, emits: OPEN_DECKS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:131 } # /talepler/deste-yayin-istekleri?secili=<id>
+
+  permanentBansCard: { type: page, component: Page, role: region, name: { labelledBy: permanentBansTitle }, in: [homeShown, homeStale, homeCut], when: accountBans, source: apps/nizam/features/dashboard/components/medaris-home.tsx:149 }
+  permanentBansTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.permanentBans.title }, in: [homeShown, homeStale, homeCut], when: accountBans, source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  permanentBansEmpty: { type: text, component: Text, text: { key: Dashboard.permanentBans.empty }, in: [homeShown, homeStale, homeCut], when: accountBans, source: apps/nizam/features/dashboard/components/medaris-home.tsx:150 } # always this sentence: the model does not exist (F-W1-15)
+
+  passiveCard: { type: page, component: Page, role: region, name: { labelledBy: passiveTitle }, in: [homeShown, homeStale, homeCut], when: passiveHeld, source: apps/nizam/features/dashboard/components/medaris-home.tsx:155 }
+  passiveTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.passive.title }, in: [homeShown, homeStale, homeCut], when: passiveHeld, source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  passiveAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.seeAll }, in: [homeShown, homeStale, homeCut], when: passiveHeld, emits: OPEN_PASSIVE, source: apps/nizam/features/dashboard/components/medaris-home.tsx:158 } # its rows and their "Köşk nazımı ata" buttons, which all go to the same address (F-W1-10), are nizam.home.chiefOverview's
+
+  bansCard: { type: page, component: Page, role: region, name: { labelledBy: bansTitle }, in: [homeShown, homeStale, homeCut], when: bansHeld, source: apps/nizam/features/dashboard/components/medaris-home.tsx:215 }
+  bansTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.bans.title }, in: [homeShown, homeStale, homeCut], when: bansHeld, source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  bansAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.bans.goTo }, in: [homeShown, homeStale, homeCut], when: bansHeld, emits: OPEN_BANS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:243 } # a plain <a>, not a button
+
+  # ---- "İzinleriniz": what the başnazım gave her ----
+  grantsCard: { type: page, component: Page, role: region, name: { labelledBy: grantsTitle }, in: [homeShown, homeStale, homeCut], source: apps/nizam/features/dashboard/components/medaris-home.tsx:390 }
+  grantsTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.grants.title }, in: [homeShown, homeStale, homeCut], source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  grantsFailed: { type: alert, component: Alert, role: alert, text: { key: Dashboard.grants.loadFailedTitle }, in: [homeShown, homeStale, homeCut], when: "read == 'grantsFailed'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:392 } # an error Alert: announced; no retry button
+  grantsFailedText: { type: text, component: Text, text: { key: Dashboard.grants.loadFailed }, in: [homeShown, homeStale, homeCut], when: "read == 'grantsFailed'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:393 }
+  grantsEmpty: { type: text, component: Text, text: { key: Dashboard.grants.empty }, in: [homeShown, homeStale, homeCut], when: grantsEmpty, source: apps/nizam/features/dashboard/components/medaris-home.tsx:396 }
+  # one card for each single permission the scenarios give her: the bold title of the permission, from PermissionCatalog (a code the
+  # flow does not draw has a card too: the seeded nazım holds five, and the list is not complete here)
+  grantApplications: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_kosk_application_decide.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and appsHeld", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 }
+  grantDecks: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_deck_publish.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and decksHeld", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 }
+  grantAppeals: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_appeal_decide.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and appeals != 'none'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 }
+  grantBansScoped: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_ban_scoped.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and bans == 'scoped'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 }
+  grantBansAccount: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_ban_account.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and bans == 'account'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 }
+  grantPassive: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_inactive_scopes_manage.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and passiveHeld", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 }
+  grantMadrasahs: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_madrasah_create.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and madrasahsHeld", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 } # platform.madrasah_create is the code the scenarios give; any of the three that open "Medreseler" has its own card
+  grantKosks: { type: text, component: Text, text: { key: PermissionCatalog.permissions.platform_kosk_create.title }, in: [homeShown, homeStale, homeCut], when: "grantsListed and kosksHeld", source: apps/nizam/features/dashboard/components/medaris-home.tsx:409 } # platform.kosk_create is the code the scenarios give
+  grantsNote: { type: text, component: Text, text: { key: Dashboard.grants.noteOneDay, params: { givers: grantor.names, date: grant.date } }, in: [homeShown, homeStale, homeCut], when: grantsListed, source: apps/nizam/features/dashboard/components/medaris-home.tsx:434 } # "İzinleri Medaris başnazımı {givers} verdi; {date} tarihinde verildi." (MCUT-3 when no giver has a name)
+
+  # ---- the screen for a page that is not hers ----
+  noAccessSection: { type: page, component: Page, role: region, name: { labelledBy: noAccessTitle }, in: [noAccess], source: libs/ui/src/mds/system-state.tsx:33 } # <section aria-labelledby> inside the shell
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:30 } # h1
+  noAccessBody: { type: text, component: Text, text: { oneOf: [NoAccess.body, NoAccess.bodyGeneric] }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:44 } # names the başnazım when the directory knows them, else the general sentence
+  noAccessAccount: { type: text, component: Text, text: { key: NoAccess.account }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:34 } # followed, in the same paragraph, by her e-mail in <code>
+  noAccessBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NoAccess.back }, in: [noAccess], emits: BACK_HOME, source: apps/nizam/components/errors/no-access.tsx:38 }
+
+edges:
+  - { labelledBy: [applicationsCard, applicationsTitle] }
+  - { labelledBy: [decksCard, decksTitle] }
+  - { labelledBy: [permanentBansCard, permanentBansTitle] }
+  - { labelledBy: [passiveCard, passiveTitle] }
+  - { labelledBy: [bansCard, bansTitle] }
+  - { labelledBy: [grantsCard, grantsTitle] }
+  - { labelledBy: [noAccessSection, noAccessTitle] }
+
+rules:
+  - { id: focus-not-set, rule: "Ana sayfa sets no initial focus (no autoFocus and no focus() in features/dashboard or app/(home)), neither on a first load nor after a reload, and the screen for a page she may not open sets none either (only NoRolePage uses FocusHeading). The page nodes have no `initialFocus`, so the graph says nothing of the focus; recorded so the silence is not read as an omission. The inventory does not call it a finding." }
+  - { id: F-W1-15, rule: "The permanent-ban card is drawn for a nazım who holds platform.ban_account and always says \"Bekleyen kalıcı yasak talebi yok.\" (medaris-home.tsx:147-152), because tedrisat sends the constant 0 (nizam-dashboard.service.ts:83-85: the model does not exist), and the menu entry \"Kalıcı yasak talepleri\" leads to /talepler/kalici-yasak, which has no route, so it answers \"Sayfa bulunamadı\" (lib/shell-nav.ts:122-127). Fix: hide both until the feature exists, or say it is not available yet. The walk presses the entry: the exit permanent_bans_opened." }
+  - { id: F-P0-4, rule: "The same missing page seen from the menu: lib/shell-nav.ts:125 points at a path no route answers (F-X-11 groups it with the card of F-W1-15). Carried here only as the exit permanent_bans_opened." }
+  - { id: F-X-12, rule: "The menu and the permission map disagree: ITEM_PERMISSIONS names appeals, audit-log, inactive, youtube, platform-settings and partners (lib/shell-nav.ts:282-306) and medarisGroups holds none of them (:178-187), so a nazım who holds platform.inactive_scopes_manage gets a passive scopes card with links into /pasif-kapsamlar and no menu entry for it, and one who holds platform.appeal_decide or audit_read has no entry at all. The `never` menu nodes record what the code does. Fix: decide the menu each permission is meant to open and align medarisGroups, kosk-abilities.ts and tedrisat." }
+  - { id: F-W1-10, rule: "The buttons that promise an action on a card row (\"Köşk nazımı ata\", \"Başmüderris ata\", \"Hoca ata\") are links to a list, the same address for every row, and \"İncele\" opens the list with ?secili=. Carried from nizam.home.chiefOverview: the rows are drawn there; here only the cards' own links are." }
+  - { id: F-W1-12, rule: "The köşk application rows name the application's field with FIELD_LABELS, hard-coded Turkish in code and not in the catalog (features/platform-admin/present.ts:51-65, read by medaris-home.tsx:81). The rows are not drawn here (nizam.home.chiefOverview); recorded because a nazım's card carries them too." }
+  - { id: MCUT-1, rule: "The greeting says \"Selâmün aleyküm, {name} Bey.\" to every Medaris nazımı (Dashboard.greeting, medaris-home.tsx:55-57): the honorific is in the catalog, not derived from the person. The stack's own Medaris nazımı is a woman and the story's persona is \"she\", so she is read \"Bey\". The registration form asks for the gender (required), so the data exists. Fix: derive the form from the profile's gender, or greet with the name alone. Proposed id (the inventory calls the sentence an observation, and asks the owner in its open questions); the same sentence is on the başnazım's page (nizam.home.chiefOverview, D1)." }
+  - { id: MCUT-2, rule: "A nazım who holds platform.appeal_decide has \"Karar bekleyen N talep var.\" counting the waiting appeals (pendingTotal adds pendingTotals.appeals, present.ts:29-36) while the page has no card for appeals (medaris-home.tsx has no appeals section) and the menu no İtirazlar entry (medarisGroups, F-X-12): the number counts something she cannot reach from any page, only by typing /talepler/itirazlar. The başnazım has the entry; the nazım does not (the same count with no card is CHIEF-1 in nizam.home.chiefOverview). Fix: an İtirazlar card and menu entry for platform.appeal_decide, or leave appeals out of the sum. Proposed id; the flow's decision D2." }
+  - { id: MCUT-3, rule: "The footnote under \"İzinleriniz\" reads \"İzinleri Medaris başnazımı {givers} verdi\" and, when no giver has a name (grantedBy.displayName is null for every card), fills {givers} with Dashboard.grants.chief, which is \"Medaris başnazımı\" again: \"İzinleri Medaris başnazımı Medaris başnazımı verdi; … tarihinde verildi.\" (medaris-home.tsx:435-440, the keys' texts). The fallback was written for a sentence that does not already name the title. Fix: make the fallback the whole sentence (\"İzinleri Medaris başnazımı verdi; …\"), or fill {givers} with a person's name only. Proposed id; not reproduced (needs a giver the directory cannot name)." }
+  - { id: MCUT-4, rule: "Observation, not a defect, from the code: the dashboard answers null for each queue the viewer may not see, but the numbers under \"Platform sayıları\" are the platform's own and the \"Biri pasif\" caption under Medrese counts the passive medreses for a nazım who does not hold platform.inactive_scopes_manage (nizam-dashboard.service.ts:91, inactiveMadrasah is computed from the unfiltered InactiveScopeService.brief() read at :67). The names and the card are cut; the number is not. The domain's own description calls these four fields always present, so it may be intended. Proposed id." }
+  - { id: section-needs-a-code, rule: "a card, a menu entry and a grant are drawn only for a permission she holds, and a section she does not hold is not in the DOM (tedrisat sends it as null and the page renders nothing for it), not hidden by a style: e2e dashboard#8 asserts toHaveCount(0)" }
+  - { id: label-in-name, rule: "a link's visible text is contained in its accessible name (WCAG 2.5.3): \"İncele\" is in \"İncele: {name}\"" }

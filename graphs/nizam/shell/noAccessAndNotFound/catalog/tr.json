@@ -1,0 +1,12 @@
+{
+  "NoAccess.title": "Bu bölüm için izniniz yok",
+  "NoAccess.body": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse şu kişiden isteyin: {name}.",
+  "NoAccess.bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
+  "NoAccess.account": "Giriş yaptığınız hesap:",
+  "NoAccess.back": "Ana sayfaya dön",
+  "PageNotFound.title": "Sayfa bulunamadı",
+  "PageNotFound.body": "Bu adreste bir sayfa yok. Adresi denetleyin ya da ana sayfadan devam edin.",
+  "PageNotFound.back": "Ana sayfaya dön",
+  "Shell.nav": "Ana menü",
+  "composed.NoAccess.email": "{email}"
+}

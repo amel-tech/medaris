@@ -1,0 +1,32 @@
+# nizam.shell.menuPerPersona for a Medaris nazımı the walk appoints, on the local stack, in a wide window (1440 x 900): the spare account
+# applicantE, made a MEDARIS_NAZIM with the five permissions of shell.e2e.ts#10 (platform.madrasah_edit, kosk_edit, kosk_application_decide,
+# deck_publish, ban_account), which open every entry the Medaris menu has: Genel (Ana sayfa, Bildirimler), Platform (Medreseler, Köşkler),
+# Talepler (Köşk başvuruları, Deste yayın istekleri, Kalıcı yasak talepleri) and Denetim (Yasaklamalar), eight entries in four groups, and
+# nothing of the başnazım's alone. The e2e makes the stack's own Medaris nazımı hold them by SQL and gives them back; this walk leaves that
+# persona as the seed made it and uses an account of its own (POST /nizam/medaris-nazims as the başnazım, DELETE the same way: the API
+# revokes the seat and every platform grant of the person in one transaction). `setup` removes the seat first, so a walk that died before its
+# teardown leaves nothing to be refused as "already appointed" (409).
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.nazimWide.yaml \
+#     --to wide --absent --out <dir>
+# What it leaves behind: audit rows (medaris_nazim.appoint, permission.grant and their revokes), which the API has no way to remove.
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  nazimWide:
+    given: { opensAt: wide, who: nazimWide, unread: none, waiting: none }
+    as: applicantE
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}', --any]
+        expect: 'HTTP'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, /nizam/medaris-nazims, '{"userId":"{secret.E2E_APPLICANT_E_SUB}","permissions":["platform.madrasah_edit","platform.kosk_edit","platform.kosk_application_decide","platform.deck_publish","platform.ban_account"]}']
+        expect: '"appointedAt"'
+    teardown:
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}', --any]
+        expect: 'HTTP'

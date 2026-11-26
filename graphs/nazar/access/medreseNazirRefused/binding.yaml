@@ -1,0 +1,32 @@
+# nazar.access.medreseNazirRefused on the local stack, the seeded nazır: MEDRESE_NAZIR ("Seher Medrese Nazırı") of "Hadis ve Siyer
+# Medresesi" at http://localhost:4002, who holds no code (the stack's seed appoints them with an empty body).
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/medreseNazirRefused --bind graphs/nazar/access/medreseNazirRefused/binding.yaml --absent --out <dir>
+#   (add --cover transitions to take every menu event, not only the main story)
+# NOT RUN: written without a replay; the locators of binding.common.yaml are from the code.
+#
+# This file is the walk of the e2e checks pano#5, courses#11, offsite#4, archive#8, students#5, nazirs#6, bans#8 and settings#6, and the
+# first walk of İtirazlar's refusal, which no e2e opens. The nazır signs in at nazar-web (every persona does, local.nazar.binding.yaml), lands on
+# the Pano, and the walk takes the nine menu pages in turn and the two typed addresses.
+#
+# What the walk changes. Nothing is made for it: the seeded nazır is the account. `setup` only puts back what a crashed walk of
+# binding.appointer.yaml could have left (the nazır's one grant, and the person that nazır seated), so that this walk starts from the
+# seed whatever came before. Both calls go through tedrisat's HTTP API as the başmüderris (helpers/api.mjs, --any: a 404 for a seat that is
+# not there, or a nazır who holds nothing, is the answer wanted). The person is APPLICANT_H, a spare talebe account with a profile and no
+# enrolment, whom no other walk of this batch uses. Not verified: that PUT with an empty list is accepted as a no-op on a nazır who
+# holds nothing (the domain gives `permissions` no minimum, apps/tedrisat's controller was not run).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.medreseNazirRefused
+
+scenarios:
+  bare:
+    given: { reader: bare }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medresePano menu' }
+    setup:
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_H_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP '

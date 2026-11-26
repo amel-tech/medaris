@@ -1,0 +1,191 @@
+# The page of a celse that its hoca has cancelled (tedris-web /courses/<course>/lessons/<celse>), read from the code of the branch (the tree
+# of PR #394) on 15 Nov 2026 and walked on the local stack. Nothing here is approved.
+#   - What it draws: the one read behind the page (the session), the cancellation card with the müderris's note and the make-up celse (or
+#     the sentence that none is set), what the page leaves out because the celse is cancelled, the link to the make-up celse's page, and
+#     the not-found page a lesson that is not a live celse gets.
+#   - The celse that stands (upcoming, live, over) is tedris.celse.attend; a caller with no seat is tedris.celse.locked. The Müfredat
+#     popup and the previous and next cards are tedris.celse.browseCurriculum.
+#   - Findings it carries: DSC-17 (the note is cut on Programım and read whole here), CLS-01, CLS-03, READKOSK-1
+#     (the same cause, measured on a celse address), and the domain's two for the sessions area, cancel-no-type-check and
+#     lesson-cancelled-text-streams-only. Two e2e checks are stale against the code (session#6 a6 and session#10 a2, see the needs).
+schema: delurio-graph/0
+kind: flow
+id: tedris.celse.cancelled
+status: captured
+domain: medaris.api
+ui: tedris.celse.cancelled
+title: Read a cancelled celse
+summary: >-
+  An enrolled talebe opens the address of a celse that the hoca cancelled (from Programım, from the course's programme, from a notification,
+  or by link) and finds the celse still in its place: "İptal edildi" in the header and over the date, the card "Bu celse iptal edildi", the
+  hoca's note when one was written, and either the make-up celse with its day and a link to its page, or the line that says the hoca will
+  set a new time and that it will show in Programım. There is no meeting link, no "Takvime ekle", no notes panel, no homework and no exam: the
+  API sends no link for a cancelled celse and the page draws the rest only for a celse that stands. The make-up link is an ordinary link to
+  the make-up celse's own page.
+source: apps/tedris/features/courses/components/session-page.tsx
+
+scope:
+  shows: the cancelled celse's page for a seat holder, the one read behind it, the make-up link and the not-found page of a lesson that is no live celse
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a celse that is not cancelled (tedris.celse.attend) and a caller who may not read the course's content, who gets the locked card with no note and no link (tedris.celse.locked)"
+    - "the agenda and the resources, which the page draws for a cancelled celse as for any other when it has them (nothing in session-page.tsx:296-334 looks at the cancellation), and the previous and next cards and the Müfredat popup, which marks this celse \"İptal edildi\" (tedris.celse.browseCurriculum)"
+    - "the in-person variant of the eyebrow (\"Yüz yüze\" in place of \"Canlı ders\") and the second line of the header meta that gives the viewer's own time when it differs from the course's"
+    - "the course read and the köşk read the page also makes: a 400, 403 or 404 of the course is the not-found page, a 5xx of the course or the köşk is the app's error page, a missing köşk only drops the first crumb"
+    - "a celse that held a recording when it was cancelled: its card is the cancellation card, and the recording is reached from the course's Ders kayıtları tab (decision D1)"
+    - "the notification and the calendar mail that tell the talebe of the cancellation (tedris.account.notifications, tedris.learning.addToCalendar); they are made by cancelLesson, not drawn by this page"
+
+decisions:
+  D1:
+    question: >-
+      A celse that already held a recording when it was cancelled shows only the cancellation card: no "Kaydı izle", although its watch
+      page opens and plays the recording and the Müfredat row says "Kayıt var". Should the card offer the recording?
+    recommend: >-
+      Yes, as a link under the cancellation text. The page tells a talebe the celse was cancelled and says nothing of a recording they
+      could watch; today they find it only through the course's Ders kayıtları tab. Measured on the stack with a celse recorded and then
+      cancelled: the card is `data-case="cancelled"`, there is no link to /izle on the page, the course's recordings tab has one and
+      /izle opens (watch-model.ts:42-46 says so in a comment, session-action-card.tsx's actionCaseOf checks the cancellation first).
+    affects: [cancelledShown]
+
+context:
+  lesson:
+    values: [session, missing, unreadable]
+    initial: any
+    say:
+      session: "the address is a LIVE celse of a course the person may read, and it is cancelled"
+      missing: "the address is no live celse: a lesson of another type (a cancelled video lesson, say), an archived one, one of another course, or a course the person may not see (404)"
+      unreadable: "the session read fails in any other way (a 5xx, a timeout): the page cannot tell it from a missing celse (CLS-01)"
+  makeUp:
+    values: [planned, none]
+    initial: any
+    say:
+      planned: "the hoca named a make-up celse that has a time"
+      none: "the hoca named none, or a make-up with no time yet"
+  note:
+    values: [written, none]
+    initial: any
+    say:
+      written: "the hoca wrote a note when cancelling (up to 500 characters)"
+      none: "the hoca wrote none (a blank note is none)"
+
+guards:
+  makeUpPlanned: "makeUp == 'planned'"
+  noteWritten: "note == 'written'"
+
+failures:
+  readingSession: { from: getSession, missing: [HTTP_400, COURSE_NOT_FOUND, LESSON_NOT_FOUND], unreadable: [] }
+# `unreadable` stands for any answer but those: the page maps every failure of the session read to the not-found page (public-reads.ts:50).
+
+# The main story: a talebe opens a celse the hoca cancelled with a note and a make-up, reads them, and follows the link to the make-up celse.
+main:
+  given: { lesson: session, makeUp: planned, note: written }
+  events: [DONE, OPEN_MAKEUP]
+
+initial: readingSession
+states:
+  readingSession:
+    title: Read the celse
+    description: >-
+      The layout reads GET /courses/{courseId}/sessions/{sessionId} for the signed-in caller before the page streams (layout.tsx:25) and the
+      page reads it again from the same per-request cache, beside GET /courses/{id} and, for the first crumb, GET /kosks/{id}. For a cancelled
+      celse the answer has status CANCELLED, a null meetingUrl even for a content reader, the hoca's note as cancelReason (a content key, so
+      only for a caller who may read the course), and the make-up as a reference (id, title, week, startsAt). The graph draws the one read.
+    includes: ["the cancelled status, the note and the make-up come from the one answer", "the meeting link is never part of it: null for a cancelled celse, even to a reader of the content"]
+    source: apps/tedris/features/courses/public-reads.ts:93
+    invoke: { action: getSession }
+    on:
+      DONE: { guard: "lesson == 'session'", target: cancelledShown, say: "the celse is cancelled and the caller reads its content" }
+      FAIL.missing:
+        guard: "lesson == 'missing'"
+        target: notFound
+        starts: { flow: tedris.shell.systemPages }
+        say: "the read answers 400, 404 (the lesson is no live celse) or the course is not the caller's to see: the page is the not-found page"
+        source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27"
+      FAIL.unreadable:
+        guard: "lesson == 'unreadable'"
+        target: notFound
+        starts: { flow: tedris.shell.systemPages }
+        say: "any other failure is turned into null as well, so it is the same not-found page (CLS-01)"
+        source: apps/tedris/features/courses/public-reads.ts:50
+
+  cancelledShown:
+    title: Read the cancelled celse
+    by: human
+    goal: true
+    description: >-
+      The page's one column: the breadcrumb (köşk, course, "Hafta n"), the eyebrow "Hafta n · k. celse", the title, the outline badge "İptal
+      edildi" on the right, the meta line (day and hours, length, the hoca), then the card the page keeps for the cancellation
+      (`data-case="cancelled"`): the date block (the weekday, the day, the hours and the caption "İptal edildi"), the eyebrow "Canlı ders",
+      the heading "Bu celse iptal edildi", then one line. The line is the hoca's note "Hocanın notu: …" when there is one, shown whole on its
+      own row (`whitespace-pre-line`, the place the note is read in full: DSC-17 is the one-line cut of it on Programım), followed by either
+      "Telafi celsesi: <day and time>." and the link "Telafi celsesine git", or "Hoca yeni bir zaman belirlerse onu Programım’da görürsün."
+      when no make-up with a time is set. The footnote says "Bu celse için toplantı bağlantısı yok." The page draws no join button, no
+      platform chip, no "Bağlantıyı göster", no "Takvime ekle", no exam card, no "Notlarım" and no "Ödev": each of the last four is guarded
+      by `!cancelled` and the calendar menu by the upcoming state. Nothing moves the focus (focus-not-set), the tab is titled "Medaris Tedris"
+      (CLS-03). The recording a cancelled celse may hold is not offered here (D1).
+    source: apps/tedris/features/courses/components/session-page.tsx:75
+    on:
+      OPEN_MAKEUP:
+        guard: makeUpPlanned
+        target: makeUpPage
+        starts: { flow: tedris.celse.attend }
+        say: "\"Telafi celsesine git\" is a plain link: the make-up celse's own page loads"
+        source: apps/tedris/features/courses/components/session-page.tsx:179
+      OPEN_KOSK:
+        target: kosk_opened
+        starts: { flow: tedris.discover.readKosk }
+        say: "the first crumb, the köşk's name (dropped when the köşk read fails)"
+        source: apps/tedris/features/courses/session-join-labels.ts:112
+      OPEN_COURSE:
+        target: course_opened
+        starts: { flow: tedris.course.readProgramme }
+        say: "the second crumb, the course's title"
+        source: apps/tedris/features/courses/session-join-labels.ts:114
+      NAVIGATE: { target: left, say: "they go on to another page: Programım, the previous or the next celse, the Müfredat" }
+
+  makeUpPage:
+    title: The make-up celse's page
+    by: human
+    description: >-
+      The make-up is an ordinary celse of the same course, so this is the page of tedris.celse.attend; only what the cancelled page lacks is
+      drawn here, so that a replay can tell the two apart: the make-up's own title, the button "Takvime ekle" while it is upcoming and the panel
+      "Notlarım" for a seat holder. The cancellation card, the badge "İptal edildi" and the footnote are gone with the cancelled celse's title.
+    source: apps/tedris/features/courses/components/session-page.tsx:132
+    on:
+      OPEN_KOSK: { target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the first crumb", source: apps/tedris/features/courses/session-join-labels.ts:112 }
+      OPEN_COURSE: { target: course_opened, starts: { flow: tedris.course.readProgramme }, say: "the second crumb", source: apps/tedris/features/courses/session-join-labels.ts:114 }
+      NAVIGATE: { target: left, say: "they go on from the make-up celse" }
+
+  notFound:
+    title: The not-found page
+    by: human
+    description: >-
+      A lesson that is no live celse is the app's not-found page, "Sayfa bulunamadı" with "Ana sayfaya dön", as is a failed read (CLS-01). That
+      includes a cancelled video, document or quiz lesson: cancelLesson has no lesson-type check (domain invariant
+      session-cancel-takes-live-sessions-only, finding cancel-no-type-check), so the hoca can cancel such a lesson, the course's programme then
+      lists it as "İptal edildi" with a link to this address, and getSession answers 404 LESSON_NOT_FOUND (measured on the stack). The
+      page has no `<main>` landmark here: /courses/<id>/… is among the routes the shell leaves to draw their own main (tab-view/index.tsx:21), and
+      NotFoundState draws a section (READKOSK-1, the same cause as on a köşk address, measured on a celse address too).
+    source: apps/tedris/features/errors/system-page.tsx:43
+    on:
+      GO_HOME: { target: home_opened, starts: { flow: tedris.shell.home }, say: "\"Ana sayfaya dön\" goes to Ana sayfa" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  kosk_opened: { type: final, title: The köşk's page opens }
+  course_opened: { type: final, title: The course's page opens }
+  home_opened: { type: final, title: Ana sayfa opens }
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: cancelled-page-only-for-a-read-celse
+    never: "state == 'cancelledShown' and lesson != 'session'"
+    say: "The cancellation card is drawn only when the session read answered with a celse"
+    source: apps/tedris/features/courses/components/session-page.tsx:75
+  - id: not-found-only-for-a-failed-read
+    never: "state == 'notFound' and lesson == 'session'"
+    say: "The not-found page is drawn only when the session read failed; a celse that was read is never turned away"
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:21"
+  - id: make-up-page-only-through-a-make-up
+    never: "state == 'makeUpPage' and makeUp != 'planned'"
+    say: "The link to a make-up celse exists only when the hoca set one with a time"
+    source: apps/tedris/features/courses/components/session-page.tsx:164

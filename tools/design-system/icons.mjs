@@ -57,7 +57,11 @@ function bail() {
 // [data-weight="fill"]>` holding only `<path d="…"/>` elements. An id ending
 // in -fill is the filled twin of the id without it.
 function readSprite(file) {
-  const src = fs.readFileSync(file, "utf8").replace(/<!--[\s\S]*?-->/g, "");
+  let src = fs.readFileSync(file, "utf8");
+  for (let prev; prev !== src; ) {
+    prev = src;
+    src = src.replace(/<!--[\s\S]*?-->/g, "");
+  }
   const symbols = new Map();
   for (const m of src.matchAll(/<symbol\b([^>]*)>([\s\S]*?)<\/symbol>/g)) {
     const attrs = Object.fromEntries(

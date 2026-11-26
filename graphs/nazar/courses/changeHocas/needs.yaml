@@ -1,0 +1,169 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.courses.changeHocas
+status: proposed
+summary: "What must exist for the başmüderris of a medrese to change the hocas of one of its courses: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing:  say-why-kaydet-is-off, say-the-search-outcomes, menu-offers-only-what-the-person-may-do,
+# search-only-when-asked
+# unwalked: choose-the-imam, a-refusal-is-told-and-the-dialog-stays (code exists; no e2e and no replay has walked them: this phase
+# runs no replay, and the refusals cannot be made on the local stack)
+
+needs:
+  - id: see-who-teaches
+    need: >-
+      The başmüderris reads, on the row of each course, who teaches it and who the imam is, and the row follows a change of the
+      list at once.
+    evidence:
+      - state: listed
+      - node: rowStarBefore
+      - node: rowStarAfter
+      - state: saved
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:664
+      - source: apps/nazar/features/courses/components/courses-table.tsx:99
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/07 — lists the medrese's courses with their köşk, müderrisler, talebe and state; a hidden course is not there (criteria 1, 3, 4)"
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/17 — the dialog shows the list and keeps Kaydet off until it changes; the second müderris leaves and the row follows (criterion 4)"
+
+  - id: add-a-hoca-by-email
+    need: >-
+      She adds a hoca by the exact e-mail address of their account, which must be in the realm; an address nobody has finds no one
+      and says so, and a person already on the list is not added twice. Each search is written to the audit log.
+    evidence:
+      - state: form
+      - state: looking
+      - node: searchField
+      - node: searchNotFound
+      - node: searchListed
+      - node: searchDown
+      - node: added
+      - node: countThree
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:112
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/17 — a müderris added by e-mail takes the course's müderris role; an address nobody has finds no one (criterion 5)"
+      - test: apps/nazar/test/courses-page.spec.tsx
+        name: "will not save while a hoca is being looked up, and sends them once they are listed"
+
+  - id: take-a-hoca-off
+    need: >-
+      She takes a hoca off the course with one press and saves the list; the person loses the hoca role of the course and the row
+      no longer names them.
+    evidence:
+      - state: form
+      - state: formReady
+      - node: removeImam
+      - node: removeOther
+      - state: saving
+      - state: saved
+      - node: toastSaved
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
+      - source: apps/nazar/features/courses/components/change-muderris.tsx:65
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/17 — the dialog shows the list and keeps Kaydet off until it changes; the second müderris leaves and the row follows (criterion 4)"
+
+  - id: the-last-account-stays
+    need: >-
+      A course always keeps at least one hoca with an account: the last one cannot be taken off, and a list with none is not sent.
+    evidence:
+      - state: form
+      - node: removeLast
+      - node: save
+      - source: apps/nazar/features/courses/team.ts:105
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/17 — the last müderris cannot leave (criterion 1)"
+    note: Also drawn as the assertion never-without-an-account.
+
+  - id: a-hoca-without-an-account-is-left-alone
+    need: >-
+      A hoca who has no account is listed by name, cannot be changed from this list, and stays on the course when the list is
+      saved.
+    evidence:
+      - state: form
+      - node: guestName
+      - node: noAccountNote
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:181
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/17 — a müderris with no account is shown and left alone"
+
+  - id: the-imam-moves
+    need: >-
+      When the imam is taken off and one hoca is left, that hoca is the imam; where several are left the page asks for the imam
+      and does not let the list be saved until one is chosen.
+    evidence:
+      - state: form
+      - state: formReady
+      - node: imamMissing
+      - node: imamPickTwo
+      - node: imamPickThree
+      - node: imamBadge
+      - source: apps/nazar/features/courses/team.ts:57
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/17 — when the imam leaves and one müderris remains, that one is the imam (criterion 2)"
+
+  - id: choose-the-imam
+    need: She chooses which of several hocas is the imam with a radio, and the choice alone makes the list saveable.
+    evidence:
+      - node: imamPickTwo
+      - node: imamPickThree
+      - state: formReady
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:202
+
+  - id: a-refusal-is-told-and-the-dialog-stays
+    need: >-
+      When the server refuses the list (a person who is not in Medaris, a list the API does not take, no permission), a toast says
+      which, in her words, and the dialog stays open with what she built; a course that is gone closes it.
+    evidence:
+      - state: saving
+      - node: toastUnknownUser
+      - node: toastForbidden
+      - node: toastInvalid
+      - node: toastOther
+      - node: toastGone
+      - state: course_gone
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
+      - source: apps/nazar/features/courses/components/change-muderris.tsx:85
+
+  - id: say-the-search-outcomes
+    need: >-
+      The outcome of a search (nobody found, already listed, the directory down, a person added and, equally, a person taken off)
+      is said to a person who cannot see the screen, and the focus stays where she is (F-A-4, HOCAS-2, HOCAS-3).
+    missing: no Linear issue; findings F-A-4, HOCAS-2, HOCAS-3
+    note: >-
+      Drawn on the state looking and on the nodes searching, added, searchNotFound, searchListed and searchDown, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: search-only-when-asked
+    need: >-
+      A search of the realm's directory, which the audit log keeps, runs when the person asks for it (Enter or a button) and never
+      because the focus passed through the field (HOCAS-1); a repeated address is searched again once the list has changed
+      (HOCAS-4).
+    missing: no Linear issue; findings HOCAS-1, HOCAS-4
+    note: >-
+      Drawn on the states form and looking and on the node searchField, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: say-why-kaydet-is-off
+    need: >-
+      Where "Kaydet" is off the page says why in a sentence tied to the list: no account on it (HOCAS-6), or no imam among several
+      (F-A-5, announced), not only by an off button.
+    missing: no Linear issue; findings HOCAS-6, F-A-5
+    note: >-
+      Drawn on the state form and on the nodes imamMissing, legendHelp and save, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: menu-offers-only-what-the-person-may-do
+    need: >-
+      The row's menu offers "Hocaları değiştir" only to a person who holds madrasah.muderris_manage in the medrese, and "Dersi
+      gizle" only to one who may hide, so that "Bunu yapma izniniz yok." is never the first word they hear (F-A-8, decision D1).
+    missing: no Linear issue; findings F-A-8
+    note: >-
+      Drawn on the state menu and on the nodes menuHocas and menuHide, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).

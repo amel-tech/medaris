@@ -1,0 +1,123 @@
+# What the bindings of nazar.roster.remove share: the events no node sends alone, the places each exit opens, the locators role and name
+# cannot find, and the checks of what a removal leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml            removes (the story) and none (the forbidden alert): the walks that write or read nothing risky
+#   binding.last.yaml       removesLast: one talebe only, so the Kayıtlı list is empty afterwards
+#   binding.completer.yaml  completer: a ders nazırı holding enrollment.complete alone, who is not offered "Dersten çıkar"
+#   binding.gone.yaml       the talebe leaves while the removal is on its way (ENROLLMENT_NOT_FOUND), a file of its own because that is a
+#                           `before` of the state `submitting` and would run in every walk of a file that holds the others
+#   binding.refused.yaml    the ders nazırı loses `enrollment.remove` while the removal is on its way (AUTHZ_FORBIDDEN), likewise
+#   binding.failed.yaml     the course is deleted while the removal is on its way (COURSE_NOT_FOUND), likewise
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/enrolments, libs/ui/src/mds) and is unverified until a walk.
+#
+# Variables a scenario gives (they are `vars`, filled in everywhere below; none is named `address` or `password`, which are the signed-in
+# account's own):
+#   who, whoSub           the spare talebe the walk takes out: the account name and its Keycloak sub (their user id in tedrisat)
+#   personName            the name the seat kept for them ("Esma Başvuran", from the token's name claim when they applied)
+#   personAddress         their e-mail, which the Kayıtlı row and the removed row show
+#   otherName             the talebe who stays enrolled ("Salih Başvuran"), where `others` is `some`
+#   courseTitle           the title of the walk's course ("Deneme dersi rosterremove": helpers/course.mjs names it after its tag)
+#   reason, reasonSaved   what is typed (with the white space a person leaves) and what the server keeps (trimmed)
+#   removerName           the name the removed list gives the person who pressed ("Hamdi Müderris", "Rukiye Ders Nazırı")
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.roster.remove
+
+data:
+  made: { json: ../.local/made/rosterremove.json } # written by helpers/course.mjs make rosterremove
+
+# the words a screen is drawn with: the talebe, their e-mail, the course, the reason as kept and the person who took them out. The day is a
+# placeholder: the node that shows it is found by its shape, not by this text (the walk's own day is not known in advance).
+samples:
+  name: '{personName}'
+  course: '{courseTitle}'
+  email: '{personAddress}'
+  day: 15 Kas
+  reason: '{reasonSaved}'
+  by: '{removerName}'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in
+  TYPE_REASON:
+    - fill: { role: textbox, name: Çıkarma gerekçesi, value: '{reason}' }
+  # leaving the empty reason is what shows "Bir gerekçe yazın."; the dialog starts with the focus in the reason, so the click only makes sure,
+  # and Tab moves on to "Vazgeç" (the field's blur is what the page waits for)
+  LEAVE_EMPTY:
+    - click: { role: textbox, name: Çıkarma gerekçesi }
+    - key: Tab
+  # Vazgeç and the close icon both send CANCEL, so the walk says which it presses
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  # Bildirimler, which every scope has; the exits of this flow are only addresses
+  NAVIGATE:
+    - goto: '{nazar}/bildirimler'
+
+states:
+  # an exit with no nodes: its address is all the replay can check
+  left: { url: '{nazar}/bildirimler' }
+  # the removal is a Next server action: a POST to the page's own address, held while the busy dialog is checked; a server action answers
+  # 200 whatever the API decided, so the HTTP status of a FAIL walk is not compared
+  submitting: { call: '{nazar}/ders/*/talebeler**' }
+
+nodes:
+  # ---- the page: a bare role main is also matched on the page a walk leaves for, so the page's own words start its text ----
+  page: { role: main, hasText: '/^Talebeler/' }
+  forbiddenAlert: { text: Bu sayfaya izniniz yok } # the Alert's title; a neutral Alert is a status, whose name does not come from its content
+
+  # ---- the tabs: each name ends with its count, a span with no space ----
+  tabApplications: { role: tab, name: '/^Başvurular/' }
+  tabEnrolled: { role: tab, name: '/^Kayıtlı/' }
+  tabCompleted: { role: tab, name: '/^Tamamlayanlar/' }
+  tabRemoved: { role: tab, name: '/^Erişimi kaldırılanlar/' }
+
+  # ---- Kayıtlı: the rows are found by their role inside the table; a row's buttons carry the talebe's name after a colon ----
+  rowName: { role: rowheader, within: { role: table, name: Kayıtlı talebeler } }
+  rowEmail: { css: 'bdi[dir=ltr]', within: { role: table, name: Kayıtlı talebeler } }
+  rowComplete: { role: button, name: '/^Tamamladı say: /' }
+  rowRemove: { role: button, name: '/^Dersten çıkar: /' }
+  leftRowName: { role: rowheader, within: { role: table, name: Kayıtlı talebeler }, hasText: '{otherName}' }
+  leftRowRemove: { role: button, name: '/^Dersten çıkar: {otherName}$/' }
+
+  # ---- Erişimi kaldırılanlar: the new row, cell by cell (the name is a <th>; the day is a <time>, whose text is the walk's own day) ----
+  removedPerson: { role: rowheader, within: { role: table, name: Dersten erişimi kaldırılan talebeler }, hasText: '{personName}' }
+  removedEmail: { css: 'bdi[dir=ltr]', within: { role: table, name: Dersten erişimi kaldırılan talebeler }, hasText: '{personAddress}' }
+  removedDay: { css: time, within: { role: table, name: Dersten erişimi kaldırılan talebeler }, hasText: '/^\d{1,2} \S+/' }
+  removedReason: { role: cell, within: { role: table, name: Dersten erişimi kaldırılan talebeler }, hasText: '{reasonSaved}' }
+  removedBy: { role: cell, within: { role: table, name: Dersten erişimi kaldırılan talebeler }, hasText: '{removerName}' }
+
+  # ---- the dialog: the same words are the row button's text, the dialog's name and the submit's, so each is scoped; the toasts are dialogs too ----
+  dialog: { role: dialog, name: '/^Dersten çıkar$/' }
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: '{courseTitle}', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  dialogTitle: { role: heading, name: '/^Dersten çıkar$/', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: '/^Dersten çıkar$/' } } # every toast has a "Kapat" too
+  body: { text: '/adlı talebe .+ dersinden çıkarılacak/', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  info: { text: Talebe bu derse yeniden başvuramaz, within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  requiredNote: { text: '/zorunlu alan/', within: { role: dialog, name: '/^Dersten çıkar$/' } } # "* zorunlu alan": the star is part of the paragraph's text
+  reasonField: { role: textbox, name: Çıkarma gerekçesi }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  submit: { role: button, name: '/^Dersten çıkar$/', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+
+  # ---- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog; the words tell the toasts of one title apart ----
+  toastRemoved: { role: dialog, name: Talebe dersten çıkarıldı, hasText: '{personName}' }
+  toastGone: { role: dialog, name: Talebe dersten çıkarılamadı, hasText: liste yenilendi }
+  toastRefused: { role: alertdialog, name: Talebe dersten çıkarılamadı, hasText: Bunu yapma izniniz yok. }
+  toastFailed: { role: alertdialog, name: Talebe dersten çıkarılamadı, hasText: Bir şeyler ters gitti }
+
+# What a removal leaves outside the screen, read through the API as the müderris and, for what no route reads, through the database.
+effects:
+  removeEnrollment:
+    # the seat stays as the record: REVOKED, not deleted (course.repository.ts:2470)
+    - run: [node, helpers/sql.mjs, "select status from enrollments where course_id = '{made.course}' and user_id = '{whoSub}'"]
+      expect: '"status":"REVOKED"'
+    # Erişimi kaldırılanlar reads the audit row: the trimmed reason (course.repository.ts:2555, e2e: none)
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/enrollments/removed']
+      expect: '"reason":"{reasonSaved}"'
+    # RMV-1: the talebe is sent the reason, word for word (course-notifier.ts:72-85)
+    - run: [node, helpers/sql.mjs, "select type, params->>'reason' as reason from notifications where user_id = '{whoSub}' and target_id = '{made.course}' and type = 'REMOVED_FROM_COURSE'"]
+      expect: '"reason":"{reasonSaved}"'
+    # the removal bars the talebe from applying again and from leaving (MDRS-161): both answer 409 and change nothing
+    - run: [node, helpers/api.mjs, '{who}', POST, '/courses/{made.course}/enroll', --any]
+      expect: 'HTTP 409'
+    - run: [node, helpers/api.mjs, '{who}', DELETE, '/courses/{made.course}/enrollment', --any]
+      expect: 'HTTP 409'

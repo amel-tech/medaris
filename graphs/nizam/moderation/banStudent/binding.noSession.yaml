@@ -1,0 +1,46 @@
+# nizam.moderation.banStudent where no celse is still to come: the course's one celse is 30 days ago (helpers/course.mjs make --start -30), so
+# `nextSessionAt` is null (present.ts:159-173) and the window has no warning "Sıradaki celsenin toplantı bağlantısını yenileyin". The story is
+# the main one; the scenario is a file of its own because it adds no transition to `--cover transitions` (only a node less), so it would not
+# be walked in binding.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent \
+#     --bind graphs/nizam/moderation/banStudent/binding.noSession.yaml --main --absent --out <dir>
+# NOT RUN, and not sure that tedrisat takes a course whose only celse is in the past on creation (the helper's README says a negative `--start`
+# starts in the past; whether the köşk's own course route refuses it was not read). Data and clean-up as binding.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.banStudent
+
+scenarios:
+  noSession:
+    given: { scope: course, answer: saved, session: none }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/students'
+    setup:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+      - run: [node, helpers/course.mjs, make, banst, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --start, '-30', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, banst]
+        expect: course remove banst
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+    vars:
+      who: applicantC
+      whoKey: APPLICANT_C
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      courseTitle: Deneme dersi banst
+      reason: Celsede başka talebelere hakaret etti
+      reasonSaved: Celsede başka talebelere hakaret etti
+      expectedBan: 'ban APPLICANT_C COURSE course={made.course} from=- role=KOSK_NAZIM reason=Celsede başka talebelere hakaret etti'

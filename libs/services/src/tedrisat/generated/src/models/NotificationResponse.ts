@@ -80,6 +80,9 @@ export const NotificationResponseTypeEnum = {
     DeckPublishResult: 'DECK_PUBLISH_RESULT',
     SubmissionReviewed: 'SUBMISSION_REVIEWED',
     QuestionAnswered: 'QUESTION_ANSWERED',
+    ExamScheduled: 'EXAM_SCHEDULED',
+    ExamReminder: 'EXAM_REMINDER',
+    ExamResultsReleased: 'EXAM_RESULTS_RELEASED',
     CourseBanPlaced: 'COURSE_BAN_PLACED',
     KoskBanPlaced: 'KOSK_BAN_PLACED'
 } as const;

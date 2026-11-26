@@ -1,4 +1,4 @@
-import { createAuth } from "@medaris/auth/server";
+import { createAuth, parseSignInLimit } from "@medaris/auth/server";
 import { env } from "~/env";
 import { locales } from "~/lib/i18n/routing";
 import { authPages } from "~/lib/public-paths";
@@ -23,6 +23,12 @@ import { authPages } from "~/lib/public-paths";
  * `auth()` and `getAccessToken()` read the cookie once per request and never
  * refresh: `proxy.ts` has renewed the session before the page renders.
  */
+/**
+ * `AUTH_SIGN_IN_LIMIT`: the start route's cap, and the sign-in page's budget
+ * per tab, which the page passes on to `AuthEntry`.
+ */
+export const signInLimit = parseSignInLimit(env.AUTH_SIGN_IN_LIMIT);
+
 export const {
   auth,
   getAccessToken,
@@ -49,4 +55,5 @@ export const {
     url: env.AUTH_STORE_URL,
     keyPrefix: env.AUTH_STORE_KEY_PREFIX,
   },
+  ...(signInLimit ? { signInLimit } : {}),
 });

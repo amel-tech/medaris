@@ -1,0 +1,91 @@
+# The screens of nazar.courseSettings.partnerCodes: the "Ortak uygulama kodları" card of Ders ayarları (/ders/<id>/ayarlar), its
+# busy states and the toasts of a write. Read from apps/nazar/features/course-settings/{partner-codes.ts,
+# components/partner-codes-card.tsx, components/course-settings-page.tsx}, libs/ui/src/mds/{field,input,button,toast,alert}.tsx
+# on 15 Nov 2026; nothing here was seen in a browser. The words are copied from libs/i18n/src/locales/tr/nazar.json.
+#
+# The page carries three other cards (the access form, Hocalar ve unvanları, Yayın): they belong to other flows, so only the
+# page's `<main>` and its h1 are drawn here, to say where the card stands. Where a node says "repeat", the page draws it once
+# per code of the partner; the replay finds the rows through the binding.
+#
+# Four messages are not from the app's i18n files, and the catalog keeps them under `composed.`:
+#   composed.Button.loading                                 "Yükleniyor": the busy button's hidden <output>, a default of the kit
+#                                                           (libs/ui/src/mds/button.tsx:62), outside the catalog (F-D2c-13)
+#   composed.CourseSettings.partnerCodes.removeLabel        "Kaldır {code}": the button's visible "Kaldır" plus a visually hidden
+#                                                           " {code}" (partner-codes-card.tsx:170-171)
+#   composed.CourseSettings.partnerCodes.codeText           "{code}": the code in its <bdi dir=ltr> (partner-codes-card.tsx:158)
+#   composed.CourseSettings.partnerCodes.partnerName        "{name}": the partner's name as the h3 (partner-codes-card.tsx:143)
+# `Changes.note` is the one message the app has no equivalent of: no message of the app says what a code changes for the people
+# of the partner application, so this graph carries one short Turkish text of its own (it is not a copy).
+schema: delurio-graph/0
+kind: ui
+id: nazar.courseSettings.partnerCodes
+flow: nazar.courseSettings.partnerCodes
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Deneme ortak uygulaması # the partner application the walk registers (its name is what the page draws)
+  code: deneme-kod-1
+
+# The page keeps no focus of its own on load (nothing in features/course-settings sets it) and none after a write (F-D2c-9,
+# F-L-17), so there is no `initialFocus` on the page and no `focus` here: the graph says nothing of what the code does not say.
+nodes:
+  # ---- the page the card stands in -----------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [notDrawn, unreadable, empty, listed, adding, removing], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:81 } # the shell's one <main id="main">; it has no name
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.title }, in: [notDrawn, unreadable, empty, listed, adding, removing], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:85 } # <h1>
+
+  # ---- the card, drawn for a holder of course.partner_codes when the köşk has a partner ---------------------------------------
+  card: { type: page, component: Page, role: region, name: { labelledBy: cardTitle }, in: [empty, listed, adding, removing], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:46 } # <section aria-labelledby=partner-codes-heading data-testid=partner-codes>
+  cardTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.partnerCodes.title }, in: [empty, listed, adding, removing], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:52 } # <h2>
+  cardIntro: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.intro }, in: [empty, listed, adding, removing], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:55 }
+  partnerName: { type: text, component: Heading, role: heading, text: { key: composed.CourseSettings.partnerCodes.partnerName, params: { name: partner.name } }, in: [empty, listed, adding, removing], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:143 } # <h3>, one block per partner application of the köşk; the walk binds one
+  emptyLine: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.empty }, in: [empty, adding, removing], when: "rows == 'none'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:145 }
+
+  # ---- the codes of the partner for this course -------------------------------------------------------------------------------
+  codeList: { type: list, component: List, role: list, name: { key: CourseSettings.partnerCodes.listLabel, params: { name: partner.name } }, in: [listed, adding, removing], when: "rows == 'some'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:147 } # <ul aria-label="{name} kodları">, oldest code first
+  codeItem: { type: list, component: ListItem, role: listitem, in: [listed, adding, removing], when: "rows == 'some'", repeat: partner.codes, source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:154 }
+  codeText: { type: text, component: Text, text: { key: composed.CourseSettings.partnerCodes.codeText, params: { code: partner.code } }, in: [listed, adding, removing], when: "rows == 'some'", repeat: partner.codes, source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:158 } # <bdi dir=ltr class=font-mono>
+  removeButton: { type: action, component: Button, role: button, intent: secondary, name: { key: composed.CourseSettings.partnerCodes.removeLabel, params: { code: partner.code } }, text: { key: CourseSettings.partnerCodes.remove }, in: [listed, adding, removing], disabledIn: [adding, removing], when: "rows == 'some'", repeat: partner.codes, emits: REMOVE, source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:161 } # type=button, a trash icon before the word; while a code is taken off the pressed row's button is busy (aria-disabled, aria-busy, a spinner, "Yükleniyor" from the kit's default, F-D2c-13) and the others' are natively disabled (`busy && removing !== code`), and while a code is added all are natively disabled; nothing asks first
+
+  # ---- the add form ------------------------------------------------------------------------------------------------------------
+  codeField: { type: field, component: TextField, role: textbox, text: { key: CourseSettings.partnerCodes.codeLabel }, value: { literal: "" }, in: [empty, listed, adding, removing], disabledIn: [adding, removing], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:188 } # id partner-code-<client id>, mono, dir=ltr, maxLength 64, autoComplete off; `disabled` while a call runs or the page is read again, so it loses the focus (F-D2c-9)
+  codeHelp: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.codeHelp }, in: [empty, listed, adding, removing], when: "said == 'none'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:185 } # the error replaces the help line
+  fieldEmpty: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.errors.empty }, in: [empty, listed, adding, removing], when: "said == 'empty'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:91 } # under the field; no live region (F-D2c-4)
+  fieldShape: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.errors.shape }, in: [empty, listed, adding, removing], when: "said == 'shape'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:91 } # said before sending, or from the API's 400
+  fieldTaken: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.errors.taken }, in: [empty, listed, adding, removing], when: "said == 'taken'", source: apps/nazar/features/course-settings/partner-codes.ts:40 } # names no other course
+  fieldUnknownPartner: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.errors.unknownPartner }, in: [empty, listed, adding, removing], when: "said == 'unknownPartner'", source: apps/nazar/features/course-settings/partner-codes.ts:44 }
+  fieldForbidden: { type: text, component: Text, text: { key: Problems.actionForbidden }, in: [empty, listed, adding, removing], when: "said == 'forbidden'", source: apps/nazar/features/course-settings/partner-codes.ts:46 }
+  fieldFailed: { type: text, component: Text, text: { key: CourseSettings.errors.generic }, in: [empty, listed, adding, removing], when: "said == 'failed'", source: apps/nazar/features/course-settings/partner-codes.ts:48 }
+  addButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseSettings.partnerCodes.add }, in: [empty, listed, adding, removing], disabledIn: [adding, removing], emits: ADD, source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:204 } # type=submit; busy while it adds (aria-disabled, aria-busy), natively disabled while a code is taken off; never off for an empty field
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [adding, removing], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> of the busy button; every Button with a `loading` prop draws one, empty until it is busy (F-D2c-13)
+
+  # ---- the toasts of a write: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays ----------------
+  toastAdded: { type: status, component: Status, role: dialog, name: { key: CourseSettings.partnerCodes.added }, text: { key: CourseSettings.partnerCodes.addedBody, params: { name: partner.name, code: partner.code } }, in: [listed], when: "last == 'added'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:104 }
+  toastRemoved: { type: status, component: Status, role: dialog, name: { key: CourseSettings.partnerCodes.removed }, text: { key: CourseSettings.partnerCodes.removedBody, params: { name: partner.name, code: partner.code } }, in: [empty, listed], when: "last == 'removed'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:128 } # says the talebe the code enrolled stay
+  toastRemoveRefused: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.partnerCodes.removeFailed }, text: { key: Problems.actionForbidden }, in: [listed], when: "last == 'removeRefused'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:121 } # tone error: it stays until closed
+  toastRemoveUnknown: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.partnerCodes.removeFailed }, text: { key: CourseSettings.partnerCodes.errors.unknownPartner }, in: [listed], when: "last == 'removeUnknown'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:121 }
+  toastRemoveFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.partnerCodes.removeFailed }, text: { key: CourseSettings.errors.generic }, in: [listed], when: "last == 'removeFailed'", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:121 }
+
+  # ---- the card cannot be read: an error alert in its place, the other cards stand --------------------------------------------------
+  unreadableTitle: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.title }, in: [unreadable], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:159 } # the alert's title paragraph, not a heading
+  unreadableAlert: { type: alert, component: Alert, role: alert, text: { key: CourseSettings.partnerCodes.loadFailed }, in: [unreadable], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:160 } # Alert tone=error is a role=alert
+
+edges:
+  - { labelledBy: [card, cardTitle] }
+  - { triggers: [addButton, adding] }
+  - { triggers: [removeButton, removing] }
+
+rules:
+  - { id: F-D2c-9, rule: "The code field is `disabled={busy}` (partner-codes-card.tsx:197), and `busy` is true while a code is added, while one is taken off and while the page is read again after a write. Pressing Enter in the field starts the add and the field is disabled at once, so the focus falls to the page; when the API refuses ('taken', and the others) the sentence sits under a field that has just lost the focus, and nothing says it (F-D2c-4). The focus is never put back, not on the field after a refusal and not on the card after a success. Not verified in a browser. Fix: `readOnly` with `aria-busy` while busy, and focus the field after a refusal." }
+  - { id: F-D2c-4, rule: "The sentences under the field ('Bir kod yazın.', the shape sentence, 'Bu kod başka bir derse bağlı. …') are Base UI's Field.Error, plain text linked to the input by aria-describedby; it has no role=alert and no live region (libs/ui/src/mds/field.tsx:50-52). They are read only if the focus moves to the field, and after a refused add it does not (F-D2c-9). Fix: role=alert on the error in the kit, or focus the field." }
+  - { id: F-D2c-13, rule: "A busy 'Ekle' and a busy 'Kaldır {code}' pass no loadingLabel, so their hidden status says 'Yükleniyor' from the kit's hard-coded default (libs/ui/src/mds/button.tsx:62), outside the catalog. Harmless while nazar is Turkish only." }
+  - { id: F-L-17, rule: "After 'Kaldır' succeeds the pressed button leaves with its row (the page is read again) and no code moves the focus; the only word is a toast of 6 seconds. A keyboard or screen-reader user falls back to the top of the page. Fix: after the refresh focus the card's heading (tabIndex=-1) or the next row's Kaldır, and keep a status line." }
+  - { id: PCODES-1, rule: "new: the card is for 'the köşk nazımı and the başnazım' (the comment of showsPartnerCodes, partner-codes.ts:26-31; the API gives course.partner_codes to KOSK_NAZIM and SYSTEM_ADMIN), and nazar draws it nowhere else. But nazar builds its scopes from medrese and course seats alone ('Roles whose scope is the platform or a köşk are Nizam's and make no scope', features/shell/scope.ts:89), so a köşk nazımı with no seat in the course is sent to /erisim-yok from /ders/<id>/ayarlar, or meets the 404 page if they hold a seat in another course (portal-layout.tsx:95-108, opened-scope.ts:55); the stack's KOSK_NAZIM lands on /erisim-yok in nazar (STACK.md smoke table). Only the başnazım, by address (admin-scope.ts), and a nazım who also teaches the course get the card. Seen in the code, not in a browser. Fix: see decision D1 of the flow." }
+  - { id: PCODES-2, rule: "new: adding a code the course already holds is idempotent on the API (the existing row comes back, createdAt unchanged, no audit row), and the page cannot tell it from a new one: it clears the field and says 'Kod eklendi' / '{name} kodu {code} artık bu derse bağlı.' (partner-codes-card.tsx:102-111). Harmless, but the toast reports a change that did not happen. Fix: compare with the list before sending, or say 'zaten bağlı'." }
+  - { id: PCODES-3, rule: "new: a köşk with several partner applications gets one block per partner (partner-codes-card.tsx:59-61), and nothing in a block's controls names its partner: the field's label is 'Kod ekle' and its button 'Ekle' in each, and 'Kaldır {code}' repeats when two partners hold the same code string (the code is unique per partner, not across partners). Only the h3 above the block tells them apart. WCAG 2.4.6 and 2.5.3 context. The stack binds one partner, so this was read from the code and not seen. Fix: name the field and the buttons with the partner (a visually hidden ' {name}')." }
+  - { id: kaldir-asks-nothing, rule: "'Kaldır' takes the code off at once, with no confirmation and no reason. What it does is told after the fact by a toast ('Bu kodla kaydedilen talebeler derste kalır.'): the people the code enrolled stay, and the partner application's later calls with the code find no course until it is added again (adding it again undoes it, unless another course took it meanwhile). Not a defect; stated so the graph does not draw a confirmation the page does not have." }
+  - { id: toast-is-the-only-word, rule: "The result of a write is said by a toast (a dialog in the 'Bildirimler' live region): it closes after 6 seconds for a success and stays for an error. A refused add is said under the field instead. Nothing else on the card says what was done; the list is what the page shows after it is read again." }
+  - { id: focus-not-set, rule: "Nothing in features/course-settings moves the focus when the page loads, when the card appears, after an add or after a removal, so the page has no `initialFocus` and no `focus` here." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Kaldır' in 'Kaldır {code}' (a visually hidden code follows the word). Holds (WCAG 2.5.3)." }

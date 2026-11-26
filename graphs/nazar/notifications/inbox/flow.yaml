@@ -1,0 +1,512 @@
+# Bildirimler in nazar-web (/bildirimler), read from the code of the branch (the tree of PR #394) on 15 Nov 2026. Nothing here is
+# approved, and nothing in it was walked: the owner moved every replay to the end, so every behaviour below is "from the code" unless
+# a line says it was seen.
+#   - What it draws: the first read (the list and the two counts), the tabs "Tümü" and "Okunmamış" with their counts, a row opened as a
+#     link (it marks itself read, then the browser leaves for Tedris), an unread row with no address (a button that only marks), "Tümünü
+#     okundu say", "Daha fazla göster", the error boxes, the toast of a refused mark, and the number the menu and the bell carry.
+#   - The page is optimistic: a mark shows its result first and asks the API after; a refusal puts the list back and says so in an error
+#     toast that stays until it is closed, except on a link row, where the page leaves in the same breath (INBOX-1).
+#   - Nazar sends no `types`: it lists and counts every type, as the bell and the menu badge do (features/notifications/notifications.ts:6).
+#     So the two API findings notification-types-code-reaches-the-client and unreadable-input-is-a-400 cannot be reached from this page
+#     (only nizam's page sends `types`: nizam.notifications.triage).
+#   - The pages the rows lead to (a course, a celse, a deck, a köşk) are Tedris's: the exit tedris_opened names them. The frame around the
+#     page (the picker, the rest of the menu) is nazar.shell.scopeAndMenu's; this flow draws only the entry "Bildirimler", the number it
+#     carries and the bell's name, because the stack's accounts hold no notification and that flow could not draw a number.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   F-E-5   a row link cancels every click, Ctrl/Cmd/Shift included, and navigates the same tab (notifications-list.tsx:138)
+#   F-E-6   the tab panel is hand-made and live: every tab switch, mark or "more" is announced wholesale (notifications-list.tsx:257)
+#   F-E-7   the tab's skeletons say nothing while a tab loads (notifications-list.tsx:163)
+#   F-E-8   focus is lost after a button row is marked on Okunmamış, after "Tümünü okundu say", and when "more" unmounts
+#   F-E-9   "Tümünü okundu say" is natively disabled at 0 unread with no reason, and absent at 0 total
+#   F-E-10  a failed first read draws a second h1 (root cause F-L-16, load-failed.tsx)
+#   F-E-14  the toast's close button and its region carry kit literals, and the region is named "Bildirimler" like the page and the bell
+#   F-E-20  EXAM_SCHEDULED, EXAM_REMINDER and EXAM_RESULTS_RELEASED read "Bildirim" (notifications.ts:34)
+#   F-E-21  a session that is over on a link row is overridden by the row's address (notifications-list.tsx:139)
+#   INBOX-1 (new) a refused mark on a link row is told to nobody: the toast opens and the page leaves in the same tick (from the code)
+#   INBOX-2 (new) two marks in flight undo each other: a refusal restores the snapshot taken before the first
+#   INBOX-3 (new) a row says what happened and never which course, celse or deck: the params are read only for "outcome"
+#   INBOX-4 (new) a success is silent: no message of Notifications says a mark was made; only the numbers and badges change
+#   Also in force: not-live (the page keeps its first read), focus-not-set, and F-L-7 (the başnazım with no seat, out of view).
+schema: delurio-graph/0
+kind: flow
+id: nazar.notifications.inbox
+status: captured
+domain: medaris.api
+ui: nazar.notifications.inbox
+title: Triage my notifications
+summary: >-
+  Any person with a seat opens Bildirimler from the menu. The page reads the caller's own notifications, twenty at a time, newest
+  first, and the two counts, and draws them under the tabs "Tümü" and "Okunmamış", each with its count. A row has a sentence that names
+  the kind of event, the time in the person's zone, and the badge "Yeni" while unread. A row that leads somewhere is a link to a page of
+  Tedris; an unread row that leads nowhere is a button; a read row that leads nowhere is plain text. Opening a link marks the row read
+  first and then the browser goes on, in the same tab, to Tedris. Pressing a button row only marks it. "Tümünü okundu say" marks every
+  unread row, rows past the first page included. Every tab switch reads the list again; "Daha fazla göster" reads the next twenty.
+  Every mark shows its result at once and asks the API after; the menu's number and the bell follow when the page is read again by
+  Next. A refused mark puts the list back and leaves an error toast, a failed tab read or "more" says so in a sentence under the tabs,
+  and a failed first read replaces the list with a box and "Yeniden dene". A person with nothing sees "Bildirim yok" and no button.
+  The page is not live: a notification that arrives while it is open appears only when the page is read again.
+
+scope:
+  shows: >-
+    the page /bildirimler: its first read, the two tabs, the three kinds of row, the marks, "Daha fazla göster", the error boxes, the
+    toast of a refused mark, the ways out by a row's link, and the number on the menu entry and the bell's name
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the pages the rows lead to: a course, a celse, a deck and a köşk of Tedris (tedris.course.readProgramme, tedris.celse.attend, tedris.decks.readAndCopy, tedris.discover.readKosk); each is the exit tedris_opened"
+    - "who writes a notification and when: tedrisat's producers (the course team's answer to an application, a celse moved or cancelled, a recording, a review, the exam notices, a ban, a köşk application's or a deck's decision); this page only reads and marks, and has no way to delete one"
+    - "the frame around the page, the scope picker and the rest of the menu: nazar.shell.scopeAndMenu"
+    - "a person with no scope at all, who is sent to /erisim-yok before the page draws (nazar.access.noAccess), and the başnazım with no seat, who gets the page with no menu, no picker and no bell (F-L-7)"
+    - "a visitor, who goes to sign in, and a token tedrisat refuses on the first read, which sends the person to sign in again with `reauth` and is not the error box (realm.auth.sessionEnded); a 404 of the first read is Next's not-found page"
+    - "\"Daha fazla göster\" on a list with nothing unread, and a tab read or a \"more\" read that fails there: the button is drawn only from the list with unread rows, so the busy button and the sentences are drawn only there"
+    - "a tab switch when nothing is unread or nothing is held: the read is made and answers empty; the graph draws the answer as already there, and the skeleton of that moment is not drawn"
+    - "\"Tümünü okundu say\" pressed on a tab whose read failed, or under a \"more\" read that failed: the panel's sentence and its button stay through the mark and after it, and the graph draws the mark as from the list"
+    - "presses made while a read or a mark is out: nothing on the page is disabled but \"Tümünü okundu say\" at 0 unread and the busy \"Daha fazla göster\", so the tabs, the rows, the button and the toast's close act at once while the call runs on; the graph lets them act once the call has answered (duringStep), and a tab chosen meanwhile drops the late answer of a tab or a \"more\" read"
+    - "the loading skeleton of the route (loading.tsx: a hidden \"Yükleniyor\" and bars) while the server reads, and the ways it ends; the graph draws nothing for that moment"
+    - "the phone's bar, where the bell is drawn: the bell's name is written as a node and not walked, because the walk's window is 1280 px wide"
+    - "a mark or a read that never reaches Next (the network): the page catches it and treats it as a refusal"
+    - "a notification of a kind this build does not word, other than the three EXAM_* kinds: it reads \"Bildirim\" like them"
+
+decisions:
+  D1:
+    question: >-
+      Should a row that leads to Tedris be a plain link that the browser follows (a new tab with Ctrl or Cmd, the address in the status
+      bar) while the page marks it read in the background? Today the click is cancelled for every key (F-E-5), the mark is awaited, and
+      the page navigates whether or not the mark was taken (INBOX-1, F-E-21).
+    recommend: >-
+      Yes: let the browser follow the link, send the mark with `fetch(..., { keepalive: true })` or let Tedris mark the row when its page
+      opens, and keep the toast for the buttons only.
+    affects: [listed, markingLink]
+  D2:
+    question: >-
+      Should this inbox hold what a hoca or a nazır needs to be told (a talebe applied, a hand-in arrived, a question was asked)?
+      The kinds tedrisat writes (apps/tedrisat/src/notification/notification-types.ts) are what a talebe, a deck's owner, a köşk
+      applicant or a köşk and Medaris nazım is told; a person who only works in Nazar is told nothing unless they are also a talebe
+      somewhere, and finds the same news as numbers on the Pano and the menu.
+    recommend: >-
+      Decide with the owner before anything is built. Until then the page is correct for what the API writes and mostly empty for a
+      person who only teaches.
+    affects: [emptyAll, listed]
+
+context:
+  read:
+    values: [ok, forbidden, listFailed, countsFailed]
+    initial: any
+    say:
+      ok: "the first read (the list and the two counts) answers"
+      forbidden: "tedrisat answers 403 (not expected: the route asks only for a signed-in caller)"
+      listFailed: "the read of the list fails: the API does not answer, or answers 5xx or a refusal that is not a refused token"
+      countsFailed: "the list comes and the read of the counts fails"
+  holds:
+    values: [nothing, allRead, one, several]
+    initial: any
+    say:
+      nothing: "the person has no notification at all (counts.total is 0)"
+      allRead: "the person has notifications and every one is read (counts.unread is 0)"
+      one: "exactly one is unread, so marking it leaves nothing unread"
+      several: "two or more are unread, so marking one leaves some"
+  pages:
+    values: [one, several]
+    initial: any
+    say:
+      one: "the first twenty rows are all there is: no \"Daha fazla göster\""
+      several: "more than twenty rows exist, so the list ends with \"Daha fazla göster\""
+  answer:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "every call the page makes after the first read answers"
+      failed: "the next call the page makes fails: the API refuses it (404 for a row that is gone, 400), answers 5xx or does not answer"
+  row:
+    values: [link, button]
+    initial: any
+    say:
+      link: "the unread row the person works on leads to a Tedris page (a course, a celse, a deck or a köşk): it is a link"
+      button: "the unread row the person works on leads nowhere (a köşk application's answer, a ban notice): it is a button that only marks"
+  tab:
+    values: [all, unread]
+    initial: all
+    say:
+      all: "the tab \"Tümü\" is selected"
+      unread: "the tab \"Okunmamış\" is selected"
+  notice:
+    values: [none, rowFailed, allFailed]
+    initial: none
+    say:
+      none: "no toast"
+      rowFailed: "an error toast says that a row could not be marked read; it stays until it is closed"
+      allFailed: "an error toast says that the notifications could not be marked read; it stays until it is closed"
+
+guards:
+  listRead: "read == 'ok' or read == 'countsFailed'"
+  listForbidden: "read == 'forbidden'"
+  listBad: "read == 'listFailed'"
+  countsRead: "read == 'ok'"
+  countsBad: "read == 'countsFailed'"
+  asked: "answer == 'ok'"
+  refused: "answer == 'failed'"
+  onAll: "tab == 'all'"
+  onUnread: "tab == 'unread'"
+  hasMore: "pages == 'several' and tab == 'all'"
+  lastUnread: "holds == 'one'"
+  manyUnread: "holds == 'several'"
+  nothingHeld: "holds == 'nothing'"
+  allReadHeld: "holds == 'allRead'"
+  toasted: "notice != 'none'"
+  byLink: "row == 'link'"
+  byButton: "row == 'button'"
+  lastByButton: "row == 'button' and holds == 'one'"
+  manyByButton: "row == 'button' and holds == 'several'"
+  # the panel holds rows (a list) or, on Okunmamış once nothing unread is left, the sentence "Okunmamış bildirim yok"
+  rowsShown: "tab == 'all' or state in ['listed', 'markingOne'] or (state == 'markingLink' and holds == 'several')"
+  emptyUnreadShown: "tab == 'unread' and (state in ['emptyAll', 'allRead', 'markingLast', 'markingAll'] or (state == 'markingLink' and holds == 'one'))"
+
+effects:
+  showUnread: { set: { tab: unread } }
+  showAll: { set: { tab: all } }
+  rowToast: { set: { notice: rowFailed }, havoc: [answer] } # a refusal does not make every later call fail
+  allToast: { set: { notice: allFailed }, havoc: [answer] }
+  failedRead: { havoc: [answer] } # the next try may answer
+  clearToast: { set: { notice: none } }
+  moreRead: { havoc: [pages] } # a further page may be the last or not
+  again: { set: { tab: all, notice: none }, havoc: [read] } # "Yeniden dene" reads the page again, and the answer may differ
+
+failures:
+  readingList: { from: listNotifications, forbidden: [], unreadable: [] }
+  readingCounts: { from: getNotificationCounts, unreadable: [] }
+  retrying: { from: listNotifications, forbidden: [], unreadable: [] }
+  loadingTab: { from: listNotifications, signedOut: [], failed: [HTTP_400, INVALID_NOTIFICATION_CURSOR] }
+  loadingMore: { from: listNotifications, signedOut: [], failed: [HTTP_400, INVALID_NOTIFICATION_CURSOR] }
+  markingOne: { from: markNotificationRead, signedOut: [], refused: [NOTIFICATION_NOT_FOUND, HTTP_400] }
+  markingLast: { from: markNotificationRead, signedOut: [], refused: [NOTIFICATION_NOT_FOUND, HTTP_400] }
+  markingLink: { from: markNotificationRead, signedOut: [], refused: [NOTIFICATION_NOT_FOUND, HTTP_400] }
+  markingAll: { from: markAllNotificationsRead, signedOut: [], refused: [HTTP_400] }
+# `unreadable`, `failed` and `refused` stand for any answer but a refused token: the page treats a network error, a 5xx and a 4xx alike
+# (notifications-list.tsx:70-81, :113-130, :147-160). The page sends only `status` and `cursor`, and the cursor is the one the API
+# issued, so HTTP_400 and INVALID_NOTIFICATION_CURSOR are in the domain and not reachable from this page; the one refusal a person
+# can meet is NOTIFICATION_NOT_FOUND, for a row that is gone. `forbidden` is a 403 of the first read. A 401 after the first read is
+# `signedOut` (handleUnauthenticated); on the first read it is the server's redirect and is out of view.
+
+# The story the page tells first: a person with three unread rows that only mark opens Okunmamış, marks one, goes back to Tümü,
+# reads the next twenty, and marks the rest at once.
+main:
+  given: { read: ok, holds: several, pages: several, answer: ok, row: button }
+  events: [DONE, DONE, OPEN_UNREAD, DONE, PRESS_ROW, DONE, OPEN_ALL, DONE, LOAD_MORE, DONE, READ_ALL, DONE]
+
+initial: readingList
+
+states:
+  readingList:
+    title: Read the first twenty rows
+    description: >-
+      The page's server side reads GET /notifications?status=all (the first twenty, newest first) and the two counts (GET
+      /notifications/unread-count) at once, with GET /me for the person's time zone, before anything is drawn; `loading.tsx` stands in
+      meanwhile (a hidden "Yükleniyor" and three bars, and the shell stays). The graph draws the two reads one after the other and draws
+      nothing on the screen of this step. A person with no session is sent to sign in before the read, and a token tedrisat refuses is
+      sent to sign in again with `reauth`: neither is the error box (out of view). A 404 is Next's not-found page. A 403 draws the
+      alert under the title (state forbidden); any other failure draws the box with "Yeniden dene" (state readFailed).
+    includes: ["each row's id, type, target, params, read time and creation time", "the list's cursor"]
+    source: apps/nazar/features/notifications/components/notifications-page.tsx:19
+    invoke: { action: listNotifications }
+    on:
+      DONE: { guard: listRead, target: readingCounts }
+      FAIL.forbidden: { guard: listForbidden, target: forbidden, say: "the route answers 403" }
+      FAIL.unreadable: { guard: listBad, target: readFailed, say: "either read fails, so the page has nothing to draw but the box" }
+
+  readingCounts:
+    title: Read the two counts
+    description: >-
+      How many rows the person has and how many of them are unread; the first fills the tab "Tümü", the second the tab "Okunmamış" and
+      decides whether the button "Tümünü okundu say" is enabled. No `types` is sent: every type is counted, as the menu's number and the
+      bell count them. The page makes this call together with the list; the graph draws it after.
+    source: apps/nazar/features/notifications/components/notifications-page.tsx:22
+    invoke: { action: getNotificationCounts }
+    on:
+      DONE: { guard: countsRead, target: sorting }
+      FAIL.unreadable: { guard: countsBad, target: readFailed, say: "the list came, the counts did not: the page draws neither" }
+
+  sorting:
+    title: See what the person holds
+    description: >-
+      Classification only. The page draws the rows, or the sentence "Bildirim yok" when counts.total is 0; "Tümünü okundu say" is not
+      drawn at 0 total and is natively disabled at 0 unread.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:187
+    always:
+      - { guard: nothingHeld, target: emptyAll, say: "counts.total is 0" }
+      - { guard: allReadHeld, target: allRead, say: "rows exist and counts.unread is 0" }
+      - { target: listed, say: "at least one row is unread" }
+
+  forbidden:
+    title: The read is refused
+    by: human
+    description: >-
+      The h1 "Bildirimler" and, under it, a neutral alert (role status) "Bu sayfaya izniniz yok" with "Bu sayfayı açma izniniz yok. İzne
+      ihtiyacınız varsa medresenin başmüderrisine başvurun." The tabs and the button are not drawn. Not expected for a self-service
+      route: tedrisat's guard asks for a signed-in caller only; the state is drawn because the code has it.
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+    on:
+      NAVIGATE: left
+
+  readFailed:
+    title: The first read failed
+    by: human
+    description: >-
+      Under the h1 "Bildirimler" a box, a section named by its own heading "Bildirimler yüklenemedi" (a second h1: F-E-10, root cause
+      F-L-16), the sentence "Bir sorun oluştu. Birazdan yeniden deneyin." and the button "Yeniden dene". The tabs and "Tümünü okundu say"
+      are not drawn. The button asks Next to read the page again (router.refresh in a transition).
+    source: apps/nazar/features/shell/components/page-problem.tsx:31
+    on:
+      RETRY: { target: retrying, effect: [again], say: "\"Yeniden dene\" reads the page again; the answer may differ", source: apps/nazar/features/shell/components/load-failed.tsx:36 }
+      NAVIGATE: left
+
+  retrying:
+    title: The first read is made again
+    description: >-
+      The button "Yeniden dene" is busy (the kit's Button, loading: aria-disabled and aria-busy, and a hidden status "Yükleniyor" from the
+      kit's default, F-L-11) while the server reads the page again. Success draws the list as if the page had opened with it; a failure
+      draws the same box again, and nothing says the retry ran (the button only stops being busy).
+    source: apps/nazar/features/shell/components/load-failed.tsx:35
+    invoke: { action: listNotifications }
+    on:
+      DONE: { guard: listRead, target: readingCounts }
+      FAIL.forbidden: { guard: listForbidden, target: forbidden }
+      FAIL.unreadable: { guard: listBad, target: readFailed, say: "the box is drawn again, with nothing to say it was tried" }
+
+  emptyAll:
+    title: The person has no notification
+    by: human
+    description: >-
+      The h1, the tabs with 0 in each name and, in the panel, a bell icon and "Bildirim yok" ("Okunmamış bildirim yok" under the tab
+      Okunmamış). "Tümünü okundu say" is not drawn at all. The menu entry carries no number. Nothing here can be done but switch tabs
+      or leave. The accounts of the stack hold nothing, so a walk makes its own rows.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:187
+    on:
+      OPEN_UNREAD: { guard: onAll, target: emptyAll, effect: [showUnread], say: "the tab Okunmamış: its read answers empty", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      OPEN_ALL: { guard: onUnread, target: emptyAll, effect: [showAll], say: "back to Tümü", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      NAVIGATE: left
+
+  listed:
+    title: The list, with unread rows
+    by: human
+    goal: true
+    description: >-
+      The page: the h1 "Bildirimler", the tabs "Tümü" and "Okunmamış" each with its count, "Tümünü okundu say" (enabled), and a panel
+      named by the tab, with a list "Bildirim listesi" of rows. A row is its sentence, its time (for example "3 Eki 2026 21:00", in the
+      person's zone) and, while unread, the badge "Yeni" with the sentence in bold. A link row (an address on Tedris built from
+      UUIDs) is an anchor; an unread row with no address is a button; a read row with no address is a plain div. The sentence names the
+      kind and nothing else (INBOX-3); a kind this build does not word reads "Bildirim", the three EXAM_* kinds among them (F-E-20).
+      The menu entry carries the unread number and its hidden word "okunmamış", and on the phone the bell is named "Bildirimler, N
+      okunmamış"; both are the server's number, read again after a successful mark. No code gives the page a focus when it opens. The
+      panel is a hand-made tabpanel and a live region (F-E-6). An error toast from a refused mark stays here until it is closed. A
+      later page of rows comes with "Daha fazla göster" while a cursor is left. The page is not live.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:194
+    on:
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], say: "the tab Okunmamış reads its first page", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], say: "the tab Tümü reads its first page again", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      PRESS_ROW:
+        - { guard: lastByButton, target: markingLast, say: "an unread row with no address is pressed: it was the last unread one, so the page shows nothing unread at once", source: apps/nazar/features/notifications/components/notifications-list.tsx:321 }
+        - { guard: manyByButton, target: markingOne, say: "the same: the badge leaves the row and the count goes down by one, then the API is asked", source: apps/nazar/features/notifications/components/notifications-list.tsx:321 }
+      OPEN_LINK: { guard: byLink, target: markingLink, say: "an unread link row is pressed: it is marked read first (optimistic), then the browser goes on to Tedris", source: apps/nazar/features/notifications/components/notifications-list.tsx:316 }
+      READ_ALL: { target: markingAll, say: "\"Tümünü okundu say\" shows every row read and the count at 0 at once, then asks the API", source: apps/nazar/features/notifications/components/notifications-list.tsx:251 }
+      LOAD_MORE: { guard: hasMore, target: loadingMore, say: "\"Daha fazla göster\" reads the next twenty", source: apps/nazar/features/notifications/components/notifications-list.tsx:223 }
+      CLOSE_TOAST: { guard: toasted, target: listed, effect: [clearToast], say: "the toast's \"Kapat\"", source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  allRead:
+    title: The list, with nothing unread
+    by: human
+    description: >-
+      The same page with "Tümünü okundu say" natively disabled (F-E-9) and no "Yeni" badge on any row; under Tümü the rows are listed
+      as read (a read row with an address is still a link, which leads on and marks nothing), and under Okunmamış the sentence
+      "Okunmamış bildirim yok" stands with a bell icon. The menu entry carries no number. This is where marking leaves the person, and
+      where a person with only read rows begins. Where the last mark was made on Okunmamış, the pressed button left the DOM under focus
+      (F-E-8). A toast from an earlier refusal may still be on screen. Where more than twenty rows exist, "Daha fazla göster" is still
+      drawn under Tümü here, enabled (the cursor is kept); the graph leaves it out (scope.outOfView), so a walk with `--absent` that
+      reaches this state from the start `triage` finds it.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:187
+    on:
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link: the browser goes on at once, nothing is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:316 }
+      OPEN_UNREAD: { guard: onAll, target: allRead, effect: [showUnread], say: "the tab Okunmamış: its read answers empty", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      OPEN_ALL: { guard: onUnread, target: allRead, effect: [showAll], say: "back to Tümü", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      CLOSE_TOAST: { guard: toasted, target: allRead, effect: [clearToast], say: "the toast's \"Kapat\"", source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  loadingTab:
+    title: A tab reads its first page
+    description: >-
+      The person chose the other tab: the panel holds two skeleton bars in a block with aria-busy and no word (F-E-7) and the call
+      loadNotifications(tab), GET /notifications?status=all|unread, is out. Every switch reads again (the page keeps no cache per tab);
+      the counts stay as drawn. A stale answer, one that arrives after the other tab was chosen, is dropped by a generation counter.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:66
+    invoke: { action: listNotifications }
+    on:
+      DONE: { guard: asked, target: listed, say: "the rows of the tab replace the list", source: apps/nazar/features/notifications/components/notifications-list.tsx:75 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { guard: refused, target: tabFailed, effect: [failedRead], say: "the panel's rows are replaced by a sentence and a button", source: apps/nazar/features/notifications/components/notifications-list.tsx:74 }
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], say: "the other tab while this one is read: its own read starts and the late answer is dropped", source: apps/nazar/features/notifications/components/notifications-list.tsx:72 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], say: "the same, back to Tümü", source: apps/nazar/features/notifications/components/notifications-list.tsx:72 }
+
+  tabFailed:
+    title: A tab could not be read
+    by: human
+    description: >-
+      In the panel, in place of the rows, a paragraph with role alert "Bir sorun oluştu. Birazdan yeniden deneyin." and the button
+      "Yeniden dene". The tabs and "Tümünü okundu say" are as before, and either tab can be chosen.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:171
+    on:
+      RETRY: { target: loadingTab, say: "\"Yeniden dene\" reads this tab again", source: apps/nazar/features/notifications/components/notifications-list.tsx:180 }
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      READ_ALL: { target: markingAll, say: "\"Tümünü okundu say\" is still on: every row is marked as from the list (the panel keeps its sentence and \"Yeniden dene\", which the graph does not draw)", source: apps/nazar/features/notifications/components/notifications-list.tsx:251 }
+      CLOSE_TOAST: { guard: toasted, target: tabFailed, effect: [clearToast], say: "the toast's \"Kapat\"", source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  markingOne:
+    title: Mark a row that leads nowhere
+    description: >-
+      The pressed row is read on the page at once (no badge, no longer a button, and on Okunmamış it has left the list) and the count
+      is one lower; the server action markNotificationRead, POST /notifications/<id>/read, is out. The API keeps the first read time,
+      so marking twice changes nothing. Success asks Next to read the layout again (router.refresh), which lowers the menu's number
+      and the bell; nothing else says a mark was made (INBOX-4), and the button that held the focus is gone (F-E-8). A refusal (a row
+      that is gone, a bad id) or a call that never arrives puts the list back as it was before the press, or only the count after a
+      tab change, and leaves the error toast "Bildirim okundu olarak işaretlenemedi. Yeniden deneyin." Two presses in flight undo each
+      other when the first is refused (INBOX-2). A session that is over sends the person to sign in.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:109
+    invoke: { action: markNotificationRead }
+    on:
+      DONE: { guard: asked, target: listed, say: "the page stays as it was drawn and the layout is read again", source: apps/nazar/features/notifications/components/notifications-list.tsx:122 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: refused, target: listed, effect: [rowToast], say: "the list is put back and the toast says the row stayed unread", source: apps/nazar/features/notifications/components/notifications-list.tsx:129 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+
+  markingLast:
+    title: Mark the last unread row
+    description: >-
+      The same call as markingOne for the one row that was unread: the page already shows nothing unread (the badge is gone, the button
+      "Tümünü okundu say" is disabled and the tab Okunmamış says 0, and on Okunmamış the panel says "Okunmamış bildirim yok"), while the
+      menu's number stays until the layout is read again. The button, which had the focus only if the person came to it, disables
+      itself under focus (F-E-8, not verified in a browser). A refusal puts the row back unread and the button enabled, with the toast.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:109
+    invoke: { action: markNotificationRead }
+    on:
+      DONE: { guard: asked, target: allRead, say: "nothing is unread and the layout is read again", source: apps/nazar/features/notifications/components/notifications-list.tsx:122 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: refused, target: listed, effect: [rowToast], say: "the row is unread again and the toast says so", source: apps/nazar/features/notifications/components/notifications-list.tsx:129 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+
+  markingLink:
+    title: Open a link row
+    description: >-
+      The click is cancelled (F-E-5), the unread row is read on the page at once, and the server action markNotificationRead is out.
+      When it answers, whatever it says, the browser goes on in the same tab to the row's address on Tedris (window.location.assign).
+      Success asks the layout to be read again just before. A refusal restores the list and adds the error toast, and the page leaves
+      in the same tick, so the toast is lost with the page (not verified in a browser) and the row stays unread (INBOX-1). A session that is over starts the sign-in
+      redirect and the row's address then overrides it (F-E-21). A row that is already read skips the call (state allRead).
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:133
+    invoke: { action: markNotificationRead }
+    on:
+      DONE: { guard: asked, target: tedris_opened, say: "the browser leaves for the row's page", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+      FAIL.signedOut: { target: tedris_opened, say: "handleUnauthenticated starts the sign-in redirect and the address overrides it (F-E-21)", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+      FAIL.refused: { guard: refused, target: tedris_opened, say: "the toast is added and the page leaves in the same tick (INBOX-1)", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+
+  markingAll:
+    title: Mark every row read
+    description: >-
+      Every loaded row is read on the page, the counts are at 0 and the button is disabled (it was the one pressed: F-E-8, F-E-9); on
+      Okunmamış the list is emptied and the cursor dropped. The server action markAllNotificationsRead, POST /notifications/read-all
+      with no `types`, is out; it sets the read time of every unread row of the person, rows past the first page included, and answers
+      how many it changed. There is no busy state on the button. Success asks the layout to be read again and says nothing (INBOX-4).
+      A refusal or a call that never arrives puts the page back as it was before the press and leaves the toast "Bildirimler okundu
+      yapılamadı; hiçbiri değişmedi. Yeniden deneyin."
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:143
+    invoke: { action: markAllNotificationsRead }
+    on:
+      DONE: { guard: asked, target: allRead, say: "nothing is unread and the layout is read again", source: apps/nazar/features/notifications/components/notifications-list.tsx:155 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: refused, target: listed, effect: [allToast], say: "the page is put back and the toast says none was marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:159 }
+      OPEN_LINK: { guard: byLink, target: tedris_opened, say: "a read row's link while the mark is out: the browser goes on at once, nothing more is marked", source: apps/nazar/features/notifications/components/notifications-list.tsx:140 }
+
+  loadingMore:
+    title: The next twenty rows are read
+    description: >-
+      The button "Daha fazla göster" is busy (aria-disabled and aria-busy, with a hidden status "Yükleniyor", the word the page passes)
+      while GET /notifications?status=all&cursor=<c> is out; the cursor is the one the API gave with the last page. The new rows are
+      added below, skipping an id already shown, and the button stays only while the API gives a further cursor; when the last page is
+      added the button leaves the DOM under focus (F-E-8). The graph draws it on the tab Tümü; the button is drawn on Okunmamış too
+      while a cursor is left there, and does the same.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:91
+    invoke: { action: listNotifications }
+    on:
+      DONE: { guard: asked, target: listed, effect: [moreRead], say: "the rows are added; the button stays if a further page exists", source: apps/nazar/features/notifications/components/notifications-list.tsx:101 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { guard: refused, target: moreFailed, effect: [failedRead], say: "a sentence says the read failed, above the button", source: apps/nazar/features/notifications/components/notifications-list.tsx:100 }
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], say: "the tab Okunmamış while the next rows are read: the tab's read starts and the late page is dropped", source: apps/nazar/features/notifications/components/notifications-list.tsx:98 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], say: "the same, back to Tümü", source: apps/nazar/features/notifications/components/notifications-list.tsx:98 }
+      OPEN_LINK: { guard: byLink, target: markingLink, say: "an unread link row: it is marked read first, then the browser goes on to Tedris", source: apps/nazar/features/notifications/components/notifications-list.tsx:316 }
+
+  moreFailed:
+    title: The next rows could not be read
+    by: human
+    description: >-
+      Above "Daha fazla göster" a paragraph with role alert, "Sonraki bildirimler yüklenemedi. Yeniden deneyin."; the rows already
+      listed stay and the button works again.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:213
+    on:
+      LOAD_MORE: { guard: hasMore, target: loadingMore, say: "the button reads the same page again", source: apps/nazar/features/notifications/components/notifications-list.tsx:223 }
+      OPEN_UNREAD: { guard: onAll, target: loadingTab, effect: [showUnread], say: "the tab Okunmamış reads its first page; the sentence goes with the list", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      OPEN_ALL: { guard: onUnread, target: loadingTab, effect: [showAll], say: "the tab Tümü reads its first page again", source: apps/nazar/features/notifications/components/notifications-list.tsx:84 }
+      PRESS_ROW:
+        - { guard: lastByButton, target: markingLast, say: "the last unread row with no address is pressed", source: apps/nazar/features/notifications/components/notifications-list.tsx:321 }
+        - { guard: manyByButton, target: markingOne, say: "an unread row with no address is pressed: it is marked read", source: apps/nazar/features/notifications/components/notifications-list.tsx:321 }
+      OPEN_LINK: { guard: byLink, target: markingLink, say: "an unread link row: it is marked read first, then the browser goes on to Tedris", source: apps/nazar/features/notifications/components/notifications-list.tsx:316 }
+      READ_ALL: { target: markingAll, say: "\"Tümünü okundu say\" marks every row (the sentence and the button below stay, which the graph does not draw)", source: apps/nazar/features/notifications/components/notifications-list.tsx:251 }
+      CLOSE_TOAST: { guard: toasted, target: moreFailed, effect: [clearToast], say: "the toast's \"Kapat\"", source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  tedris_opened:
+    title: A row's link opens a page of Tedris
+    type: final
+    leavesPage: true
+    description: >-
+      The same tab goes to /courses/<id>, /courses/<courseId>/lessons/<id>, /decks/<id> or /kosks/<id> on TEDRIS_URL. A notification
+      with no address (a ban notice, an application's answer, a target that is not a UUID) is not a link and cannot lead here.
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": handleUnauthenticated sends the person to sign in and back to /bildirimler, and draws no
+      toast, so a mark that the page had already shown is not undone on a page that is gone. realm.auth.signIn takes over.
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: no-mark-without-unread
+    never: "state in ['markingOne', 'markingLast', 'markingLink', 'markingAll'] and holds in ['nothing', 'allRead']"
+    say: A mark is asked of the API only by a person who holds an unread row; the button is disabled and no row is a button or a pending link otherwise.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:250
+  - id: unread-rows-are-listed
+    never: "state == 'listed' and holds in ['nothing', 'allRead']"
+    say: The list with unread rows is never drawn for a person who holds none unread.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:187
+  - id: empty-person-has-no-button
+    never: "state == 'emptyAll' and holds != 'nothing'"
+    say: The page with no notification at all is drawn only for a person who holds none, and it has no button to mark them read.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:246
+  - id: more-only-with-a-next-page
+    never: "state in ['loadingMore', 'moreFailed'] and pages == 'one'"
+    say: '"Daha fazla göster" is pressed only when the API gave a cursor, which it does when more than the first twenty exist.'
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:211
+  - id: a-row-without-address-leads-nowhere
+    never: "state == 'tedris_opened' and row == 'button'"
+    say: A row with no address is not a link, so the person cannot leave for Tedris by it.
+    source: apps/nazar/features/notifications/notifications.ts:59
+  - id: only-a-link-marks-and-leaves
+    never: "state == 'markingLink' and row == 'button'"
+    say: Only a link row marks and then leaves; a button row marks and stays.
+    source: apps/nazar/features/notifications/components/notifications-list.tsx:133

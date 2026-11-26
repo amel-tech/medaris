@@ -1,0 +1,123 @@
+# What the bindings of nazar.shell.scopeAndMenu share: the event no node sends, the places each exit opens, and where role and name
+# cannot find a node of the frame. It carries no scenario and no window size, so it is not walked by itself:
+#   binding.yaml              the başmüderris who teaches two courses, in a wide window (1440 x 900): the main story and the picker
+#   binding.phone.yaml        the same person on a phone (390 x 844): the bar, the sheet and the picker inside it
+#   binding.nazir.yaml        a medrese nazır with no grant: one scope, so a card; no number (e2e shell#8)
+#   binding.hoca.yaml         a müderris of three courses and no medrese: the Dersler group alone, 15 entries
+#   binding.dersBare.yaml     a ders nazırı with no grant: 12 entries and no number (e2e shell#9)
+#   binding.dersSeeded.yaml   a ders nazırı with the stack's seeded grants: 13 entries (Değerlendirme) and the numbers
+# The window size is the binding's, not a scenario's (the replay opens every scenario's browser at `browser.width` and
+# `browser.height`), and two scenarios must not share a `given`, so the persons that add no transition of their own (they
+# only change which nodes are shown) each have a small file; `--cover transitions` walks the shortest scenario per transition,
+# and these would never be chosen beside the first.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/shell, libs/ui/src/mds) and is unverified until a walk. Where the walk may need a fix, a comment says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.shell.scopeAndMenu
+
+events:
+  ESCAPE: [{ key: Escape }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+  # WIDEN (the window passes 768 px with the sheet open) is bound to nothing: no action resizes the window (engine limit), so the
+  # step from the sheet to the sidebar is drawn and not walked. RETRY and the unreadable roles are not driven either: nothing here
+  # can make GET /me/assignments fail.
+
+states:
+  # An exit has no nodes, so its address is all the replay can check. `*` is one path segment.
+  page_opened: { url: '{nazar}/*/*/*' } # /medrese/<id>/dersler or /ders/<id>/celseler: the entries the walk follows
+  pano_opened: { url: '{nazar}/*/*' } # /medrese/<id>, or /ders/<id> for a person who runs no medrese
+  notifications_opened: { url: '{nazar}/bildirimler' }
+  medrese_opened: { url: '{nazar}/medrese/*' }
+  course_opened: { url: '{nazar}/ders/*' }
+  account_opened: { url: '{nazar}/hesap' }
+  left: { url: 'about:blank' }
+
+# Where role and name are not enough. A link of the menu is looked for inside the navigation "Ana menü" (the sidebar's or the
+# sheet's: one is visible at a time), because the page's own links carry the same words (Dersler, Talebeler, Pano). A name given as
+# a string is matched whole; one between slashes is a pattern. A number follows a link's text and a hidden label follows the number
+# ("Dersler 2 derste bekleyen başvuru"), so the four that can carry one are found by their beginning.
+nodes:
+  # the page and its landmarks
+  sidebar: { css: aside }
+  menuNav: { role: navigation, name: Ana menü }
+  appBar: { css: 'header.mds-appbar' }
+  menuButton: { role: button, name: Menü, within: { css: 'header.mds-appbar' } }
+  # the phone bar's page name is a <p>, found by its class and the words of the item the page is on
+  barTitleMedrese: { css: '.mds-appbar__title', hasText: '/^Pano$/' }
+  barTitleCourse: { css: '.mds-appbar__title', hasText: '/^Genel bakış$/' }
+  barTitleNotifications: { css: '.mds-appbar__title', hasText: '/^Bildirimler$/' }
+  bell: { role: link, name: Bildirimler, within: { css: 'header.mds-appbar' } }
+  # the sheet, a Base UI dialog named like the navigation inside it (F-L-3): the role tells them apart
+  sheet: { role: dialog, name: Ana menü }
+  sheetClose: { role: button, name: Kapat, within: { role: dialog, name: Ana menü } }
+
+  # the picker closed: a button named by an aria-label, whatever the scope's name. The role line is the caption under the name
+  # (class mds-caption inside the sidebar's aside or the sheet's dialog; a popup's rows are outside both, in a portal)
+  pickerButton: { role: button, name: '/^Kapsam değiştir: /' }
+  pickerCard: { css: 'aside .mds-card, [role=dialog] .mds-card' } # one scope: a card, the nazır's; the file of a person who has one narrows it with the name
+  roleHead: { css: 'aside .mds-caption, [role=dialog] .mds-caption', hasText: Medrese başmüderrisi }
+  roleNazir: { css: 'aside .mds-caption, [role=dialog] .mds-caption', hasText: Medrese nazırı }
+  roleHoca: { css: 'aside .mds-caption, [role=dialog] .mds-caption', hasText: '/^Hoca/' }
+  roleDersNazir: { css: 'aside .mds-caption, [role=dialog] .mds-caption', hasText: Ders nazırı }
+
+  # the picker opened: the popup is outside the aside, in a portal. A row is an <a role="menuitem" href="/medrese/<id>"> or
+  # href="/ders/<id>" (scopeHref), so the rows are told apart by their address; a name changes with the person and the walk's data,
+  # so each file that knows the names narrows them with `hasText`. The row's accessible name is its name and its second line.
+  scopeMenu: { role: menu, name: Kapsamlar }
+  groupMedreseLabel: { text: Medrese, within: { role: menu, name: Kapsamlar } }
+  groupMedrese: { role: group, name: Medrese, within: { role: menu, name: Kapsamlar } }
+  groupCoursesLabel: { text: Dersler, within: { role: menu, name: Kapsamlar } }
+  groupCourses: { role: group, name: Dersler, within: { role: menu, name: Kapsamlar } }
+  rowMedrese: { css: '[role=menuitem][href^="/medrese/"]', hasText: Hadis ve Siyer Medresesi }
+  rowMedreseRole: { css: '[role=menuitem][href^="/medrese/"] .mds-caption', hasText: Medrese başmüderrisi }
+  rowCourse: { css: '[role=menuitem][href^="/ders/"]' }
+  courseDetail: { css: '[role=menuitem][href^="/ders/"] .mds-caption' }
+  currentMedreseRow: { css: '[role=menuitem][href^="/medrese/"][aria-current=true]', hasText: Hadis ve Siyer Medresesi }
+  currentCourseRow: { css: '[role=menuitem][href^="/ders/"][aria-current=true]' }
+  scopeNote: { text: Yalnız görev aldığınız medrese ve dersler listelenir., within: { role: menu, name: Kapsamlar } }
+
+  # the menu: sections are plain divs, entries are links
+  sectionGeneral: { text: Genel, within: { role: navigation, name: Ana menü } }
+  sectionMedrese: { text: Medrese, within: { role: navigation, name: Ana menü } }
+  sectionDers: { text: Ders, within: { role: navigation, name: Ana menü } }
+  sectionManagement: { text: Yönetim, within: { role: navigation, name: Ana menü } }
+  navPano: { role: link, name: Pano, within: { role: navigation, name: Ana menü } }
+  navNotifications: { role: link, name: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  navCourses: { role: link, name: '/^Dersler/', within: { role: navigation, name: Ana menü } }
+  # Talebeler, Yasaklamalar and Arşiv are in both menus under the same words, so each is told apart by the address it leads to
+  navStudents: { css: 'a[href^="/medrese/"][href$="/talebeler"]', within: { role: navigation, name: Ana menü } }
+  navNazirs: { role: link, name: Medrese nazırları, within: { role: navigation, name: Ana menü } }
+  navBans: { css: 'a[href^="/medrese/"][href$="/yasaklamalar"]', within: { role: navigation, name: Ana menü } }
+  navAppeals: { role: link, name: İtirazlar, within: { role: navigation, name: Ana menü } }
+  navArchive: { css: 'a[href^="/medrese/"][href$="/arsiv"]', within: { role: navigation, name: Ana menü } }
+  navSettings: { role: link, name: Medrese ayarları, within: { role: navigation, name: Ana menü } }
+  navOverview: { role: link, name: Genel bakış, within: { role: navigation, name: Ana menü } }
+  navCurriculum: { role: link, name: Müfredat, within: { role: navigation, name: Ana menü } }
+  navSessions: { role: link, name: '/^Celseler/', within: { role: navigation, name: Ana menü } }
+  navStudentsCourse: { css: 'a[href^="/ders/"][href$="/talebeler"]', within: { role: navigation, name: Ana menü } } # carries the number of waiting applications after its text
+  navQuestions: { role: link, name: Sorular, within: { role: navigation, name: Ana menü } }
+  navHomework: { role: link, name: Ödevler, within: { role: navigation, name: Ana menü } }
+  navEvaluation: { role: link, name: Değerlendirme, within: { role: navigation, name: Ana menü } }
+  navRecordings: { role: link, name: Ders kayıtları, within: { role: navigation, name: Ana menü } }
+  navDeck: { role: link, name: Ders destesi, within: { role: navigation, name: Ana menü } }
+  navBansCourse: { css: 'a[href^="/ders/"][href$="/yasaklamalar"]', within: { role: navigation, name: Ana menü } }
+  navArchiveCourse: { css: 'a[href^="/ders/"][href$="/arsiv"]', within: { role: navigation, name: Ana menü } }
+  navNazirsCourse: { role: link, name: Ders nazırları, within: { role: navigation, name: Ana menü } }
+  navSettingsCourse: { role: link, name: Ders ayarları, within: { role: navigation, name: Ana menü } }
+  # aria-current has no key in the format: the entry of the page is the link that carries it
+  currentPano: { css: 'a[aria-current=page]', hasText: '/^Pano$/', within: { role: navigation, name: Ana menü } }
+  currentOverview: { css: 'a[aria-current=page]', hasText: '/^Genel bakış$/', within: { role: navigation, name: Ana menü } }
+  currentNotifications: { css: 'a[aria-current=page]', hasText: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  # the numbers: a count in a span and a visually hidden label after it; the label is found as text, the digits by each flow's file
+  coursesBadge: { text: derste bekleyen başvuru, within: { role: navigation, name: Ana menü } }
+  sessionsBadge: { text: katılım yolu eksik, within: { role: navigation, name: Ana menü } }
+  studentsBadge: { text: bekleyen başvuru, within: { role: navigation, name: Ana menü } }
+
+  # the person's row: a link whose name is the name, the roles and a hidden ", ayarlar"
+  personRow: { css: 'a.mds-nav-user' }
+  signOutButton: { role: button, name: Çıkış yap }
+  # the e2e's own definition of an alert (shell.e2e.ts:79-80): the route announcer is no alert of the page
+  pageAlert: { css: '[role=alert]:not(#__next-route-announcer__)' }

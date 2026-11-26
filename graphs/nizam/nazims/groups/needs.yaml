@@ -1,0 +1,257 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.nazims.groups
+status: proposed
+summary: "What must exist for the Medaris başnazım to manage the platform's permission groups: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# No replay has run (the owner moved every walk to the end), so no `replay:` scenario is named under `walked`; the e2e checks are the ones of
+# apps/nizam/e2e/permissions.e2e.ts, whose numbers (permissions#10 to #16) are the inventory's.
+#
+# For the gaps merge:
+# missing:  group-the-course-permissions (MDRS-226), warn-before-an-edit-is-dropped, the-question-is-described-by-its-intro,
+# the-list-is-a-list, busy-buttons-say-so, a-stale-count-can-be-answered, focus-after-a-make-or-a-delete,
+# say-why-one-course-is-off, no-call-when-nothing-changed   (all but the first `missing: none`, no issue yet)
+# unwalked: scope-is-fixed-once-made, a-refusal-is-told (code, no e2e and no replay; permissions#11 only reads that a new group's "Bir ders" is off)
+# permissions#16 asserts a fixed date ("31 Aralık 2026", F-W2-7, F-X-20): it rests on the seed's fixed expiry and fails after 2026-12-31, so
+# open-a-users-permissions is walked by it only until then.
+
+needs:
+  - id: list-groups-with-scope-count-and-users
+    need: >-
+      The başnazım sees every permission group of the platform, oldest first, with its scope, how many permissions it holds and
+      how many people use it, can choose one by name, and sees for the chosen one its name, its permissions and who uses it, each
+      with the end of their appointment or "süresiz". A platform with no group says so.
+    evidence:
+      - node: groupList
+      - node: groupItem
+      - node: itemName
+      - node: itemLine
+      - node: itemUsed
+      - node: listEmpty
+      - node: usersCount
+      - node: userName
+      - node: userLine
+      - node: usersNone
+      - state: start
+      - state: openedScope
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:170
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:240
+      - source: apps/nizam/features/permissions/components/groups-view.tsx:84
+      - source: apps/nizam/features/permissions/components/group-form.tsx:250
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/13 — the list gives each group's scope, permission count and users (criterion 1)"
+
+  - id: define-a-group
+    need: >-
+      The başnazım makes a group of permissions to give to Medaris nazımları with one choice. A group needs a name that is not
+      blank, not over 80 characters and not another group's whatever its case, and at least one permission; each of these is said
+      before anything is sent, and a name another group got meanwhile is refused by the server. The group appears in the list with
+      its permissions, and its form opens.
+    evidence:
+      - state: newForm
+      - state: creating
+      - state: afterCreate
+      - node: nameFieldNew
+      - node: nameHelp
+      - node: nameRequired
+      - node: nameTaken
+      - node: nameLong
+      - node: noPermission
+      - node: toastCreated
+      - node: toastCreatedBody
+      - node: toastTaken
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:185
+      - source: apps/nizam/features/permissions/components/group-form.tsx:116
+      - source: apps/nizam/features/permissions/present.ts:283
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/13 — creating a group lists it, audits it, and a blank or repeated name is refused (criteria 4, 5)"
+
+  - id: scope-decides-the-boxes
+    need: >-
+      The scope of a group says what it may hold: "Platform" lets in the platform's 19 permissions in five sections, "Her ders"
+      the 21 course permissions, and choosing the other scope switches the boxes over and drops the ticks the new scope cannot
+      hold. "Bir ders" is not offered until a page lets the başnazım pick the course.
+    evidence:
+      - node: scopeGroup
+      - node: scopePlatform
+      - node: scopeCourses
+      - node: scopeOne
+      - node: secKosks
+      - node: secMadrasahs
+      - node: secRequests
+      - node: secBans
+      - node: secAudit
+      - node: secCourse
+      - source: apps/nizam/features/permissions/present.ts:303
+      - source: apps/nizam/features/permissions/present.ts:313
+      - source: apps/nizam/features/permissions/components/group-form.tsx:217
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/13 — the scope decides which boxes the form offers (criterion 2), and one course cannot be chosen yet"
+
+  - id: scope-is-fixed-once-made
+    need: >-
+      A group keeps its scope: the form of a saved group shows its own scope and the other two are off, so a platform group cannot
+      become an every-course group, which would change what its holders can do.
+    evidence:
+      - state: editForm
+      - state: editFormCourses
+      - node: scopePlatform
+      - node: scopeCourses
+      - node: scopeOne
+      - source: apps/nizam/features/permissions/components/group-form.tsx:169
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:366
+    note: no e2e reads this, and no replay has run
+
+  - id: edit-asks-what-happens-to-the-users
+    need: >-
+      Saving a group whose set of permissions changed, while somebody uses it, asks first what becomes of them: they keep what the
+      group gave as single permissions, or lose it; no answer is chosen for the başnazım and nothing is sent until one is. A
+      rename alone, and a group nobody uses, ask nothing. A saved change detaches everybody from the group.
+    evidence:
+      - state: editForm
+      - state: editFormCourses
+      - state: updating
+      - state: askSave
+      - state: askSaveReady
+      - state: savingAsked
+      - node: askSaveDialog
+      - node: askSaveKeep
+      - node: askSaveRevoke
+      - node: askSaveConfirm
+      - node: toastSaved
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:204
+      - source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:48
+      - source: apps/nizam/features/permissions/present.ts:333
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/13 — changing a used group's permissions asks too, and 'İzinleri kalsın' keeps the old ones as single permissions"
+
+  - id: delete-asks-what-happens-to-the-users
+    need: >-
+      Deleting a group always asks. While somebody uses it the question is the same two answers with none chosen and the confirm
+      off until one is; for a group nobody uses it is a plain confirmation that says the deletion cannot be undone. "Vazgeç"
+      deletes nothing, and the scrim does not close the question.
+    evidence:
+      - state: askDelete
+      - state: askDeleteReady
+      - state: deletingAsked
+      - state: askDeletePlain
+      - state: deletingPlain
+      - state: afterDelete
+      - node: askDeleteDialog
+      - node: askPlainDialog
+      - node: toastDeleted
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:223
+      - source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:48
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/13 — deleting a group somebody uses asks first, with no answer chosen, and 'keep' leaves them single permissions (criterion 3)"
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/13 — deleting with 'İzinleri kalksın' takes the group's permissions away"
+
+  - id: open-a-users-permissions
+    need: >-
+      From a group's page the başnazım opens the permissions of one of its users, who is a Medaris nazımı, in the same dialog the
+      Medaris nazımları page opens, for that person, with the group already chosen.
+    evidence:
+      - node: editUser
+      - state: handed_over.edit_permissions
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:114
+      - source: apps/nizam/features/permissions/components/group-form.tsx:291
+      - source: apps/nizam/features/permissions/components/groups-view.tsx:145
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/13 — 'İzinlerini düzenle' on a user opens nizam/12 for that person"
+
+  - id: a-refusal-is-told
+    need: >-
+      When the server refuses a make, a change or a delete (the name was taken meanwhile, the group is gone, the caller may not),
+      a message says which and the form stays as it was.
+    evidence:
+      - node: toastSaveFailed
+      - node: toastDeleteFailed
+      - node: toastTaken
+      - node: toastGone
+      - node: toastGeneric
+      - source: apps/nizam/features/permissions/components/group-form.tsx:94
+      - source: apps/nizam/features/permissions/present.ts:348
+    note: no e2e visits a refusal, and no replay has run
+
+  - id: group-the-course-permissions
+    need: >-
+      The permissions are grouped, and a group of them can be ticked at once, instead of one flat list of boxes per scope
+      (planned.md P-17, MDRS-226, requested by the owner on 2026-10-03: the issue names this list of boxes).
+    missing: MDRS-226; findings MDRS-226
+    note: >-
+      Drawn on the nodes permissionsHeading, secKosks, secMadrasahs, secRequests, secBans, secAudit and secCourse, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: warn-before-an-edit-is-dropped
+    need: >-
+      Choosing another group, or "Grup oluştur", while the form holds changes does not drop them without a word (F-W2-8): it
+      warns, or keeps a draft.
+    missing: no Linear issue; findings F-W2-8
+    note: >-
+      Drawn on the states newForm, editForm and editFormCourses and on the nodes groupItem and createLink, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-question-is-described-by-its-intro
+    need: >-
+      The question over a group is described to a screen reader by its intro line, not by the whole body with both answers and
+      their small print (F-W2-13, F-X-6, F-UI-W1-1).
+    missing: no Linear issue; findings F-W2-13, F-X-6, F-UI-W1-1
+    note: >-
+      Drawn on the nodes askSaveDialog, askDeleteDialog and askPlainDialog, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-list-is-a-list
+    need: The list of groups is one labelled list, not a navigation that holds a hidden heading of the same name (F-W2-9).
+    missing: no Linear issue; findings F-W2-9
+    note: >-
+      Drawn on the nodes listNav, listHeading and groupList, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: busy-buttons-say-so
+    need: >-
+      While a save or a delete runs, every control that does nothing then says so: "Vazgeç" and the close icon of the question are
+      off, and the busy button's status is a catalog message, not a hard-coded "Yükleniyor" (F-W2-groups-1, F-UI-W1-3).
+    missing: no Linear issue; findings F-W2-groups-1, F-UI-W1-3
+    note: >-
+      Drawn on the nodes askSaveCancel, askSaveClose, askDeleteCancel, askDeleteClose, askPlainCancel, askPlainClose, busyStatus
+      and save, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only
+      missing needs name).
+
+  - id: a-stale-count-can-be-answered
+    need: >-
+      When somebody was given the group after the page was read, a save or a delete that needs the question is not just refused
+      with a toast: the question opens with the new count, or the page reads again (F-W2-groups-3, decision D2). A refusal that is
+      raised while the question is open is reachable by a screen reader (F-W2-groups-2).
+    missing: no Linear issue; findings F-W2-groups-3, F-W2-groups-2
+    note: >-
+      Drawn on the states updating, deletingPlain, savingAsked and deletingAsked and on the node toastGeneric, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-after-a-make-or-a-delete
+    need: >-
+      After a group is made or deleted the focus goes to something that is still there: the new form's title, or the list
+      (F-W2-groups-4).
+    missing: no Linear issue; findings F-W2-groups-4
+    note: >-
+      Drawn on the states afterCreate, afterDelete, editForm and newForm, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: say-why-one-course-is-off
+    need: "\"Bir ders\" is either left out until the başnazım can pick a course, or says why it cannot be chosen (F-W2-groups-5)."
+    missing: no Linear issue; findings F-W2-groups-5
+    note: >-
+      Drawn on the nodes scopeOne and scopeOneHelp, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: no-call-when-nothing-changed
+    need: >-
+      "Kaydet" on a form that equals its group closes without a call, an audit row or a toast that says the group was saved
+      (F-W2-groups-6).
+    missing: "all but the first `missing: none`, no issue yet"
+    note: >-
+      Drawn on the states editForm and updating and on the node toastSaved, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).

@@ -1,0 +1,29 @@
+# nizam.kosks.nazims, read by a Medaris nazımı: the seeded one (Selma Medaris Nazımı, platform.kosk_edit among five codes, never
+# platform.kosk_nazim_manage) opens the walk's own köşk's settings and the tab "Köşk nazımları". The API admits her (200, read through
+# helpers/api.mjs on the seeded köşk); the page draws the same read-only list as for a nazım, with no row of hers and no "Siz", and tells her
+# "Köşk nazımlarını Medaris yönetimi atar; bu listeyi buradan değiştiremezsiniz." (KNZ-2). The seeded Medaris nazımı is only read as, never
+# changed.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/nazims \
+#     --bind graphs/nizam/kosks/nazims/binding.medaris.yaml --cover transitions --absent --out <dir>
+# NOT RUN (see binding.yaml). A file of its own for the same reason as binding.nazim.yaml. Not verified: that a Medaris nazımı who holds only
+# platform.kosk_edit is given the settings page the entry koskSettings->koskNazims starts from (the nav graph says she is: `koskEditor`).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.nazims
+
+scenarios:
+  medaris:
+    given: { viewer: medaris, read: ok, lookup: found, answer: added }
+    as: medarisNazim
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskSettings->koskNazims' }
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up]
+        expect: 'nznazims up'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: '{nz.add.email}'
+      anotherEmail: '{nz.more.email}'

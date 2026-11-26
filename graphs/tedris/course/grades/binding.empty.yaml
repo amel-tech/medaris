@@ -1,0 +1,23 @@
+# tedris.course.grades, the empty tab: the same talebe in a course with no exam and no memorisation homework (`make bare`). Walk it with
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/grades --bind graphs/tedris/course/grades/binding.empty.yaml --to gradesEmpty --out <dir>
+# NOT RUN in this phase: the round's three replays went to the main story (the first failed on a nav entry before any step, the second met the
+# hydration race the tabGrades `before` now answers, the third passed). A browser read by hand on the stack showed the tab and the sentence.
+# The way in is the course's address, which the card of Derslerim also leads to; the first binding walks the card.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.grades
+
+scenarios:
+  bare:
+    given: { read: ok, tabParam: none, released: false, closed: false, marks: false }
+    as: applicantG
+    open: '{tedris}/courses/{grades.course}'
+    setup:
+      - run: [node, ../tedris/course/grades/grades-data.mjs, make, bare]
+        expect: 'make bare course'
+    teardown:
+      - run: [node, ../tedris/course/grades/grades-data.mjs, remove]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']

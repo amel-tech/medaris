@@ -26,6 +26,8 @@ export interface DialogShellProps {
   footer?: ReactNode;
   footerMeta?: ReactNode;
   closeLabel?: string;
+  /** the close button, Esc and the scrim are off: closing would not stop the call */
+  dismissDisabled?: boolean;
   /** the focus on open: a ref (the first field, or "Vazgeç"); else the first focusable */
   initialFocus?: RefObject<HTMLElement | null>;
   children?: ReactNode;
@@ -60,6 +62,7 @@ export function Dialog({
   footer,
   footerMeta,
   closeLabel = "Kapat",
+  dismissDisabled = false,
   initialFocus,
   form = false,
   onSubmit,
@@ -97,6 +100,7 @@ export function Dialog({
           <BaseDialog.Close
             className="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost mds-dialog__close"
             aria-label={closeLabel}
+            disabled={dismissDisabled}
           />
         </div>
       </div>
@@ -122,7 +126,10 @@ export function Dialog({
     <BaseDialog.Root
       open={open}
       defaultOpen={defaultOpen}
-      onOpenChange={(next) => onOpenChange?.(next)}
+      onOpenChange={(next, details) => {
+        if (!next && dismissDisabled) return details.cancel();
+        onOpenChange?.(next);
+      }}
       disablePointerDismissal={!pointerDismiss}
     >
       {trigger}
@@ -158,21 +165,25 @@ export function DialogTrigger({ children }: { children: React.ReactElement }) {
 
 /**
  * "Vazgeç": a ghost button that closes the nearest `Dialog` and never submits.
- * A `ref` lets a confirmation start its focus here (canvas rule 13).
+ * A `ref` lets a confirmation start its focus here (canvas rule 13);
+ * `disabled` goes with the dialog's `dismissDisabled`.
  */
 export function DialogClose({
   children = "Vazgeç",
   className,
+  disabled,
   ref,
 }: {
   children?: ReactNode;
   className?: string;
+  disabled?: boolean;
   ref?: Ref<HTMLButtonElement>;
 }) {
   return (
     <BaseDialog.Close
       ref={ref}
       className={cx("mds-btn mds-btn--regular mds-btn--ghost", className)}
+      disabled={disabled}
     >
       {children}
     </BaseDialog.Close>

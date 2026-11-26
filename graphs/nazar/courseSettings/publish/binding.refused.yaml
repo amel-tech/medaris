@@ -1,0 +1,60 @@
+# nazar.courseSettings.publish, the refusal: a ders nazırı who holds course.edit, course.settings and course.publish in a course of the walk's
+# own opens its Ders ayarları (the card offers her the buttons), and her permissions are taken back before she presses the confirming
+# "Taslağa çek" (or "Yayımla"). The API answers 403 AUTHZ_FORBIDDEN, the question closes and an error toast says "Yayın durumu
+# değiştirilemedi" and "Bunu yapma izniniz yok."; the card is not read again and still offers the button (course-settings#10's way, for the
+# card). The seeded ders nazırı's own post in the seeded course is not touched: her account is appointed in the walk's course, and goes with it.
+#   node apps/engine/src/cli.ts replay graphs/nazar/courseSettings/publish --bind graphs/nazar/courseSettings/publish/binding.refused.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay; every behaviour is from the code.
+# The binding walks only what ends in a refusal. `drafting` and `publishing` carry no `call`: a server action answers 200 whatever the API said, so
+# the replay passes through them and the toast says which it was. The break runs when the walk reaches `asking` (a published course) or `draft`
+# (a draft), before the button is pressed; it is idempotent. Walked here: FAIL.forbidden of `drafting`, `publishing` and `publishingEdited` (she
+# holds course.settings too, so the box opens and an unsaved change can come first). The case variable `write: refused` is what makes the
+# replay take FAIL.forbidden (and not DONE) at the three invoking states, so each walk through them in this file ends in the toast.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseSettings.publish
+
+scenarios:
+  refusedPublished:
+    given: { stored: published, write: refused }
+    as: dersNazir
+    open: '{nazar}/ders/{pubDeny.course}/ayarlar'
+    samples: { name: '{pubDeny.title}', title: '{pubDeny.title}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubDeny, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi pubDeny"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{pubDeny.course}', --nazir, dersNazir, --codes, 'course.edit,course.settings,course.publish']
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, pubDeny]
+        expect: 'course remove pubDeny'
+  refusedDraft:
+    given: { stored: draft, write: refused }
+    as: dersNazir
+    open: '{nazar}/ders/{pubDeny.course}/ayarlar'
+    samples: { name: '{pubDeny.title}', title: '{pubDeny.title}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubDeny, --draft, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi pubDeny"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{pubDeny.course}', --nazir, dersNazir, --codes, 'course.edit,course.settings,course.publish']
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, pubDeny]
+        expect: 'course remove pubDeny'
+
+# The page was read while she held the codes; her post is emptied before the press.
+states:
+  asking:
+    url: '{nazar}/ders/*/ayarlar'
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{pubDeny.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+  draft:
+    url: '{nazar}/ders/*/ayarlar'
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{pubDeny.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+  drafting: { url: '{nazar}/ders/*/ayarlar' }
+  publishing: { url: '{nazar}/ders/*/ayarlar' }
+  publishingEdited: { url: '{nazar}/ders/*/ayarlar' }

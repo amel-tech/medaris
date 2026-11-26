@@ -1,0 +1,43 @@
+# common.shell.theme on the local stack, in tedris-web (:4000): a visitor on Keşfet. The flow is the kit's one toggle and the four
+# apps place it alike, so the same graph is walked in each app by a binding of its own, each extending that app's base:
+#   binding.yaml          tedris-web  (this file; the flow's main story)
+#   binding.nazar.yaml    nazar-web   a başmüderris on Hesap
+#   binding.nizam.yaml    nizam-web   a Medaris nazımı on Bildirimler
+#   binding.landing.yaml  landing-web a visitor on the home page
+# They are separate files because the scenarios would share one `given` (the flow has no case variable), and the replay takes
+# the first scenario whose `given` matches. Walk one binding per run:
+#   flock <lock> nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/common/shell/theme \
+#     --bind graphs/common/shell/theme/binding.yaml --absent --out <dir>
+#
+# Replayed on 15 Nov 2026 with --absent, the main story (TOGGLE, OPEN_ANOTHER_PAGE, TOGGLE), every state and node check passing:
+# binding.yaml, binding.nazar.yaml and binding.nizam.yaml. binding.landing.yaml was only loaded (--emit-spec), not replayed: the
+# phase allows three runs. NAVIGATE (the person leaves) is bound and not walked.
+#
+# Tedris has no role to check and the toggle is the same for a visitor (the bar's wide variant, desktop-bar.tsx:80), so nobody
+# signs in: the scenario has no `as`, and the base's sign-in is not run. The second page is a köşk's public page, which the
+# visitor may open and which carries the same chrome (PhoneChrome in its layout). Nothing is created and nothing is removed;
+# the browser context is new for each scenario, so the storage starts empty and is dropped with it.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: common.shell.theme
+
+scenarios:
+  tedrisVisitor: # the main story
+    given: {}
+    open: '{tedris}/discover'
+    vars: { next: '{tedris}/kosks/{seed.kosk}' }
+
+events:
+  # The person opens another page of the app: a page that loads anew, which is what makes ThemeScript read the storage back.
+  OPEN_ANOTHER_PAGE: [{ goto: '{next}' }]
+  # NAVIGATE (the person leaves) is not walked in this phase.
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  left: { url: 'about:blank' }
+
+# <html data-theme> is the colour scheme; the toggle is found by its role and name, and a bare <main> is the page's own on both pages.
+nodes:
+  lightPage: { css: 'html[data-theme="light"]' }
+  darkPage: { css: 'html[data-theme="dark"]' }

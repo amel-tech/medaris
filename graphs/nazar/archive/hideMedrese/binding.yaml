@@ -1,0 +1,190 @@
+# nazar.archive.hideMedrese on the local stack: the başmüderris of a medrese of the walk's own, at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/archive/hideMedrese --bind graphs/nazar/archive/hideMedrese/binding.yaml --out <dir>
+#   ... --cover transitions      (not --absent at first: a toast of the step before may still be on screen)
+# NOT RUN in the writing phase (no replay is run in it): nothing below has been walked. Where it rests on the code alone it says so.
+#
+# The walk never touches the seeded medrese. `setup` has medrese.mjs (a helper of this folder, through tedrisat's HTTP API, as the
+# başnazım) make "Gizleme Denemesi Medresesi" (handle gizleme-denemesi) with the spare talebe APPLICANT_H as its başmüderris and a hosting
+# right in the seed's second köşk, the one no seeded flow reads; helpers/course.mjs then opens one course of its own in it ("Deneme dersi
+# hideMedrese", published, one week of one celse, APPLICANT_H as its hoca). The medrese's id goes to graphs/.local/made/hideMedrese-medrese.json,
+# which is read as {mine.madrasah}. `teardown` removes the course (helpers/course.mjs remove) and deletes the medrese (as the başnazım alone
+# may), hidden or shown, with the başmüderris role and the hosting right that go with it. Both `setup`s start by removing what an earlier,
+# crashed walk left. Nothing of the seed is changed; what the walk leaves behind is the audit rows of the hiding and the restore (no route
+# removes one), which no other flow reads for this medrese. Every run of the helper by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# Three scenarios, by `given`:
+#   hides          (the main story; reader head, start shown) the medrese is shown. The walk enters through the menu ("Arşiv" of the Pano's
+#                  sidebar), asks, cancels, asks, confirms; presses "Geri al" of the course (refused); brings the medrese back. The same scenario
+#                  drives the races: ADMIN_HIDES (the başnazım hides it while her page is open: FAIL.already), ADMIN_RESTORES (FAIL.notHidden) and
+#                  ADMIN_REHIDES (FAIL.level), each run through the API as SYSTEM_ADMIN, so it is another person's step with no second browser.
+#   lockedByAdmin  (reader head, start hiddenByAdmin) the başnazım hid the medrese at the platform level before the page is opened
+#                  (medrese.mjs admin hide): the banner has a sentence and no button, and so has the course's row.
+#   nazirRefused   (reader nazir) the seeded medrese nazır, who holds no grant, opens the seeded medrese's Arşiv and meets the refusal (archive#8).
+#                  It only reads (one GET of the page): no setup, nothing is written, the seeded medrese is not touched.
+#
+# What the e2e checks in archive#7 is carried; where it read the database, an `effects` check reads the API as the başmüderris (medrese.mjs
+# state: GET /madrasahs/:id/archive), which says the same: hidden or shown (a5, a7, a15), hidden by her (a7), the course still there (a8), the
+# course hidden at the medrese's own instant (a9).
+#
+# Not driven, so the replay reports them as not bound (from the dry run of --emit-spec --cover transitions, which plans 16 walks and finds 5
+# of them not bound): FAIL.forbidden and FAIL.other of the hiding and of the restore (nothing on the stack makes tedrisat refuse a hide or a
+# restore to the başmüderris; the ways to cause one, a başmüderris replaced or a medrese deleted meanwhile, also change what the refreshed
+# page is, a 404, which the graph does not draw) and FAIL.missing of the first read (the portal's layout answers 404 for a medrese that is
+# not hers before the page reads anything, so only a race could reach it). The server actions answer 200 on the page's own address, so a FAIL
+# status cannot be compared there: `call` only holds the busy state.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.archive.hideMedrese
+
+data:
+  mine: { json: ../.local/made/hideMedrese-medrese.json }
+
+scenarios:
+  hides:
+    given: { reader: head, start: shown }
+    as: applicantH
+    open: '{nazar}/medrese/{mine.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseArchive' }
+    setup:
+      - run: [node, helpers/course.mjs, remove, hideMedrese]
+        expect: 'course remove hideMedrese'
+      - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, up]
+        expect: 'medrese up'
+      - run: [node, helpers/course.mjs, make, hideMedrese, --madrasah, '{mine.madrasah}', --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, applicantH]
+        expect: '"madrasah"'
+      - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+        expect: 'medrese SHOWN hiddenCourses=0'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideMedrese]
+        expect: 'course remove hideMedrese'
+      - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, down]
+        expect: 'medrese down'
+  lockedByAdmin:
+    given: { reader: head, start: hiddenByAdmin }
+    as: applicantH
+    open: '{nazar}/medrese/{mine.madrasah}/arsiv'
+    setup:
+      - run: [node, helpers/course.mjs, remove, hideMedrese]
+        expect: 'course remove hideMedrese'
+      - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, up]
+        expect: 'medrese up'
+      - run: [node, helpers/course.mjs, make, hideMedrese, --madrasah, '{mine.madrasah}', --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, applicantH]
+        expect: '"madrasah"'
+      - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, admin, hide]
+        expect: 'medrese admin hide'
+      - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+        expect: 'medrese HIDDEN level=platform byHead=no canRestore=no hiddenCourses=1'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideMedrese]
+        expect: 'course remove hideMedrese'
+      - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, down]
+        expect: 'medrese down'
+  nazirRefused:
+    given: { reader: nazir, start: shown }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/arsiv'
+
+events:
+  # the başnazım, as another person, through the routes nizam's pages call; her page does not know (the answers are 200)
+  ADMIN_HIDES:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, admin, hide]
+      expect: 'medrese admin hide'
+  ADMIN_RESTORES:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, admin, restore]
+      expect: 'medrese admin restore'
+  ADMIN_REHIDES:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, admin, rehide]
+      expect: 'medrese admin rehide'
+  # the person row of the sidebar leads to Hesap, a page outside any scope: it opens whatever state the medrese is in, and for the nazır too
+  NAVIGATE: [{ goto: '{nazar}/hesap' }]
+
+states:
+  forbidden: { url: '{nazar}/medrese/*/arsiv' }
+  shownMedrese: { url: '{nazar}/medrese/*/arsiv' }
+  hidden: { url: '{nazar}/medrese/*/arsiv' }
+  lockedHidden: { url: '{nazar}/medrese/*/arsiv' }
+  # the three writes are Next server actions: a POST to the page's own address, held while the busy state is checked; the page's own
+  # reads are GETs with a query (?_rsc=), so this matches only the POST
+  hiding: { call: '{nazar}/medrese/*/arsiv' }
+  restoringCourse: { call: '{nazar}/medrese/*/arsiv' }
+  restoring: { call: '{nazar}/medrese/*/arsiv' }
+  left: { url: '{nazar}/hesap' }
+
+# What a step leaves outside the screen, read through the API as the başmüderris (and the başnazım's steps as what the API holds now).
+effects:
+  # archive#7 a5: Vazgeç changed nothing
+  cancelled:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese SHOWN hiddenCourses=0'
+  # archive#7 a7, a8, a9: hidden by her, at her level, the course still there (listed) and hidden at the medrese's own instant
+  hideMadrasah:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese HIDDEN level=madrasah byHead=yes canRestore=yes hiddenCourses=1 sameInstant=yes'
+  # the course is not brought back alone
+  parentHidden:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese HIDDEN level=madrasah byHead=yes canRestore=yes hiddenCourses=1'
+  # archive#7 a15: the medrese is shown again and the course with it
+  restoreMadrasah:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese SHOWN hiddenCourses=0'
+  # the başnazım's steps and what they leave
+  adminHides:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese HIDDEN level=platform byHead=no canRestore=no'
+  adminRestores:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese SHOWN'
+  adminRehides:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese HIDDEN level=platform byHead=no canRestore=no'
+  alreadyHidden:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese HIDDEN level=platform'
+  restoreLevel:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese HIDDEN level=platform'
+  notHidden:
+    - run: [node, ../nazar/archive/hideMedrese/medrese.mjs, state]
+      expect: 'medrese SHOWN'
+
+# Role and name find most nodes. Where they cannot: the page's <main> (a bare main is also on the page a walk leaves for, so it is told by
+# the intro that only this page has), the tab links (their names carry the count: "Dersler1", F-A-12; the sidebar has a "Dersler" too), the
+# dialog's buttons (the page behind has a "Medreseyi gizle" and the toasts a "Kapat"), the banner and the notes, and the toasts.
+nodes:
+  archivePage: { css: main, hasText: 'Bu medresede gizlenen dersler, haftalar, celseler ve ders kayıtları' }
+  tabAll: { role: link, name: '/^Tümü/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabCourse: { role: link, name: '/^Dersler/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabWeeks: { role: link, name: '/^Haftalar ve celseler/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabRecordings: { role: link, name: '/^Ders kayıtları/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  # the walk's medrese holds one course, so the list has one row
+  rowRestore: { role: button, name: 'Geri al: Deneme dersi hideMedrese', count: 1 }
+  rowRestoreBusy: { role: button, name: 'Geri al: Deneme dersi hideMedrese', count: 1 }
+  lockedRowNote: { testId: restore-note, within: { testId: archive }, count: 1 }
+  # a busy button's hidden <output> says "Yükleniyor"; the other buttons' are empty
+  rowBusyStatus: { css: output, hasText: Yükleniyor, within: { testId: archive } }
+  restoringBusy: { css: output, hasText: Yükleniyor, within: { testId: madrasah-hidden } }
+  hidingBusy: { css: output, hasText: Yükleniyor, within: { role: alertdialog } }
+  # the banner's Alert is a status with no name of its own; its section carries the test id
+  forbiddenAlert: { css: 'main [role=status]', hasText: Bu sayfaya izniniz yok }
+  hiddenAlert: { testId: madrasah-hidden, hasText: Medrese gizli }
+  lockedBannerNote: { testId: restore-note, within: { testId: madrasah-hidden } }
+  # the dialog's words are told from the page behind (inert while it is open) and from the toasts by where they are
+  dialogTitle: { role: heading, name: Medreseyi gizle, within: { role: alertdialog } }
+  dialogCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  dialogConfirm: { role: button, name: '/^Gizle$/', within: { role: alertdialog } }
+  dialogClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  # Base UI's toasts: a success or an info is role=dialog, an error is role=alertdialog and aria-hidden until it is focused, so each is found
+  # by its role attribute and the words that tell it from its twins. The title and the text are two <p> with nothing between them, so a
+  # pattern joins them with .* and a plain string is taken from one of them.
+  toastHidden: { css: '[role=dialog]', hasText: artık siz ve Medaris yönetimi dışında kimseye görünmüyor }
+  toastAlready: { css: '[role=dialog]', hasText: Bu medrese zaten gizli. Onu gizleyen }
+  toastHideRefused: { css: '[role=alertdialog]', hasText: '/Medrese gizlenemedi.*Bunu yapma izniniz yok\./' }
+  toastHideFailed: { css: '[role=alertdialog]', hasText: '/Medrese gizlenemedi.*Bir şeyler ters gitti\./' }
+  toastParentHidden: { css: '[role=alertdialog]', hasText: '/Geri alınamadı.*hâlâ gizli/' }
+  toastRestored: { css: '[role=dialog]', hasText: Medrese geri getirildi }
+  toastNotHidden: { css: '[role=alertdialog]', hasText: '/Medrese geri getirilemedi.*zaten gizli değil/' }
+  toastRestoreLevel: { css: '[role=alertdialog]', hasText: '/Medrese geri getirilemedi.*yalnız Medaris yönetimi geri getirebilir/' }
+  toastRestoreRefused: { css: '[role=alertdialog]', hasText: '/Medrese geri getirilemedi.*Bunu yapma izniniz yok/' }
+  toastRestoreFailed: { css: '[role=alertdialog]', hasText: '/Medrese geri getirilemedi.*Bir şeyler ters gitti/' }

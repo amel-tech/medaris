@@ -1,0 +1,35 @@
+# tedris.decks.readAndCopy, the deck of a course the reader is enrolled in (e2e decks#26): not public, no badge "Herkese açık", the sentence "Bu deste,
+# kayıtlı olduğun bir dersin ... destesi", and already in the reader's collection (the badge "Koleksiyonunda", the button "Koleksiyondan çıkar": decks#22
+# and #25 start there). Written in the owner's no-replay phase; the file loads, nothing was walked.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/readAndCopy --bind graphs/tedris/decks/readAndCopy/binding.shared.yaml --cover transitions --out <dir>
+# It is a file of its own because it adds no transition to binding.yaml's: the same steps over a deck of another kind of access.
+#
+# The data. `setup` opens the course `Deneme dersi readAndCopy` (helpers/course.mjs: published, in the seed's second köşk, three celses, anyone takes a
+# seat, `MUDERRIS` the hoca) and seats `applicantC` in it, then deck-data.mjs makes the course's deck as the hoca (POST /courses/{id}/decks: published at
+# once, no week, three cards), the reader's own two decks, and puts the deck in the reader's collection. `teardown` takes it all away in the other order:
+# the decks and the progress rows (deck-data.mjs remove), the course (course.mjs remove: the reader leaves first, the başnazım deletes it, the invitation
+# mails it sent are cleared), and the mailbox of the account. A deck left behind with its course deleted would stay as a private deck of the hoca
+# (decks.course_id is set null), which is why the decks go first. The seeded course deck is not used: the walks collect and copy.
+schema: delurio-graph/0
+kind: binding
+extends: binding.base.yaml
+flow: tedris.decks.readAndCopy
+
+scenarios:
+  sharedHeld:
+    given: { deck: shared, cards: some, held: already, targets: some, refusal: none }
+    as: applicantC
+    open: '{tedris}/decks/{rc.deck}'
+    setup:
+      - run: [node, helpers/course.mjs, make, readAndCopy, --lessons, '3', --hoca, MUDERRIS, --talebe, APPLICANT_C]
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, make, shared, --cards, '3', --own, both, --collected, --reader, APPLICANT_C]
+        expect: 'made shared deck'
+    teardown:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, remove]
+      - run: [node, helpers/course.mjs, remove, readAndCopy]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+states:
+  collecting: { call: '{tedris}/decks/{rc.deck}' }
+  uncollecting: { call: '{tedris}/decks/{rc.deck}' }
+  copying: { call: '{tedris}/decks/{rc.deck}' }

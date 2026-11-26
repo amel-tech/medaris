@@ -1,0 +1,140 @@
+schema: delurio-graph/0
+kind: needs
+id: common.shell.theme
+status: proposed
+summary: >-
+  What must exist for a person who switches the theme of a Medaris app to dark and back (common.shell.theme): the flow's closed
+  product list, written on 15 Nov 2026 from the flow's own story (FLOWS.md), the inventory findings F-L-10 and F-UI-P0-3, and the
+  probes of that day. Each need is what the product must do, never what the page does today. None of the four apps has a browser
+  e2e for the toggle (nazar's access.e2e.ts#sidebar only counts it among the sidebar's buttons, a check of nazar.access.noAccess);
+  landing's Vitest spec theme.spec.ts renders its markup. `e2e:` below names that spec, and `check` is the inventory's number
+  (landing.md section 6). A Vitest spec of the kit, libs/ui/test/theme.spec.tsx, covers the component but carries no inventory
+  number, so it is named in a comment only.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing or unwalked (for the orchestrator's gaps merge):
+# missing   name-follows-the-language (F-L-10: nazar has no catalog path to the toggle; landing has no catalog)
+# missing   choice-follows-the-person-between-apps (decision D1, open)
+# missing   no-dead-control-without-javascript (THEME-1)
+# unwalked  choice-follows-other-tabs (kit code and a Vitest spec; the replay has no second tab of one profile)
+# unwalked  refused-storage-still-switches-the-page (kit code and a Vitest spec; the replay cannot take storage away)
+# unwalked  one-toggle-in-every-bar at the phone width, in all four apps (the replay's browser is 1280 px wide), and landing's
+# own replay (binding.landing.yaml is written and dry-run, but only tedris, nazar and nizam were replayed: the
+# phase allows three runs); landing's markup spec theme#3 is its only walk
+
+needs:
+  - id: switch-to-dark-and-back
+    need: >-
+      In every Medaris app a person can turn the page dark and back to light with one control that is always in the bar, and the
+      control's name says what pressing it does.
+    evidence:
+      - state: light
+      - state: dark
+      - node: toggleToDark
+      - node: toggleToLight
+      - node: lightPage
+      - node: darkPage
+      - source: libs/ui/src/mds/theme-toggle.tsx:34
+      - source: apps/tedris/components/phone-menu/desktop-bar.tsx:80
+      - source: apps/nazar/features/shell/components/portal-frame.tsx:94
+      - source: apps/nizam/components/shell/shell-frame.tsx:174
+      - source: apps/landing/components/site-header.tsx:59
+      - test: apps/landing/test/theme.spec.ts
+        name: "puts the toggle in the header, one per bar"
+      - scenario: tedrisVisitor
+      - scenario: nazarBasmuderris
+        binding: graphs/common/shell/theme/binding.nazar.yaml
+      - scenario: nizamMedarisNazim
+        binding: graphs/common/shell/theme/binding.nizam.yaml
+
+  - id: the-choice-holds-on-the-next-page
+    need: >-
+      What the person chose holds on the next page of the same app and on their next visit on the same device: the page is dark
+      from its first paint, with no flash of light.
+    evidence:
+      - state: dark
+      - node: darkPage
+      - node: toggleToLight
+      - source: libs/ui/src/mds/theme-script.tsx:11
+      - source: libs/ui/src/lib/theme.ts:13
+      - source: apps/tedris/app/layout.tsx:48
+      - source: apps/nazar/app/layout.tsx:41
+      - source: apps/nizam/app/layout.tsx:42
+      - source: "apps/landing/app/[locale]/layout.tsx:49"
+      - scenario: tedrisVisitor
+      - scenario: nazarBasmuderris
+        binding: graphs/common/shell/theme/binding.nazar.yaml
+      - scenario: nizamMedarisNazim
+        binding: graphs/common/shell/theme/binding.nizam.yaml
+    note: Also drawn as the assertion page-follows-the-stored-choice.
+
+  - id: the-page-is-light-until-chosen
+    need: >-
+      A person who has never pressed the toggle meets the light page, whatever their system prefers, so that what they see does
+      not depend on a setting they did not make in Medaris.
+    evidence:
+      - state: light
+      - node: lightPage
+      - source: libs/ui/src/lib/theme.ts:13
+      - source: "apps/landing/app/[locale]/layout.tsx:41"
+      - test: apps/landing/test/theme.spec.ts
+        name: "is light by default on the [locale] pages, with the no-flash script"
+      - test: apps/landing/test/theme.spec.ts
+        name: "is light by default on the privacy notice's own shell"
+
+  - id: name-follows-the-language
+    need: >-
+      The toggle's name is in the person's language in every app, so that when English and Arabic are offered (P-19, P-21) the
+      toggle is named in them like the rest of the bar.
+    missing: "no Linear issue; F-L-10: nazar has no catalog path to the toggle; landing has no catalog"
+    note: |-
+      Drawn on the nodes toggleToDark and toggleToLight, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      tedris-web and nizam-web read the name from their catalogs (tedris.json PhoneMenu.themeDark, nizam.json Shell.themeDark, in
+      en and ar as well); nazar-web passes none and landing-web has no catalog, so the kit's Turkish default is all they show.
+
+  - id: choice-follows-the-person-between-apps
+    need: >-
+      Open decision D1: whether the choice should follow the person from one Medaris app to another. Today each app has its own
+      local storage, so dark chosen in tedris is light in nazar.
+    missing: no Linear issue; decision D1, open
+    note: >-
+      Drawn on the state dark, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: no-dead-control-without-javascript
+    need: "A page read without JavaScript does not offer a control that does nothing: the toggle is hidden until it can work."
+    missing: no Linear issue; THEME-1
+    note: >-
+      Drawn on the node toggleToDark, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: choice-follows-other-tabs
+    need: >-
+      A change made in one tab of an app reaches the person's other tabs of that app, so two tabs never disagree about the theme.
+    evidence:
+      - source: libs/ui/src/mds/theme-toggle.tsx:45
+
+  - id: refused-storage-still-switches-the-page
+    need: >-
+      A browser that refuses local storage can still switch the page being looked at; the toggle does not fail, and the choice
+      holds for that page only.
+    evidence:
+      - source: libs/ui/src/mds/theme-toggle.tsx:68
+      - source: libs/ui/src/lib/theme.ts:13
+
+  - id: one-toggle-in-every-bar
+    need: >-
+      The toggle is in the bar of every app at every width: the wide bar and the phone bar each have one, and only one is drawn at
+      a time.
+    evidence:
+      - node: toggleToDark
+      - node: toggleToLight
+      - source: apps/tedris/components/phone-menu/phone-menu.tsx:40
+      - source: apps/tedris/components/phone-menu/member-phone-menu.tsx:82
+      - source: apps/nazar/features/shell/components/portal-menu.tsx:87
+      - source: apps/landing/components/site-header.tsx:44
+      - test: apps/landing/test/theme.spec.ts
+        name: "puts the toggle in the header, one per bar"

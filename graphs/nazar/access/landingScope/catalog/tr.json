@@ -1,0 +1,16 @@
+{
+  "NoAccess.text": "Nazar, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır.",
+  "NoAccess.title": "Bu portala erişiminiz yok",
+  "NotFound.back": "Ana sayfaya dön",
+  "NotFound.text": "Aradığınız sayfa taşınmış, kaldırılmış ya da görev alanınızın dışında olabilir.",
+  "NotFound.title": "Sayfa bulunamadı",
+  "Pano.title": "Pano",
+  "Roles.DERS_NAZIR": "Ders nazırı",
+  "Roles.MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
+  "Roles.MEDRESE_NAZIR": "Medrese nazırı",
+  "Roles.MUDERRIS": "Hoca",
+  "Roles.SYSTEM_ADMIN": "Medaris başnazımı",
+  "Shell.navLabel": "Ana menü",
+  "composed.LandingScope.courseTitle": "{title}",
+  "composed.LandingScope.scopeName": "{name}"
+}

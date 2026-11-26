@@ -1,0 +1,181 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.learning.addToCalendar
+status: proposed
+summary: >-
+  What must exist for a talebe who puts a celse, or all of their courses, into their own calendar: the flow's product list, from
+  its story and from the inventory's findings, never from what the pages do today. Nothing in planned.md belongs to this flow:
+  P-38 (the personal feed, MDRS-120, in review) is tedris.account.calendarFeed's, and the invitation e-mails (P-29) are the
+  session flows'. Gender separation is not in play here: no seat is decided.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code), for the orchestrator's gaps merge: one-menu-wherever-it-stands (ADDCAL-1, CRS-09), a-refused-file-never-replaces-the-course-page
+# (CRS-09), a-saved-file-says-so (ADDCAL-3), the-feed-holds-every-course-i-run (feed-misses-basmuderris-and-ders-nazir),
+# the-event-names-the-celse-in-the-celse-words (DSC-21).
+# Unwalked (code, no e2e and no replay that passed; every replay of this flow is walk phase): a-refused-file-is-one-toast, the-feed-refuses-a-wrong-address,
+# the-session-ending-sends-to-sign-in. Walked by an e2e check only, so unwalked as a replay: google-event-carries-the-celse-page.
+
+needs:
+  - id: add-an-upcoming-celse-where-it-is-drawn
+    need: >-
+      A talebe who holds a seat can add an upcoming celse to their own calendar from the three places it is drawn: its row in
+      Programım, the action card of the celse's own page and the enrolled card of the course page. The button opens a menu, and
+      Esc closes it and leaves the focus on the button.
+    evidence:
+      - state: row
+      - state: celseCard
+      - state: courseCard
+      - state: menu
+      - state: courseMenu
+      - source: apps/tedris/features/courses/components/calendar-menu.tsx:36
+      - source: apps/tedris/features/schedule/components/schedule-page.tsx:175
+      - source: apps/tedris/features/courses/components/session-page.tsx:248
+      - source: apps/tedris/features/courses/components/course-aside.tsx:294
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "opens three rows and a note, and closes with Esc"
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "the session page's menu has the same rows, and none on a cancelled session"
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "sees the date, the length, the platform, the agenda and the link inside the join window"
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "keeps the join closed more than ten minutes before the start"
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "shows a notice and no join button when the session has no link"
+
+  - id: google-event-carries-the-celse-page
+    need: >-
+      "Google Takvim" opens a pre-filled event in a new tab: the course and the celse as its title, the celse's time and length,
+      and the celse's page as its description and place. The meeting link is never put in it, because the people who see a
+      calendar entry are not always those who may open the meeting.
+    evidence:
+      - state: google_opened
+      - source: apps/tedris/features/courses/calendar-links.ts:32
+      - source: apps/tedris/features/courses/components/calendar-menu.tsx:105
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "Google opens a pre-filled event in a new tab, with the session page and no meeting link"
+
+  - id: the-event-names-the-celse-in-the-celse-words
+    need: >-
+      The line of the Google event that says where the meeting link is uses the app's own word, "celse", as the .ics file does.
+    missing: "no Linear issue; DSC-21: AddToCalendar.linkIsOnPage says \"oturum sayfasındadır\""
+    note: >-
+      Drawn on the state google_opened, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-file-of-one-celse-has-a-stable-uid-and-no-meeting-link
+    need: >-
+      "Apple Takvim (.ics)" saves the file of exactly this celse, named medaris-<id>.ics, with one event whose UID is derived from
+      the celse (so a second import updates it), the course and the celse as its summary, the celse's page as its address, and no
+      meeting link. The file is private to the person who asked for it and is not kept by any cache.
+    evidence:
+      - state: downloading
+      - source: "apps/tedris/app/api/lessons/[id]/calendar/route.ts:23"
+      - source: apps/tedrisat/src/course/lesson.controller.ts:165
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "the .ics file holds one event with a stable UID and no meeting link"
+
+  - id: a-saved-file-says-so
+    need: >-
+      A file that was saved says so on the page, in words and not only in the browser's own download list, so that a person who
+      cannot see the download shelf knows that it worked.
+    missing: "no Linear issue; ADDCAL-3: calendar-menu.tsx:79-86 says nothing on success"
+    note: >-
+      Drawn on the state downloading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-refused-file-is-one-toast
+    need: >-
+      When the file cannot be had (the celse or its course is gone, it has no time, the service is down) the page stays and one
+      error toast says that the calendar file could not be downloaded and to try again later, whatever the reason.
+    evidence:
+      - state: downloading
+      - state: rowFailed
+      - state: celseFailed
+      - source: "apps/tedris/app/api/lessons/[id]/calendar/route.ts:23"
+      - source: apps/tedris/features/courses/components/calendar-menu.tsx:87
+
+  - id: a-refused-file-never-replaces-the-course-page
+    need: >-
+      The enrolled card of the course page, too, keeps the page when the file is refused: the person sees the same toast and not
+      the route's JSON body in place of the course.
+    missing: "no Linear issue; CRS-09: add-to-calendar.tsx:96 is a plain link"
+    note: >-
+      Drawn on the states linking and raw_json_error, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: one-menu-wherever-it-stands
+    need: >-
+      The menu has the same rows, note and behaviour on Programım, on the celse page and on the course page, including the way to
+      the subscription.
+    missing: "no Linear issue; ADDCAL-1: the course card uses add-to-calendar.tsx, with two rows"
+    note: >-
+      Drawn on the states menu and courseMenu, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: no-button-where-nothing-can-be-added
+    need: >-
+      A celse that is cancelled, live or already over has no "Takvime ekle", on its row and on its page, so that nobody adds a
+      celse that cannot be attended or that is already past.
+    evidence:
+      - state: not_offered
+      - source: apps/tedris/features/schedule/components/schedule-page.tsx:175
+      - source: apps/tedris/features/courses/components/session-action-card.tsx:384
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "the session page's menu has the same rows, and none on a cancelled session"
+
+  - id: subscribe-to-all-my-courses
+    need: >-
+      From the same menu a talebe can go to the subscription of all their courses, where they make a personal link for Google or
+      Apple Calendar; the flow of that page is tedris.account.calendarFeed.
+    evidence:
+      - state: subscribed
+      - source: apps/tedris/features/courses/components/calendar-menu.tsx:133
+      - source: "apps/tedris/app/calendar/[file]/route.ts:17"
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "'Tüm derslerime abone ol' goes to the subscription"
+
+  - id: a-calendar-app-reads-the-feed
+    need: >-
+      The address a person pasted into Google or Apple Calendar answers without any sign-in: a calendar file with one event for
+      each celse of the person's courses (30 days back to 180 days ahead), the same UID for the same celse, a cancelled celse
+      marked as cancelled, an hourly refresh asked for, no meeting link, and headers that keep it private and out of search
+      engines.
+    evidence:
+      - state: feedRead
+      - state: feed_served
+      - source: "apps/tedris/app/calendar/[file]/route.ts:17"
+      - source: apps/tedrisat/src/calendar-feed/calendar-feed.controller.ts:58
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "creates the link once, serves the feed, hides the link on reload and revokes the old one on renewal"
+
+  - id: the-feed-holds-every-course-i-run
+    need: >-
+      The feed holds every course its owner is enrolled in, teaches or manages, as its own description says: a medrese's
+      başmüderris and a ders nazırı find the courses they run in it, not only a müderris, a köşk's nazım and a talebe.
+    missing: "no Linear issue; feed-misses-basmuderris-and-ders-nazir: measured 0 events for both on the seeded course"
+    note: >-
+      Drawn on the state feed_served, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-feed-refuses-a-wrong-address
+    need: >-
+      An address that is not a feed (a wrong shape, a link that was replaced by a new one, a feed read too often, a service that
+      is down) is refused with the status and code of the reason, never with anything about the token, and a calendar app keeps
+      what it had.
+    evidence:
+      - state: feed_refused.not_found
+      - state: feed_refused.too_many
+      - state: feed_refused.unavailable
+      - source: "apps/tedris/app/calendar/[file]/route.ts:17"
+      - source: "apps/tedris/app/calendar/[file]/route.ts:22"
+
+  - id: the-session-ending-sends-to-sign-in
+    need: >-
+      A person whose session ended while the page was open is sent to sign in when they ask for the file, and the file is saved
+      after they come back, not a broken file with a JSON error in it.
+    evidence:
+      - state: sent_to_sign_in
+      - source: "apps/tedris/app/api/lessons/[id]/calendar/route.ts:39"
+      - source: apps/tedris/features/courses/components/calendar-menu.tsx:74

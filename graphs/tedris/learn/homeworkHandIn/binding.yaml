@@ -1,0 +1,105 @@
+# tedris.learn.homeworkHandIn on the local stack (graphs/bindings/local.tedris.binding.yaml): tedris-web on :4000, the spare talebe
+# `applicantH` signed in through Keycloak's real form, on the celse page of a course of the walk's own.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkHandIn \
+#     --bind graphs/tedris/learn/homeworkHandIn/binding.yaml [--to <state>] [--cover transitions] --out <dir>
+#
+# What a walk makes and how it is taken away: `setup` runs handin-data.mjs make, which makes a published course of its own (helpers/
+# course.mjs make handin: three celses, the first tomorrow at 21:00 Istanbul, in the second köşk) with applicantH holding a seat, sets the
+# homework on its first celse as the hoca (PUT /lessons/{id}/assignment) and, where the scenario says so, writes the files the hoca or the
+# talebe "handed in" by SQL: the upload route answers 503 on this stack, so there is no other way to hold a file (the helper's header says
+# which rows and why). `teardown` removes the course with everything under it, the seat's mail and notifications, and the storage
+# deletions the removal queued under our own key prefix. Both are idempotent, so a walk that died leaves nothing the next one trips on.
+# The seeded courses, their homework and every other account are never touched. Run by hand, they change data: take the replay lock.
+#
+# The walk comes in through the course page: the entry "Devam et" of tedris.nav leads to the celse, as a person reaches it.
+#
+# Scenarios (each adds a transition of its own, so `--cover transitions` walks it; binding.legacy.yaml and binding.seatEnds.yaml hold the
+# ones that do not, or that must not hold a `call`):
+#   removeThenNote  (the main story) the talebe holds one file; the hoca's homework has a description and a file. Read, remove the file
+#                   after the question, write a note, "Teslim edildi".
+#   firstNote       the talebe holds nothing: "Teslim edilmedi" and the warning; a note, then the field emptied and saved, which clears it.
+#   fullQuota       the talebe holds ten files: "10 dosyanın hepsini ekledin..." and the picker closed; removing one opens it again.
+#   noHomework      the celse has no homework and the talebe holds nothing: the section draws nothing (the exit `nothing_drawn`).
+# Not bound, with the reason: see walk.common.binding.yaml (the file input, a failing server, a session that ends).
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkHandIn
+
+scenarios:
+  removeThenNote:
+    given: { assignment: textAndFile, holds: oneFile, file: noStorage, removal: removed, noteAnswer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      after: '0'
+      note: Fiil çekimlerini yazdım; bir satırdan emin değilim.
+    setup:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, make, textAndFile, oneFile]
+        expect: handin-data make
+    teardown:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, remove]
+        expect: handin-data remove
+
+  firstNote:
+    given: { assignment: text, holds: nothing, file: noStorage, removal: removed, noteAnswer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      after: '0'
+      note: Önce şu üç çekimi yazdım.
+    setup:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, make, text, nothing]
+        expect: handin-data make
+    teardown:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, remove]
+        expect: handin-data remove
+
+  fullQuota:
+    given: { assignment: textAndFile, holds: tenFiles, file: noStorage, removal: removed, noteAnswer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      after: '9'
+      note: Ondan fazlasını sonra getiririm.
+    setup:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, make, textAndFile, tenFiles]
+        expect: handin-data make
+    teardown:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, remove]
+        expect: handin-data remove
+
+  noHomework:
+    given: { assignment: none, holds: nothing, file: noStorage, removal: removed, noteAnswer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      after: '0'
+      note: Bu celsede ödev yok.
+    setup:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, make, none, nothing]
+        expect: handin-data make
+    teardown:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, remove]
+        expect: handin-data remove
+
+states:
+  # the server actions are POSTs to the page's own address, held while the busy button is checked (a Next server action answers 200 there,
+  # so a walk through a refusal compares nothing: binding.seatEnds.yaml holds none)
+  removing: { call: '{tedris}/courses/{course}/lessons/**' }
+  noteSaving: { call: '{tedris}/courses/{course}/lessons/**' }
+  # the upload is a fetch to the web route: it would hold the request to compare its status (503 on this stack); unreachable until a file input can be set
+  uploading: { call: '{tedris}/api/files/lessons/*/submission/files' }
+  left: { url: '{tedris}/home' }

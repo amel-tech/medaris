@@ -1,0 +1,650 @@
+# One köşk read and run as Medaris management: /kosks/<id> in nizam-web (app/kosks/[id]/page.tsx and features/kosks/components/
+# kosk-manage-page.tsx), read from the code of PR #394's branch on 16 Nov 2026. Nothing was seen in a browser or on the running
+# stack: every statement is from the code. It says what the code does today:
+#   - The page is the Medaris management's view, and four kinds of person who open the address are sent four ways: the başnazım and
+#     a Medaris nazımı holding platform.kosk_edit get the view; a köşk's own nazımı is redirected to its Dersler page; a Medaris
+#     nazımı whom tedrisat only lets read the hosting rights (platform.hosting_grant) is redirected to Barındırma hakları; everyone
+#     else meets "Bu bölüm için izniniz yok" (nizam.shell.noAccessAndNotFound draws that screen).
+#   - The view reads the köşk, its overview, its nazımları, its hosting rights and its course roster, and draws a summary (four
+#     numbers), the köşk's info, the management actions (hide or restore, take out of service, the way to the Arşiv), the nazım
+#     table, the hosting table and the course table.
+#   - What it writes: POST /kosks/:id/hide (an AlertDialog asks first), POST /kosks/:id/restore (at once), POST /kosks/:id/deactivate
+#     (a Dialog first reads GET /kosks/:id/deactivation-preview and posts the confirmation it gave), POST /kosks/:id/nazims (the
+#     "Köşk nazımı ekle" dialog, by e-mail) and DELETE /kosks/:id/hosting-rights/:madrasahId (the "Barındırma hakkını geri al"
+#     dialog). Each one writes an audit row; the page reads itself again (router.refresh) and a toast says what was done.
+#   - Findings it carries (the inventory's ids): F-W3-4 (a Medaris nazımı who holds only platform.kosk_edit is given a button that
+#     ends in a refusal and a hosting section that can never load), F-W3-9 (the tab title is the same for every köşk), F-W3-1 and
+#     F-X-3 (the two dialogs' submit buttons are off with no reason given), F-W3-14 and F-X-14 (the nazım is looked up when the
+#     field is left), F-UI-W1-1 (a dialog's body is its description), F-5 (the public-page link, below). Not this page's, though
+#     FLOWS.md lists them: F-W3-4b is the audit log's export link (nizam.platform.auditLog) and F-W3-16 is on a block no page
+#     draws (TaughtCourses, features/kosks/components/taught-courses.tsx is imported by nothing). Three more are this flow's own,
+#     proposed as MANAGE-1 to MANAGE-3 (ui.yaml `rules`).
+#   - The way to the public page is a link to tedris-web's köşk page, which the API opens to the başnazım and to a Medaris nazımı
+#     with platform.kosk_edit even while the köşk is hidden; there "Takip et" still takes a follow of a hidden köşk (F-5, in
+#     ledger/security.md and tedris.discover.followKosk). The link is drawn for a hidden and a passive köşk too.
+schema: delurio-graph/0
+kind: flow
+id: nizam.kosks.manage
+status: captured
+domain: medaris.api
+ui: nizam.kosks.manage
+title: Read and run a köşk as Medaris management
+summary: >-
+  The başnazım, or a Medaris nazımı who holds platform.kosk_edit, opens one köşk and reads its summary (courses, registered
+  talebe, nazımları, medreses that host in it) and its info. From there they hide it after a confirmation, bring a hidden one
+  back at once, take it out of service after reading what that takes along, add a köşk nazımı by e-mail address, and take a
+  hosting right back from a medrese, choosing what becomes of its open courses. Links lead on to the köşk's settings, its hosting
+  rights, its archive, the nazım's own page and the köşk's public page. A köşk's own nazımı never sees the view: they are sent
+  to Dersler; a Medaris nazımı with only platform.hosting_grant is sent to Barındırma hakları; anyone else is refused.
+
+scope:
+  shows: >-
+    the four ways in (the view, Dersler, Barındırma hakları, the refusal), the view with its numbers, info and tables, the five
+    actions with their dialogs, toasts and refusals, and the links out
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the Köşkler directory that links here, and its own restore: nizam.kosks.browse"
+    - "the settings page that 'Köşk ayarlarını aç' opens, with the edit form and its own hide: nizam.kosks.editAndHide"
+    - "the Köşk nazımları page and its list, and the add dialog as that page draws it, with the lookup's own branches (no account, one already chosen, the directory down) and the end date and its refusals: nizam.kosks.nazims; here the lookup is taken as found"
+    - "the Barındırma hakları page and the grant dialog: nizam.hosting.grantAndRevoke; the revoke dialog is drawn here only as this page opens it"
+    - "the köşk nazımı's Dersler page, the köşk's Arşiv and the platform Arşiv: nizam.courses.list, nizam.moderation.* (the archive's flows)"
+    - "the köşk's public page: tedris.discover.readKosk, and the follow button on it: tedris.discover.followKosk"
+    - "the \"izniniz yok\" screen itself, a person with no role at all (the /kosks layout refuses them before the page runs) and a köşk that does not exist: nizam.shell.noAccessAndNotFound"
+    - "the course table's own tabs (Tümü, Yayında, Taslak, Gizli) and the links on a course row to the course's overview (nizam.courses.overview); the table is drawn as the page shows it"
+    - "the loading skeleton (app/kosks/[id]/loading.tsx), the roles failing to read (the page then renders and tedrisat refuses each read), the nazım list or the course table failing to read on their own (each says so in place, as the hosting section does for the editor), the preview of the passivation failing to read ('Etki hesaplanamadı' with a retry), 'Bu kapsam zaten pasif' and a hosting right that is already gone: not drawn, not walked"
+    - "the phone layout, where the breadcrumb shows only its parent as a back link and each table row is a card"
+
+decisions:
+  D1:
+    question: >-
+      Should a Medaris nazımı who holds only platform.kosk_edit be shown the buttons and sections they cannot use? The view is given
+      to them by koskEntry, "Köşk nazımı ekle" is drawn for everyone, and adding a nazım asks platform.kosk_nazim_manage; the hosting
+      read asks kosk.hosting or platform.hosting_grant, so the hosting section meets a 403 and the page turns it into a box that says
+      the section could not be read, with a retry that cannot succeed. Two links of the view (Barındırma hakları, Arşiv’e git) open
+      screens that refuse the same person.
+    recommend: >-
+      Pass the permission codes the person holds (getMyPermissionCodes, already read for the entry) to KoskManagePage: draw only
+      what they can call, and say "izniniz yok" for a section whose read answers 403, with no retry (F-W3-4, MANAGE-1).
+    affects: [viewing, addForm, addReady]
+  D2:
+    question: >-
+      Should the page be read again when a refusal says the köşk is already in the state the person asked for? "Bu köşk zaten gizli"
+      is said in a toast, and the page keeps offering "Köşkü gizle" until it is reloaded; the same for "Bu köşk zaten gizli değil"
+      and "Köşkü geri al".
+    recommend: >-
+      Read the page again (router.refresh) on KOSK_ALREADY_HIDDEN and KOSK_NOT_HIDDEN, as the course table does after
+      ARCHIVE_RESTORE_LEVEL (kosk-course-table.tsx:68) (MANAGE-2).
+    affects: [hideConfirm, viewing]
+
+context:
+  reader:
+    values: [chief, editor, hostingOnly, owner, stranger]
+    initial: any
+    say:
+      chief: "the Medaris başnazım (the realm role SYSTEM_ADMIN): every read and every action is theirs"
+      editor: "a Medaris nazımı holding platform.kosk_edit and no other permission this page asks for (not platform.kosk_nazim_manage, not platform.hosting_grant)"
+      hostingOnly: "a Medaris nazımı holding platform.hosting_grant and not platform.kosk_edit"
+      owner: "a nazım of this very köşk"
+      stranger: "a signed-in nazım of another köşk (or a Medaris nazımı holding neither permission): the köşk is not theirs"
+  status:
+    values: [active, hidden, passive]
+    initial: any
+    say:
+      active: "the köşk is listed and has a live nazım"
+      hidden: "someone hid the köşk"
+      passive: "the köşk has no live nazım (it was taken out of service, or the last post ended)"
+  hosting:
+    values: [none, bare, courses]
+    initial: any
+    say:
+      none: "no medrese holds a hosting right in the köşk"
+      bare: "one medrese holds a hosting right and has no open course in the köşk"
+      courses: "one medrese holds a hosting right and has an open course in the köşk"
+  read:
+    values: [ok, overviewFailed]
+    initial: any
+    say:
+      ok: "the overview of the köşk answers"
+      overviewFailed: "the overview read fails with anything but a refusal or a missing köşk (the API is down)"
+  person:
+    values: [new, existing]
+    initial: any
+    say:
+      new: "the person the nazım is looked up as is not yet a nazım of the köşk"
+      existing: "the person the nazım is looked up as already is one"
+  view:
+    values: [active, hidden, passive]
+    initial: active
+    say: { active: "the page shows an active köşk", hidden: "the page shows a hidden one", passive: "the page shows a passive one" }
+  rows:
+    values: [some, none]
+    initial: none
+    say: { some: "a medrese holds a hosting right (the numbers and, for a reader who may read them, the table say so)", none: "none does" }
+  nazims:
+    values: [some, none]
+    initial: some
+    say: { some: "the köşk has a live nazım", none: "the köşk has none" }
+  choice:
+    values: [none, keep, hide]
+    initial: none
+    say: { none: "no answer to 'what becomes of the open courses' is chosen", keep: "'Dersler sürsün' is chosen", hide: "'Dersleri gizle' is chosen" }
+  elsewhere:
+    values: [none, hidden, restored]
+    initial: none
+    say: { none: "nobody has changed the köşk behind the page", hidden: "someone hid the köşk while the page showed it active", restored: "someone brought the köşk back while the page showed it hidden" }
+  impact:
+    values: [fresh, stale]
+    initial: fresh
+    say: { fresh: "the numbers the passivation dialog shows are the köşk's now", stale: "something changed after the dialog read them (a nazım was added)" }
+  toast:
+    values: [none, hidden, hideSettled, restored, restoreSettled, passivated, added, addExists, addRefused, revoked]
+    initial: none
+    say:
+      none: "no toast is up"
+      hidden: "'Köşk gizlendi'"
+      hideSettled: "'Köşk gizlenemedi: Bu köşk zaten gizli.'"
+      restored: "'Köşk geri alındı'"
+      restoreSettled: "'Köşk geri alınamadı: Bu köşk zaten gizli değil.'"
+      passivated: "'Köşk pasife alındı'"
+      added: "'Köşk nazımı eklendi'"
+      addExists: "'Köşk nazımı eklenemedi: Seçilen kişi zaten bu köşkün nazımı.'"
+      addRefused: "'Köşk nazımı eklenemedi: Bunu yapma izniniz yok.'"
+      revoked: "'Barındırma hakkı geri alındı'"
+
+guards:
+  # what the hosting read answers: kosk.hosting or platform.hosting_grant, which the başnazım has and a Medaris nazımı with only kosk_edit has not
+  rightsRead: "reader == 'chief'"
+  rightsDown: "reader == 'editor'"
+  # POST /kosks/:id/nazims asks platform.kosk_nazim_manage, which the başnazım passes and the editor does not hold
+  mayAdd: "reader == 'chief'"
+  hasRows: "rows == 'some' and rightsRead"
+  coursesOpen: "hosting == 'courses'"
+  # the restore of a köşk with no live nazım ends passive, as the API answers (ACTIVE or PASSIVE)
+  noNazim: "nazims == 'none'"
+
+effects:
+  again: { havoc: [read] } # "Yeniden dene" asks again, and the answer may differ
+  clearToast: { set: { toast: none } }
+  seenHidden: { set: { view: hidden } }
+  seenPassive: { set: { view: passive, nazims: none } }
+  seenRights: { set: { rows: some } }
+  hiddenElsewhere: { set: { elsewhere: hidden } }
+  restoredElsewhere: { set: { elsewhere: restored } }
+  impactChanged: { set: { impact: stale } }
+  impactRead: { set: { impact: fresh } }
+  nowHidden: { set: { view: hidden, toast: hidden, elsewhere: none } }
+  hideSettled: { set: { toast: hideSettled } }
+  nowActive: { set: { view: active, toast: restored, elsewhere: none } }
+  nowPassive: { set: { view: passive, toast: restored, elsewhere: none } }
+  restoreSettled: { set: { toast: restoreSettled } }
+  passivated: { set: { view: passive, nazims: none, toast: passivated, impact: fresh } }
+  added: { set: { nazims: some, toast: added } }
+  addedAgain: { set: { view: active, nazims: some, toast: added } }
+  addExisting: { set: { toast: addExists } }
+  addForbidden: { set: { toast: addRefused } }
+  chooseKeep: { set: { choice: keep } }
+  chooseHide: { set: { choice: hide } }
+  clearChoice: { set: { choice: none } }
+  revoked: { set: { rows: none, choice: none, toast: revoked } }
+
+failures:
+  readingHosting:
+    from: listKoskHostingRights
+    refused: [AUTHZ_FORBIDDEN, KOSK_NOT_FOUND]
+  reading:
+    from: getKoskOverview
+    unreadable: []
+  hiding:
+    from: hideKosk
+    settled: [KOSK_ALREADY_HIDDEN]
+  restoring:
+    from: restoreKosk
+    settled: [KOSK_NOT_HIDDEN]
+  passivating:
+    from: deactivateKosk
+    changed: [PASSIVATION_IMPACT_CHANGED]
+  adding:
+    from: addKoskNazims
+    exists: [KOSK_NAZIM_EXISTS]
+    refused: [AUTHZ_FORBIDDEN]
+# `unreadable` stands for any answer but a refusal or a missing köşk: the domain lists no code for it and the page treats a network
+# error and a 5xx alike. The refusals of the other actions the page maps (a köşk that is gone, the generic one, a hosting right
+# already withdrawn, an account the realm does not know) are not drawn: nothing on the local stack makes them happen.
+
+# The story the page tells first: the başnazım opens the köşk, hides it after the confirmation, and brings it back.
+main:
+  given: { reader: chief, status: active, hosting: courses, read: ok, person: new }
+  events: [DONE, DONE, HIDE, CONFIRM_HIDE, DONE, RESTORE, DONE]
+
+initial: entering
+
+states:
+  entering:
+    title: Read who is asking
+    description: >-
+      The page's server side reads GET /me for the person's roles (the realm role SYSTEM_ADMIN, the köşks they are nazım of)
+      before it decides anything. When the roles cannot be read the page draws the view all the same and lets tedrisat refuse
+      each read (not drawn). Behind the page, the /kosks layout has already refused a person with no nazım role at all
+      (nizam.shell.noAccessAndNotFound).
+    source: apps/nizam/app/kosks/[id]/page.tsx:42
+    invoke: { action: getMe }
+    on:
+      DONE: routing
+
+  routing:
+    title: Where the roles send them
+    description: >-
+      Not a screen: koskEntry (features/kosks/kosk-entry.ts:39). The başnazım gets the view at once; a nazım of this köşk is
+      redirected to Dersler (`redirect('/kosks/<id>/dersler')`); everyone else needs two more reads, the köşk's hosting rights
+      and the permission codes they hold anywhere.
+    source: apps/nizam/features/kosks/kosk-entry.ts:47
+    always:
+      - { guard: "reader == 'chief'", target: reading, say: "the başnazım: the management view" }
+      - { guard: "reader == 'owner'", target: dersler_opened, starts: { flow: nizam.courses.list }, source: "apps/nizam/app/kosks/[id]/page.tsx:50", say: "a nazım of this köşk is redirected to its Dersler page" }
+      - { target: readingHosting, source: apps/nizam/features/kosks/kosk-entry.ts:26, say: "a Medaris nazımı, or a nazım of another köşk: the hosting read and the permission read decide" }
+
+  readingHosting:
+    title: Read the köşk's hosting rights, to place them
+    description: >-
+      GET /kosks/:id/hosting-rights, which asks kosk.hosting or platform.hosting_grant: it answers a Medaris nazımı who holds the
+      second and refuses (403) one who holds neither, and a nazım of another köşk. The answer only places the person (a list
+      sends a hosting-only Medaris nazımı to Barındırma hakları); the same read is made again for the view.
+    source: apps/nizam/app/kosks/[id]/page.tsx:46
+    invoke: { action: listKoskHostingRights }
+    on:
+      DONE: { guard: "reader == 'hostingOnly'", target: readingHeld, say: "the right to read the hosting rights is theirs" }
+      FAIL.refused: { guard: "reader == 'editor' or reader == 'stranger'", target: readingHeld, say: "403: the read is refused, which koskEntry reads as 'no right to the hosting rights'" }
+
+  readingHeld:
+    title: Read the permission codes they hold
+    description: >-
+      GET /me/permissions: the codes the person holds in any scope, read in the same breath as the hosting rights. platform.kosk_edit
+      gives the management view whatever the hosting read said.
+    source: apps/nizam/app/kosks/[id]/page.tsx:47
+    invoke: { action: getMyPermissions }
+    on:
+      DONE: placing
+
+  placing:
+    title: Where the permissions send them
+    description: >-
+      Not a screen: the last lines of koskEntry. platform.kosk_edit opens the view; otherwise a person who could read the hosting
+      rights goes to Barındırma hakları, and anyone else is refused (a missing köşk and a refusal are the same screen on purpose).
+    source: apps/nizam/features/kosks/kosk-entry.ts:51
+    always:
+      - { guard: "reader == 'editor'", target: reading, say: "platform.kosk_edit: the management view" }
+      - { guard: "reader == 'hostingOnly'", target: hosting_opened, starts: { flow: nizam.hosting.grantAndRevoke }, source: "apps/nizam/app/kosks/[id]/page.tsx:51", say: "only the hosting right: redirected to Barındırma hakları" }
+      - { target: no_access, source: "apps/nizam/app/kosks/[id]/page.tsx:54", say: "forbidden(): the 'izniniz yok' screen" }
+
+  reading:
+    title: Read the köşk
+    description: >-
+      Five reads at once (Promise.all): the köşk, its overview (GET /kosks/:id/overview, the page's own read), its nazımları,
+      its hosting rights and its course roster. A 404 or 403 of the overview is the 'izniniz yok' screen (not drawn: a köşk
+      that is gone, see outOfView); a failure of any other kind draws a box instead of the page. Each of the other three that
+      fails draws its own section's box and leaves the rest. The editor's hosting read is the one that fails here: the API
+      answers it 403 and the page draws the same box as for an outage (F-W3-4).
+    source: apps/nizam/app/kosks/[id]/page.tsx:56
+    invoke: { action: getKoskOverview }
+    on:
+      DONE: { guard: "read == 'ok'", target: placingView }
+      FAIL.unreadable: { guard: "read == 'overviewFailed'", target: loadFailed, source: "apps/nizam/app/kosks/[id]/page.tsx:69", say: "the overview could not be read: the page says so in place" }
+
+  loadFailed:
+    title: The page could not be read
+    by: human
+    description: >-
+      An error Alert, "Bölüm yüklenemedi", one sentence and "Yeniden dene", which reads the page again. Nothing else of the view is
+      drawn. Not walked: nothing on the stack makes the overview fail.
+    source: apps/nizam/features/kosks/components/load-failed.tsx:23
+    on:
+      RETRY: { target: reading, effect: [again], source: apps/nizam/features/kosks/components/load-failed.tsx:25, say: "'Yeniden dene' reads the page again; the answer may differ" }
+
+  placingView:
+    title: Which köşk the page shows
+    description: >-
+      Not a screen: the view is drawn from the overview's status (ACTIVE, PASSIVE or HIDDEN), which the flow keeps as `view` from
+      here on, since a write changes it. A passive köşk has no live nazım.
+    source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:118
+    always:
+      - { guard: "status == 'hidden'", target: placingRows, effect: [seenHidden], say: "the köşk is hidden" }
+      - { guard: "status == 'passive'", target: placingRows, effect: [seenPassive], say: "the köşk is passive, with no live nazım" }
+      - { target: placingRows, say: "the köşk is active" }
+
+  placingRows:
+    title: Whether a medrese hosts in it
+    description: >-
+      Not a screen: the overview lists the medreses that hold a hosting right, and the summary says so. The table of rights is the
+      page's own second read, which the başnazım's answers and the editor's does not.
+    source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:427
+    always:
+      - { guard: "hosting == 'none'", target: viewing, say: "no medrese holds a right" }
+      - { target: viewing, effect: [seenRights], say: "a medrese holds a hosting right" }
+
+  viewing:
+    title: The köşk is read
+    by: human
+    goal: true
+    source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:347
+    description: >-
+      The view: the breadcrumb, the köşk's name and short name, the way to the nazım's own page and (when the deployment has
+      TEDRIS_URL) to the public page, the neutral notice "Bu, Medaris yönetimi görünümüdür", a warning for a hidden or a passive
+      köşk, the four numbers (Ders with its breakdown, Kayıtlı talebe, Köşk nazımı, Barındırma hakkı olan medrese), the info
+      (name, short name, description, status, visibility, opening, policy), the management actions, and the nazım, hosting and
+      course tables. A hidden köşk shows "Köşkü geri al" where the others show "Köşkü gizle"; "Köşkü pasife al" is on for an
+      active köşk only. The focus is on nothing (focus-not-set). Findings read here: F-W3-9 (the tab says only 'Köşk'), F-W3-4
+      (for the editor: "Köşk nazımı ekle" ends in a refusal, the hosting section is a box with a retry that cannot succeed, and
+      "Barındırma hakları" opens a refusal), MANAGE-1 ('Arşiv’e git' is drawn for a reader the archive refuses), MANAGE-3 (after
+      a decision the pressed button is replaced or disabled and the focus with it; the only word is a toast). `HIDDEN_ELSEWHERE`
+      and `RESTORED_ELSEWHERE` are what a colleague does to the köşk behind the page: the page does not know until the person presses.
+    on:
+      HIDE: { guard: "view != 'hidden'", target: hideConfirm, effect: [clearToast], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:517, say: "they press 'Köşkü gizle'" }
+      RESTORE: { guard: "view == 'hidden'", target: restoring, effect: [clearToast], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:495, say: "they press 'Köşkü geri al': no confirmation" }
+      PASSIVATE: { guard: "view == 'active'", target: passiveLoading, effect: [clearToast, impactRead], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:532, say: "they press 'Köşkü pasife al': the dialog opens and reads what it takes along" }
+      ADD_NAZIM: { target: addForm, effect: [clearToast], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:557, say: "they press 'Köşk nazımı ekle' (drawn for the editor too, F-W3-4)" }
+      REVOKE: { guard: hasRows, target: revokeOpening, effect: [clearToast, clearChoice], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:266, say: "they press 'Barındırma hakkını geri al' on a medrese's row" }
+      RETRY_HOSTING: { guard: rightsDown, target: viewing, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:126, say: "'Yeniden dene' reads the page again; the same 403 answers, so the box stays (F-W3-4)" }
+      HIDDEN_ELSEWHERE: { guard: "view != 'hidden' and elsewhere == 'none'", target: viewing, effect: [hiddenElsewhere], source: apps/tedrisat/src/kosk/kosk-admin.service.ts:259, say: "a colleague hides the köşk while this page stays open" }
+      RESTORED_ELSEWHERE: { guard: "view == 'hidden' and elsewhere == 'none'", target: viewing, effect: [restoredElsewhere], source: apps/tedrisat/src/kosk/kosk-admin.service.ts:284, say: "a colleague brings the köşk back while this page stays open" }
+      OPEN_PUBLIC:
+        - { guard: "view == 'active'", target: viewing, starts: { flow: tedris.discover.readKosk, given: { viewer: "'stranger'", answer: "'listed'" } }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:367, say: "'Köşk sayfasını gör' opens the köşk's page in tedris-web in a new tab; this tab stays" }
+        - { target: viewing, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:367, say: "the same link on a hidden or a passive köşk: tedris-web opens the page for the başnazım and the kosk_edit holder anyway, and 'Takip et' on it still takes a follow (F-5); not started here, since readKosk draws no hidden köşk" }
+      OPEN_KOSKS:
+        - { guard: "reader == 'chief'", target: kosks_opened, starts: { flow: nizam.kosks.browse, given: { viewer: "'chief'" } }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:354, say: "the breadcrumb's 'Köşkler': the başnazım's directory" }
+        - { target: kosks_opened, starts: { flow: nizam.kosks.browse, given: { viewer: "'medaris'" } }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:354, say: "the breadcrumb's 'Köşkler': a Medaris nazımı's directory" }
+      OPEN_DERSLER: { target: dersler_opened, starts: { flow: nizam.courses.list }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:364, say: "'Köşk nazımının gördüğü sayfa'" }
+      OPEN_SETTINGS: { target: settings_opened, starts: { flow: nizam.kosks.editAndHide }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:466, say: "'Köşk ayarlarını aç'" }
+      OPEN_HOSTING:
+        - { guard: "reader == 'editor'", target: no_access, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:584, say: "'Barındırma hakları' on the editor: the page asks kosk.hosting or platform.hosting_grant and refuses them (F-W3-4)" }
+        - { target: hosting_opened, starts: { flow: nizam.hosting.grantAndRevoke }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:584, say: "'Barındırma hakları'" }
+      OPEN_KOSK_ARCHIVE: { target: kosk_archive_opened, starts: { flow: nizam.moderation.restoreArchived }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:614, say: "'Arşiv' beside the courses: this köşk's archive" }
+      OPEN_ARCHIVE:
+        - { guard: "reader == 'editor'", target: no_access, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:542, say: "'Arşiv’e git' on the editor: the platform archive is the başnazım's alone and refuses them (MANAGE-1)" }
+        - { target: archive_opened, starts: { flow: nizam.moderation.deleteArchived }, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:542, say: "'Arşiv’e git': the platform archive, where 'Kalıcı olarak sil' lives" }
+
+  restoring:
+    title: Bring the köşk back
+    description: >-
+      The server action restoreKosk, POST /kosks/:id/restore. The button is busy (aria-disabled, "Yükleniyor" for a reader of the
+      screen). A hidden köşk is listed again as ACTIVE, or as PASSIVE when it has no live nazım. The page reads itself again and
+      a toast says "Köşk geri alındı". If a colleague brought it back first, the API refuses (409 KOSK_NOT_HIDDEN) with "Bu köşk
+      zaten gizli değil."; the page is not read again (MANAGE-2).
+    source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:102
+    invoke: { action: restoreKosk }
+    on:
+      DONE:
+        - { guard: "elsewhere != 'restored' and noNazim", target: viewing, effect: [nowPassive], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:112, say: "the köşk had no live nazım: it comes back passive" }
+        - { guard: "elsewhere != 'restored'", target: viewing, effect: [nowActive], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:112, say: "the köşk comes back active, and the page is read again" }
+      FAIL.settled: { guard: "elsewhere == 'restored'", target: viewing, effect: [restoreSettled], source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:106, say: "a toast says it is not hidden; nothing is read again" }
+
+  hideConfirm:
+    title: Köşkü gizle asks once
+    by: human
+    description: >-
+      An alertdialog, "Köşkü gizle", with the köşk's name above it, a sentence saying who loses sight of it and one saying that
+      nothing is deleted and who can bring it back. Focus starts on "Vazgeç"; the scrim does not close it. A refusal (the köşk was
+      hidden meanwhile) leaves the dialog open under an error toast, and the page behind is not read again (MANAGE-2). When it
+      closes after a hide, the pressed button has been replaced by "Köşkü geri al" and the focus has nothing to return to
+      (MANAGE-3; not verified in a browser).
+    source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57
+    on:
+      CONFIRM_HIDE: { target: hiding, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:64, say: "they press 'Gizle'" }
+      CANCEL: { target: viewing, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:59, say: "they press Vazgeç, or Esc: nothing is changed" }
+      CLOSE: { target: viewing, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:59, say: "they press the close icon" }
+
+  hiding:
+    title: Hide the köşk
+    description: >-
+      The server action hideKosk, POST /kosks/:id/hide, at the level the caller acts at (platform, for both readers of this page).
+      The köşk and its courses leave every list and answer 404 to everyone but the people above; nothing is deleted. "Gizle" is
+      busy; the dialog stays up until the answer. On success a toast says "Köşk gizlendi", the dialog closes and the page is read
+      again; on 409 KOSK_ALREADY_HIDDEN the toast says "Bu köşk zaten gizli." and the dialog stays.
+    source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:39
+    invoke: { action: hideKosk }
+    on:
+      CANCEL: { target: hiding, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:60, say: "they press Vazgeç, or Esc: nothing happens, the hide goes on (onOpenChange is ignored while saving)" }
+      CLOSE: { target: hiding, source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:60, say: "they press the close icon: nothing happens, the hide goes on" }
+      DONE: { guard: "elsewhere != 'hidden'", target: viewing, effect: [nowHidden], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:48, say: "the köşk is hidden; the page shows the hidden note and the restore row" }
+      FAIL.settled: { guard: "elsewhere == 'hidden'", target: hideConfirm, effect: [hideSettled], source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:41, say: "the köşk was hidden meanwhile: an error toast and the dialog stays open" }
+
+  passiveLoading:
+    title: Read what taking it out of service takes along
+    description: >-
+      The dialog "Köşkü pasife al" opens at once and reads GET /kosks/:id/deactivation-preview (platform.kosk_edit): the nazımları
+      who leave, the courses (the hosted medreses' too) that close, the talebe who lose access, the live celses of the coming days,
+      and a 64-character confirmation bound to those numbers and to the caller. While it reads, a sentence says so and the
+      confirm button is off. If the read fails the dialog says "Etki hesaplanamadı" with a retry (not drawn).
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:65
+    invoke: { action: previewKoskDeactivation }
+    on:
+      CLOSE: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184, say: "they press the close icon while it reads: nothing is saving yet, so the dialog closes" }
+      DONE: { target: passiveReady, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:71, say: "the numbers are on the screen" }
+      CANCEL: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:197, say: "they close the dialog while it reads" }
+
+  passiveReady:
+    title: Köşkü pasife al, the numbers read
+    by: human
+    description: >-
+      A dialog (not an alertdialog: the decision has consequences to read first), the köşk's name above, a warning "Pasife almak
+      yanında şunları götürür" with one line for the nazımları, the courses, those that still have a hoca, the talebe (when any),
+      and the live celses, a sentence on the way back ("Köşke yeniden köşk nazımı eklenince köşk yeniden açılır. Hiçbir şey
+      silinmez."), "Vazgeç" (focus starts here) and "Yine de pasife al". The scrim does not close it. `IMPACT_CHANGED` is
+      something done to the köşk behind the dialog (a nazım is added): the numbers on the screen are then old.
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184
+    on:
+      CONFIRM_PASSIVE: { target: passivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:82, say: "they press 'Yine de pasife al'" }
+      IMPACT_CHANGED: { guard: "impact == 'fresh'", target: passiveReady, effect: [impactChanged], source: apps/tedrisat/src/kosk/kosk-admin.service.ts:489, say: "a colleague adds a nazım while the dialog is open: the numbers it shows are no longer the köşk's" }
+      CANCEL: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:197, say: "they press Vazgeç, or Esc: nothing is changed" }
+      CLOSE: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184, say: "they press the close icon" }
+
+  passivating:
+    title: Take the köşk out of service
+    description: >-
+      The server action deactivateKosk, POST /kosks/:id/deactivate with the confirmation the preview gave. In one transaction the
+      API measures the impact again and compares it with the confirmation, revokes every live köşk nazımı role, and sets the
+      köşk passive; nothing is hidden or deleted. On success a toast says "Köşk pasife alındı", the dialog closes and the page
+      is read again (the pressed button is now off: MANAGE-3). When the numbers changed in between, the API answers 409
+      PASSIVATION_IMPACT_CHANGED with the fresh preview, and the dialog shows the fresh numbers under an info note, asking again.
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:86
+    invoke: { action: deactivateKosk }
+    on:
+      CANCEL: { target: passivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:187, say: "they press Vazgeç, or Esc: nothing happens, the köşk is still taken out of service (onOpenChange is ignored while saving)" }
+      CLOSE: { target: passivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:187, say: "they press the close icon: nothing happens, the call goes on" }
+      DONE: { guard: "impact == 'fresh'", target: viewing, effect: [passivated], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:90, say: "the köşk is passive and its nazımları are off the post" }
+      FAIL.changed: { guard: "impact == 'stale'", target: passiveChanged, effect: [impactRead], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:101, say: "409 with the fresh numbers: they replace the old ones and nothing is retried by itself" }
+
+  passiveChanged:
+    title: Köşkü pasife al, the numbers changed
+    by: human
+    description: >-
+      The same dialog with the fresh numbers and an info Alert, "Etki siz bakarken değişti; sayılar yenilendi. Yeni sayıları okuyup
+      yeniden onaylayın." The confirm button is on again: the person has read them and chooses.
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:129
+    on:
+      CONFIRM_PASSIVE: { target: passivating, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:82, say: "they press 'Yine de pasife al' on the fresh numbers" }
+      CANCEL: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:197, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: viewing, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184, say: "they press the close icon" }
+
+  addForm:
+    title: Köşk nazımı ekle, nobody chosen
+    by: human
+    description: >-
+      A dialog with a form: the köşk's name above, a sentence, "* zorunlu alan", the nazım picker (an e-mail field, which has the
+      focus) and an optional end of the post (not drawn: nizam.kosks.nazims). "Ekle" is natively disabled until somebody is chosen
+      and nothing says why (F-W3-1). The address is looked up on Enter and also when the field is left, which tedrisat writes to
+      the audit log (F-W3-14). The scrim does not close it. The button is drawn for the editor, who cannot do this (F-W3-4).
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109
+    on:
+      SEARCH: { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:65, say: "they type a person's e-mail address and press Enter" }
+      CANCEL: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109, say: "they press the close icon" }
+
+  looking:
+    title: Look the person up
+    description: >-
+      The server action lookupUserByEmail, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1
+      account) and tedrisat audits every search. The field is disabled while it runs. Taken as found here: an address with no
+      account, one already chosen and a directory that does not answer are nizam.kosks.nazims' states.
+    source: apps/nizam/features/kosks/components/nazim-picker.tsx:70
+    invoke: { action: lookupUser }
+    on:
+      CLOSE: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109, say: "they press the close icon while it searches: nothing is saving, so the dialog closes and the answer is dropped" }
+      DONE: { target: addReady, source: apps/nizam/features/kosks/components/nazim-picker.tsx:83, say: "the person is chosen and the field is cleared" }
+      CANCEL: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they close the dialog while it searches; the answer is dropped" }
+
+  addReady:
+    title: Köşk nazımı ekle, somebody chosen
+    by: human
+    description: >-
+      The same dialog with the chosen person under "Seçilen köşk nazımları", a button to take them off the list, and "Ekle" on. A
+      refusal of the add (the person is already a nazım, or the caller may not add) stays here, under an error toast.
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:124
+    on:
+      SUBMIT: { target: adding, effect: [clearToast], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:72, say: "they press 'Ekle'" }
+      CANCEL: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they press Vazgeç, or Esc: nobody is added" }
+      CLOSE: { target: viewing, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109, say: "they press the close icon" }
+
+  adding:
+    title: Add the nazım
+    description: >-
+      The server action addKoskNazims, POST /kosks/:id/nazims, which asks platform.kosk_nazim_manage (the başnazım passes; a
+      Medaris nazımı with only kosk_edit does not). All or nothing: a person who already is a nazım of the köşk makes the whole call a
+      409. A passive köşk is made active again. On success a toast says "Köşk nazımı eklendi", the dialog closes and the page is
+      read again. The fields are disabled and "Ekle" is busy while it runs.
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:84
+    invoke: { action: addKoskNazims }
+    on:
+      CANCEL: { target: adding, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:112, say: "they press Vazgeç, or Esc: nothing happens, the add goes on (onOpenChange is ignored while saving)" }
+      CLOSE: { target: adding, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:112, say: "they press the close icon: nothing happens, the add goes on" }
+      DONE:
+        - { guard: "mayAdd and person == 'new' and view == 'passive'", target: viewing, effect: [addedAgain], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "the köşk had no nazım and is active again" }
+        - { guard: "mayAdd and person == 'new'", target: viewing, effect: [added], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "the person is a nazım of the köşk: a toast, the dialog closes, the table has a row more" }
+      FAIL.exists: { guard: "mayAdd and person == 'existing'", target: addReady, effect: [addExisting], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:91, say: "409: an error toast says they already are one; the dialog stays open" }
+      FAIL.refused: { guard: "not mayAdd", target: addReady, effect: [addForbidden], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:91, say: "403: an error toast says they may not (F-W3-4); the dialog stays open" }
+
+  revokeOpening:
+    title: Does the right have open courses
+    description: >-
+      Not a screen: the dialog asks what becomes of the medrese's open courses only when it has any; without one there is nothing
+      to ask and the button is on.
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:68
+    always:
+      - { guard: coursesOpen, target: revokeForm, say: "the medrese has an open course: an answer is needed" }
+      - { target: revokeReady, say: "no open course: nothing to choose" }
+
+  revokeForm:
+    title: Barındırma hakkını geri al, no answer
+    by: human
+    description: >-
+      A dialog with a form: the medrese's name above, a sentence naming it and the köşk, the list of its open courses with their
+      status, and a required radio group "Açık dersler" with two answers and no default: "Dersler sürsün" and "Dersleri gizle".
+      "Vazgeç" has the focus. "Barındırma hakkını geri al" is natively disabled until an answer is chosen and nothing says why
+      (F-W3-1).
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95
+    on:
+      CHOOSE_KEEP: { target: revokeReady, effect: [chooseKeep], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:163, say: "they choose 'Dersler sürsün'" }
+      CHOOSE_HIDE: { target: revokeReady, effect: [chooseHide], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:163, say: "they choose 'Dersleri gizle'" }
+      CANCEL: { target: viewing, effect: [clearChoice], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:110, say: "they press Vazgeç, or Esc: nothing is changed" }
+      CLOSE: { target: viewing, effect: [clearChoice], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95, say: "they press the close icon" }
+
+  revokeReady:
+    title: Barındırma hakkını geri al, the button on
+    by: human
+    description: The same dialog with an answer chosen, or with no open course to ask about; the button is on.
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:114
+    on:
+      CHOOSE_KEEP: { guard: coursesOpen, target: revokeReady, effect: [chooseKeep], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:163, say: "they change the answer to 'Dersler sürsün'" }
+      CHOOSE_HIDE: { guard: coursesOpen, target: revokeReady, effect: [chooseHide], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:163, say: "they change the answer to 'Dersleri gizle'" }
+      SUBMIT: { target: revoking, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:72, say: "they press 'Barındırma hakkını geri al'" }
+      CANCEL: { target: viewing, effect: [clearChoice], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:110, say: "they press Vazgeç, or Esc: nothing is changed" }
+      CLOSE: { target: viewing, effect: [clearChoice], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95, say: "they press the close icon" }
+
+  revoking:
+    title: Take the hosting right back
+    description: >-
+      The server action revokeHostingRight, DELETE /kosks/:id/hosting-rights/:madrasahId?coursesAction=KEEP|HIDE. The right stays
+      as history with its end; "Dersler sürsün" leaves the medrese's open courses as they are and "Dersleri gizle" hides each of
+      them at the level the caller acts at (they come back from the Arşiv); after either, the medrese can open no new course
+      here. A toast says "Barındırma hakkı geri alındı", the dialog closes and the page is read again: the row leaves the table
+      and the summary's medrese count falls (the pressed button leaves with its row: MANAGE-3).
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:77
+    invoke: { action: revokeKoskHostingRight }
+    on:
+      CANCEL: { target: revoking, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "they press Vazgeç, or Esc: nothing happens, the right is still taken back (onOpenChange is ignored while saving)" }
+      CLOSE: { target: revoking, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "they press the close icon: nothing happens, the call goes on" }
+      DONE: { target: viewing, effect: [revoked], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87, say: "the right is withdrawn" }
+
+  kosks_opened:
+    type: final
+    title: The Köşkler directory opens
+    description: The breadcrumb's first link (nizam.kosks.browse).
+    leavesPage: true
+
+  dersler_opened:
+    type: final
+    title: The köşk nazımı's Dersler page opens
+    description: >-
+      "Köşk nazımının gördüğü sayfa", and the redirect a köşk's own nazımı is sent through at once (the view is never drawn for
+      them). The page is nizam.courses.list; e2e kosk-view#6 asserts its heading.
+    leavesPage: true
+
+  settings_opened:
+    type: final
+    title: The köşk's settings open
+    description: "'Köşk ayarlarını aç' (nizam.kosks.editAndHide)."
+    leavesPage: true
+
+  hosting_opened:
+    type: final
+    title: Barındırma hakları opens
+    description: >-
+      The link "Barındırma hakları", and the redirect a Medaris nazımı with only platform.hosting_grant is sent through at once
+      (nizam.hosting.grantAndRevoke).
+    leavesPage: true
+
+  kosk_archive_opened:
+    type: final
+    title: The köşk's Arşiv opens
+    description: The "Arşiv" link beside the courses.
+    leavesPage: true
+
+  archive_opened:
+    type: final
+    title: The platform Arşiv opens
+    description: >-
+      "Arşiv’e git": the platform archive, where "Kalıcı olarak sil" is found, for the başnazım alone.
+    leavesPage: true
+
+  no_access:
+    type: final
+    title: Bu bölüm için izniniz yok
+    description: >-
+      The same screen for a person the köşk is not open to (forbidden()), and for the editor on two links of the view whose
+      pages refuse them (nizam.shell.noAccessAndNotFound).
+    leavesPage: true
+
+assertions:
+  - id: only-the-chief-and-the-kosk-editor-see-the-view
+    never: "(state == 'viewing' or state == 'hiding' or state == 'restoring') and (reader == 'owner' or reader == 'hostingOnly' or reader == 'stranger')"
+    say: A köşk's own nazımı, a hosting-only Medaris nazımı and a stranger never see the management view.
+    source: apps/nizam/features/kosks/kosk-entry.ts:47
+  - id: a-hidden-kosk-is-restored-not-hidden-again
+    never: "state == 'hiding' and view == 'hidden'"
+    say: The hide dialog opens only on a köşk that is not hidden; a hidden one is offered its restore.
+    source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:483
+  - id: only-an-active-kosk-is-taken-out-of-service
+    never: "(state == 'passiveLoading' or state == 'passivating') and view != 'active'"
+    say: The passivation dialog opens only on an active köşk (the button is off for a hidden or a passive one).
+    source: apps/nizam/features/kosks/overview-present.ts:152
+  - id: a-passive-kosk-has-no-nazim
+    never: "view == 'passive' and nazims == 'some'"
+    say: A köşk the page shows as passive has no live nazım; one nazım added brings it back to active.
+    source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:387
+  - id: the-editor-cannot-add-a-nazim
+    never: "state == 'viewing' and reader == 'editor' and toast == 'added'"
+    say: A Medaris nazımı who holds only platform.kosk_edit never ends with a nazım added by their own press; the add is refused (F-W3-4).
+    source: apps/tedrisat/src/kosk/kosk-admin.service.ts:117
+  - id: a-revoke-asks-what-becomes-of-open-courses
+    never: "state == 'revoking' and hosting == 'courses' and choice == 'none'"
+    say: A hosting right with open courses is never withdrawn before the person has chosen what becomes of them.
+    source: apps/nizam/features/hosting/present.ts:99

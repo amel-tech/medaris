@@ -1,0 +1,302 @@
+# A celse page opened by a person who may not read the course: a visitor, a signed-in stranger, a talebe whose application waits,
+# one the course team took out, and an enrolled talebe whose content a passive scope or a ban has closed. What they meet is the lock
+# card with its reason and, for the ones who may still apply, one button. Written from the code of the branch (captured); nothing here
+# is a plan. What it leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   CLS-02 / MDRS-265  an enrolled talebe of a passive course, and one barred from it, are shown "Kayıt başvurusu yap" (lesson-lock.ts:19-27)
+#   CLS-03   every celse page has the title "Medaris Tedris"
+#   CLS-10   a 409 on the button says the page was refreshed and nothing refreshes it (lesson-locked.tsx:93-96)
+#   CLS-11   the sample celse's row in the programme points at #ornek-celse, which this page does not have (course-programme.tsx:148-154)
+#   CLS-12   the window says the application can be taken back "bu sayfadan"; this page has no such button (enrollment-received-dialog.tsx:46)
+#   CLS-16   the refusal toast is Sonner's, a second toast system beside the mds toaster in this page's layout
+#   CLS-18   the busy word "Yükleniyor" is the kit's own default, outside the catalog (libs/ui/src/mds/button.tsx:62)
+#   CLS-19   after "Tamam" nothing takes the focus: measured on the stack, it falls to the document (lesson-locked.tsx:310-314)
+#   LOCKED-1 (new, provisional id) a celse with no start draws no card, so a locked reader gets neither the reason nor the button (lesson-locked.tsx:202)
+#   LOCKED-2 (new, provisional id) the card of a person whose application waits still says "Derse kaydolduğunda görebilirsin" (LessonLocked.description.pending)
+#   LOCKED-3 (note, no finding) a cancelled celse gives a locked reader the cancelled card, whose action is empty: no reason, no button
+# E2E carried: celse-states#6 (a1 to a4 are the page's HTML, which the API cutting the content makes true and the walk phase is to check as absences
+# of nodes with --absent, not as a scan; a5 to a11 are drawn), session#11 (its three assertions are absences, so they are carried as nodes that must be absent; the
+# test's title promises the locked card and never looks for it, SE-04, and the graph does), session#1 (the visitor is sent to sign in; the
+# test asserts only /signin/ in the address, the graph also says the address comes back, which the binding's `visitor` scenario is to check in the walk phase).
+# Not carried: celse-states#6 a1 to a4 as a raw HTML scan.
+schema: delurio-graph/0
+kind: flow
+id: tedris.celse.locked
+status: captured
+domain: medaris.api
+ui: tedris.celse.locked
+title: Open a celse you have no seat in
+summary: >-
+  A person opens a celse's address and may not read the course. A visitor never reaches the page: the app's proxy sends them to
+  sign in and the sign-in brings them back to the celse. A signed-in person with no seat meets the celse's header, its time, a
+  card that says "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda
+  görebilirsin." with the button "Kayıt başvurusu yap", the course's card, and the programme with its rows locked; nothing of the
+  meeting link, the agenda, the stream or a recording is in the page. The button sends the application. Where the course asks for
+  approval the window "Başvurun alındı" opens and, after "Tamam", the card says "Onay bekliyor"; where it does not, the page is
+  drawn again as the whole celse. A person whose application waits has no button; one the team took out has the sentence "Bu derse
+  erişimin kaldırıldı." and no button. The watch page's address sends all of them back to this page.
+
+scope:
+  shows: the lock card of a celse for the five kinds of person who may not read it, the window after an application that waits, and the way a visitor is sent to sign in
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the bar around the page (Keşfet, Derslerim, the theme switch, the bell, the account link) and the phone's sheet: tedris.shell.frame"
+    - "the whole celse once the person has a seat, and the page that draws again after an application that is accepted at once: tedris.celse.attend"
+    - "the course page's own card \"Derse kayıt\", its window and its withdraw button, which this page lacks (CLS-12): tedris.course.apply"
+    - "what the course team does with the application: nazar.roster.decide, nizam.courses.decideApplications"
+    - "the sign-in itself, after the proxy's redirect: realm.auth.signIn; the reason `signIn` of the card, drawn for a session whose token cannot be renewed, which a browser never meets because the proxy answers first (page.tsx:23-26)"
+    - "a visitor who, once signed in, turns out to hold a seat, or to be pending or revoked: the person comes back as that person, and `reader` starts those cases from the card"
+    - "the public recording of a sample celse that has ended, which a locked reader sees in the page (lesson-locked.tsx:152); the stack's course has none"
+    - "the page of a cancelled celse for a locked reader (LOCKED-3) and the page of a celse with no start (LOCKED-1): read from the code, not walked"
+    - "the loading skeleton and the not-found page: tedris.shell.systemPages"
+    - "a request that never reaches the server: the call has no try/catch (CLS-04's shape on this page); what the person sees is not verified"
+    - "kontenjan: the code gives a seat with no count and no gender rule (invariants seat-quota-per-gender and gender-always-known); needs.yaml carries it as missing (MDRS-284)"
+
+context:
+  reader:
+    values: [visitor, stranger, pending, revoked, passive, barred]
+    initial: any
+    say:
+      visitor: "nobody is signed in, and once signed in the person holds no seat in the course"
+      stranger: "signed in, holds no row in the course"
+      pending: "signed in, their application waits (a PENDING row)"
+      revoked: "signed in, the course team took their seat away (a REVOKED row)"
+      passive: "signed in, enrolled, and the course's scope is passive, so the API locks the content for everyone"
+      barred: "signed in, enrolled, and an open ban bars them from the course, so the API gives them a stranger's page"
+  approval:
+    values: [open, needed]
+    initial: any
+    say:
+      open: "no rule asks for approval: an application is a seat at once"
+      needed: "the course, its köşk, the platform or its medrese asks for approval: an application waits"
+  notice:
+    values: [none, gone, conflict, failed]
+    initial: none
+    say:
+      none: "no toast"
+      gone: "a toast says the course is no longer found"
+      conflict: "a toast says the enrolment changed"
+      failed: "a toast says the action could not be completed"
+
+guards:
+  isVisitor: "reader == 'visitor'"
+  isPending: "reader == 'pending'"
+  isRevoked: "reader == 'revoked'"
+  mayApply: "reader in ['visitor', 'stranger']"
+  seatHeld: "reader in ['passive', 'barred']"
+  applicationWaits: "reader in ['visitor', 'stranger'] and approval == 'needed'"
+  seatGivenAtOnce: "reader in ['visitor', 'stranger'] and approval == 'open'"
+  scopeClosed: "reader == 'passive'"
+  unlocked: "false" # the content the lock hides: the nodes that carry it are never shown, and a replay with --absent checks it
+
+effects:
+  clearNotice: { set: { notice: none } }
+  toastGone: { set: { notice: gone } }
+  toastConflict: { set: { notice: conflict } }
+  toastFailed: { set: { notice: failed } }
+
+failures:
+  enrolling:
+    from: enrollInCourse
+    signedOut: [HTTP_401]
+    gone: [COURSE_NOT_FOUND]
+    conflict: [ENROLLMENT_STATE_CONFLICT]
+    other: [BAN_ACTIVE, HTTP_400]
+
+# The main story: a signed-in stranger opens a celse of a course that asks for approval, tries the watch page, applies, reads the window,
+# closes it and finds the card saying the application waits; the watch page still sends them back.
+main:
+  given: { reader: stranger, approval: needed }
+  events: [OPEN_WATCH, APPLY, DONE, CLOSE, OPEN_WATCH]
+
+initial: opened
+states:
+  opened:
+    title: The celse's address is opened
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:29
+    description: >-
+      The page reads the course and the celse (GET /courses/:id, GET /courses/:id/sessions/:sessionId) with the caller's token, if
+      they have one. The API decides access and says it with `contentLocked`; the page only picks the card's reason from the caller's
+      own enrolment (lessonLockReason, features/courses/lesson-lock.ts:13-29): no row or any other status gives "apply", PENDING gives
+      "pending", REVOKED gives "revoked". A visitor never gets that far: `/courses/<id>/lessons/<id>` is not a public path
+      (lib/public-paths.ts:29-34 lists only `/courses/[^/]+`, one segment), so the proxy sends them to sign in first.
+    always:
+      - { guard: isVisitor, target: signInGate }
+      - { guard: isPending, target: pendingCard }
+      - { guard: isRevoked, target: revokedCard }
+      - { target: applyCard, say: "a stranger, and also an enrolled talebe whose content is closed (CLS-02)" }
+
+  signInGate:
+    title: A visitor is sent to sign in, and comes back to this celse
+    source: apps/tedris/proxy.ts:15
+    description: >-
+      The proxy answers before the page renders: a request with no session for a path that is not public goes to
+      `/auth/signin?callbackUrl=<the celse's path>`, which starts the Keycloak round trip (libs/auth proxy; proxy.ts:5-8). Measured
+      on the stack: a context with no cookies that opens the celse's address ends on Keycloak's authorization address, with the
+      redirect back to tedris's own callback. realm.auth.signIn takes it from there (its entry `protectedPage`) and the callback
+      returns the person to the celse, which is then the page of a signed-in stranger. session#1 asserts only that the address
+      holds /signin/.
+    invoke: { flow: realm.auth.signIn }
+    on:
+      DONE: { target: applyCard, say: "signed in, they hold no seat: the card of a stranger" }
+
+  applyCard:
+    title: The lock card with the button
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:109
+    description: >-
+      The celse's header (the breadcrumb köşk / course / week, the eyebrow "Hafta N · K. celse", the title, the countdown badge, the
+      day, the time and the length and the hoca), then the card named "Canlı ders": the date block, the sentence "Ders içerikleri,
+      toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin." and the large button
+      "Kayıt başvurusu yap". Under it, the course's card (its title as a link, the hoca, "köşk · N hafta") and the aside "Müfredat": the
+      programme with each row locked, except the sample celse's, which is a link (CLS-11). The meeting link, the agenda, the source, the
+      stream and the recording of the celse are not in the page: the API leaves them out of the body and the page has nothing to draw
+      them from (session#11, celse-states#6). The same card is drawn for an enrolled talebe whose content is closed, by a passive scope
+      or by a ban (CLS-02, MDRS-265): the programme beside it is then drawn as an enrolled person's, every row a link to a celse that is
+      locked as well. The tab says "Medaris Tedris" (CLS-03) and the page sets no initial focus: it stays on the document. The watch page's
+      address `.../izle` redirects back to this address (izle/page.tsx:31); no link on the page points to it. A card with no start time
+      is not drawn at all (LOCKED-1), and a cancelled celse draws the cancelled card in its place (LOCKED-3).
+    on:
+      APPLY: { target: enrolling, effect: [clearNotice] }
+      OPEN_WATCH: { target: applyCard, say: "the watch page's address answers with a redirect to this page (redirect(detail))", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31" }
+      OPEN_KOSK: { target: kosk_opened, source: apps/tedris/features/courses/components/session-header.tsx:53 }
+      OPEN_COURSE: { target: course_opened, source: apps/tedris/features/courses/components/lesson-locked.tsx:270 }
+      NAVIGATE: left
+
+  enrolling:
+    title: Send the application
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:89
+    description: >-
+      The server action enrollInCourse, POST /courses/:id/enroll with no body, inside a transition: the button is busy (aria-disabled,
+      aria-busy) and a hidden status says "Yükleniyor", the kit's own default word (CLS-18). What the API answers decides what follows,
+      not the card. PENDING opens the window and calls router.refresh() at once, so the page behind the window is already the pending
+      card. ENROLLED draws the whole celse. For an enrolled talebe of a passive scope the API answers 201 with the row it holds, ENROLLED,
+      so no window opens and the refresh draws this same card again: the button works and changes nothing (CLS-02). For a barred talebe the
+      API refuses with BAN_ACTIVE (403), which the page reads as any other refusal. A 404 says "Bu ders artık bulunamıyor.". A 409 (a
+      REVOKED row, from a page drawn before the team's removal) says "Kaydının durumu değişmiş. Sayfa yenilendi, güncel hâline bak."
+      and nothing refreshes it (CLS-10). Any other refusal says "İşlem tamamlanamadı. Biraz sonra yeniden dene." in a toast that stays until
+      it is closed. A session that is over sends the person to sign in and back here (sendToSignIn). While the application is
+      sent the page's ways out are no links (lesson-locked.tsx:183, 273): the breadcrumb's köşk and course and the course's card
+      are given no href, so they are plain text, because leaving would not stop the application and the page could not say
+      what came of it. The bar of the app (tedris.shell.frame) and the browser's own ways out are not held.
+    invoke: { action: enrollInCourse }
+    on:
+      DONE:
+        - { guard: applicationWaits, target: reachesNazar, say: "the API says PENDING" }
+        - { guard: seatGivenAtOnce, target: session_opened, say: "the API says ENROLLED: router.refresh() draws the whole celse; no toast, no focus (CLS-19)", source: apps/tedris/features/courses/components/lesson-locked.tsx:101 }
+        - { guard: scopeClosed, target: applyCard, say: "the API gives back the ENROLLED row it already holds: no window, the refresh draws the same lock (CLS-02)", source: apps/tedris/features/courses/components/lesson-locked.tsx:100 }
+      FAIL.signedOut: signInGate
+      FAIL.gone: { target: applyCard, effect: [toastGone] }
+      FAIL.conflict: { target: applyCard, effect: [toastConflict], say: "the toast promises a refresh that does not happen (CLS-10)" }
+      FAIL.other: { target: applyCard, effect: [toastFailed], say: "a barred talebe is refused with BAN_ACTIVE here" }
+
+  reachesNazar:
+    title: The application is on the course's roster in nazar
+    source: apps/nazar/features/enrolments/enrolments.ts:101
+    description: >-
+      A PENDING row appears in the list "applications" of the course's roster in nazar, where whoever holds enrollment.decide approves
+      or rejects it. Nothing is sent when it is made (the domain action writes no notification and no audit row); the talebe is told when
+      the team decides. A step with no screen of its own. The same row the course page's card makes (tedris.course.apply).
+    always:
+      - { target: reachesNizam, starts: { flow: nazar.roster.decide, given: { approval: "'needed'" } } }
+
+  reachesNizam:
+    title: The application is on the course's applications in nizam
+    source: apps/nizam/features/kosks/course-team.ts:74
+    description: >-
+      The same row, for the köşk's side: nizam offers "approve" and "reject" on a PENDING enrolment of a köşk's course. It is one
+      application with two places to decide it. A step with no screen of its own.
+    always:
+      - { target: received, starts: { flow: nizam.courses.decideApplications, given: { approval: "'needed'" } } }
+
+  received:
+    title: The window "Başvurun alındı"
+    by: human
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
+    description: >-
+      Opened by setReceived(true) when the API answers PENDING (lesson-locked.tsx:100) and never otherwise (assertion
+      window-only-for-an-application-that-waits). The same component as the course page's: a modal dialog, the focus trapped and
+      opened on "Tamam", Esc, the scrim, the header close button "Kapat" and "Tamam" all run one close. The eyebrow above the title is the
+      course's title in capitals, a value and not a catalog message, so it is not drawn. Its text says the application can be taken back
+      "bu sayfadan", and this page has no button for it (CLS-12). It has no trigger, and unlike the course page this one has no effect
+      that moves the focus afterwards: the button that had it is gone, replaced by the pending badge (CLS-19, measured on the stack: the
+      focus is on the document after "Tamam"). While the window is open the page behind it has already been drawn again by
+      router.refresh().
+    on:
+      CLOSE: pendingCard
+      DISMISS: pendingCard
+
+  pendingCard:
+    title: The lock card of a person whose application waits
+    by: human
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:113
+    description: >-
+      The same page, with the badge "Onay bekliyor" and the sentence "Başvurun onaylanınca bu celseye katılabilirsin." where the button
+      was. The sentence above it is the one for a stranger word for word, "Derse kaydolduğunda görebilirsin." (LOCKED-2). No button,
+      and no way to take the application back on this page (CLS-12): the course page has it. The page is not live: when the team
+      decides, this card stays as it is until the page is read again, which draws the whole celse (tedris.celse.attend). The watch
+      page's address sends the person back here, as e2e celse-states#6 and session#11 expect.
+    on:
+      OPEN_WATCH: { target: pendingCard, say: "the watch page's address answers with a redirect to this page", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31" }
+      OPEN_KOSK: { target: kosk_opened, source: apps/tedris/features/courses/components/session-header.tsx:53 }
+      OPEN_COURSE: { target: course_opened, source: apps/tedris/features/courses/components/lesson-locked.tsx:270 }
+      NAVIGATE: left
+
+  revokedCard:
+    title: The lock card of a person the course team took out
+    by: human
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:121
+    description: >-
+      The same page, with the sentence "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Bu derse
+      erişimin kaldırıldı." and no action at all: the row stays REVOKED and the API refuses a new application with a 409, so the page
+      offers none. The course's card and the programme are still there, and the course page says what happened. The watch page's address
+      sends the person back here.
+    on:
+      OPEN_WATCH: { target: revokedCard, say: "the watch page's address answers with a redirect to this page", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31" }
+      OPEN_KOSK: { target: kosk_opened, source: apps/tedris/features/courses/components/session-header.tsx:53 }
+      OPEN_COURSE: { target: course_opened, source: apps/tedris/features/courses/components/lesson-locked.tsx:270 }
+      NAVIGATE: left
+
+  session_opened:
+    title: The page is drawn again as the whole celse
+    type: final
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:101
+    description: >-
+      The application was accepted at once, because nothing asked for approval, and router.refresh() draws the celse page of an
+      enrolled talebe: tedris.celse.attend takes over. The page announces nothing (CLS-19): the course page raises a toast
+      "Kursa kaydoldunuz." and moves the focus, this one neither.
+
+  course_opened:
+    title: The course page
+    type: final
+    leavesPage: true
+    description: >-
+      The breadcrumb's course or the course's card: /courses/<id>, which for this person is the card "Derse kayıt" or its pending and
+      removed variants (tedris.course.apply, tedris.course.readProgramme).
+
+  kosk_opened:
+    title: The köşk page
+    type: final
+    leavesPage: true
+    description: "The breadcrumb's first item: /kosks/<id> (tedris.discover.readKosk)."
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: window-only-for-an-application-that-waits
+    never: "state == 'received' and (approval == 'open' or not mayApply)"
+    say: "the window \"Başvurun alındı\" opens only when the API answered PENDING to an application sent from this page"
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:100
+  - id: no-button-for-an-application-that-waits-or-a-removed-seat
+    never: "state == 'enrolling' and reader in ['pending', 'revoked']"
+    say: "a person whose application waits, or whom the team took out, is offered no button to press"
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:113
+  - id: the-whole-celse-only-when-a-seat-was-given
+    never: "state == 'session_opened' and approval == 'needed'"
+    say: "the page is drawn as the whole celse after an application only when no rule asked for approval"
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:101

@@ -16,7 +16,9 @@ import { canWriteNotes } from "./lesson-note-model";
  * `assignment` and sees no mark. Whether the talebe handed in is
  * `GET /courses/:id/my-submissions` (a note or a file, as the celse page
  * says "Teslim edildi"). Only a live celse that stands is marked: a
- * cancelled one has no homework card to hand in on.
+ * cancelled one has no homework card to hand in on. A homework recited to
+ * the müderris (MDRS-248) is marked "Ödev" and never pending: nothing is
+ * handed in on the page.
  */
 
 /** A celse's mark: homework still to hand in, homework, or none. */
@@ -46,6 +48,8 @@ export const assignmentMark = (
   viewer: AssignmentViewer
 ): AssignmentMark => {
   if (!lesson.assignment || lesson.cancelledAt != null) return null;
+  // Recited to the müderris (MDRS-248): nothing to hand in here, never pending.
+  if (lesson.assignment.kind === "MEMORIZE") return "set";
   if (
     viewer.mayHandIn &&
     viewer.handedIn !== null &&

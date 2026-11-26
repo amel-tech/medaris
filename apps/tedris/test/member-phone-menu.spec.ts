@@ -78,7 +78,7 @@ const current = (html: string) =>
   /<a [^>]*aria-current="page"[^>]*>/.exec(html)?.[0];
 
 describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
-  it("holds the five pages in order, and no 'Çıkış yap'", async () => {
+  it("holds the six pages in order, and no 'Çıkış yap'", async () => {
     const html = await render("/home");
     const labels = [...nav(html).matchAll(/<a [^>]*>(.*?)<\/a>/g)].map(
       (m) => m[1]
@@ -88,6 +88,7 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
       "Keşfet",
       "Derslerim",
       "Programım",
+      "Sınavlarım",
       "Desteler",
     ]);
     expect(html).not.toContain("Çıkış yap");
@@ -107,6 +108,10 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
     );
     expect(current(nav(await render("/my-courses")))).toContain(
       'href="/my-courses"'
+    );
+    // Sınavlarım and a past exam's own screen (MDRS-299).
+    expect(current(nav(await render("/my-exams/l1")))).toContain(
+      'href="/my-exams"'
     );
   });
 
@@ -181,6 +186,34 @@ describe("the signed-in Ana sayfa's sessions (design tedris/44)", () => {
     expect(html).toContain("Sonraki celseler");
     expect(html).toContain("Sonraki ders");
     expect(html).toMatch(/href="\/schedule"/);
+  });
+
+  it("shows an open online exam as an exam, leading to its exam page and claiming no meeting (MDRS-299)", async () => {
+    const html = await render([
+      session({
+        status: "LIVE",
+        startsAt: new Date("2026-10-01T06:50:00Z"),
+        title: "SARF 101 vize",
+        isExam: true,
+        isOnlineExam: true,
+      } as Partial<ScheduleSessionResponse>),
+      session({
+        id: "e2",
+        title: "Final",
+        startsAt: new Date("2026-10-06T18:00:00Z"),
+        isExam: true,
+        isOnlineExam: true,
+      } as Partial<ScheduleSessionResponse>),
+    ]);
+    expect(html).toContain("Emsile ve Bina sınavı şu an açık.");
+    expect(html).toMatch(
+      /href="\/courses\/c1\/lessons\/l1\/sinav"[^>]*>Sınav sayfası</
+    );
+    expect(html).toContain("Sınava gir");
+    expect(html).not.toContain("Toplantı bağlantısı henüz eklenmedi.");
+    expect(html).not.toContain("şu an canlı");
+    // The later list leads to the exam page too.
+    expect(html).toContain('href="/courses/c1/lessons/e2/sinav"');
   });
 
   it("shows the platform when the link is there", async () => {

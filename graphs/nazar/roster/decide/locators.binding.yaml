@@ -1,0 +1,72 @@
+# What the walks of nazar.roster.decide share: the data they read, where the page's nodes are found where role and name cannot
+# find them, the pages' addresses, and the checks of what a decision leaves behind. Nothing here changes data; each scenario
+# (binding.yaml, binding.gone.yaml, binding.barred.yaml, binding.mayNot.yaml) makes its own course and removes it.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and
+# the catalog; none was seen in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.roster.decide
+
+# a wide window, so that the course's sidebar (the menu the walk enters by) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+# The courses of the walks, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes. A tag is not the
+# start of another, so removing one never clears another's mails.
+data:
+  rosMain: { json: ../.local/made/rosMain.json }
+  rosEmpty: { json: ../.local/made/rosEmpty.json }
+  rosShut: { json: ../.local/made/rosShut.json }
+  rosHead: { json: ../.local/made/rosHead.json }
+  rosGone: { json: ../.local/made/rosGone.json }
+  rosBarred: { json: ../.local/made/rosBarred.json }
+
+events:
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+
+# `not_found` and `loadFailed` are not bound: tedrisat answers every read here, so the walk cannot reach them.
+# The two decisions are Next server actions: a POST to the page's own address, held while the busy row is checked. (The page's own
+# reads are GETs with a query, so the glob, which is anchored, matches only the POST.) A server action answers 200 on that address,
+# whatever the API said, so a walk through FAIL.<class> reports "HTTP 200" for the status it compares: an engine limit, not the app.
+states:
+  listed: { url: '{nazar}/ders/*/talebeler' }
+  empty: { url: '{nazar}/ders/*/talebeler' }
+  forbidden: { url: '{nazar}/ders/*/talebeler' }
+  approving: { call: '{nazar}/ders/*/talebeler' }
+  rejecting: { call: '{nazar}/ders/*/talebeler' }
+  left: { url: '{nazar}/bildirimler' }
+
+# Where role and name cannot find a node. The page's <main> is also matched on the page a walk leaves for, so it is found by its
+# title. The names of a row are the applicants': every spare account has the surname Başvuran, so a row of another person (there is
+# none in a course of the walk's own) is never pressed. The page lists newest first and a repeated node is pressed on its first
+# item, so a walk decides the application that was made last; the busy row is that first item (`nth: 0`).
+nodes:
+  studentsPage: { role: main, hasText: Talebeler }
+  # the link's name carries the number and its hidden label, so it is found by its beginning; the badge is the number's own span
+  studentsLink: { role: link, name: '/^Talebeler/', within: { role: navigation, name: Ana menü } }
+  studentsBadge: { css: '.mds-nav-item__count', hasText: bekleyen başvuru, within: { role: navigation, name: Ana menü } }
+  # a tab's name ends with its count
+  tabApplications: { role: tab, name: '/^Başvurular/' }
+  tabEnrolled: { role: tab, name: '/^Kayıtlı/' }
+  tabCompleted: { role: tab, name: '/^Tamamlayanlar/' }
+  tabRemoved: { role: tab, name: '/^Erişimi kaldırılanlar/' }
+  approve: { role: button, name: '/^Onayla: \S+ Başvuran$/' }
+  reject: { role: button, name: '/^Reddet: \S+ Başvuran$/' }
+  rowApprove: { role: button, name: '/^Onayla: \S+ Başvuran$/', nth: 0 }
+  rowReject: { role: button, name: '/^Reddet: \S+ Başvuran$/', nth: 0 }
+  # the hidden <output> beside a busy button; the other rows' are empty
+  busyStatus: { css: output, hasText: Yükleniyor }
+  # a toast's own "Kapat" is a button of the same name: the dialog's buttons are found inside the dialog
+  rejectConfirm: { role: button, name: Reddet, within: { role: alertdialog } }
+  rejectCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  rejectClose: { role: button, name: Kapat, within: { role: alertdialog } }
+
+# What a decision leaves outside the screen, read through the database (the course is the scenario's own, three rows at the start):
+# an approval makes exactly one seat, a rejection takes one row away. Both hold whichever of the two came first.
+effects:
+  approveEnrollment:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{course}' and status = 'ENROLLED'"]
+      expect: '"n":1'
+  rejectEnrollment:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{course}'"]
+      expect: '"n":2'

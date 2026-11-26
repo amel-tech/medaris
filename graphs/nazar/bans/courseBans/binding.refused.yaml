@@ -1,0 +1,43 @@
+# nazar.bans.courseBans, the hoca of the course: the person FLOWS.md names first, who is refused the page (F-D2c-3).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/courseBans \
+#     --bind graphs/nazar/bans/courseBans/binding.refused.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# The müderris of a course of the walk's own opens its Yasaklamalar through the course menu and meets "Bu sayfaya izniniz yok" with no
+# "Yasakla", though he holds ban.course in the course. Both list routes ask a medrese or köşk code, which he does not hold. This is read
+# from the code AND was seen at the API (not in a browser): GET /madrasahs/<id>/bans answered him 403 AUTHZ_FORBIDDEN and GET
+# /kosks/<id>/bans 403 BAN_FORBIDDEN, while GET /courses/<id>/enrollments answered 200 (15 Nov 2026, helpers/api.mjs GET only).
+#   refused       a course of the seeded medrese: the medrese's list refuses him      (readingMedrese FAIL.forbidden)
+#   refusedKosk   the köşk's own course: the köşk's list refuses him                  (readingKosk FAIL.forbidden)
+# The course has no talebe (the page does not draw the roster for a refused caller), so no ban and no person is made.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.courseBans
+
+scenarios:
+  refused:
+    given: { read: refused, list: none, roster: none, banAnswer: done, answer: done, after: none }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"cbans"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+    vars: { who: APPLICANT_E }
+
+  refusedKosk:
+    given: { read: refused, list: koskNone, roster: none, banAnswer: done, answer: done, after: none }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cbans, --weeks, '1', --lessons, '1']
+        expect: '"tag":"cbans"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+    vars: { who: APPLICANT_E }

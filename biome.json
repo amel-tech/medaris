@@ -36,8 +36,12 @@
       "!libs/ui/src/styles/mds",
       "!libs/ui/src/mds/glyphs.ts",
       "!design-system",
+      "!graphs/kit/kit.css",
+      "!graphs/kit/tokens.json",
+      "!graphs/kit/dark.json",
       "!apps/tedrisat/src/database/migrations/meta",
       "!libs/i18n/src/locales/**/*.json",
+      "!.github/actions/nx-remote-cache",
       "!**/pnpm-lock.yaml",
       "!**/*.min.js",
       "!**/*.min.css"

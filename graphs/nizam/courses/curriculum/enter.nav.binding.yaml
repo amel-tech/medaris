@@ -1,0 +1,12 @@
+# The way into nizam.courses.curriculum from the köşk's course list: the nav graph's entry `koskCourses->courseCurriculum`, the "Düzenle" button of a
+# course row (nav.yaml: `how: link`, label KoskCourses.edit, `data: true`). The nav binding's own locator names the seeded course "Nahiv Metinleri"; here the
+# walk's own course is in the list (curriculum-data.mjs make: "Deneme dersi nzcurr", in the seed's second köşk), and the button is a link named by its
+# aria-label "Düzenle: <course>" (apps/nizam/features/kosks/components/kosk-course-table.tsx:268-276, KoskCourses.editLabel), not by its visible word.
+# NOT RUN: the replay is a later phase; the locator comes from the code.
+schema: delurio-graph/0
+kind: binding
+nav: nizam.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'koskCourses->courseCurriculum': { role: link, name: 'Düzenle: Deneme dersi nzcurr' }

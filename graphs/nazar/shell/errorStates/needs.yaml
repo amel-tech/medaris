@@ -1,0 +1,141 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.shell.errorStates
+status: proposed
+summary: >-
+  What must exist for a person of nazar-web to meet a failed read, a missing page or a thrown page and find their way back: the
+  flow's product list. No replay has run: a `replay:` entry is named only once a scenario has passed, so none is named here, and
+  an e2e or a unit test is the only evidence of a walk.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code): a-person-who-cannot-be-read-can-leave, one-h1-per-page, an-error-face-is-announced-and-focused,
+# a-face-names-its-tab, a-retry-says-it-is-being-tried, a-scope-404-answers-404
+# unwalked (code, no e2e and no replay): the-roles-read-failing-is-a-retry, a-failed-page-read-keeps-the-shell,
+# a-thrown-page-is-told-and-retried, a-broken-root-has-a-document
+
+needs:
+  - id: the-roles-read-failing-is-a-retry
+    need: >-
+      When the portal cannot read who the person is and what they hold, it says so and offers to try again; it never tells them
+      they have no access, never guesses a scope, and the retry brings them to where they were going.
+    evidence:
+      - state: rolesUnreadable
+      - node: rolesPage
+      - node: rolesRetry
+      - state: loadRetrying
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:29
+      - source: apps/nazar/features/shell/reads.ts:44
+      - test: apps/nazar/test/access.spec.tsx
+
+  - id: a-failed-page-read-keeps-the-shell
+    need: >-
+      When one page's own read fails, the person keeps the menu and the page's heading and is told that page could not be read,
+      with a retry; a refusal is worded as a refusal and a missing record as a missing page, never as a failed read.
+    evidence:
+      - state: readFailed
+      - node: readSection
+      - node: readRetry
+      - state: loadRetrying
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:64
+      - source: apps/nazar/features/shell/components/page-problem.tsx:11
+      - source: apps/nazar/lib/tedrisat-read.ts:28
+      - test: apps/nazar/test/pano.spec.tsx
+      - test: apps/nazar/test/students.spec.tsx
+    note: Also drawn as the assertion a-failed-read-is-not-a-404.
+
+  - id: one-404-for-every-missing-reason
+    need: >-
+      A route that is not there, a medrese or course that is not the person's, a section that does not exist and a record the API
+      answers 404 for are one page in the same words, so no one learns which ids exist; it gives a way back, and a signed-out
+      person can reach it only under /auth/.
+    evidence:
+      - state: notFound
+      - node: notFoundPage
+      - node: homeLink
+      - source: apps/nazar/app/not-found.tsx:10
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:108
+      - source: "apps/nazar/app/medrese/[medreseId]/[bolum]/page.tsx:18"
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "a scope that is not the person's is a 404 in the same words as a missing page"
+      - test: apps/nazar/e2e/auth-pages.e2e.ts
+        name: "an unknown page answers 404 in Turkish"
+      - test: apps/nazar/test/access.spec.tsx
+    note: Also drawn as the assertion a-missing-page-is-not-an-error, the assertion a-signed-out-person-meets-only-the-404.
+
+  - id: a-thrown-page-is-told-and-retried
+    need: >-
+      When a page throws while it renders, the person is told the page could not be opened, never shown the error, and can ask for
+      it again.
+    evidence:
+      - state: errorShown
+      - node: errorPage
+      - node: errorRetry
+      - state: nextRetrying
+      - source: apps/nazar/app/error.tsx:13
+
+  - id: a-broken-root-has-a-document
+    need: >-
+      When the root layout itself throws, the person gets a Turkish document of its own with a retry, not Next's bare English
+      page.
+    evidence:
+      - state: shellErrorShown
+      - node: docPage
+      - node: docRetry
+      - state: nextRetrying
+      - source: apps/nazar/app/global-error.tsx:19
+      - test: apps/nazar/test/global-error.spec.tsx
+
+  - id: a-person-who-cannot-be-read-can-leave
+    need: >-
+      The face that says the roles could not be read also offers a way out (sign out, and the way to Tedris), as the no-access
+      page does, so a person on the wrong account is not stuck behind a retry that cannot work (ERR-4, decision D2).
+    missing: no Linear issue; findings ERR-4
+    note: >-
+      Drawn on the state rolesUnreadable, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+
+  - id: one-h1-per-page
+    need: "A page whose read failed has one <h1>: the box that replaces its body is a second-level heading (F-L-16)."
+    missing: no Linear issue; findings one-h1-per-page, F-L-16
+    note: >-
+      Drawn on the state readFailed and on the nodes readPageTitle and readTitle, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-error-face-is-announced-and-focused
+    need: >-
+      A face that replaces what was on the screen (the roles face, the box, the 404, the two error faces) is announced to a screen
+      reader and gives the focus a place to be, by role="alert" or by focusing its heading (F-E-15).
+    missing: no Linear issue; findings F-E-15
+    note: >-
+      Drawn on the states rolesUnreadable, readFailed, notFound, errorShown and shellErrorShown, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-face-names-its-tab
+    need: >-
+      The tab names the face: "Sayfa bulunamadı" for the 404 (and never the title of a page the person is not shown), "Sayfa
+      açılamadı" for the error page, "Görevleriniz okunamadı" wherever the roles face is drawn (F-E-23, ERR-2, ERR-5).
+    missing: no Linear issue; findings F-E-23, ERR-2, ERR-5
+    note: >-
+      Drawn on the states notFound, errorShown and rolesUnreadable, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-retry-says-it-is-being-tried
+    need: >-
+      Every "Yeniden dene" is busy while it runs and is announced, and a retry that fails again says it was tried (ERR-1); today
+      only the roles face and the box are busy.
+    missing: no Linear issue; findings ERR-1
+    note: >-
+      Drawn on the states loadRetrying and nextRetrying and on the nodes errorRetry and docRetry, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-scope-404-answers-404
+    need: >-
+      A scope or a section that is not the person's answers HTTP 404, as an unknown route does, and not 200 with a noindex tag
+      (ERR-3).
+    missing: no Linear issue; findings ERR-3
+    note: >-
+      Drawn on the state notFound, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

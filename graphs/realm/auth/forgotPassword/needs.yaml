@@ -1,0 +1,177 @@
+schema: delurio-graph/0
+kind: needs
+id: realm.auth.forgotPassword
+status: proposed
+summary: >-
+  Each need is what the product must do, from the flow's story and from planned.md, never from what the pages do today; a finding
+  the flow touches is a need with `missing: none` where the code does not meet it (its id is in the need).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (the need is not met by the code, `missing:` set): confirmation-names-the-way-on, a-link-works-once (the first half is
+# built, the notice that a link is spent is not), email-rule-before-posting, length-from-the-realm, reset-reason-is-linked,
+# password-change-is-told, smtp-reset-mail (MDRS-188).
+# Unwalked (code, no e2e and no replay): link-lasts-thirty-minutes, page-checks-before-posting, sign-out-other-devices-choice.
+
+needs:
+  - id: ask-for-a-reset-by-name-or-address
+    need: >-
+      A person who cannot sign in gives their user name or their e-mail address on one form, reached from the sign-in form, and is
+      sent a mail with a link that lets them choose a new password.
+    evidence:
+      - state: resetForm
+      - state: sending
+      - state: sentNotice
+      - source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:22
+      - source: apps/keycloak-theme/src/email/html/password-reset.ftl:2
+      - source: config/keycloak/realms/_base.json:8
+      - test: apps/keycloak-theme/test/email.e2e.spec.ts
+      - scenario: tedrisKnownAddress
+    note: email.e2e.spec.ts email.e2e.spec#2
+
+  - id: the-answer-never-tells-who-has-an-account
+    need: >-
+      The answer to an address that has no account is the same as the answer to one that has: the same page, the same sentence,
+      the same kept address, and no mail to the stranger. Nothing on the page, in the address or in the mail says which it was.
+    evidence:
+      - state: sending
+      - state: sentNotice
+      - source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:42
+      - scenario: tedrisUnknownAddress
+
+  - id: confirmation-names-the-way-on
+    need: >-
+      After the request the person is told, in words of this product, that a mail is on its way if the address has an account, how
+      long its link lasts and to look in the spam folder, on a page that is not the sign-in page, with the focus on the message
+      (findings FORGOT-1, K3).
+    missing: no Linear issue; findings FORGOT-1, K3
+    note: >-
+      Drawn on the state sentNotice, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: link-lasts-thirty-minutes
+    need: The link in the mail opens the new-password page for 30 minutes, in any browser, until a password was saved with it.
+    evidence:
+      - state: openingLink
+      - state: newPasswordForm
+      - source: config/keycloak/realms/_base.json:44
+
+  - id: a-link-works-once
+    need: >-
+      A link that was used, or is older than its lifetime, shows no password form; the person is told the link is spent and is
+      offered a new request (finding FORGOT-3).
+    evidence:
+      - source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:25
+    missing: no Linear issue; the first half is built, the notice that a link is spent is not; code exists in part
+    note: >-
+      Drawn on the states openingLink and handed_over.error_page, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: choose-a-new-password
+    need: >-
+      The new-password page takes a password of ten characters or more that is not the person's user name or e-mail address, asks
+      for it twice, and saves it.
+    evidence:
+      - state: newPasswordForm
+      - state: savingPassword
+      - source: libs/ui/src/giris/update-password-form.tsx:57
+      - source: config/keycloak/realms/_base.json:20
+      - scenario: tedrisKnownAddress
+
+  - id: page-checks-before-posting
+    need: >-
+      An empty, short, mismatched or user-name password is stopped on the page with its reason under the field, the focus on the
+      first field to fix, and nothing posted.
+    evidence:
+      - state: newPasswordInvalid
+      - state: newPasswordMismatch
+      - state: newPasswordRetyped
+      - source: libs/ui/src/giris/update-password-form.tsx:92
+
+  - id: email-rule-before-posting
+    need: >-
+      The page lists and checks the rule "different from the e-mail address" before posting, so that a person is not sent back to
+      empty fields by the realm after the post (finding FORGOT-2).
+    missing: no Linear issue; findings FORGOT-2
+    note: >-
+      Drawn on the states newPasswordForm and newPasswordRefused, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: realm-refuses-the-address-as-password
+    need: >-
+      A password that is the person's e-mail address is refused, the account's password stays as it was, and the person is told.
+    evidence:
+      - state: savingPassword
+      - state: newPasswordRefused
+      - source: config/keycloak/realms/_base.json:20
+      - source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:64
+      - scenario: tedrisKnownAddress
+
+  - id: length-from-the-realm
+    need: The length in the page's rule and in its short-password reason is read from the realm's policy (finding K9).
+    missing: no Linear issue; findings K9
+    note: >-
+      Drawn on the states newPasswordForm and newPasswordInvalid, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: reset-reason-is-linked
+    need: >-
+      The reset form's reason is linked to its field and announced (finding K5), and the form says it is busy while it is sent
+      (finding K4).
+    missing: no Linear issue; findings K5, K4
+    note: >-
+      Drawn on the state resetFormError, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: sign-out-other-devices-choice
+    need: The person chooses whether the other devices are signed out; the page says what the choice does.
+    evidence:
+      - state: newPasswordForm
+      - source: libs/ui/src/giris/update-password-form.tsx:185
+
+  - id: signed-in-after-saving
+    need: After the new password is saved the person is signed in to the app that sent them, on the page they were going to.
+    evidence:
+      - state: finishingRoundTrip
+      - state: signed_in
+      - source: libs/auth/src/server/routes.ts:277
+      - scenario: tedrisKnownAddress
+
+  - id: held-sign-in-asks-for-a-new-password
+    need: >-
+      An account that an administrator asked for a new password is held on the same page right after its password is typed, and is
+      signed in once the new one is saved.
+    evidence:
+      - state: holdingSignIn
+      - state: newPasswordForm
+      - source: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:24
+      - scenario: tedrisPasswordUpdateDue
+
+  - id: password-change-is-told
+    need: >-
+      A person whose password was changed is told so, on the page they land on and by mail, so that someone who did not do it can
+      act (finding FORGOT-4).
+    missing: no Linear issue; findings FORGOT-4
+    note: >-
+      Drawn on the state signed_in, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: reset-mail-in-three-languages
+    need: >-
+      The reset mail reads in the person's language (tr, en, ar), left to right or right to left, with the subject, the button and
+      the link, and says how long the link lasts.
+    evidence:
+      - state: openingLink
+      - source: apps/keycloak-theme/src/email/messages/messages_tr.properties:16
+      - source: apps/keycloak-theme/src/email/messages/messages_en.properties
+      - source: apps/keycloak-theme/src/email/messages/messages_ar.properties
+      - test: apps/keycloak-theme/test/email.e2e.spec.ts
+    note: email.e2e.spec.ts email.e2e.spec#2
+
+  - id: smtp-reset-mail
+    need: The reset mail goes through the production mail sender, so that a person outside the local stack receives it (P-30).
+    missing: MDRS-188
+    note: >-
+      Drawn on the state sending, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

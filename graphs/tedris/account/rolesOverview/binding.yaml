@@ -1,0 +1,86 @@
+# tedris.account.rolesOverview on the local stack: Hesap (tedris-web, :4000) as four of the seeded people, each
+# arriving by the top bar's "Hesabım" link (the tedris navigation graph's entry frame:app->account) and reading the
+# section the roles they hold give them.
+#   node apps/engine/src/cli.ts replay graphs/tedris/account/rolesOverview \
+#     --bind graphs/tedris/account/rolesOverview/binding.yaml --cover transitions --out <dir>
+#
+# What each scenario starts from (the stack's seed, STACK.md):
+#   muderris      hoca of the three courses: three course rows, "Nazar’da aç" on each          (the main story)
+#   koskNazim     nazım of one köşk: one row with its name, "Nizam’da aç"
+#   medarisNazim  Medaris nazımı: one platform row with no scope name, "Nizam’da aç" at Nizam's root, and the heading
+#                 "Etkin izinlerin" with no group under it (ROLES-1)
+#   talebe        no role row: no section
+# Nothing is created and nothing is removed: the walk only reads. The failed-read box (rolesUnreadable) is not walked:
+# tedrisat answers every read here, and the stack has no way to make it refuse one.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.account.rolesOverview
+
+# The base signs a person in at their own app (the `entry` of the account), which for a hoca or a nazım is Nazar or
+# Nizam. This flow reads Hesap, so every scenario signs in at tedris and lands on its Ana sayfa, where the top bar is.
+signIn:
+  - goto: '{tedris}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{tedris}/**'
+
+scenarios:
+  muderris:
+    given: { read: ok, nizam: none, nazar: course, permissions: listed }
+    as: muderris
+    vars: { nizamHref: '{nizam}' } # unused here: no Nizam button
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->account' }
+  koskNazim:
+    given: { read: ok, nizam: kosk, nazar: none, permissions: listed }
+    as: koskNazim
+    vars: { nizamHref: '{nizam}/kosks/{seed.kosk}' }
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->account' }
+  medarisNazim:
+    given: { read: ok, nizam: platform, nazar: none, permissions: dropped }
+    as: medarisNazim
+    vars: { nizamHref: '{nizam}' }
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->account' }
+  talebe:
+    given: { read: ok, nizam: none, nazar: none, permissions: none }
+    as: talebe
+    vars: { nizamHref: '{nizam}' } # unused here: no Nizam button
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->account' }
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+  # RELOAD (the failed-read box) is not bound: see the header
+
+states:
+  plainAccount: { url: '{tedris}/account' }
+  rolesShown: { url: '{tedris}/account' }
+  left: { url: '{tedris}/home' }
+
+# Where role and name cannot find a node. The rows are data (a role, a course, a person), so a node is found by the table's
+# own hooks (data-testid on the role and the scope, the kit's classes, the cell's place) and, where the graph says which
+# words it may hold (`oneOf`), by a pattern of those words: the engine finds a `oneOf` node by its first word only, so the
+# alternatives are spelled here from AccountPage.* of tedris.json. The two buttons are found by what e2e account#1 and
+# account#2 assert of them: `target=_blank`, the address they open and the aria-label "<open>: <role>[, <scope>]" the
+# graph spells as composed.AccountPage.* (a Medaris nazımı has no scope: no comma). {nizamHref} is the scenario's own:
+# a köşk row opens the köşk's page in Nizam, the Medaris nazımı's the root.
+nodes:
+  # Hesap's <main>; the page it leaves for (Ana sayfa) has a <main> of its own, so the subtitle both variants carry names it
+  accountPage: { role: main, hasText: '/saat dilimin ve takvim tercihlerin/' }
+  rowRole: { role: cell, name: '/^(Medaris nazımı|Köşk nazımı|Medrese başmüderrisi|Medrese nazırı|Hoca|Ders nazırı)/' }
+  rowScope: { testId: assignment-scope }
+  rowBadge: { text: '/^(Yayında|Taslak|Gizli)$/' }
+  rowMeta: { css: 'td span.mds-caption' }
+  rowGrantor: { css: 'td:nth-of-type(3) bdi' }
+  rowGranted: { css: 'td:nth-of-type(3) time', hasText: '/^\d{1,2} [^ ]+ \d{4}$/' }
+  rowExpires: { css: 'td:nth-of-type(4)', hasText: '/^(Süresiz|\d{1,2} [^ ]+ \d{4})$/' }
+  openNizam: { css: 'a[target=_blank][href="{nizamHref}"][aria-label^="Nizam’da aç: "]' }
+  openNazar: { css: 'a[target=_blank][href="{nazar}"][aria-label^="Nazar’da aç: "]' }
+  permissionGroup: { testId: permission-group }
+  groupTitle: { css: '[data-testid=permission-group] h4' }
+  permissionLine: { css: 'li[data-permission]', hasText: '/^(Köşkü düzenle, gizle ya da geri al|Barındırma hakkı ver ya da geri al|Medrese dışı ders aç; hocaları ve imamı seç|Köşkteki derslerin içeriğini, celselerini, ders kayıtlarını ve başvurularını yönet|Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet|Köşk destesini aç ve düzenle|Köşkün medrese dışı derslerinde ders nazırı ata ve izin ver, kendi izinlerini aşmadan|Ortak uygulama kodlarını köşkün derslerine bağla|E-postayla kullanıcı bul|Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi|Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir|Canlı yayın bağlantısını celseye ekle|Hafta ve celse gizle, geri al|Ders ayarlarını ve kapalı ders bayrağını değiştir|Dersi yayımla ya da taslağa çek|Taslak ya da gizli dersi gör|Başvuruyu onayla ya da reddet|Talebeyi gerekçeyle dersten çıkar|Talebeyi dersi tamamlamış say|Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir|Ders kaydı yükle|Yalnız kayıtlılara açık ders kayıtlarını izle|Celse içeriğini ve toplantı bağlantılarını gör|Talebelerin sorularını gör ve yanıtla|Talebeyi dersten yasakla \(dersin yasak listesini görmeyi kapsar\)|Ders yasağını gerekçeyle kaldır|Ders destesini aç ve düzenle|Köşk destesi öner|Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan|İzin grubu tanımla)/' }

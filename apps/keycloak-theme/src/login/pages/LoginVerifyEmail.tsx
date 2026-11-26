@@ -41,6 +41,12 @@ export default function LoginVerifyEmail(
       <p id="kc-verify-email-instruction" className="text-center text-gray-700">
         {msg("emailVerifyInstruction1", user?.email ?? "")}
       </p>
+      <p
+        id="kc-verify-email-spam-hint"
+        className="mt-2 text-center text-sm text-gray-600"
+      >
+        {msg("emailVerifySpamHint")}
+      </p>
     </Template>
   );
 }

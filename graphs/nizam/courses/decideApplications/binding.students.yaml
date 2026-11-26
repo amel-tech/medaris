@@ -1,0 +1,47 @@
+# nizam.courses.decideApplications at a course's Talebeler, first tab: the Başvurular tab with its counts, at
+# /kosks/<id>/courses/<id>/students, as the köşk nazımı of "Kubbealtı Köşkü". Two scenarios.
+#   node apps/engine/src/cli.ts replay graphs/nizam/courses/decideApplications --bind graphs/nizam/courses/decideApplications/binding.students.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# Each scenario makes its own course in the seed's second köşk (helpers/course.mjs, see binding.yaml) and removes it. Spare applicants
+# C, D and E, who apply in that order, so E is the newest row.
+#   students       "Deneme dersi cdaSt": C, D and E wait. The walk approves E (the row leaves, the tab "Başvurular" loses one and "Kayıtlı"
+#                  gains one once the page is read again: shell.e2e.ts#7), rejects D, and C still waits. The note over the table says
+#                  the course needs approval (it was made with --approval).
+#   emptyStudents  "Deneme dersi cdaEmptySt": nobody has applied: "Onay bekleyen başvuru yok", the tab's count 0.
+# The other tabs are drawn as tabs only; they are nizam.courses.roster's. 'Derse dön' is drawn and not followed (F-W4-1).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.decideApplications
+
+states:
+  listed: { url: '{nizam}/kosks/*/courses/*/students' }
+  empty: { url: '{nizam}/kosks/*/courses/*/students' }
+  approving: { call: '{nizam}/kosks/*/courses/*/students' }
+  rejecting: { call: '{nizam}/kosks/*/courses/*/students' }
+
+scenarios:
+  students:
+    given: { approval: needed, place: students, note: asks }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{cdaSt.course}/students'
+    vars: { course: '{cdaSt.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cdaSt, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cdaSt]
+        expect: 'course remove cdaSt'
+      - run: [node, helpers/sql.mjs, "select count(*) as revoked from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}')"]
+        expect: '"revoked":0'
+  emptyStudents:
+    given: { approval: none, place: students, note: asks }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{cdaEmptySt.course}/students'
+    setup:
+      - run: [node, helpers/course.mjs, make, cdaEmptySt, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi cdaEmptySt"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cdaEmptySt]
+        expect: 'course remove cdaEmptySt'

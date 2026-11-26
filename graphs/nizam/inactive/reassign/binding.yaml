@@ -1,0 +1,139 @@
+# nizam.inactive.reassign on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım (SYSTEM_ADMIN)
+# signed in through Keycloak's real form, pressing "Pasif kapsamlar" in the menu (the navigation graph's entry frame:shell->inactive). The
+# data, the locators, the events and the effect every file of this flow shares are in locators.binding.yaml; this file holds the scenarios
+# that walk with the plain locators (binding.race.yaml and binding.unfinished.yaml hold the two that need a `before` or another event).
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/inactive/reassign \
+#     --bind graphs/nizam/inactive/reassign/binding.yaml --cover transitions --out <dir>
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). It loads (`replay <dir> --bind <this file>
+# --emit-spec --out <dir>` writes a spec and walks nothing); every locator and every command is from the code and unverified until a walk.
+#
+# What a walk makes, and how it is taken away. `setup` makes three scopes of its own that have no manager, one of each kind, through
+# ./scopes.mjs (a helper of this folder) and the shared helpers/course.mjs, and `teardown` removes them (the helper's header says every call):
+#   - a köşk "Deneme köşkü inreassign" (POST /kosks as the başnazım, with OTHER as its nazım), made passive the way the page "Pasife al" does
+#     it (the preview, then the deactivation with its confirmation), so its nazım's post is revoked;
+#   - a medrese "Deneme medresesi inreassign" (POST /madrasahs, OTHER its başmüderris), made passive the same way;
+#   - a course "Deneme dersi inreassign" in the seed's second köşk (helpers/course.mjs make inreassign --hoca OTHER), whose one müderris's post
+#     is then revoked with SQL, the only SQL here: no route takes a course's last müderris off the post (helpers/unseat-hoca.mjs).
+# The same SQL moves each ended post 2, 5 and 3 days back (köşk, medrese, course), so the rows read "2 gündür", "5 gündür" and "3 gündür".
+# The person every scenario gives a scope to is APPLICANT_G ({secret.E2E_APPLICANT_G_EMAIL}), a spare talebe account no other flow of this batch
+# uses; it holds no role anywhere before the walk, and the scopes are deleted at the end, which takes its new posts with them. `setup` begins with
+# `down`, so a walk that died before its teardown leaves nothing for the next one. The seeded köşks, medrese and courses are never touched.
+# What stays: the audit rows (kosk.create, madrasah.create, kosk.deactivate, madrasah.deactivate, inactive_scope.assign, user.lookup, the two
+# deletes) and nothing else; the API has no way to remove them and no flow reads them.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   assigns    the main story (e2e inactive#1, #2, #3, #6, #7, #8): the menu's "Pasif kapsamlar", the chips, "Köşk nazımı ata" and the other two,
+#              the person found by e-mail address, an end ahead typed, the button: the toast, the row gone, and the check of what is left. The cover
+#              also walks "Vazgeç" and the close icon (#9), the chosen person removed, and a second assignment from the rows that are left.
+#   nobody     an address no account has (#6): "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and nobody is chosen
+#   endPast    an end in the past (#6): "Bitiş zamanı şu andan sonra olmalı." and the button off
+#   refused    a köşk nazımı opens the address (#4): "Bu bölüm için izniniz yok". The Medaris nazımı of #5 is the shell flow's
+#              (nizam.shell.noAccessAndNotFound); the seeded one holds no platform.inactive_scopes_manage
+#   empty      the list with nothing on it: walked only on a stack where no scope has no manager; `setup` says what is there if it is not so
+# In the other binding files: raced (binding.race.yaml: someone gives the scope a manager while the window is open, so the button meets
+# INACTIVE_SCOPE_NOT_FOUND) and endUnfinished (binding.unfinished.yaml: the native picker half typed).
+# Not bound, with the reason: `read: unreadable` (the stack cannot make tedrisat fail a read), `lookup: down` (the realm's directory cannot be
+# made to fail), `answer: expiry` (the window judges the end by the moment it was opened; it needs the clock to cross between the open and the
+# click), `unknownAccount` (an account found by the lookup is always known), `forbidden` (the right is lost between the page and the click) and
+# `failed` (a Medaris nazımı naming themselves needs the permission; a server that does not answer cannot be made to). Not bound as events:
+# CLICK_SCRIM (an action of a binding is a click on a locator; see locators.binding.yaml), RETRY (it follows `unreadable`).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.inactive.reassign
+
+scenarios:
+  # The main story, and the cover's base: every row is there, every kind can be assigned.
+  assigns:
+    given: { read: ok, list: rows, lookup: found, endAt: future, answer: assigned }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    setup:
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+      - run: [node, helpers/inactive-scopes.mjs, up]
+        expect: 'inactive-reassign up'
+      - run: [node, helpers/course.mjs, make, inreassign, --hoca, OTHER, --weeks, '1', --lessons, '1']
+        expect: '"tag":"inreassign"'
+      - run: [node, helpers/inactive-scopes.mjs, passive]
+        expect: 'inactive-reassign passive'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, inreassign]
+        expect: 'course remove inreassign'
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      endValue: '{scopes.endFuture}'
+
+  # An address no account has: nothing is chosen and nothing is written (e2e inactive#6, its first half).
+  nobody:
+    given: { read: ok, list: rows, lookup: notFound, endAt: future, answer: assigned }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    setup:
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+      - run: [node, helpers/inactive-scopes.mjs, up]
+        expect: 'inactive-reassign up'
+      - run: [node, helpers/course.mjs, make, inreassign, --hoca, OTHER, --weeks, '1', --lessons, '1']
+        expect: '"tag":"inreassign"'
+      - run: [node, helpers/inactive-scopes.mjs, passive]
+        expect: 'inactive-reassign passive'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, inreassign]
+        expect: 'course remove inreassign'
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+    vars:
+      typed: 'kimse-yok-boyle@example.test'
+      endValue: '{scopes.endFuture}'
+
+  # An end in the past: said under the field, the button goes off, nothing is written (e2e inactive#6, its second half).
+  endPast:
+    given: { read: ok, list: rows, lookup: found, endAt: past, answer: assigned }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    setup:
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+      - run: [node, helpers/inactive-scopes.mjs, up]
+        expect: 'inactive-reassign up'
+      - run: [node, helpers/course.mjs, make, inreassign, --hoca, OTHER, --weeks, '1', --lessons, '1']
+        expect: '"tag":"inreassign"'
+      - run: [node, helpers/inactive-scopes.mjs, passive]
+        expect: 'inactive-reassign passive'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, inreassign]
+        expect: 'course remove inreassign'
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      endValue: '{scopes.endPast}'
+
+  # A köşk nazımı opens the address and meets the refusal screen (e2e inactive#4). Nothing is made, so nothing is removed.
+  refused:
+    given: { read: forbidden, list: rows, lookup: found, endAt: none, answer: assigned }
+    as: koskNazim
+    open: '{nizam}/pasif-kapsamlar'
+
+  # The list with nothing on it. It makes no data; `nothing` fails the walk early, naming the scopes, if another walk left one.
+  empty:
+    given: { read: ok, list: none, lookup: found, endAt: none, answer: assigned }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    setup:
+      - run: [node, helpers/inactive-scopes.mjs, nothing]
+        expect: 'inactive-reassign nothing listed'
+
+# The busy state of the save is held here (the server action posts to the page's own address). A refusal is walked by binding.race.yaml, which
+# does not hold it: a Next server action answers 200 whatever the API said, so its status is not comparable.
+states:
+  saving: { url: '{nizam}/pasif-kapsamlar', call: '{nizam}/pasif-kapsamlar' }

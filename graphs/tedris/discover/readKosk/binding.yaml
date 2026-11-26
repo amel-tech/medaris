@@ -1,0 +1,157 @@
+# tedris.discover.readKosk on the local stack: a köşk's page in tedris-web (:4000) as the seeded talebe who has a seat in all three courses, as a
+# person the köşk does not know, as a visitor, and as a visitor at an unlisted köşk.
+#   node apps/engine/src/cli.ts replay graphs/tedris/discover/readKosk --bind graphs/tedris/discover/readKosk/binding.yaml --out <dir>
+#
+# What each scenario starts from (the stack's seed, STACK.md; the data file is graphs/.local/readkosk.json, which kosk-data.mjs writes):
+#   unlisted         (--to koskShown) the walk's own köşk "Gizli Okuma Köşkü": unlisted, no course, no description, one nazım. `other`, a person with no
+#                    seat anywhere, opens it by its link: "Liste dışı", "Bu köşk henüz ders açmadı.", no deck block. File order matters: it is first so
+#                    that `--to koskShown` walks it and not the main story's scenario.
+#   visitorUnlisted  (--to notFound) nobody signed in follows the link of that same unlisted köşk and meets the not-found page.
+#   member           (the main story) the seeded TALEBE on the seeded köşk: three courses, all ENROLLED, two opened by the medrese, "Köşk desteleri" with
+#                    "Bu köşkün henüz destesi yok." (the seed makes no köşk deck); then the first course's link.
+#   visitor          nobody signed in, the seeded köşk: no follow button, no badge, no deck block, the invitation and its two links. NOT walked in the
+#                    writing phase.
+#   applicant        applicantA applies to the course that asks for approval (so one "Onay bekliyor" badge and no deck block). NOT walked in the writing
+#                    phase.
+#   unknownId        nobody signed in, an address no köşk has: the not-found page. NOT walked in the writing phase.
+# Counts and texts are what tedrisat says to the same reader (kosk-data.mjs measure, key `now`), so the walk compares the page with the API's own
+# answer and does not break when another walk leaves a course in the seeded köşk. What a walk makes is its own: the unlisted köşk (through the API,
+# as the başnazım) and the applicant's application, both taken away in the teardown; the seeded köşks and courses are only read.
+# Not walked and not walkable on the stack: `koskUnreadable`, `coursesUnreadable` and `decksUnreadable` (tedrisat answers every read; the stack has no way
+# to make one fail), `memberDecks` (a köşk deck needs a proposal approved by Medaris management; no helper makes one), and the RETRY of the failed-read box.
+# `call` is not used on any state: the reads are on the server, so the browser makes no fetch to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.discover.readKosk
+
+data:
+  readkosk: { json: ../.local/readkosk.json }
+
+scenarios:
+  unlisted:
+    given: { viewer: stranger, answer: unlisted, shelf: none, manager: named, about: none }
+    as: other
+    open: '{tedris}/kosks/{readkosk.unlisted}'
+    vars: { who: other, koskId: '{readkosk.unlisted}', ownerState: present, managerCount: 1 }
+    setup:
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, up], expect: 'kosk-data up unlisted made' }
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, measure, other, '{readkosk.unlisted}', now], expect: 'kosk-data measure now' }
+    teardown:
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, down], expect: 'kosk-data down removed' }
+
+  visitorUnlisted:
+    given: { viewer: visitor, answer: unlisted, shelf: none, manager: named, about: none }
+    open: '{tedris}/kosks/{readkosk.unlisted}'
+    vars: { who: none, koskId: '{readkosk.unlisted}', ownerState: 'null', managerCount: 0 }
+    setup:
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, up], expect: 'kosk-data up unlisted made' }
+    teardown:
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, down], expect: 'kosk-data down removed' }
+
+  member:
+    given: { viewer: memberEmpty, answer: listed, shelf: courses, manager: named, about: written }
+    as: talebe
+    open: '{tedris}/kosks/{seed.kosk}'
+    vars: { who: talebe, koskId: '{seed.kosk}', ownerState: present, managerCount: 1 }
+    setup:
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, measure, talebe, '{seed.kosk}', now], expect: 'kosk-data measure now' }
+
+  visitor:
+    given: { viewer: visitor, answer: listed, shelf: courses, manager: named, about: written }
+    open: '{tedris}/kosks/{seed.kosk}'
+    vars: { who: none, koskId: '{seed.kosk}', ownerState: 'null', managerCount: 0 }
+    setup:
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, measure, none, '{seed.kosk}', now], expect: 'kosk-data measure now' }
+
+  applicant:
+    given: { viewer: applicant, answer: listed, shelf: courses, manager: named, about: written }
+    as: applicantA
+    open: '{tedris}/kosks/{seed.kosk}'
+    vars: { who: applicantA, koskId: '{seed.kosk}', ownerState: present, managerCount: 1 }
+    setup:
+      - { run: [node, helpers/apply.mjs, applicantA, '{seed.courses.approval}'], expect: PENDING }
+      - { run: [node, ../tedris/discover/readKosk/kosk-data.mjs, measure, applicantA, '{seed.kosk}', now], expect: 'kosk-data measure now' }
+    teardown:
+      - { run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}'] }
+      - { run: [node, helpers/mail.mjs, clear, 'to:{address}'] }
+
+  unknownId:
+    given: { viewer: visitor, answer: unknown, shelf: none, manager: none, about: none }
+    open: '{tedris}/kosks/a0000000-0000-4000-8000-0000000000ff'
+    vars: { who: none, koskId: 'a0000000-0000-4000-8000-0000000000ff', ownerState: 'null', managerCount: 0 }
+
+events:
+  NAVIGATE:
+    - goto: '{tedris}/discover'
+  # RETRY (the failed-read box's "Yeniden dene") is sent by its link; nothing on the stack makes a read fail, so the box is not walked
+
+states:
+  koskShown: { url: '{tedris}/kosks/*' }
+  notFound: { url: '{tedris}/kosks/*' }
+  loadFailed: { url: '{tedris}/kosks/*' }
+  course_opened: { url: '{tedris}/courses/*' }
+  madrasah_opened: { url: '{tedris}/madrasahs/*' }
+  deck_opened: { url: '{tedris}/decks/*' }
+  discover_opened: { url: '{tedris}/discover**' }
+  sign_in_opened: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**' }
+  register_opened: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**prompt=create**' }
+  home_opened: { url: '{tedris}/**' }
+  left: { url: '{tedris}/discover**' }
+
+# What tedrisat answers the reader who opened the page, F-4 and anonymous#18 in one line: a visitor's answer holds no ownerId and no managerId and
+# still names the manager; a signed-in reader's holds both ids (the ids are never printed). The page draws only the name.
+effects:
+  getKosk:
+    - run: [node, ../tedris/discover/readKosk/kosk-data.mjs, summary, '{who}', '{koskId}']
+      expect: 'getKosk {who} ownerId={ownerState} managerIds={managerCount} managerName=set'
+
+# Where role and name cannot find a node. The page is found by what only it holds, `#kosk-courses`, so that the page a walk leaves for (a course,
+# a medrese, Keşfet) has no element that matches a node of this one (the replay's `--absent`). The texts are what the API said to the same reader
+# ({readkosk.now.*}, written by `kosk-data.mjs measure`), and a repeated node is counted. The two links inside "Bir derse başvurmak için giriş yap
+# ya da kayıt ol." are found by their addresses; the sentence by a pattern, because the catalog's text carries the app's rich-text tags.
+nodes:
+  koskPage: { css: 'main:has(#kosk-courses)' }
+  breadcrumb: { css: 'main:has(#kosk-courses) nav.mds-breadcrumb' }
+  breadcrumbDiscover: { css: 'main:has(#kosk-courses) nav.mds-breadcrumb a', hasText: Keşfet }
+  breadcrumbHere: { css: 'main:has(#kosk-courses) nav.mds-breadcrumb [aria-current=page]', hasText: '{readkosk.now.name}' }
+  eyebrow: { css: 'main:has(#kosk-courses) p.mds-eyebrow:not(.mds-cover__label)', hasText: Köşk }
+  title: { css: 'main:has(#kosk-courses) h1', hasText: '{readkosk.now.name}' }
+  courseCount: { css: 'main:has(#kosk-courses) h1 + p > span:first-child', hasText: '{readkosk.now.courseCount} ders' }
+  privateBadge: { css: 'main:has(#kosk-courses) h1 + p .mds-badge', hasText: Liste dışı }
+  managerLine: { css: 'main:has(#kosk-courses) h1 + p + p', hasText: 'Köşk nazımı {readkosk.now.managerName}' }
+  followButton: { css: 'main:has(#kosk-courses) button[aria-pressed]', hasText: '/^Takip (et|ediliyor)$/' }
+  about: { css: 'main:has(#kosk-courses) .mds-reading p', hasText: '{readkosk.now.description}' }
+  coursesSection: { css: 'main:has(#kosk-courses) section[aria-labelledby=kosk-courses]' }
+  coursesTitle: { css: 'main:has(#kosk-courses) h2#kosk-courses', hasText: Dersler }
+  coursesHint: { css: 'section[aria-labelledby=kosk-courses] .mds-caption', hasText: Köşkün dersleri ve köşkte açılan medrese dersleri }
+  noCourses: { css: 'section[aria-labelledby=kosk-courses] .mds-empty p', hasText: Bu köşk henüz ders açmadı. }
+  courseHeading: { css: 'section[aria-labelledby=kosk-courses] h3.mds-card__title', count: '{readkosk.now.courses}' }
+  courseLink: { css: 'section[aria-labelledby=kosk-courses] h3.mds-card__title a', count: '{readkosk.now.courses}' }
+  enrollmentBadge: { css: 'section[aria-labelledby=kosk-courses] .mds-card__header .mds-badge', hasText: '/^(Devam ediyor|Onay bekliyor|Tamamlandı)$/', count: '{readkosk.now.badges}' }
+  inPersonBadge: { css: 'section[aria-labelledby=kosk-courses] .mds-card__body .mds-badge', hasText: Yüz yüze, count: '{readkosk.now.inPersons}' }
+  madrasahLine: { css: 'section[aria-labelledby=kosk-courses] .mds-card__body p:has(a[href^="/madrasahs/"])', hasText: dersi, count: '{readkosk.now.madrasahLines}' }
+  madrasahLink: { css: 'section[aria-labelledby=kosk-courses] .mds-card__body a[href^="/madrasahs/"]', count: '{readkosk.now.madrasahLines}' }
+  hocaLine: { css: 'section[aria-labelledby=kosk-courses] .mds-card__body p[dir=auto]', count: '{readkosk.now.hocaLines}' }
+  nextSession: { css: 'section[aria-labelledby=kosk-courses] .mds-card__footer span:has(time)', hasText: Sonraki celse, count: '{readkosk.now.nextSessions}' }
+  noNextSession: { css: 'section[aria-labelledby=kosk-courses] .mds-card__footer span:not(:has(time))', hasText: Planlı celse yok, count: '{readkosk.now.noNextSessions}' }
+  invite: { css: 'section[aria-labelledby=kosk-courses] > p.mds-body-sm', hasText: '/^Bir derse başvurmak için giriş yap ya da kayıt ol\.$/' }
+  inviteSignIn: { css: 'section[aria-labelledby=kosk-courses] > p.mds-body-sm a[href^="/auth/signin"]', hasText: giriş yap }
+  inviteRegister: { css: 'section[aria-labelledby=kosk-courses] > p.mds-body-sm a[href="/auth/register"]', hasText: kayıt ol }
+  decksSection: { css: 'main:has(#kosk-courses) section[aria-labelledby=kosk-decks]' }
+  decksTitle: { css: 'h2#kosk-decks', hasText: Köşk desteleri }
+  decksHint: { css: 'section[aria-labelledby=kosk-decks] .mds-caption', hasText: Köşkün derslerine kayıtlı talebelere açık }
+  decksEmpty: { css: 'section[aria-labelledby=kosk-decks] .mds-empty p', hasText: Bu köşkün henüz destesi yok. }
+  deckHeading: { css: 'section[aria-labelledby=kosk-decks] h3.mds-card__title' }
+  deckLink: { css: 'section[aria-labelledby=kosk-decks] h3.mds-card__title a' }
+  deckMeta: { css: 'section[aria-labelledby=kosk-decks] .mds-card__body', hasText: Köşk destesi }
+  deckInCollection: { css: 'section[aria-labelledby=kosk-decks] .mds-card__footer', hasText: Koleksiyonunda }
+  notFoundSection: { css: 'section.mds-system-state', hasText: Sayfa bulunamadı }
+  notFoundTitle: { css: 'section.mds-system-state h1', hasText: Sayfa bulunamadı }
+  notFoundText: { css: 'section.mds-system-state p.mds-system-state__text', hasText: Aradığın sayfa yok }
+  notFoundHome: { css: 'section.mds-system-state a', hasText: Ana sayfaya dön }
+  loadFailedPage: { css: 'main:has(> .mds-alert)', hasText: Köşk yüklenemedi }
+  loadFailedAlert: { css: 'main > .mds-alert[role=alert]' }
+  loadFailedTitle: { css: 'main > .mds-alert p.mds-alert__title', hasText: Köşk yüklenemedi }
+  loadFailedText: { css: 'main > .mds-alert p:not(.mds-alert__title):not(.mbs-3)', hasText: Köşk şu an okunamadı. }
+  retry: { css: 'main > .mds-alert a', hasText: Yeniden dene }

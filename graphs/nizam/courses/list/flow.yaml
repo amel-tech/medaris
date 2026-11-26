@@ -1,0 +1,607 @@
+# Reading the courses of a köşk on its Dersler page in nizam-web, as its nazımı (and the başnazım) meet it: the three cards, the tabs with their
+# counts, the buttons of a row by the row's kind, hiding a course after a question, bringing it back, and the two ways a restore is refused.
+# Read from the code of the branch (the tree of PR #394) on 16 Nov 2026: apps/nizam/app/kosks/[id]/dersler/page.tsx, features/kosks/components/
+# {kosk-courses-view,kosk-course-table,hide-course-dialog}.tsx, features/kosks/{overview-present,course-actions,overview-reads,kosk-entry}.ts, the
+# shared Tabs, Table, Stat, AlertDialog, Button and sonner toast of libs/ui, and the routes the page calls (apps/tedrisat/src/kosk/kosk-admin.*,
+# course/course.controller.ts:421-467, archive/restore-course.ts). It says what the code does today. Nothing here was seen in a browser by its
+# writer: every behaviour is "from the code" unless a line says it was measured.
+#
+# What is drawn:
+#   - the page and its three cards, the tabs Tümü, Yayında, Taslak and Gizli with their counts, the table, and each kind of row: a course of
+#     the köşk's own (Düzenle, Hocaları düzenle, Gizle), a course a medrese opened (Dersi gör, Gizle) and a hidden one (Geri al, or a sentence
+#     that says which kademe hid it);
+#   - "Gizle": the window that asks first (cancel once, then confirm), the course turning Gizli with the tab numbers following, the toast;
+#   - "Geri al": at once, with no question, and its four refusals (a higher kademe hid it, the medrese is still hidden, another hand got
+#     there first, anything else);
+#   - the links that leave: every card, Ders aç, Arşiv, the row's title, Düzenle, Hocaları düzenle and Dersi gör, each into the flow that owns the
+#     page it opens.
+#
+# What the story depends on and the graph says plainly:
+#   - A hidden course is not deleted. The köşk's nazımı hides it at the köşk's kademe; Medaris yönetimi (the başnazım) is above, so a course it
+#     hid has no button for the nazım, only a sentence (HideLevel.locked). The başnazım acts at the platform's kademe and meets a button on every
+#     hidden row. A medrese's başmüderris hides at the medrese's kademe, which the köşk's nazımı is above: so a hidden medrese's courses carry a
+#     "Geri al" for the nazım, and pressing it is refused while the medrese is still hidden (ARCHIVE_PARENT_HIDDEN).
+#   - The page's reads are the roster (GET /kosks/:id/course-roster) and the cards' overview, and the roster alone decides what the table
+#     draws. The tab numbers are the rows' own (countRows), so a tab always equals the list it opens.
+#   - Two world facts decide what the page draws and never change inside a walk except as the steps say: `courses` (whether the köşk has
+#     any course) and `held` (which hidden courses the list holds, and whether the person's kademe reaches them). What the screen
+#     remembers, `tab` and `toast`, is told by the steps. The two writes are Next server actions.
+#   - Findings it carries (ui.yaml `rules` has the same ids): F-W4-6 (the focus is lost where the pressed button leaves with its row), F-W4-21
+#     ("Dersi gör" only where TEDRIS_URL is set), F-W4-17, F-X-4, F-X-5, F-X-10, F-UI-W1-3 and three of its own: NCL-1 (Vazgeç and the close icon
+#     stay live and do nothing while the hide runs), NCL-2 (the window does not say how many talebe lose access, which the same call's window in
+#     nazar-web does) and NCL-3 (a tab's name is its label and its count run together).
+schema: delurio-graph/0
+kind: flow
+id: nizam.courses.list
+status: captured
+domain: medaris.api
+ui: nizam.courses.list
+title: Read the köşk's courses and hide one
+summary: >-
+  The köşk's nazımı (or the başnazım) opens Dersler. Three cards say how many applications wait, how many medreses hold a hosting right and how
+  many nazımlar the köşk has, each with the link that leads on. Under them the tabs Tümü, Yayında, Taslak and Gizli carry the number of courses
+  in each, and the table lists the courses newest first with their hocalar, talebe, waiting applications and status. A course of the köşk's own
+  has "Düzenle", "Hocaları düzenle" and "Gizle"; a course a medrese opened has "Dersi gör" and "Gizle"; a hidden course has "Geri al", or, where
+  Medaris yönetimi hid it and the person is the köşk's nazımı, a sentence that says so and no button. "Gizle" opens an alertdialog whose focus
+  starts on "Vazgeç": it says who the course is hidden from and that nothing is deleted. Cancelling leaves the course where it is; "Gizle" hides
+  it, the window closes, a toast says it was hidden, the row turns Gizli and the numbers follow. "Geri al" brings a course back at once, with a
+  toast; where a higher kademe hid it meanwhile, or the medrese is still hidden, an error toast says why and the course stays hidden. The focus is
+  lost where the pressed button leaves with its row (F-W4-6), and nothing says after a few seconds what was done.
+source: apps/nizam/app/kosks/[id]/dersler/page.tsx:29
+
+scope:
+  shows: >-
+    Dersler with its cards, tabs, table, the buttons of each kind of row, the window "Dersi gizle", the toasts of a hide and a restore, and the exits
+    into the flows each link leads to
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the window 'Hocaları düzenle' that 'Hocaları düzenle' opens, the form behind 'Ders aç', the course's own pages behind a title and 'Düzenle', and every page a card or 'Arşiv' leads to: nizam.courses.editHocalar, .open, .overview, .curriculum, .decideApplications, nizam.hosting.grantAndRevoke, nizam.kosks.nazims and nizam.moderation.restoreArchived (this flow only starts them)"
+    - "the Hocalar, Talebe, 'N yasaklı' and weeks columns and captions of a row, the Durum badges of a published and a draft course, a draft medrese course, the date a hidden course shows ('... gizlendi'), and a private köşk's 'Listelerde görünmez'"
+    - "a card whose overview did not read (an error Alert in the cards' place), the köşk's name not reading while the roster does (404) and both reads failing (the shared LoadFailed with no heading)"
+    - "the screen that says 'Bu bölüm için izniniz yok' (403 and 404 look the same, with the HTTP status the only difference): nizam.shell.noAccessAndNotFound. `refused` and `not_found` here are its entries"
+    - "a Medaris nazımı holding platform.kosk_edit, who is sent to the management view of the köşk, and one holding only the hosting right, who is sent to Barındırma hakları (kosk-entry.ts): nizam.kosks.manage; the başnazım reaches Dersler by address or by that view's link"
+    - "a tab other than Gizli holding nothing (the empty sentence 'Bu durumda ders yok.' is drawn for Gizli only), and a list long enough to scroll; the roster has no pager"
+    - "the loading skeleton (silent, F-X-10), a session that has ended (a server action then sends the person to sign in: realm.auth.sessionEnded), and a hide or a restore that fails outright, such as a dropped network"
+    - "what a hide leaves outside the screen: the calendar entries of the talebe, which the invitation sweep cancels (not verified), and the audit row course.hide"
+    - "the same course hidden and brought back from the köşk's Arşiv: nizam.moderation.restoreArchived"
+
+decisions:
+  D1:
+    question: >-
+      Should the window say how many talebe lose access, as nazar's window does? The row already carries the count (NCL-2).
+    recommend: >-
+      Say it, in the window's first paragraph, and that the celses leave the talebe's calendar; the two windows then ask the same thing.
+    affects: [confirmHide]
+  D2:
+    question: >-
+      Should a failed hide say so inside the window? It stays open and only an error toast tells (F-X-4).
+    recommend: >-
+      Show an Alert in the window, as the other forms of the app do, and keep the toast.
+    affects: [confirmHide]
+  D3:
+    question: >-
+      Should a medrese's course without TEDRIS_URL show something where "Dersi gör" would be (F-W4-21)?
+    recommend: >-
+      Show the row as plain text with the course's title; do not leave the nazım with only "Gizle".
+    affects: [listed]
+
+context:
+  courses:
+    values: [none, some]
+    initial: any
+    say:
+      none: "the köşk has no course at all, not even a hidden one: the table says so"
+      some: "the köşk has courses, of its own and a medrese's, hidden ones as `held` says"
+  held:
+    values: [none, restorable, locked, both]
+    initial: any
+    say:
+      none: "no course is hidden"
+      restorable: "courses are hidden, and each has 'Geri al' (the person's kademe is at or above the one that hid them)"
+      locked: "courses are hidden, all by Medaris yönetimi, and the köşk's nazımı has a sentence and no button on each"
+      both: "some hidden courses have 'Geri al' and some, hidden by Medaris yönetimi, have the sentence"
+  tab:
+    values: [all, published, draft, hidden]
+    initial: all
+    say:
+      all: "Tümü"
+      published: "Yayında"
+      draft: "Taslak"
+      hidden: "Gizli"
+  toast:
+    values: [none, hidden, restored, hideFailed, restoreLevel, restoreParentHidden, restoreFailed]
+    initial: none
+    say:
+      none: "no answer is on the screen, or its toast is gone"
+      hidden: "the course was just hidden"
+      restored: "the course was just brought back"
+      hideFailed: "the API refused the hide; the window stays open"
+      restoreLevel: "a higher kademe hid the course since the page was read"
+      restoreParentHidden: "the course's medrese or köşk is still hidden"
+      restoreFailed: "the API refused the restore for another reason"
+
+guards:
+  # the own course's three buttons and the medrese course's two are on the rows the tabs Tümü and Yayında list
+  rowsShown: "tab in ['all', 'published']"
+  # whether a hidden course with a button is on the screen: Tümü and Gizli list hidden courses
+  restorableHere: "held in ['restorable', 'both'] and tab in ['all', 'hidden']"
+
+effects:
+  clearNote: { set: { toast: none } }
+  cancelled: { set: { toast: none } } # the window closed with nothing hidden; an `effects` check reads the course through the database
+  tabAll: { set: { tab: all, toast: none } }
+  tabPublished: { set: { tab: published, toast: none } }
+  tabDraft: { set: { tab: draft, toast: none } }
+  tabHidden: { set: { tab: hidden, toast: none } }
+  # a hide: the course now holds a place among the hidden ones, at the köşk's kademe (the nazım) or the platform's (the başnazım)
+  hiddenFirst: { set: { toast: hidden, held: restorable } }
+  hiddenMore: { set: { toast: hidden, held: both } }
+  hidden: { set: { toast: hidden } }
+  hideFailed: { set: { toast: hideFailed } }
+  restored: { set: { toast: restored }, havoc: [held] } # the row leaves the hidden ones, so the list may have none left
+  restoreLevel: { set: { toast: restoreLevel, held: both } } # the page is read again: the stale row now has the sentence, the others keep their button
+  restoreParentHidden: { set: { toast: restoreParentHidden } } # the one refusal after which the list is not read again
+  restoreFailed: { set: { toast: restoreFailed } }
+
+failures:
+  reading:
+    from: getKoskCourseRoster
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [KOSK_NOT_FOUND]
+    other: []
+  hiding:
+    from: hideCourse
+    already: [COURSE_ALREADY_HIDDEN]
+    other: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND]
+  restoring:
+    from: restoreCourse
+    notHidden: [COURSE_NOT_HIDDEN]
+    level: [ARCHIVE_RESTORE_LEVEL]
+    parentHidden: [ARCHIVE_PARENT_HIDDEN]
+    other: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND]
+
+# The story the page tells first (kosk-view.e2e.ts#6-#9): Dersler is read, every tab is looked at, a course is asked about hiding, the
+# person cancels once, asks again and confirms, opens Gizli and brings the course back.
+main:
+  given: { courses: some, held: both }
+  events: [DONE, TAB_PUBLISHED, TAB_DRAFT, TAB_HIDDEN, TAB_ALL, HIDE_OWN, CANCEL, HIDE_OWN, CONFIRM_HIDE, DONE, TAB_HIDDEN, RESTORE, DONE]
+
+initial: begin
+
+states:
+  begin:
+    title: The person opens the köşk
+    description: >-
+      A step with no screen: the person opens the köşk's address (/kosks/<id>, where a köşk's nazımı is sent on to Dersler, kosk-view.e2e.ts#6),
+      Dersler's own address, or the menu's "Dersler". The başnazım opens Dersler by its address or by the link of the management view. Nothing is
+      drawn here.
+    always:
+      - target: reading
+    source: apps/nizam/app/kosks/[id]/page.tsx:50
+
+  reading:
+    title: Dersler is read
+    description: >-
+      The page reads the köşk, the roster (GET /kosks/:id/course-roster), the cards' overview and the person's roles on the server, behind a
+      skeleton (loading.tsx: aria-busy and aria-hidden skeletons, so nothing is said, F-X-10). The roster lists every course of the köşk, hidden
+      ones too, newest first, each hidden one with the kademe that hid it and whether the person may bring it back. A 403 is the screen that says
+      "Bu bölüm için izniniz yok" with HTTP 403 (refused), a 404 the same words with HTTP 404 (not_found, nizam.shell.noAccessAndNotFound), and any
+      other failure of the roster, with the köşk read, draws the page with an error Alert and "Yeniden dene" in the table's place (rowsFailed).
+    invoke: { action: getKoskCourseRoster }
+    on:
+      DONE:
+        - { guard: "courses == 'none'", target: empty, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:367 }
+        - target: listed
+      FAIL.forbidden: refused
+      FAIL.missing: not_found
+      FAIL.other: rowsFailed
+    source: apps/nizam/app/kosks/[id]/dersler/page.tsx:35
+
+  listed:
+    title: Dersler lists the courses
+    description: >-
+      The page: the title, the köşk's name with "Listelerde görünür", "Köşk sayfasını gör" and "Ders aç", the three cards, the section "Bütün
+      dersler" with its link "Arşiv", the tabs with their numbers and the table. The tab of the page is the one `tab` says; Tümü lists every
+      course, hidden ones too (each with the word Gizli), Yayında the published ones, Taslak the drafts and Gizli the hidden ones, and a tab that
+      holds nothing says "Bu durumda ders yok.". A course of the köşk's own offers "Düzenle", "Hocaları düzenle" and "Gizle"; a medrese's offers
+      "Dersi gör" and "Gizle"; a hidden one "Geri al", or the sentence "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir." in
+      the buttons' place (`held`). The page sets no focus of its own (focus-not-set). A toast of the last answer may still be up: a restore's, or the
+      error of a refused one (a refusal for a higher kademe also reads the list again, so the stale row now has the sentence).
+    by: human
+    goal: true
+    on:
+      TAB_ALL: { target: listed, effect: [tabAll], say: "they choose Tümü: a client-side change, no request", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PUBLISHED: { target: listed, effect: [tabPublished], say: "they choose Yayında", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_DRAFT: { target: listed, effect: [tabDraft], say: "they choose Taslak", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { target: listed, effect: [tabHidden], say: "they choose Gizli", source: libs/ui/src/mds/tabs.tsx:110 }
+      HIDE_OWN: { guard: rowsShown, target: confirmHide, effect: [clearNote], say: "they press Gizle on a course of the köşk's own: the window asks first", source: apps/nizam/features/kosks/components/kosk-course-table.tsx:314 }
+      RESTORE: { guard: restorableHere, target: restoring, effect: [clearNote], say: "they press Geri al on a hidden course: nothing is asked first", source: apps/nizam/features/kosks/components/kosk-course-table.tsx:328 }
+      OPEN_COURSE:
+        guard: "tab != 'hidden'"
+        target: course_overview_opened
+        starts: { flow: nizam.courses.overview }
+        say: "they follow a course's title: its overview"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:122
+      OPEN_CURRICULUM:
+        guard: rowsShown
+        target: curriculum_opened
+        starts: { flow: nizam.courses.curriculum }
+        say: "they follow Düzenle on a course of the köşk's own: its Müfredat"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:275
+      EDIT_HOCAS:
+        guard: rowsShown
+        target: muderris_dialog_opened
+        starts: { flow: nizam.courses.editHocalar }
+        say: "they press Hocaları düzenle: the window of nizam.courses.editHocalar opens on this page"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:290
+      VIEW_COURSE:
+        guard: rowsShown
+        target: course_viewed_in_tedris
+        say: "they follow Dersi gör on a medrese's course: tedris's course page, in this tab"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:301
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv: the köşk's archive lists the hidden courses too"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:87
+
+  listedHidden:
+    title: Dersler is read again, with the course hidden
+    description: >-
+      The server components are read again after the hide (router.refresh; the table's `tab` is kept). The course is still on Tümü and on Gizli, now
+      with the word Gizli, a title that is plain text and "Geri al" (or the sentence), and it has left Yayında or Taslak; the tab numbers follow, so
+      Gizli has one more and the others one fewer (kosk-view.e2e.ts#9 reads the Gizli number). The toast "Ders gizlendi" says it was hidden. The pressed
+      "Gizle" is gone with its row, and no code moves the focus (F-W4-6).
+    by: human
+    goal: true
+    on:
+      TAB_ALL: { target: listed, effect: [tabAll], say: "they choose Tümü", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PUBLISHED: { target: listed, effect: [tabPublished], say: "they choose Yayında", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_DRAFT: { target: listed, effect: [tabDraft], say: "they choose Taslak", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { target: listed, effect: [tabHidden], say: "they choose Gizli: the hidden course is there", source: libs/ui/src/mds/tabs.tsx:110 }
+      RESTORE: { guard: restorableHere, target: restoring, effect: [clearNote], say: "they press Geri al on the course they hid, or on another hidden one: Tümü lists them too", source: apps/nizam/features/kosks/components/kosk-course-table.tsx:328 }
+      OPEN_COURSE:
+        guard: "tab != 'hidden'"
+        target: course_overview_opened
+        starts: { flow: nizam.courses.overview }
+        say: "they follow a course's title"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:122
+      VIEW_COURSE:
+        guard: rowsShown
+        target: course_viewed_in_tedris
+        say: "they follow Dersi gör on a medrese's course: tedris's course page, in this tab"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:301
+      # The header, the cards and the section's link are the same as in `listed`.
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/kosks/components/kosk-course-table.tsx:60
+
+  empty:
+    title: The köşk has no course
+    description: >-
+      The page as above with its cards, and the tabs all at 0; the table has its caption and headers and one cell that says "Henüz ders yok." on every
+      tab. "Ders aç" is how the first course is made.
+    by: human
+    on:
+      TAB_ALL: { target: empty, effect: [tabAll], say: "they choose Tümü", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_PUBLISHED: { target: empty, effect: [tabPublished], say: "they choose Yayında", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_DRAFT: { target: empty, effect: [tabDraft], say: "they choose Taslak", source: libs/ui/src/mds/tabs.tsx:110 }
+      TAB_HIDDEN: { target: empty, effect: [tabHidden], say: "they choose Gizli", source: libs/ui/src/mds/tabs.tsx:110 }
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      # The header's link, the cards and the section's link are the same as in `listed`.
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/kosks/components/kosk-course-table.tsx:367
+
+  rowsFailed:
+    title: The roster could not be read
+    description: >-
+      The roster failed while the köşk read (any failure but a 403 or a 404): the page keeps its header, cards and section heading, and an error Alert
+      with "Bölüm yüklenemedi", the sentence "Bu bölüm şu an okunamıyor. Biraz sonra yeniden deneyin." and "Yeniden dene" stands where the tabs and the
+      table were. The stack cannot make a read fail.
+    by: human
+    on:
+      RETRY: { target: reading, say: "they press Yeniden dene: the page is read again", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:47 }
+      # The header, the cards and the section's link stay above the Alert, and go where they go from `listed`.
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:166
+
+  confirmHide:
+    title: The window "Dersi gizle" asks first
+    description: >-
+      An alertdialog named by its title, with the course's title above it. The first paragraph says "<course> talebelerden ve ziyaretçilerden
+      gizlenecek; ders her listeden çıkar." and nothing of the talebe enrolled (NCL-2); the second says nothing is deleted and the Arşiv brings the
+      course back. The focus starts on "Vazgeç", is trapped, and returns to the pressed "Gizle" when the window closes with nothing hidden
+      (Base UI's default; measured for the same AlertDialog in tedris.course.leave, not measured here). The scrim does not close it. "Gizle" is a
+      primary button, not a destructive one. A refused hide leaves the window open with an error toast over it (F-X-4).
+    by: human
+    on:
+      CONFIRM_HIDE: { target: hiding, effect: [clearNote], say: "they press Gizle", source: libs/ui/src/mds/alert-dialog.tsx:109 }
+      CANCEL: { target: listed, effect: [cancelled], say: "they press Vazgeç: the course stays where it is (kosk-view.e2e.ts#9)", source: libs/ui/src/mds/alert-dialog.tsx:102 }
+      CLOSE: { target: listed, effect: [cancelled], say: "they press the close icon", source: libs/ui/src/mds/alert-dialog.tsx:88 }
+      DISMISS: { target: listed, effect: [cancelled], say: "they press Esc", source: libs/ui/src/mds/alert-dialog.tsx:70 }
+    source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:60
+
+  hiding:
+    title: The course is being hidden
+    description: >-
+      The server action hideCourse calls POST /courses/:id/archive (no body): the course is stamped with the kademe the caller acts at (the köşk's for
+      the nazım, the platform's for the başnazım), its version moves, the audit row course.hide is written and the talebe's calendar entries get their
+      CANCEL when the invitation sweep next runs (not verified). "Gizle" is busy (aria-disabled, aria-busy, hidden status "Yükleniyor", F-UI-W1-3);
+      "Vazgeç" and the close icon stay enabled and do nothing, for the window ignores every way of closing while the call runs (NCL-1). Success, and
+      COURSE_ALREADY_HIDDEN (another hand hid it meanwhile, which counts as done): the toast "Ders gizlendi", the window closes and the page is read
+      again. COURSE_NOT_FOUND, AUTHZ_FORBIDDEN and any other refusal: the error toast "Ders gizlenemedi", the window stays open. The call has no try/catch:
+      a request that never reaches the server rejects and leaves the busy state (not verified in a browser).
+    invoke: { action: hideCourse }
+    on:
+      DONE: afterHide
+      FAIL.already: { target: afterHide, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:42 }
+      FAIL.other: { target: confirmHide, effect: [hideFailed], source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:46 }
+      CANCEL: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press Vazgeç, or Esc, while the hide runs: nothing happens, the hide goes on (onOpenChange is ignored while saving, NCL-1)" }
+      CLOSE: { target: hiding, source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:63, say: "they press the close icon: nothing happens, the hide goes on" }
+    source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
+
+  afterHide:
+    title: The hide is told and the list is read again
+    description: >-
+      A step with no screen of its own: the window closes, the toast is raised and the page is read again, so the course is among the hidden ones.
+      `held` says which: the first hidden course, one beside those Medaris yönetimi hid, or one more among those the person may bring back.
+    always:
+      - { guard: "held == 'none'", target: listedHidden, effect: [hiddenFirst], source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:52 }
+      - { guard: "held == 'locked'", target: listedHidden, effect: [hiddenMore], source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:52 }
+      - { target: listedHidden, effect: [hidden], source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:52 }
+    source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:55
+
+  restoring:
+    title: The course is being brought back
+    description: >-
+      The server action restoreCourse calls POST /courses/:id/restore (no body; the API decides by kademe: the caller's must reach the one that hid
+      it, and the course's köşk and medrese must be shown). The row's "Geri al" is busy (aria-disabled, aria-busy, hidden status "Yükleniyor") and the
+      other rows' buttons stay live. Success: the toast "Ders geri alındı" ("<course> yeniden listelerde."), then the page is read again: the course
+      is Yayında or Taslak again and the numbers follow, and the pressed button left with its row (F-W4-6). COURSE_NOT_HIDDEN (someone brought it back
+      first) counts as done: the same toast. ARCHIVE_RESTORE_LEVEL (a higher kademe hid it since the page was read): the error toast "Ders
+      geri alınamadı" with "Bu dersi daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.", and the page is read again, so the row
+      loses its button. ARCHIVE_PARENT_HIDDEN (the medrese or the köşk is still hidden): the same title with "Dersin medresesi ya da köşkü hâlâ gizli;
+      ders onlarla birlikte geri gelir." and the page is not read again. Anything else: "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." and no
+      read. The call has no try/catch (not verified in a browser).
+    invoke: { action: restoreCourse }
+    on:
+      DONE: { target: listed, effect: [restored], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:101 }
+      FAIL.notHidden: { target: listed, effect: [restored], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:87 }
+      FAIL.level: { target: listed, effect: [restoreLevel], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:98 }
+      FAIL.parentHidden: { target: listed, effect: [restoreParentHidden], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:90 }
+      FAIL.other: { target: listed, effect: [restoreFailed], source: apps/nizam/features/kosks/components/kosk-course-table.tsx:90 }
+      # The links of the page, plain <a> elements, stay live while the restore runs (only the pressed "Geri al" is busy): the browser leaves
+      # the page at once, and the restore already sent is the server's to finish or refuse (not verified), unseen.
+      OPEN_COURSE:
+        guard: "tab != 'hidden'"
+        target: course_overview_opened
+        starts: { flow: nizam.courses.overview }
+        say: "they follow a course's title while the restore runs"
+        source: apps/nizam/features/kosks/components/kosk-course-table.tsx:122
+      OPEN_NEW:
+        target: course_new_opened
+        starts: { flow: nizam.courses.open }
+        say: "they follow Ders aç while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115
+      OPEN_APPLICATIONS:
+        target: applications_opened
+        starts: { flow: nizam.courses.decideApplications }
+        say: "they follow Başvurulara git while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_HOSTING:
+        target: hosting_opened
+        starts: { flow: nizam.hosting.grantAndRevoke }
+        say: "they follow Barındırma haklarını gör while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_NAZIMS:
+        target: nazims_opened
+        starts: { flow: nizam.kosks.nazims }
+        say: "they follow Köşk nazımlarını gör while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:145
+      OPEN_ARCHIVE:
+        target: archive_opened
+        starts: { flow: nizam.moderation.restoreArchived }
+        say: "they follow Arşiv while the restore runs: the page goes at once"
+        source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161
+      OPEN_PUBLIC_PAGE: { target: public_page_opened, say: "they follow Köşk sayfasını gör: tedris's page of the köşk opens in a new tab while the restore runs", source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:102 }
+    source: apps/nizam/features/kosks/components/kosk-course-table.tsx:82
+
+  refused:
+    title: The page says "Bu bölüm için izniniz yok"
+    type: final
+    leavesPage: true
+    description: >-
+      A 403 of the roster (a person who is neither the köşk's nazımı nor Medaris yönetimi for this köşk): nizam.shell.noAccessAndNotFound's screen, HTTP 403.
+
+  not_found:
+    title: The köşk is not there
+    type: final
+    leavesPage: true
+    description: >-
+      A 404 of the roster (a malformed or unknown id): the same screen as `refused`, HTTP 404; the two look alike on purpose.
+
+  course_overview_opened:
+    title: A course's overview opens
+    type: final
+    leavesPage: true
+    description: >-
+      The row's title, a link, opens /kosks/<id>/courses/<courseId>, nizam.courses.overview's page. A hidden course's title is plain text and opens nothing.
+
+  curriculum_opened:
+    title: A course's Müfredat opens
+    type: final
+    leavesPage: true
+    description: >-
+      "Düzenle" is a link to /kosks/<id>/courses/<courseId>/curriculum, nizam.courses.curriculum's page.
+
+  muderris_dialog_opened:
+    title: The window "Hocaları düzenle" opens
+    type: final
+    description: >-
+      The button opens nizam.courses.editHocalar's window on the same page; this flow starts there, and the table under it is still Dersler.
+
+  course_viewed_in_tedris:
+    title: tedris's page of the course opens
+    type: final
+    leavesPage: true
+    description: >-
+      "Dersi gör" is a link to ${TEDRIS_URL}/courses/<id>, in this tab: the course as a talebe sees it (tedris.course.*).
+
+  course_new_opened:
+    title: The form "Ders aç" opens
+    type: final
+    leavesPage: true
+    description: >-
+      "Ders aç" is a link to /kosks/<id>/courses/new, nizam.courses.open's form.
+
+  applications_opened:
+    title: Başvurular opens
+    type: final
+    leavesPage: true
+    description: >-
+      The first card's link opens /kosks/<id>/basvurular, nizam.courses.decideApplications's list.
+
+  hosting_opened:
+    title: Barındırma hakları opens
+    type: final
+    leavesPage: true
+    description: >-
+      The second card's link opens /kosks/<id>/ayarlar/barindirma, nizam.hosting.grantAndRevoke's page.
+
+  nazims_opened:
+    title: Köşk nazımları opens
+    type: final
+    leavesPage: true
+    description: >-
+      The third card's link opens /kosks/<id>/ayarlar/nazimlar, nizam.kosks.nazims's page.
+
+  archive_opened:
+    title: The köşk's Arşiv opens
+    type: final
+    leavesPage: true
+    description: >-
+      "Arşiv" is a link to /kosks/<id>/arsiv, nizam.moderation.restoreArchived's page, where the hidden courses are listed with the other things hidden in the köşk.
+
+  public_page_opened:
+    title: tedris's page of the köşk opens in a new tab
+    type: final
+    description: >-
+      "Köşk sayfasını gör" is a link with target=_blank to ${TEDRIS_URL}/kosks/<id>; this tab stays on Dersler. Drawn only where the app knows tedris's address.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-hidden-course-is-among-the-hidden
+    never: "state == 'listedHidden' and held == 'none'"
+    say: After a hide the list holds a hidden course, so Gizli is never empty and the pressed course is on it.
+    source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:682
+  - id: only-a-restorable-course-is-restored
+    never: "state == 'restoring' and held in ['none', 'locked']"
+    say: Geri al is pressed only where a hidden course has the button; a course Medaris yönetimi hid has none for the köşk's nazımı.
+    source: apps/nizam/features/kosks/overview-present.ts:95
+  - id: an-empty-kosk-has-nothing-to-hide
+    never: "state == 'confirmHide' and courses == 'none'"
+    say: The window "Dersi gizle" is never opened over a köşk that has no course.
+    source: apps/nizam/features/kosks/components/kosk-course-table.tsx:367

@@ -1,0 +1,155 @@
+# The screens of nizam.moderation.banStudent: a course's Talebeler page (/kosks/<id>/courses/<id>/students) on its tabs Başvurular and
+# Kayıtlı, the "Talebeyi yasakla" window over it with its toasts, the row after the ban, and the köşk's Yasaklamalar (/kosks/<id>/yasaklamalar)
+# with the new row. Read from apps/nizam/features/bans/components/{ban-dialog,bans-view}.tsx, features/applications/components/{students-tabs,
+# roster-table}.tsx, the page of the Talebeler tab and libs/ui/src/mds on 16 Nov 2026; the words are copied from libs/i18n/src/locales/tr/
+# nizam.json (namespaces BanDialog, StudentsRoster, StudentsPage, BansPage, Shell), letter for letter.
+#
+# `changes` is the window's own intro ("Yasak hemen geçerli olur. …"), which tells the person what the ban does; no message was written for this
+# flow. Entries built in code that belong to no i18n file are `composed.*` with their placeholders (each a data value set in a node):
+#   composed.BanDialog.eyebrow           the course's title above the window's title            (ban-dialog.tsx:131)
+#   composed.BanDialog.personName        the talebe's name in the person block                   (ban-dialog.tsx:153)
+#   composed.BanDialog.personEmail       their e-mail, drawn only when they have one            (ban-dialog.tsx:157)
+#   composed.StudentsRoster.person       the name in the row's first cell                        (roster-table.tsx:161)
+#   composed.BansPage.count              a tab's number, a <span class=mds-tab__count>           (libs/ui/src/mds/tabs.tsx:67)
+#   composed.BansPage.person / email     the name and the e-mail in a ban's first cell           (bans-view.tsx:168, :179)
+#   composed.BansPage.scopeDetail        the second line of the scope cell: the course's title, or the köşk's name, then "· {course} dersinden
+#                                        genişletildi" for a widened ban, joined by " · "          (present.ts:71-99, bans-view.tsx:204)
+#   composed.BansPage.reason / bannedBy / time   the reason as typed (trimmed), the name of who barred, "Bugün 21:04"  (bans-view.tsx:214, :222, :232)
+#   composed.Button.loading              the busy button's hidden <output>, a default of libs/ui/src/mds/button.tsx:62
+#
+# The page behind the window is drawn only where the window is closed: the window is modal, so the page is inert while it is open. There is
+# one window, drawn for the three states that show it; its first focus is the reason, its way back is the row's "Yasakla".
+schema: delurio-graph/0
+kind: ui
+id: nizam.moderation.banStudent
+flow: nizam.moderation.banStudent
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: BanDialog.intro }
+samples:
+  name: Esma Başvuran # the talebe of the walk (applicantC)
+  email: e2e-basvuran-c@medaris.test
+  course: Deneme dersi banst
+  kosk: Kubbealtı Köşkü
+  when: Çarşamba 21:00 # {when} of the warning: the celse still to come, "Çarşamba 21:00"
+  count: "1"
+  reason: Celselerde ders dışı reklam yaptı
+  actor: Cemal Köşk Nazımı
+  role: Köşk nazımı
+  detail: Deneme dersi banst
+  time: Bugün 21:04
+
+# Nothing in the Talebeler page or in Yasaklamalar sets the focus on arrival; the window's `initialFocus` is a ref to the reason. After a
+# refusal the focus stays where it fell (F-W5-2); after the window closes it is Base UI's to give back, and after a success there is nothing
+# to give it back to (BANST-3). The graph says only what the code says.
+nodes:
+  # ---- the Talebeler page, the window closed -----------------------------------------------------------------------------------------
+  studentsPage: { type: page, component: Page, role: main, in: [applicationsTab, rosterPage, closedRow, savedRow], source: libs/ui/src/mds/app-shell.tsx:42 } # the shell's one <main id="main">; it has no name
+  studentsTitle: { type: text, component: Heading, role: heading, text: { key: StudentsPage.title }, in: [applicationsTab, rosterPage, closedRow, savedRow], source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:57" } # h1
+  studentsSubtitle: { type: text, component: Text, text: { key: StudentsPage.subtitle, params: { course: course.title } }, in: [applicationsTab, rosterPage, closedRow, savedRow], source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:58" }
+  tabsList: { type: list, component: List, role: tablist, name: { key: StudentsPage.tabsLabel }, in: [applicationsTab, rosterPage, closedRow, savedRow], source: apps/nizam/features/applications/components/students-tabs.tsx:94 }
+  tabApplications: { type: action, component: Button, role: tab, text: { key: StudentsPage.tabs.applications }, in: [applicationsTab, rosterPage, closedRow, savedRow], source: apps/nizam/features/applications/components/students-tabs.tsx:99 } # its name ends with the count of waiting rows; selected only in applicationsTab
+  tabEnrolled: { type: action, component: Button, role: tab, text: { key: StudentsPage.tabs.enrolled }, in: [applicationsTab, rosterPage, closedRow, savedRow], emits: SHOW_ENROLLED, source: apps/nizam/features/applications/components/students-tabs.tsx:104 } # "Kayıtlı 1": found by its beginning; selected from rosterPage on
+
+  # ---- the Kayıtlı tab: the talebe's row ---------------------------------------------------------------------------------------------
+  rosterTable: { type: list, component: List, role: table, name: { key: StudentsRoster.captionEnrolled, params: { course: course.title } }, in: [rosterPage, closedRow, savedRow], source: apps/nizam/features/applications/components/roster-table.tsx:276 } # named by its visually hidden caption
+  rowPerson: { type: text, component: Text, role: rowheader, text: { key: composed.StudentsRoster.person, params: { name: person.name } }, in: [rosterPage, closedRow, savedRow], source: apps/nizam/features/applications/components/roster-table.tsx:161 } # the row's header cell, with an avatar that is decorative
+  rowBanned: { type: status, component: Status, text: { key: StudentsRoster.bannedCourse }, in: [savedRow], when: "chosen == 'course'", source: apps/nizam/features/applications/components/roster-table.tsx:164 } # a Badge beside the name: "Yasaklı · Bu ders"
+  rowBannedKosk: { type: status, component: Status, text: { key: StudentsRoster.bannedKosk }, in: [savedRow], when: "chosen == 'kosk'", source: apps/nizam/features/applications/components/roster-table.tsx:164 } # "Yasaklı · Köşk"; a medrese-wide ban reads "Bu ders" here too (BANST-6)
+  rowComplete: { type: action, component: Button, role: button, intent: secondary, name: { key: StudentsRoster.completeLabel, params: { name: person.name } }, text: { key: StudentsRoster.complete }, in: [rosterPage, closedRow, savedRow], source: apps/nizam/features/applications/components/roster-table.tsx:224 } # the row's outline button; nizam.courses.roster's
+  rowRemove: { type: action, component: Button, role: button, intent: secondary, name: { key: StudentsRoster.removeLabel, params: { name: person.name } }, text: { key: StudentsRoster.remove }, in: [rosterPage, closedRow], source: apps/nizam/features/applications/components/roster-table.tsx:224 } # a ghost button; gone from a barred row (`studentActions`)
+  rowBan: { type: action, component: Button, role: button, intent: secondary, name: { key: StudentsRoster.banLabel, params: { name: person.name } }, text: { key: StudentsRoster.ban }, in: [rosterPage, closedRow], emits: OPEN_DIALOG, source: apps/nizam/features/applications/components/roster-table.tsx:224 } # a ghost button named by the row; the window gives the focus back to it, and a ban replaces it with the lift (BANST-3)
+  rowLift: { type: action, component: Button, role: button, intent: secondary, name: { key: StudentsRoster.liftLabel, params: { name: person.name } }, text: { key: StudentsRoster.lift }, in: [savedRow], source: apps/nizam/features/applications/components/roster-table.tsx:224 } # in the place of "Yasakla": nizam.moderation.decideBan and .courses.roster's
+  menuBans: { type: action, component: LinkButton, role: link, text: { key: Shell.items.bans }, in: [savedRow], emits: OPEN_BANS, source: apps/nizam/lib/shell-nav.ts:245 } # the köşk menu's entry in the sidebar, which nizam.shell.menuPerPersona draws
+
+  # ---- the window ----------------------------------------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [form, formReady, submitting], initialFocus: reasonField, source: apps/nizam/features/bans/components/ban-dialog.tsx:123 } # the focus starts in the reason (bans#1 a6)
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.BanDialog.eyebrow, params: { course: course.title } }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:131 } # above the title, outside the window's name
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: BanDialog.title }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:132 } # Base UI's Title, an h2
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: BanDialog.close }, in: [form, formReady, submitting], emits: CANCEL, source: apps/nizam/features/bans/components/ban-dialog.tsx:133 } # stays on and does nothing while the ban is sent (BANST-5)
+  personName: { type: text, component: Text, text: { key: composed.BanDialog.personName, params: { name: person.name } }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:153 } # inside data-testid="ban-target", with a decorative avatar
+  personEmail: { type: text, component: Text, text: { key: composed.BanDialog.personEmail, params: { email: person.email } }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:157 } # only when the talebe has an e-mail
+  intro: { type: text, component: Text, text: { key: BanDialog.intro }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:164 }
+  visibility: { type: text, component: Text, text: { key: BanDialog.visibility }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:165 } # who reads the reason; the talebe does not
+  requiredNote: { type: text, component: Text, text: { key: BanDialog.requiredNote }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:166 } # drawn as "* zorunlu alan"
+
+  # Yasağın kapsamı: the course (on), the whole köşk (off); the köşk option is the nazım's
+  scopeGroup: { type: list, component: List, role: radiogroup, name: { key: BanDialog.scopeLegend }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:167 }
+  radioCourse: { type: field, component: ListItem, role: radio, text: { key: BanDialog.scopeCourse }, checked: "chosen == 'course'", in: [form, formReady, submitting], disabledIn: [submitting], emits: PICK_COURSE, source: apps/nizam/features/bans/components/ban-dialog.tsx:175 } # on when it opens (bans#1 a4)
+  radioKosk: { type: field, component: ListItem, role: radio, text: { key: BanDialog.scopeKosk }, checked: "chosen == 'kosk'", in: [form, formReady, submitting], disabledIn: [submitting], when: mayKosk, emits: PICK_KOSK, source: apps/nizam/features/bans/components/ban-dialog.tsx:180 } # off when it opens (bans#1 a5)
+  radioKoskOff: { type: field, component: ListItem, role: radio, text: { key: BanDialog.scopeKosk }, checked: false, in: [form, formReady, submitting], disabledIn: [form, formReady, submitting], when: "scope == 'limited'", source: apps/nizam/features/bans/components/ban-dialog.tsx:185 } # the same radio, disabled, for a person who is not the köşk's nazım (`disabled: !mayBanKosk`); nobody is this person (BANST-1)
+  courseDesc: { type: text, component: Text, text: { key: BanDialog.scopeCourseDesc, params: { course: course.title } }, in: [form, formReady, submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:177 } # the radio's description, not its name
+  koskDesc: { type: text, component: Text, text: { key: BanDialog.scopeKoskDesc, params: { kosk: kosk.name } }, in: [form, formReady, submitting], when: mayKosk, source: apps/nizam/features/bans/components/ban-dialog.tsx:183 }
+  koskOnlyNazim: { type: text, component: Text, text: { key: BanDialog.scopeKoskOnlyNazim }, in: [form, formReady, submitting], when: "scope == 'limited'", source: apps/nizam/features/bans/components/ban-dialog.tsx:184 }
+
+  # Yasaklama gerekçesi
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: BanDialog.reasonLabel }, value: { literal: "" }, in: [form, formReady, submitting], disabledIn: [submitting], source: apps/nizam/features/bans/components/ban-dialog.tsx:195 } # a textarea of 4 rows, at most 500 characters, `required`, with no counter; disabled while the ban is sent, so it loses the focus (F-W5-2)
+  reasonHelp: { type: text, component: Text, text: { key: BanDialog.reasonHelp }, in: [form, formReady, submitting], when: "not errorShown", source: apps/nizam/features/bans/components/ban-dialog.tsx:192 } # says who reads the reason; the error replaces it
+  reasonRequired: { type: text, component: Text, text: { key: BanDialog.reasonRequired }, in: [form], when: errorShown, source: apps/nizam/features/bans/components/ban-dialog.tsx:193 } # after the field was left; not a live region (F-W5-4, F-X-2)
+  rotateTitle: { type: alert, component: Alert, role: status, text: { key: BanDialog.rotateTitle }, in: [form, formReady, submitting], when: "session == 'ahead'", source: apps/nizam/features/bans/components/ban-dialog.tsx:208 } # a warning tone, so a status (not an alert); the title is a <p>
+  rotateBody: { type: text, component: Text, text: { key: BanDialog.rotateBody, params: { when: session.when } }, in: [form, formReady, submitting], when: "session == 'ahead'", source: apps/nizam/features/bans/components/ban-dialog.tsx:209 }
+
+  # the footer
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: BanDialog.cancel }, in: [form, formReady, submitting], emits: CANCEL, source: apps/nizam/features/bans/components/ban-dialog.tsx:137 } # on while the ban is sent, and does nothing then (ban-dialog.tsx:126, BANST-5)
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: BanDialog.submit }, in: [form, formReady, submitting], disabledIn: [form, submitting], emits: SUBMIT, source: apps/nizam/features/bans/components/ban-dialog.tsx:138 } # natively disabled until the reason is written, and nothing says why (F-X-3); busy (aria-disabled, aria-busy) while it is sent
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [submitting], source: libs/ui/src/mds/button.tsx:113 } # the hidden <output> beside the busy button; "Yükleniyor" from the primitive's default, outside the catalog
+
+  # ---- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays ------------------------
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: BanDialog.saved }, text: { key: BanDialog.savedBody, params: { name: person.name } }, in: [savedRow], when: "chosen == 'course'", source: apps/nizam/features/bans/components/ban-dialog.tsx:100 } # closes by itself after 6 seconds; with the badge on the row, the only word of the ban on this page
+  toastSavedKosk: { type: status, component: Status, role: dialog, name: { key: BanDialog.saved }, text: { key: BanDialog.savedBodyKosk, params: { name: person.name, kosk: kosk.name } }, in: [savedRow], when: "chosen == 'kosk'", source: apps/nizam/features/bans/components/ban-dialog.tsx:103 }
+  toastNotAllowed: { type: alert, component: Alert, role: alertdialog, name: { key: BanDialog.failed }, text: { key: BansPage.errors.BAN_FORBIDDEN }, in: [formReady], when: "toast == 'notAllowed'", source: apps/nizam/features/bans/components/ban-dialog.tsx:94 } # tone error: it stays until closed
+  toastInvalidTarget: { type: alert, component: Alert, role: alertdialog, name: { key: BanDialog.failed }, text: { key: BansPage.errors.BAN_TARGET_INVALID }, in: [formReady], when: "toast == 'invalidTarget'", source: apps/nizam/features/bans/present.ts:107 }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: BanDialog.failed }, text: { key: BansPage.errors.generic }, in: [formReady], when: "toast == 'failed'", source: apps/nizam/features/bans/present.ts:117 }
+
+  # ---- Yasaklamalar of the köşk, with the new row ----------------------------------------------------------------------------------
+  listPage: { type: page, component: Page, role: main, in: [listed], source: libs/ui/src/mds/app-shell.tsx:42 } # the shell's one <main>; it has no name
+  listTitle: { type: text, component: Heading, role: heading, text: { key: BansPage.title }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:312 } # h1
+  listIntro: { type: text, component: Text, text: { key: BansPage.intro, params: { kosk: kosk.name } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:313 }
+  listRegion: { type: page, component: Page, role: region, name: { labelledBy: listHeading }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:316 }
+  listHeading: { type: text, component: Heading, role: heading, text: { key: BansPage.heading }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:318 } # h2
+  listRecent: { type: text, component: Text, text: { key: BansPage.recent, params: { count: bans.recent } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:322 } # "1 yeni yasak"
+  tabActive: { type: action, component: Button, role: tab, text: { key: BansPage.tabs.ACTIVE }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:334 } # selected; its name ends with the count
+  tabActiveCount: { type: text, component: Text, text: { key: composed.BansPage.count, params: { count: bans.active } }, in: [listed], source: libs/ui/src/mds/tabs.tsx:67 }
+  tabLifted: { type: action, component: Button, role: tab, text: { key: BansPage.tabs.LIFTED }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:335 }
+  listTable: { type: list, component: List, role: table, name: { key: BansPage.caption.ACTIVE, params: { kosk: kosk.name } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:297 } # named by its visually hidden caption
+  banPerson: { type: text, component: Text, role: rowheader, text: { key: composed.BansPage.person, params: { name: person.name } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:168 } # the person cell: name, a badge, the e-mail under it
+  banEmail: { type: text, component: Text, text: { key: composed.BansPage.email, params: { email: person.email } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:179 }
+  banNew: { type: status, component: Status, text: { key: BansPage.new }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:170 } # a Badge for a ban of the last 24 hours
+  banScopeCourse: { type: text, component: Text, text: { key: BansPage.scope.COURSE }, in: [listed], when: "chosen == 'course'", source: apps/nizam/features/bans/components/bans-view.tsx:202 }
+  banScopeKosk: { type: text, component: Text, text: { key: BansPage.scope.KOSK }, in: [listed], when: "chosen == 'kosk'", source: apps/nizam/features/bans/components/bans-view.tsx:202 }
+  banScopeDetail: { type: text, component: Text, text: { key: composed.BansPage.scopeDetail, params: { detail: ban.detail } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:204 } # the course's title, or the köşk's name and where it was widened from
+  banExtendedFrom: { type: text, component: Text, text: { key: BansPage.extendedFrom, params: { course: course.title } }, in: [listed], when: "chosen == 'kosk'", source: apps/nizam/features/bans/present.ts:95 } # the end of the detail line of a köşk ban (bans#5 a4): the ban remembers the course it came from
+  banReason: { type: text, component: Text, text: { key: composed.BansPage.reason, params: { reason: ban.reason } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:214 } # the reason as the nazım typed it, trimmed
+  banBannedBy: { type: text, component: Text, text: { key: composed.BansPage.bannedBy, params: { actor: ban.bannedBy } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:222 }
+  banRole: { type: text, component: Text, text: { key: BansPage.you, params: { role: role } }, in: [listed], source: apps/nizam/features/bans/present.ts:47 } # "Köşk nazımı (siz)": the role's word and "(siz)" for the viewer's own ban
+  banWhen: { type: text, component: Text, text: { key: composed.BansPage.time, params: { time: ban.time } }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:232 }
+  banLift: { type: action, component: Button, role: button, intent: secondary, name: { key: BansPage.liftLabel, params: { name: person.name } }, text: { key: BansPage.lift }, in: [listed], source: apps/nizam/features/bans/components/bans-view.tsx:249 } # the nazım placed it, so their kademe reaches it
+  banExtend: { type: action, component: Button, role: button, intent: secondary, name: { key: BansPage.extendLabel, params: { name: person.name } }, text: { key: BansPage.extend }, in: [listed], when: "chosen == 'course'", source: apps/nizam/features/bans/components/bans-view.tsx:259 } # a COURSE row only: a köşk row has no widen
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { labelledBy: [listRegion, listHeading] }
+  - { triggers: [rowBan, form] }
+  - { triggers: [submit, submitting] }
+  - { returnsFocus: [dialog, rowBan] } # Base UI gives the focus back to the element that was focused when the window opened: the row's "Yasakla". It holds when the window is closed with nothing written; after a ban that button is replaced and the graph says nothing of the focus (BANST-3). Not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "Neither the Talebeler page nor Yasaklamalar sets the focus on arrival (nothing in features/applications or features/bans calls focus(); the shell's skip link is the shell's), so no page node has `initialFocus`; the window's own is the reason (ban-dialog.tsx:134)." }
+  - { id: no-default-accept, rule: "No page has `initialFocus` on the action that sends: the window starts in the reason. The scrim does not close the form (libs/ui/src/mds/dialog.tsx:74, bans#3); Escape, Vazgeç and the close icon do, unless a ban is being sent (BANST-5)." }
+  - { id: F-W5-2, rule: "The textarea is `disabled={saving}` (ban-dialog.tsx:202) and so are the radios (:172), so the focused reason loses the focus the moment the ban is sent and, after a refusal, nothing puts it back; the window's first control is not refocused and the toast, in another portal, is not focused either. Fix: keep the field enabled with `aria-busy`, or refocus it when the send fails." }
+  - { id: F-W5-3, rule: "A refusal is told only by a sticky toast (ban-dialog.tsx:94-98, `duration: Infinity`): nothing inside the open window says it failed and no field is marked. A screen-reader user hears it only if the toast region announces (F-P0-18). Fix: put an Alert with role=alert inside the window with the same words (F-X-4 is the family)." }
+  - { id: F-W5-4, rule: "The reason's error 'Bir gerekçe yazın.' appears only after the field was left (`touched && blank`, ban-dialog.tsx:75, :204) and the button is natively off while the reason is blank (:142), so a keyboard user who tabs on never reaches the button and is told nothing; the error is wired by aria-describedby and has no live region (libs/ui/src/mds/field.tsx:50-53, F-X-2). Fix: keep the button on, validate on send and move the focus to the reason." }
+  - { id: F-X-3, rule: "The family of F-W5-4: a submit button natively disabled with no reason given, here and in the lift and widen windows of nizam." }
+  - { id: F-UI-W1-1, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:107-116), so a screen reader may read the intro, the person, every radio and the reason as the window's description when it opens." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Yasakla' in 'Yasakla: {name}' (WCAG 2.5.3). Holds. The window's name 'Talebeyi yasakla' and its submit 'Yasakla' are two words, so the replay finds the submit inside the window; the page behind it is inert." }
+  - { id: BANST-1, rule: "new: the hoca cannot use this page, so 'the müderris bars the course only' is true of the API and of no screen here. The layout lets in a nazım or the başnazım only (`landingFor(me) !== 'nizam'` is `forbidden()`, the 'Bu bölüm için izniniz yok' screen, apps/nizam/app/kosks/layout.tsx:20, features/assignments/landing.ts:18-25: a person whose roles are a medrese's or a course's has the landing send them to Nazar; bans#9 pins the refusal at Yasaklamalar), and nazar's course Yasaklamalar refuses the hoca as well (F-D2c-3). The disabled köşk option and its note ('Köşkün bütün dersleri için yasağı yalnız köşk nazımı koyabilir.', ban-dialog.tsx:182-185, `mayBanWholeKosk`, present.ts:25-32) are drawn here as `scope: limited` and nobody can be that person; a Medaris nazımı holds no default permission (permissions.ts:356) and course work is not reached from a platform grant (effective-permissions.ts:159-166), so by role alone none reads a roster. Fix: decision D1." }
+  - { id: BANST-2, rule: "new: a person already barred in that scope is answered with the standing ban and the same 201 (ban.service.ts:165-182, `created` false; ban.repository.ts:299-326), and the window cannot tell: it says 'Yasak kaydedildi' with '{name} artık bu derse erişemez.' (ban-dialog.tsx:100-106), so the nazım believes the reason just typed was recorded, when the standing ban keeps its own reason, banner and date, no row is added and nobody is notified. The roster hides 'Yasakla' on a barred row (`studentActions`, features/applications/present.ts:138-151), so only a stale page, or two nazım at once, meets it. The nazar twin is BAN-4. Fix: decision D2." }
+  - { id: BANST-3, rule: "new: after a ban the row's buttons are `studentActions(ENROLLED, barred)`, that is 'Tamamladı say' and 'Yasağı kaldır', and each is keyed by its action (roster-table.tsx:223-235), so the 'Yasakla' that opened the window is unmounted by the refresh and Base UI has nothing to give the focus back to: it falls to the page, and a keyboard or screen-reader user starts again from the top (F-W5-5 is the family; F-X-7). After Vazgeç or Escape the button is still there and gets the focus. The graph draws `returnsFocus` for the second case only: the row's button is not a node of `savedRow`. Fix: focus the row's new 'Yasağı kaldır', or the toast." }
+  - { id: BANST-4, rule: "new, from the code and not seen: `submit` awaits `createBan` outside a try (ban-dialog.tsx:85-91) and clears `saving` only after it (:91). A Server Action that rejects, as one does when the Next server cannot be reached, leaves `saving` true for good: the window stays busy, and Vazgeç, the close icon and Escape are all no-ops (`if (!saving)`, :126), so it cannot be closed without a reload. A refusal by the API is not this: `authenticatedAction` turns every ResponseError into `{ success: false }` (lib/authenticated-action.ts:47-72). Fix: `try/finally` around the call." }
+  - { id: BANST-5, rule: "new: while the ban is sent, Vazgeç, the close icon and Escape stay enabled and do nothing (`if (!saving) onOpenChange(next)`, ban-dialog.tsx:126), and the busy button is aria-disabled, not disabled; the nazar twin is BAN-3, the köşk-opening twin F-W3-open-2. Fix: disable them with the rest of the form while `saving`." }
+  - { id: BANST-6, rule: "new, for nizam.courses.roster, from the code and not walked: the row's badge reads `e.ban.scope === 'KOSK' ? 'Yasaklı · Köşk' : 'Yasaklı · Bu ders'` (roster-table.tsx:164), but the roster marks a ban over the whole medrese too (ban.repository.ts:239-261, `bans.madrasahId = courseMadrasah`), so a medrese-wide ban placed in Nazar reads 'Bu ders' on the köşk nazımı's roster of a medrese's course, and the row then offers 'Yasağı kaldır', which the API refuses the köşk nazımı (a medrese ban is lifted with madrasah.ban or platform.ban_scoped, ban-codes.ts:38-53). Fix: a third label, 'Yasaklı · Medrese', and no lift button the viewer may not use." }
+  - { id: ban-staff-check-gaps, rule: "Security finding (ledger/security.md), drawn as the code does it on this page's route and nothing more. createBan checks who the person is only by `repo.rolesHeld(userId, {koskId, courseId, madrasahId})` (ban.service.ts:155-163), which reads `role_assignments` rows held at the platform, the köşk, the course and the medrese (ban.repository.ts:273-290); the list of roles it refuses is `RUNS_COURSE_ROLES`, and `RUNS_MADRASAH_ROLES` for a medrese's course (ban-tier.ts:66-85). So: SYSTEM_ADMIN is named in both lists and can never be found, because the başnazım is a realm role with no row; and a role held at another course of the same köşk is at none of the four scopes, so it is not found for a ban of the whole köşk. A person who is both a talebe of this course and one of those is barred without BAN_TARGET_INVALID. The page lists only enrolled talebe, so it offers 'Yasakla' for such a person only if they hold a seat here. Not walked; no request that uses the gap is proposed. extendBan and escalateBan skip the check altogether (nazar.bans.decide, nizam.moderation.decideBan)." }
+  - { id: BANDEC-3, rule: "Security finding (ledger/security.md): createMadrasahBan, the medrese route, reads no course or köşk role for a medrese-wide ban, so a hoca can be barred from a whole medrese on creation. NOT reachable from this page: its window posts to the course route (POST /courses/{courseId}/bans, features/bans/actions.ts:22-31), which reads all four scopes (BANDEC-3 belongs to nazar.bans.ban's route)." }
+  - { id: TRIAGE-2-seen-from-here, rule: "The window promises 'Yasak, gerekçesiyle köşk nazımlarına ve Medaris yönetimine görünür' (BanDialog.visibility) and the notice does reach every Medaris nazımı with the talebe's name and the reason, whether or not they hold a ban permission (ban.repository.ts:435-455); the başnazım, who is Medaris yönetimi, is never told (TRIAGE-1, TRIAGE-2 in nizam.notifications.triage)." }

@@ -1,0 +1,421 @@
+# Planning celses on "Celse planla" (/ders/<id>/celseler/planla) in nazar-web: one celse, a weekly repeat (days, time, a start date, an end by date
+# or by count, a link on the first celse only) or an exam ("Sınav"), read through a live preview and made in one call. Read from the code of
+# PR #394's branch on 15 Nov 2026 (apps/nazar/features/sessions/components/plan-page.tsx, plan-form.tsx, sessions.ts, actions.ts, and the API's
+# POST /courses/:id/sessions/batch/preview and /sessions/batch in apps/tedrisat/src/course). The sibling of nizam.courses.planSessions; the make-up
+# of a cancelled celse (nazar.sessions.cancel) calls the same write with a pattern of one.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - the submit is natively disabled and says "0 celse oluştur" until the preview holds a celse, with no word on what is missing (F-C-course-a-09);
+#     the pattern's own errors are not said at first, but four others can be: an empty title, a first-celse link that is not https, an exam's
+#     score and its place. Those are said under the field when the button is pressed and announced to no one (PLAN-1); the focus stays on the button, except that an exam's
+#     refused score, length, title or link, which sit folded under "Sınav ayrıntıları", open the fold and take the focus to the first field in error (c0ca032d, plan-form.tsx:193-200).
+#     `sent` is never reset (plan-form.tsx:116 and :183, no setSent(false)), so once such a press has been made the pattern's own messages are said
+#     too, as the person goes on editing ("En az bir gün seçin." as an alert, plan-form.tsx:599-603, and the messages under the time, length, date and
+#     end fields, :244-:652). The graph draws the four first-press messages and not those later ones (it keeps no `sent`: its `fixed` is the one
+#     correction), as nizam.courses.planSessions says of its own copy;
+#   - the preview is not a live region (F-C-course-a-10); the single-choice groups are aria-pressed toggles, not radios (F-C-course-a-12);
+#   - "Vazgeç" and the breadcrumb leave with everything typed and no guard (F-C-course-a-13);
+#   - a failed read draws two h1 (PLAN-2); a placeholder is typed into the code (PLAN-3); a date in the past is taken without a word (PLAN-4);
+#   - an exam's title, duration and links are folded under "Sınav ayrıntıları" (exam-title-is-hidden).
+# It also settles three things the inventory had wrong or unsaid: back from "Sınav" to "Ders" the form stays on "Tek seferlik" (it does not return to
+# the repeat it started as); the preview asks the API again whenever the pattern is whole, also after a change of kind; and the API's EXAM_ONE_SESSION
+# cannot come from this page, because an exam is always sent as a pattern of one.
+schema: delurio-graph/0
+kind: flow
+id: nazar.sessions.plan
+status: captured
+domain: medaris.api
+ui: nazar.sessions.plan
+title: Plan celses, weekly or an exam
+summary: >-
+  The hoca opens "Celse planla" from Celseler, chooses a lesson or an exam, and for a lesson one celse or a weekly repeat: the days, the start time and
+  length, the start date and an end (a date, or a number of celses), a title, and whether the first celse gets a meeting link. Each change that makes
+  the pattern whole asks tedrisat for a preview, which the page draws beside the form as the dates and weeks the celses will have, and the button then
+  says "3 celse oluştur"; until then it says "0 celse oluştur" and is off. An exam is one celse: a date, a time and a place, with its format, score,
+  topics and title folded under "Sınav ayrıntıları". Pressing the button makes the celses in one call, a toast says so, and the page is Celseler. A
+  title, a link, a score or a place that is wrong is said under its field when the button is pressed; a refused call is a toast and the form stays.
+
+scope:
+  shows: >-
+    the planner for one course and its preview, the four ways it can be refused or fail to read, and the Celseler page it lands on (its heading and the
+    toast only)
+  world: open
+  outOfView:
+    - "the Celseler table, the links, times and the in-person mark of the celses made: nazar.sessions.manage; cancelling one and its make-up (the same write, a pattern of one): nazar.sessions.cancel"
+    - "entering an exam's scores and releasing them, which the exam leads to: nazar.evaluation.examScores; the talebe's side of a celse: the tedris celse flows"
+    - "the same planner in nizam, for a köşk's nazım: nizam.courses.planSessions"
+    - "the pattern's own messages after a refused press: `sent` is never reset (plan-form.tsx:116, :183), so once a press was refused for a title, a link, a score or a place, clearing the days says 'En az bir gün seçin.' (an alert, :599-603) and a time, length, date or end gone wrong is said under its field; no state or node here draws them (F-C-course-a-09)"
+    - "the extra paragraph the form shows when the course is held in person (plan-form.tsx:681-685), and the loading skeleton (loading.tsx)"
+    - "a session that ended while the form was open: both server calls send the person to sign in (handleUnauthenticated), realm.auth.signIn"
+    - "the exam's invitation mail and the EXAM_SCHEDULED notification the write sends to the enrolled talebe (the walk's course has none)"
+
+decisions:
+  D1:
+    question: >-
+      Should the button stay reachable when the preview is empty, and say what is missing? Today it is natively disabled, says "0 celse oluştur"
+      and gives no reason, so a keyboard user cannot reach it to learn why, and the form's own messages for the pattern are said only after a refused press for another cause.
+    recommend: >-
+      Keep it focusable (aria-disabled), word it "Celse oluştur" until a preview exists, and say under the form what is missing.
+    affects: [form, previewFailed]
+  D2:
+    question: >-
+      Should a date in the past be refused, or at least asked about? Nothing stops a start date of yesterday: the celses are made, already over,
+      and the talebe's invitations for them are swept like any other.
+    recommend: >-
+      Ask for a confirmation when the first celse is in the past; leave the API as it is (it is also how a missed celse is recorded afterwards).
+    affects: [formReady, creating]
+
+context:
+  read:
+    values: [ok, forbidden, missing, failed]
+    initial: any
+    say:
+      ok: "the course and what the hoca holds in it are read, and she holds session.manage"
+      forbidden: "she holds no session.manage in the course (or the API refuses the read): the page says so"
+      missing: "the course is not there for her: the portal's 404"
+      failed: "a read fails for another reason: the page says it could not read the course, with a retry"
+  plan:
+    values: [weekly, weeklyCount, single, exam]
+    initial: any
+    say:
+      weekly: "a weekly repeat that ends on a date"
+      weeklyCount: "a weekly repeat that ends after a number of celses"
+      single: "one celse, 'Tek seferlik'"
+      exam: "an exam, 'Sınav', one celse"
+  fields:
+    values: [valid, noTitle, badLink, noScore, noPlace]
+    initial: any
+    say:
+      valid: "the fields the preview does not read are right"
+      noTitle: "the title is empty"
+      badLink: "the first celse's link is empty or does not start with https://"
+      noScore: "an exam's 'Tam puan' is not a whole number from 1 to 1000 (typed under 'Sınav ayrıntıları')"
+      noPlace: "an exam is in person and 'Yer adı' is empty"
+  previewed:
+    values: [lines, refused]
+    initial: any
+    say:
+      lines: "tedrisat expands the whole pattern into one or more celses"
+      refused: "tedrisat refuses the pattern: no listed weekday falls in the range, or it is too long or too many (INVALID_SESSION_PATTERN)"
+  answer:
+    values: [created, patternRefused, forbidden, failed]
+    initial: any
+    say:
+      created: "the celses are made in one transaction"
+      patternRefused: "tedrisat refuses the pattern when it is saved (INVALID_SESSION_PATTERN): the page says the pattern gives no celse"
+      forbidden: "the hoca's session.manage was taken away after the page was read (AUTHZ_FORBIDDEN)"
+      failed: "any other refusal or failure: the page says something went wrong"
+  kind:
+    values: [weekly, weeklyCount, single, exam, examOpen]
+    initial: weekly
+    say:
+      weekly: "'Ders' and 'Haftalık tekrar', ending on a date (the form as it opens)"
+      weeklyCount: "'Haftalık tekrar', ending after a number of celses"
+      single: "'Ders' and 'Tek seferlik'"
+      exam: "'Sınav', its details folded"
+      examOpen: "'Sınav', 'Sınav ayrıntıları' open"
+  links: { values: [empty, first], initial: empty }
+  place: { values: [online, inPerson], initial: online }
+  typed: { values: [true, false], initial: false }
+  said: { values: [none, title, link, score, place], initial: none }
+  fixed: { values: [true, false], initial: false }
+  toast: { values: [none, patternRefused, forbidden, failed], initial: none }
+
+guards:
+  lesson: "kind == 'weekly' or kind == 'weeklyCount' or kind == 'single'"
+  examKind: "kind == 'exam' or kind == 'examOpen'"
+  # `sent` of plan-form.tsx:183 is set by the first refused press, which only a title, a first-celse link, an exam's score or place that is wrong can make
+  # (the button is off while the pattern is not whole); the pattern's own messages that `sent` then lets through are not drawn
+  wrongTitle: "not fixed and fields == 'noTitle' and kind != 'exam'"
+  wrongLink: "not fixed and fields == 'badLink' and links == 'first' and kind != 'exam'"
+  wrongScore: "not fixed and fields == 'noScore' and kind == 'examOpen'"
+  wrongPlace: "not fixed and fields == 'noPlace' and place == 'inPerson' and examKind"
+
+effects:
+  setCount: { set: { kind: weeklyCount } }
+  setDate: { set: { kind: weekly, typed: false } } # the end date field is empty again: the pattern is not whole
+  setSingle: { set: { kind: single } }
+  setWeekly: { set: { kind: weekly, typed: false } } # no day is chosen again
+  setExam: { set: { kind: exam } }
+  setLesson: { set: { kind: single } }
+  openDetails: { set: { kind: examOpen } }
+  closeDetails: { set: { kind: exam } }
+  linksFirst: { set: { links: first } }
+  linksEmpty: { set: { links: empty } }
+  placeInPerson: { set: { place: inPerson } }
+  placeOnline: { set: { place: online } }
+  typedIn: { set: { typed: true } }
+  saidTitle: { set: { said: title } }
+  saidLink: { set: { said: link } }
+  saidScore: { set: { said: score } }
+  saidPlace: { set: { said: place } }
+  fixedUp: { set: { said: none, fixed: true } }
+  clearToast: { set: { toast: none } }
+  patternToast: { set: { toast: patternRefused } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  opened:
+    from: getMyCoursePermissions
+    missing: [COURSE_NOT_FOUND]
+    failed: []
+  previewing:
+    from: previewSessionBatch
+    refused: [INVALID_SESSION_PATTERN, VALIDATION_ERROR, AUTHZ_FORBIDDEN, COURSE_NOT_FOUND, HTTP_400]
+  creating:
+    from: createSessionBatch
+    patternRefused: [INVALID_SESSION_PATTERN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [EXAM_ONE_SESSION, VALIDATION_ERROR, COURSE_NOT_FOUND, HTTP_400]
+
+# The story the page tells first: the hoca opens the planner from Celseler, chooses a weekly repeat whose first celse gets a link, types the days, the
+# dates and the title, reads the preview, and makes the celses.
+main:
+  given: { read: ok, plan: weekly, fields: valid, previewed: lines, answer: created }
+  events: [DONE, LINKS_FIRST, FILL_IN_WEEKLY, DONE, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The course and the hoca's permissions are read
+    description: >-
+      The page reads GET /courses/:id, GET /courses/:id/my-permissions and GET /me on the server (a skeleton stands in while it does, loading.tsx) and
+      opens the form for a holder of session.manage. Nothing is drawn by this step. A 404 of either course read is the portal's 404 page
+      (lib/tedrisat-read.ts:46); the layout answers the same for a course that is not the person's, before the page reads anything. A 200 that does not
+      list session.manage is the "forbidden" state (the page holds the permission itself, pageGate); any other failure is "loadFailed".
+    invoke: { action: getMyCoursePermissions }
+    on:
+      DONE:
+        - { guard: "read == 'ok'", target: form, source: apps/nazar/features/sessions/components/plan-page.tsx:49, say: "she holds session.manage: the form opens as 'Haftalık tekrar'" }
+        - { guard: "read == 'forbidden'", target: forbidden, source: apps/nazar/features/sessions/components/plan-page.tsx:33, say: "the list of permissions lacks session.manage" }
+      FAIL.missing: { guard: "read == 'missing'", target: not_found, source: apps/nazar/features/account/course-permissions.ts:74 }
+      FAIL.failed: { guard: "read == 'failed'", target: loadFailed, source: apps/nazar/features/sessions/components/plan-page.tsx:33, say: "a read failed that is not a 403 or a 404" }
+    source: apps/nazar/features/sessions/components/plan-page.tsx:22
+
+  forbidden:
+    title: The page refuses the planner
+    description: >-
+      The h1 "Celse planla" stays and an Alert says "Bu sayfaya izniniz yok" under it; no form is drawn (a ders nazırı with no session.manage, or any
+      reader the API refuses). The menu still offers Celseler and its sentence is the same there. The only way on is the menu.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/sessions/components/plan-page.tsx:39
+
+  loadFailed:
+    title: The course could not be read
+    description: >-
+      The h1 "Celse planla" and, under it, a section with a second h1 "Ders okunamadı", its sentence and "Yeniden dene" (router.refresh). Two h1 on one
+      page: PLAN-2. Not walkable locally (nothing makes the read fail); from the code. The retry is not drawn as a transition.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/sessions/components/plan-page.tsx:39
+
+  settle:
+    title: Is there a preview to ask for?
+    description: >-
+      Not a screen: after a change of kind or of the end, the pattern is whole again or it is not. The page's effect (plan-form.tsx:135-159) asks the API
+      again, 250 ms after the last change, when it is whole, and clears the preview when it is not. The model takes "whole" to be what the person has
+      typed so far (`typed`), and forgets it where the change empties a field (the days of a repeat, the end date).
+    source: apps/nazar/features/sessions/components/plan-form.tsx:135
+    always:
+      - { guard: typed, target: previewing, source: apps/nazar/features/sessions/components/plan-form.tsx:143, say: "the pattern is still whole: the API is asked again" }
+      - { target: form, source: apps/nazar/features/sessions/components/plan-form.tsx:137, say: "something is missing: the preview is cleared and the button is off" }
+
+  form:
+    title: The planner, nothing to make yet
+    by: human
+    description: >-
+      The page opens here. Over the page: h1 "Celse planla", the breadcrumb "Celseler / Celse planla", the sentence with the course's name, "Celse türü"
+      (Ders, Sınav) and, for a lesson, "Planlama biçimi" (Tek seferlik, Haftalık tekrar); the fields; "Önizleme" with "0 celse"; "Vazgeç" and
+      "0 celse oluştur", natively disabled with no reason (F-C-course-a-09; e2e course-scope#2 a2). No focus is set (focus-not-set). A weekly repeat asks
+      for the days (seven toggle buttons, F-C-course-a-12), the start time (21:00), the length (60), the zone (the viewer's, "İstanbul"), the start date,
+      "Ne zaman bitsin" (a date, or a number: 8) and the title ("Haftanın tekrarı") and the links of the celses; "Sınav" replaces all of it with the
+      date, the time and the place, and folds the rest. The preview and the count stay as they are until the pattern is whole.
+    source: apps/nazar/features/sessions/components/plan-form.tsx:703
+    on: 
+      CHOOSE_COUNT: { guard: "plan == 'weeklyCount' and kind == 'weekly' and said == 'none'", target: settle, effect: [setCount], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they choose 'Belirli sayıda celseden sonra': the number of celses (8) replaces the end date" }
+      CHOOSE_DATE: { guard: "kind == 'weeklyCount' and said == 'none'", target: settle, effect: [setDate], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they go back to 'Bir tarihte': the end date field is empty again" }
+      CHOOSE_SINGLE: { guard: "plan == 'single' and kind == 'weekly' and said == 'none'", target: settle, effect: [setSingle], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they choose 'Tek seferlik': the days and the end go, one date stays" }
+      CHOOSE_WEEKLY: { guard: "kind == 'single' and said == 'none'", target: settle, effect: [setWeekly], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they go back to 'Haftalık tekrar': no day is chosen" }
+      CHOOSE_EXAM: { guard: "plan == 'exam' and lesson and said == 'none'", target: settle, effect: [setExam], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Sınav': one celse, the title becomes 'Ara sınav', the form is the exam's" }
+      CHOOSE_LESSON: { guard: "examKind and said == 'none'", target: settle, effect: [setLesson], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Ders' again: the form is 'Tek seferlik', not the repeat it started as, and the title goes back to 'Haftanın tekrarı'" }
+      DETAILS:
+        - { guard: "kind == 'exam' and said == 'none'", target: form, effect: [openDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:485, say: "they open 'Sınav ayrıntıları': the format, score, length, topics, make-up, title, zone and links" }
+        - { guard: "kind == 'examOpen' and said == 'none'", target: form, effect: [closeDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:485, say: "they fold it again (not drawn once a field has been refused: the page opens the folded section by itself then, plan-form.tsx:185-201)" }
+      LINKS_FIRST: { guard: "links == 'empty' and kind != 'exam'", target: form, effect: [linksFirst], source: apps/nazar/features/sessions/components/plan-form.tsx:331, say: "they choose 'Yalnız ilk celseye ekle': a link field opens; only the first celse gets it" }
+      LINKS_EMPTY: { guard: "links == 'first' and kind != 'exam'", target: form, effect: [linksEmpty], source: apps/nazar/features/sessions/components/plan-form.tsx:331, say: "they go back to 'Boş bırak'" }
+      PLACE_IN_PERSON: { guard: "place == 'online' and examKind", target: form, effect: [placeInPerson], source: apps/nazar/features/sessions/components/plan-form.tsx:450, say: "they choose 'Yüz yüze' for the exam: 'Yer adı' opens" }
+      PLACE_ONLINE: { guard: "place == 'inPerson' and examKind", target: form, effect: [placeOnline], source: apps/nazar/features/sessions/components/plan-form.tsx:450, say: "they go back to 'Çevrimiçi'" }
+      FILL_DETAILS: { guard: "kind == 'examOpen'", target: form, source: apps/nazar/features/sessions/components/plan-form.tsx:538, say: "they type the exam's score and topics (the preview does not read them)" }
+      CANCEL: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:692, say: "'Vazgeç': back to Celseler with nothing made; no guard for what was typed (F-C-course-a-13)" }
+      BREADCRUMB: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:378, say: "the breadcrumb's 'Celseler': the same link" }
+      NAVIGATE: { target: left, source: apps/nazar/features/sessions/components/plan-form.tsx:368, say: "they follow the menu" }
+      FILL_IN_WEEKLY: { guard: "kind == 'weekly'", target: previewing, effect: [typedIn], source: apps/nazar/features/sessions/components/plan-form.tsx:120, say: "they choose the days, type the start date and the end date, and the title: the pattern is whole" }
+      FILL_IN_COUNT: { guard: "kind == 'weeklyCount'", target: previewing, effect: [typedIn], source: apps/nazar/features/sessions/components/plan-form.tsx:120, say: "they choose the days, type the start date and the number of celses, and the title" }
+      FILL_IN_SINGLE: { guard: "kind == 'single'", target: previewing, effect: [typedIn], source: apps/nazar/features/sessions/components/plan-form.tsx:120, say: "they type the date of the one celse, and the title" }
+      FILL_IN_EXAM: { guard: "examKind", target: previewing, effect: [typedIn], source: apps/nazar/features/sessions/components/plan-form.tsx:120, say: "they type the exam's date (the time is 21:00 as it opens)" }
+
+  previewing:
+    title: The preview is asked
+    description: >-
+      The page asks tedrisat to expand the pattern, 250 ms after the last change: previewSessions calls POST /courses/:id/sessions/batch/preview, which
+      writes nothing and answers 200 although it is a POST (session-batch-pattern-limits: one to seven days, an end by date or by count, at most 200
+      celses and 366 days). The weeks are numbered against the weeks the course already has (session-batch-week-placement). The form stays as it
+      was; the preview and the button are not drawn in this step, since they keep what they had until the answer (a replay reaches this state from `form`).
+    invoke: { action: previewSessionBatch }
+    on:
+      DONE: { guard: "previewed == 'lines'", target: formReady, source: apps/nazar/features/sessions/components/plan-form.tsx:147, say: "the celses are listed, with their dates and weeks" }
+      FAIL.refused: { guard: "previewed == 'refused'", target: previewFailed, source: apps/nazar/features/sessions/components/plan-form.tsx:150, say: "the answer is a refusal of any kind: the preview is cleared and the alert says so" }
+      # Every control of the form stays live while the preview is asked (plan-form.tsx:135-159). A change of the kind, the mode or the end
+      # changes the pattern: the effect's cleanup drops the answer on its way (`live = false`, :156) and settle asks again or clears it.
+      CHOOSE_COUNT: { guard: "plan == 'weeklyCount' and kind == 'weekly' and said == 'none'", target: settle, effect: [setCount], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they choose 'Belirli sayıda celseden sonra': the number of celses (8) replaces the end date" }
+      CHOOSE_DATE: { guard: "kind == 'weeklyCount' and said == 'none'", target: settle, effect: [setDate], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they go back to 'Bir tarihte': the end date field is empty again" }
+      CHOOSE_SINGLE: { guard: "plan == 'single' and kind == 'weekly' and said == 'none'", target: settle, effect: [setSingle], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they choose 'Tek seferlik': the days and the end go, one date stays" }
+      CHOOSE_WEEKLY: { guard: "kind == 'single' and said == 'none'", target: settle, effect: [setWeekly], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they go back to 'Haftalık tekrar': no day is chosen" }
+      CHOOSE_EXAM: { guard: "plan == 'exam' and lesson and said == 'none'", target: settle, effect: [setExam], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Sınav': one celse, the title becomes 'Ara sınav', the form is the exam's" }
+      CHOOSE_LESSON: { guard: "examKind and said == 'none'", target: settle, effect: [setLesson], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Ders' again: the form is 'Tek seferlik', not the repeat it started as, and the title goes back to 'Haftanın tekrarı'" }
+      CANCEL: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:692, say: "'Vazgeç' while the preview is asked: back to Celseler with nothing made; the answer is not waited for" }
+      BREADCRUMB: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:378, say: "the breadcrumb's 'Celseler' while the preview is asked: the same link" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/sessions/actions.ts:111
+
+  previewFailed:
+    title: The preview was refused
+    by: human
+    description: >-
+      "Önizleme alınamadı; tarihleri ve günleri gözden geçirin." is an alert in the preview, the badge says "0 celse" and the button is off again. Any
+      refusal reads the same: a pattern that holds no celse (no listed weekday in the range: INVALID_SESSION_PATTERN, NO_SESSIONS), one that runs back
+      or over 366 days, a refused permission. The person changes the fields and the page asks again. A change made here reaches `previewing` again; the
+      model does not follow the second answer, which the case variable `previewed` keeps fixed, and draws the way on for the weekly repeat only
+      (the other kinds recover the same way, and their toggles act as they do in `form`).
+    source: apps/nazar/features/sessions/components/plan-form.tsx:725
+    on: 
+      LINKS_FIRST: { guard: "links == 'empty' and kind != 'exam'", target: previewFailed, effect: [linksFirst], source: apps/nazar/features/sessions/components/plan-form.tsx:331, say: "they choose 'Yalnız ilk celseye ekle': a link field opens; only the first celse gets it" }
+      LINKS_EMPTY: { guard: "links == 'first' and kind != 'exam'", target: previewFailed, effect: [linksEmpty], source: apps/nazar/features/sessions/components/plan-form.tsx:331, say: "they go back to 'Boş bırak'" }
+      # The toggles act here as they do in form (the description above says so): a change of the kind, the mode or the end changes the
+      # pattern and settle asks again; the fold and the place change only what the page shows.
+      CHOOSE_COUNT: { guard: "plan == 'weeklyCount' and kind == 'weekly' and said == 'none'", target: settle, effect: [setCount], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they choose 'Belirli sayıda celseden sonra': the number of celses (8) replaces the end date" }
+      CHOOSE_DATE: { guard: "kind == 'weeklyCount' and said == 'none'", target: settle, effect: [setDate], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they go back to 'Bir tarihte': the end date field is empty again" }
+      CHOOSE_SINGLE: { guard: "plan == 'single' and kind == 'weekly' and said == 'none'", target: settle, effect: [setSingle], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they choose 'Tek seferlik': the days and the end go, one date stays" }
+      CHOOSE_WEEKLY: { guard: "kind == 'single' and said == 'none'", target: settle, effect: [setWeekly], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they go back to 'Haftalık tekrar': no day is chosen" }
+      CHOOSE_EXAM: { guard: "plan == 'exam' and lesson and said == 'none'", target: settle, effect: [setExam], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Sınav': one celse, the title becomes 'Ara sınav', the form is the exam's" }
+      CHOOSE_LESSON: { guard: "examKind and said == 'none'", target: settle, effect: [setLesson], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Ders' again: the form is 'Tek seferlik', not the repeat it started as, and the title goes back to 'Haftanın tekrarı'" }
+      DETAILS:
+        - { guard: "kind == 'exam' and said == 'none'", target: previewFailed, effect: [openDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:485, say: "they open 'Sınav ayrıntıları': the format, score, length, topics, make-up, title, zone and links" }
+        - { guard: "kind == 'examOpen' and said == 'none'", target: previewFailed, effect: [closeDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:485, say: "they fold it again (not drawn once a field has been refused: the page opens the folded section by itself then, plan-form.tsx:185-201)" }
+      PLACE_IN_PERSON: { guard: "place == 'online' and examKind", target: previewFailed, effect: [placeInPerson], source: apps/nazar/features/sessions/components/plan-form.tsx:450, say: "they choose 'Yüz yüze' for the exam: 'Yer adı' opens" }
+      PLACE_ONLINE: { guard: "place == 'inPerson' and examKind", target: previewFailed, effect: [placeOnline], source: apps/nazar/features/sessions/components/plan-form.tsx:450, say: "they go back to 'Çevrimiçi'" }
+      CANCEL: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:692, say: "'Vazgeç': back to Celseler with nothing made; no guard for what was typed (F-C-course-a-13)" }
+      BREADCRUMB: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:378, say: "the breadcrumb's 'Celseler': the same link" }
+      NAVIGATE: { target: left, source: apps/nazar/features/sessions/components/plan-form.tsx:368, say: "they follow the menu" }
+      REFILL: { guard: "kind == 'weekly'", target: previewing, effect: [typedIn], source: apps/nazar/features/sessions/components/plan-form.tsx:136, say: "they change the end date: the pattern is whole again, the page asks again (and is refused again, with the days and dates of the case). Not FILL_IN_WEEKLY: that event presses the day chips, which are already pressed here and would be pressed off (the audit found it, as nizam.courses.planSessions did)" }
+
+  formReady:
+    title: The planner, the celses are previewed
+    by: human
+    description: >-
+      The preview lists each celse as "1 Aralık 2026 Salı 21:00" with "Hafta 3 · 60 dk · Bağlantı boş" ("var" on the first when the links are first), the
+      badge says "3 celse" and the button "3 celse oluştur" (an exam: "Sınavı planla") is on. A change to a field the preview reads asks again; the
+      model does not draw that here (it would take `previewing` from a screen that has a preview). Findings read here: F-C-course-a-10 (the preview is
+      not announced), PLAN-1 (a title, a link, a score or a place that is wrong is said under its field when the button is pressed, to no one's ears; the
+      focus is left on the button, but for an exam's fields under the fold, which take it since c0ca032d), PLAN-4 (a date in the past is listed like any other). A refused write leaves this screen with a toast. One thing
+      the model does not draw: an exam whose score was typed wrong and whose details were folded again opens them itself when the button is pressed
+      and, one frame later, takes the focus to the score box (plan-form.tsx:185-201; pinned by test/plan-page.spec.tsx:401, which checks the focus since c0ca032d),
+      because it cannot know what was typed before a fold, and because the move is from a state to itself, where a graph gives no focus (SPEC section 4); while a field is refused the
+      model offers only its correction, the links and place changes that remove it, "Vazgeç" and leaving.
+    source: apps/nazar/features/sessions/components/plan-form.tsx:703
+    on: 
+      CHOOSE_COUNT: { guard: "plan == 'weeklyCount' and kind == 'weekly' and said == 'none'", target: settle, effect: [setCount], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they choose 'Belirli sayıda celseden sonra': the number of celses (8) replaces the end date" }
+      CHOOSE_DATE: { guard: "kind == 'weeklyCount' and said == 'none'", target: settle, effect: [setDate], source: apps/nazar/features/sessions/components/plan-form.tsx:619, say: "they go back to 'Bir tarihte': the end date field is empty again" }
+      CHOOSE_SINGLE: { guard: "plan == 'single' and kind == 'weekly' and said == 'none'", target: settle, effect: [setSingle], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they choose 'Tek seferlik': the days and the end go, one date stays" }
+      CHOOSE_WEEKLY: { guard: "kind == 'single' and said == 'none'", target: settle, effect: [setWeekly], source: apps/nazar/features/sessions/components/plan-form.tsx:420, say: "they go back to 'Haftalık tekrar': no day is chosen" }
+      CHOOSE_EXAM: { guard: "plan == 'exam' and lesson and said == 'none'", target: settle, effect: [setExam], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Sınav': one celse, the title becomes 'Ara sınav', the form is the exam's" }
+      CHOOSE_LESSON: { guard: "examKind and said == 'none'", target: settle, effect: [setLesson], source: apps/nazar/features/sessions/components/plan-form.tsx:396, say: "they choose 'Ders' again: the form is 'Tek seferlik', not the repeat it started as, and the title goes back to 'Haftanın tekrarı'" }
+      DETAILS:
+        - { guard: "kind == 'exam' and said == 'none'", target: formReady, effect: [openDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:485, say: "they open 'Sınav ayrıntıları': the format, score, length, topics, make-up, title, zone and links" }
+        - { guard: "kind == 'examOpen' and said == 'none'", target: formReady, effect: [closeDetails], source: apps/nazar/features/sessions/components/plan-form.tsx:485, say: "they fold it again (not drawn once a field has been refused: the page opens the folded section by itself then, plan-form.tsx:185-201)" }
+      LINKS_FIRST: { guard: "links == 'empty' and kind != 'exam'", target: formReady, effect: [linksFirst], source: apps/nazar/features/sessions/components/plan-form.tsx:331, say: "they choose 'Yalnız ilk celseye ekle': a link field opens; only the first celse gets it" }
+      LINKS_EMPTY:
+        - { guard: "links == 'first' and kind != 'exam' and said == 'link'", target: formReady, effect: [linksEmpty, fixedUp], source: apps/nazar/features/sessions/components/plan-form.tsx:331, say: "they go back to 'Boş bırak': the link is no longer asked for, and its message goes" }
+        - { guard: "links == 'first' and kind != 'exam' and said != 'link'", target: formReady, effect: [linksEmpty], source: apps/nazar/features/sessions/components/plan-form.tsx:331, say: "they go back to 'Boş bırak'" }
+      PLACE_IN_PERSON: { guard: "place == 'online' and examKind", target: formReady, effect: [placeInPerson], source: apps/nazar/features/sessions/components/plan-form.tsx:450, say: "they choose 'Yüz yüze' for the exam: 'Yer adı' opens" }
+      PLACE_ONLINE:
+        - { guard: "place == 'inPerson' and examKind and said == 'place'", target: formReady, effect: [placeOnline, fixedUp], source: apps/nazar/features/sessions/components/plan-form.tsx:450, say: "they go back to 'Çevrimiçi': no place is asked for, and its message goes" }
+        - { guard: "place == 'inPerson' and examKind and said != 'place'", target: formReady, effect: [placeOnline], source: apps/nazar/features/sessions/components/plan-form.tsx:450, say: "they go back to 'Çevrimiçi'" }
+      FILL_DETAILS: { guard: "kind == 'examOpen'", target: formReady, source: apps/nazar/features/sessions/components/plan-form.tsx:538, say: "they type the exam's score and topics (the preview does not read them)" }
+      CANCEL: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:692, say: "'Vazgeç': back to Celseler with nothing made; no guard for what was typed (F-C-course-a-13)" }
+      BREADCRUMB: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:378, say: "the breadcrumb's 'Celseler': the same link" }
+      NAVIGATE: { target: left, source: apps/nazar/features/sessions/components/plan-form.tsx:368, say: "they follow the menu" }
+      FIX: { guard: "said != 'none'", target: formReady, effect: [fixedUp], source: apps/nazar/features/sessions/components/plan-form.tsx:176, say: "they correct the field that is wrong: its message goes" }
+      SUBMIT:
+        - { guard: "wrongTitle", target: formReady, effect: [saidTitle], source: apps/nazar/features/sessions/components/plan-form.tsx:182, say: "the title is empty: 'Celse başlığını yazın.' under it; nothing is sent and nothing is announced. The focus stays on the button for a lesson; for an exam, whose title is under the fold, it goes to the first field in error there (PLAN-1, c0ca032d)" }
+        - { guard: "wrongLink", target: formReady, effect: [saidLink], source: apps/nazar/features/sessions/components/plan-form.tsx:182, say: "the first celse's link is empty or not https: 'Toplantı bağlantısı https:// ile başlamalı…' under it; the focus stays on the button for a lesson and goes to the first field in error under the fold for an exam (PLAN-1, c0ca032d)" }
+        - { guard: "wrongScore", target: formReady, effect: [saidScore], source: apps/nazar/features/sessions/components/plan-form.tsx:182, say: "'Tam puan' is outside 1 to 1000: '1 ile 1000 arasında bir tam puan girin.' under it, and one frame later the score box takes the focus (plan-form.tsx:193-200, c0ca032d); still announced to no one (PLAN-1)" }
+        - { guard: "wrongPlace", target: formReady, effect: [saidPlace], source: apps/nazar/features/sessions/components/plan-form.tsx:182, say: "the exam is in person and 'Yer adı' is empty: 'Sınavın yapılacağı yeri yazın.' under it; the place is outside the fold, so the focus stays on the button (PLAN-1)" }
+        - { target: creating, effect: [clearToast], source: apps/nazar/features/sessions/components/plan-form.tsx:204, say: "they press the button: the pattern, title, length and link go to tedrisat" }
+
+  creating:
+    title: The celses are made
+    description: >-
+      createSessions calls POST /courses/:id/sessions/batch with the pattern, the title, the length, the first celse's link and, for an exam, its format,
+      score, topics, place and whether it is a make-up exam, in one transaction: the course's version is bumped, missing weeks are made as "Hafta N" after the
+      last, and the celses are inserted as LIVE lessons (an exam also gets its lesson_exams row). The button is busy (aria-disabled, "Oluşturuluyor…" for a
+      reader of the screen), every field and choice is disabled until the answer (plan-form.tsx:123, :250-:661), so what is sent is what
+      the form shows and a refusal leaves it as it was sent, and "Vazgeç" loses its address. The calendar invitation mail goes to the course's enrolled talebe,
+      and an exam's notification too. The page sends no in-person mark and no seat count: the celses follow the course's own mark (no-in-person-mark).
+    invoke: { action: createSessionBatch }
+    on:
+      DONE: { guard: "answer == 'created'", target: landed, source: apps/nazar/features/sessions/components/plan-form.tsx:230, say: "a toast says how many celses were added, and the page is Celseler" }
+      FAIL.patternRefused: { guard: "answer == 'patternRefused'", target: formReady, effect: [patternToast], source: apps/nazar/features/sessions/components/plan-form.tsx:222, say: "a toast 'Celseler oluşturulamadı' says the pattern gives no celse" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: formReady, effect: [forbiddenToast], source: apps/nazar/features/sessions/components/plan-form.tsx:222, say: "a toast says she may not" }
+      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nazar/features/sessions/components/plan-form.tsx:222, say: "a toast says something went wrong; an exam's EXAM_ONE_SESSION would read the same, which this page cannot send" }
+    source: apps/nazar/features/sessions/components/plan-form.tsx:204
+
+  landed:
+    title: Celseler, with the toast
+    goal: true
+    by: human
+    description: >-
+      router.push(/ders/<id>/celseler): the page is Celseler, h1 "Celseler", and a toast "Celseler oluşturuldu / N celse eklendi." stands in its region
+      for six seconds (it was fired just before the push, so the route change keeps it). The new celses are listed as "Yaklaşan celseler" with no way in
+      yet ("Eksik") unless the first was given a link; that table is nazar.sessions.manage. A new exam is listed there with the badge "Sınav" beside its title ("Telafi"
+      for a make-up exam; sessions-table.tsx:276-286, since fdc6e995). The focus is the new document's (focus-not-set). An exam leads on to Değerlendirme
+      (nazar.evaluation.examScores).
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:73
+
+  sessions_opened:
+    title: Back on Celseler, nothing made
+    type: final
+    leavesPage: true
+    description: "'Vazgeç' or the breadcrumb's 'Celseler': a plain link, with no guard for what was typed (F-C-course-a-13)."
+
+  not_found:
+    title: The course is not there
+    type: final
+    leavesPage: true
+    description: "The portal's 404 page, 'Sayfa bulunamadı' (the layout's notFound(), or the page's own read: lib/tedrisat-read.ts:46)."
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-preview-comes-before-the-write
+    never: "state == 'creating' and not typed"
+    say: Celses are made only after the pattern was whole and previewed; the button is off while the preview holds none.
+    source: apps/nazar/features/sessions/components/plan-form.tsx:703
+  - id: a-refused-form-is-not-sent
+    never: "state == 'creating' and said != 'none'"
+    say: A form with a title, link, score or place the page has just refused is not sent until the field is corrected.
+    source: apps/nazar/features/sessions/components/plan-form.tsx:182
+  - id: a-corrected-field-is-not-refused-again
+    never: "fixed and said != 'none'"
+    say: Once a refused field is corrected, nothing is said under it.
+    source: apps/nazar/features/sessions/components/plan-form.tsx:176

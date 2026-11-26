@@ -80,14 +80,7 @@
     "meetingNotAdded": "The meeting link has not been added yet.",
     "inPersonBadge": "In person",
     "progressLabel": "Your progress",
-    "progressNote": "You enter your own progress; the course team confirms that you have completed the course.",
-    "updateProgress": "Update your progress",
-    "progressField": "Progress (percent)",
-    "progressHelp": "A whole number from 0 to 100.",
-    "progressInvalid": "Enter a whole number from 0 to 100.",
-    "progressSave": "Save",
-    "progressSaved": "Your progress was updated.",
-    "progressCancel": "Cancel",
+    "progressNote": "Worked out from the celses you have watched; the course team confirms that you completed the course.",
     "statusInProgress": "In progress",
     "statusCompleted": "Completed",
     "revokedTitle": "Your access to this course was withdrawn.",
@@ -107,6 +100,8 @@
     "lessonCurrent": "Next",
     "lessonCurrentLive": "Next · Live now",
     "cancelledBadge": "Cancelled",
+    "cancelNoteMore": "Show the whole note",
+    "cancelNoteLess": "Shorten the note",
     "sampleHeading": "Sample session",
     "sampleMark": "Sample session",
     "sampleIntro": "You can read this session's outline and sources without enrolling.",
@@ -189,7 +184,26 @@
     "resourcesDownload": " (downloads)",
     "assignmentBadge": "Homework",
     "assignmentPending": "Homework not handed in",
-    "assignmentsPending": "{count, plural, one {Homework not handed in on # session} other {Homework not handed in on # sessions}}"
+    "assignmentsPending": "{count, plural, one {Homework not handed in on # session} other {Homework not handed in on # sessions}}",
+    "tabGrades": "My grades",
+    "examBadge": "Exam",
+    "retakeBadge": "Make-up",
+    "examCountdown": "{count, plural, =0 {Today} =1 {Tomorrow} other {# days left}}",
+    "gradesExams": "Exams",
+    "gradesMemorizations": "Memorisation",
+    "gradesEmpty": "No exams or memorisation yet.",
+    "gradesScore": "{score}/{max}",
+    "gradesClosed": "Result not released yet",
+    "gradesNotEntered": "Not entered",
+    "gradesAbsent": "Absent",
+    "gradesPending": "Pending",
+    "gradesFull": "Full",
+    "gradesIncomplete": "Incomplete",
+    "gradesNotRecited": "Not recited",
+    "gradesWeek": "Week {week}",
+    "watchedBadge": "Watched",
+    "watchedPercent": "{percent}% watched",
+    "watchedUntil": "Stopped at {time}"
   },
   "DataTable": {
     "noResults": "No results."
@@ -488,7 +502,9 @@
       "SESSION_CANCELLED": {
         "title": "Session cancelled",
         "body": "The {sessionAt} session of {courseTitle} was cancelled.",
-        "bodyMakeup": "The {sessionAt} session of {courseTitle} was cancelled. Make-up session: {makeupAt}."
+        "bodyMakeup": "The {sessionAt} session of {courseTitle} was cancelled. Make-up session: {makeupAt}.",
+        "bodyReason": "The {sessionAt} session of {courseTitle} was cancelled. Note from your teacher: {reason}",
+        "bodyMakeupReason": "The {sessionAt} session of {courseTitle} was cancelled. Make-up session: {makeupAt}. Note from your teacher: {reason}"
       },
       "SESSION_RESCHEDULED": {
         "title": "Session time changed",
@@ -540,10 +556,25 @@
         "title": "{outcome, select, approved {Deck published} unpublished {Deck unpublished} proposal_rejected {Deck proposal rejected} other {Deck publish request rejected}}",
         "body": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} proposal_rejected {Your proposal for the deck {deckTitle} was rejected.} other {Your request to make {deckTitle} public was rejected.}}",
         "bodyReason": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} proposal_rejected {Your proposal for the deck {deckTitle} was rejected.} other {Your request to make {deckTitle} public was rejected.}} Reason: {reason}"
+      },
+      "EXAM_SCHEDULED": {
+        "title": "Exam planned",
+        "body": "The exam of {courseTitle} is on {sessionAt}."
+      },
+      "EXAM_REMINDER": {
+        "title": "Upcoming exam",
+        "body": "The exam of {courseTitle} is on {sessionAt}."
+      },
+      "EXAM_RESULTS_RELEASED": {
+        "title": "Your exam result is out",
+        "body": "See your result for {courseTitle} under My grades."
       }
     }
   },
   "SessionPage": {
+    "examWritten": "Written",
+    "examOral": "Oral",
+    "examMaxScore": "Full marks {max}",
     "breadcrumb": "Breadcrumb",
     "week": "Week {number}",
     "joinLabel": "Live session",
@@ -565,6 +596,7 @@
     "minuteUnit": "min",
     "cancelledTitle": "This session was cancelled",
     "replacement": "Make-up session: <when>{time}</when>.",
+    "cancelNote": "Note from your teacher: {note}",
     "replacementGo": "Go to the make-up session",
     "agendaTitle": "Agenda",
     "agendaZone": "Times are in {zone} time.",
@@ -620,7 +652,8 @@
     "resourcesOwn": "This session",
     "resourcesCourse": "Whole course",
     "rowRecording": "Recording available",
-    "download": " (downloads)"
+    "download": " (downloads)",
+    "examMultipleChoice": "Multiple choice"
   },
   "AccountPage": {
     "pageTitle": "Account",
@@ -700,7 +733,8 @@
       "deck_manage_course": "Create and edit the course's deck",
       "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
-      "permission_group_define": "Define a permission group"
+      "permission_group_define": "Define a permission group",
+      "exam_zeroth_read": "Read in aggregate how the zeroth question of the multiple-choice exams was answered"
     },
     "permissionNotes": {
       "course_manage_all": "Reads of the content are written to the audit log.",
@@ -783,7 +817,11 @@
     "accountLabel": "My account: {name}",
     "notifications": "Notifications",
     "homeLabel": "Medaris Tedris, home",
-    "liveIntro": "{course} is live now."
+    "liveIntro": "{course} is live now.",
+    "exams": "My exams",
+    "examOpenIntro": "The {course} exam is open now.",
+    "examPage": "Exam page",
+    "examEnter": "Take the exam"
   },
   "SchedulePage": {
     "pageTitle": "My schedule",
@@ -813,7 +851,10 @@
     "empty": "You have no sessions in these seven days.",
     "loadErrorTitle": "Your schedule could not be loaded",
     "loadError": "Your sessions could not be read right now.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "exam": "Exam",
+    "examOpen": "Exam open",
+    "examEnter": "Take the exam"
   },
   "Decks": {
     "title": "Decks",

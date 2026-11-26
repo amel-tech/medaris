@@ -1,0 +1,314 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.decideApplications
+status: proposed
+summary: >-
+  What must exist for a köşk's nazım to decide the applications that wait, from the köşk's list, a course's Genel bakış and its
+  Talebeler: the flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code): reject-asks-once-and-may-carry-a-reason (F-W4-7, decision D1), a-barred-talebe-is-told-so (HOME-1),
+# a-row-in-flight-says-so (CDA-2, CDA-3), one-busy-mark-per-row (HOME-3), a-talebe-who-applies-again-is-listed (CDA-1, D3),
+# focus-follows-a-decision (F-W4-6), the-menus-number-costs-no-roster-read (CDA-4), the-basnazim-reads-the-list-or-is-told-why-not
+# (CDA-5, D2), the-note-says-why-an-application-waits (ROSTER-1), one-set-of-words-for-a-decision (CDA-6), an-unreadable-roster-is-an-alert
+# (F-W4-10), seats-per-gender-at-approval (MDRS-284).
+# Unwalked (code, no e2e, no replay yet): a-decision-already-made-is-told and a-failed-call-keeps-the-row (only the unit spec
+# apps/nizam/test/applications.spec.tsx, which pins decisionErrorKey and the table, not the hook; binding.gone.yaml is written to walk the
+# first).
+# Walked: read-the-koskwide-list, narrow-the-list-by-course-and-search, approve-in-one-press, reject-a-waiting-application,
+# the-numbers-follow-a-decision, decide-from-the-course-overview, decide-from-the-course-talebeler (e2e shell#4, #5, #7 and kosk-view#14
+# of apps/nizam/e2e, `#n` counting the tests of a file in order). shell#6 (another köşk's list is "izniniz yok") is carried by
+# nizam.shell.noAccessAndNotFound, whose binding.yaml opens a köşk made for it; here the exit no_access is walked by the başnazım's refusal
+# (binding.noAccess.yaml, CDA-5).
+# No replay has run in this phase, so no replay is named under `walked`; binding.yaml (list, emptyKosk), binding.overview.yaml (overview,
+# emptyOverview), binding.students.yaml (students, emptyStudents), binding.noteOpen.yaml, binding.gone.yaml, binding.barred.yaml and
+# binding.noAccess.yaml are written to walk them.
+
+needs:
+  - id: read-the-koskwide-list
+    need: >-
+      The köşk's nazım sees, on one page, every application that waits in her köşk's courses, newest first: who applied to which
+      course (with the course's hocas), when, and how many wait, in the page and in the menu.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: listTable
+      - node: listWhen
+      - node: countLine
+      - node: sidebarApplications
+      - node: sidebarBadge
+      - source: apps/tedrisat/src/course/course.controller.ts:523
+      - source: apps/nizam/features/applications/components/applications-view.tsx:124
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/31 [seed] — Başvurular lists the köşk's waiting applications, filters, searches and counts"
+    note: >-
+      shell#4: L141-L169: the heading, the five rows, "5 başvuru bekliyor", newest first with name, e-mail and "Bugün", a button
+      named by its row, the menu's entry selected and its badge equal to the count. The e-mail cell is data and is not drawn; the
+      menu entry's aria-current is not a graph property
+
+  - id: narrow-the-list-by-course-and-search
+    need: >-
+      She narrows the köşk's list to one course, and searches it by a talebe's name or e-mail typed the way a person types Turkish
+      (no case, no diacritics); the count follows, and a search that finds nobody says so.
+    evidence:
+      - node: courseFilter
+      - node: searchField
+      - state: noMatch
+      - node: listNoMatchLine
+      - node: countLine
+      - source: apps/nizam/features/applications/present.ts:50
+      - source: apps/nizam/features/applications/components/applications-view.tsx:91
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/31 [seed] — Başvurular lists the köşk's waiting applications, filters, searches and counts"
+      - test: apps/nizam/test/applications.spec.tsx
+    note: |-
+      shell#4: L173-L187: the course filter gives 2 rows and "2 başvuru bekliyor", "Ders: tümü" gives 5, the search "omer" finds
+      "Ömer Faruk Demirkaya" and counts 1
+      apps/nizam/test/applications.spec.tsx: "keeps every row for 'all' and only the chosen course's otherwise", "searches name
+      and address the way Turkish is typed", "combines both, and the count is the list's own length" (pure helpers)
+
+  - id: approve-in-one-press
+    need: >-
+      She approves a waiting application in one press: the talebe takes a seat in the course and is told, the row leaves, and a
+      toast says what was done.
+    evidence:
+      - node: listApprove
+      - node: ovApprove
+      - node: stuApprove
+      - state: approving
+      - state: settled
+      - node: toastApproved
+      - node: listRowApprove
+      - node: listRowReject
+      - source: apps/tedrisat/src/course/course.controller.ts:633
+      - source: apps/nizam/features/applications/use-decisions.ts:34
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/31 [seed] — Onayla enrolls the talebe, Reddet deletes the application; both rows drop and the numbers follow"
+    note: >-
+      shell#5: L203-L215: Onayla on the list: the rows go from five to four, the toast "Başvuru onaylandı", the count "4 başvuru
+      bekliyor", the seat is ENROLLED
+
+  - id: reject-a-waiting-application
+    need: >-
+      She rejects a waiting application: it is deleted so the talebe may apply again, the talebe is told, the row leaves and a
+      toast says what was done.
+    evidence:
+      - node: listReject
+      - node: ovReject
+      - node: stuReject
+      - state: rejecting
+      - state: settled
+      - node: toastRejected
+      - source: apps/tedrisat/src/course/course.controller.ts:687
+      - source: apps/nizam/features/applications/use-decisions.ts:44
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/31 [seed] — Onayla enrolls the talebe, Reddet deletes the application; both rows drop and the numbers follow"
+    note: >-
+      shell#5: L221-L230: Reddet on the list: the rows go from four to three, the toast "Başvuru reddedildi", the talebe has no
+      row
+
+  - id: reject-asks-once-and-may-carry-a-reason
+    need: >-
+      Before a rejection is made she is asked once, and may write why, and what she writes is said truly to whoever reads it; a
+      rejection is made the same way wherever it is made (the köşk home asks and takes a reason, nazar asks and takes none, this
+      app's three other places ask nothing).
+    missing: "no issue: F-W4-7, decision D1; the API takes an optional reason of 500 characters on every route"
+    note: >-
+      Drawn on the state rejecting and on the nodes listReject, ovReject and stuReject, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-numbers-follow-a-decision
+    need: >-
+      After a decision the numbers that count the waiting applications and the seats follow it: the list's count, the menu's
+      badge, the overview's "Kayıtlı talebe" and "Bekleyen başvuru", and the tabs' counts of the Talebeler page.
+    evidence:
+      - node: countLine
+      - node: sidebarBadge
+      - node: ovEnrolledValue
+      - node: ovPendingValue
+      - node: stuTabApplications
+      - node: stuTabEnrolled
+      - state: settled
+      - source: apps/tedrisat/src/course/course.controller.ts:543
+      - source: apps/nizam/features/applications/use-decisions.ts:86
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/31 [seed] — Onayla enrolls the talebe, Reddet deletes the application; both rows drop and the numbers follow"
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/53 — 'Onayla' takes the application off the list and adds one to Kayıtlı talebe; 'Reddet' only takes it off (criterion 4)"
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/57 [seed] — a course's Talebeler opens on Başvurular; Onayla moves the talebe to Kayıtlı"
+    note: |-
+      shell#5: L217: the badge says 4 after the first decision, without a reload
+      kosk-view#14: L428-L445: the overview's two numbers: Kayıtlı talebe 2 to 3, Bekleyen başvuru 1 to 0
+      shell#7: L289: "Kayıtlı" gains the talebe
+
+  - id: decide-from-the-course-overview
+    need: >-
+      From a course's Genel bakış she decides that course's waiting applications in the same two presses, beside the course's
+      numbers and its next celseler.
+    evidence:
+      - node: ovPage
+      - node: ovRegion
+      - node: ovTable
+      - node: ovApprove
+      - node: ovReject
+      - node: ovRowApprove
+      - node: ovRowBusy
+      - node: ovEmptyLine
+      - source: apps/nizam/features/kosks/components/course-overview.tsx:412
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/53 — 'Onayla' takes the application off the list and adds one to Kayıtlı talebe; 'Reddet' only takes it off (criterion 4)"
+    note: >-
+      kosk-view#14: L427-L445: Onayla takes the application off the card, "Bekleyen başvuru yok" appears, the seat is ENROLLED.
+      The title says 'Reddet only takes it off' but the body never presses Reddet: the overview's Reddet has no e2e, only
+      binding.overview.yaml
+
+  - id: decide-from-the-course-talebeler
+    need: >-
+      On a course's Talebeler, Başvurular is the first tab and she decides its applications there; the note says what a decision
+      does, and a person who approves finds the talebe under Kayıtlı.
+    evidence:
+      - node: stuPage
+      - node: stuTabs
+      - node: stuTabApplications
+      - node: stuTabEnrolled
+      - node: stuNoteAsks
+      - node: stuTable
+      - node: stuApprove
+      - node: stuReject
+      - node: stuEmptyLine
+      - source: apps/nizam/features/applications/components/students-tabs.tsx:94
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/57 [seed] — a course's Talebeler opens on Başvurular; Onayla moves the talebe to Kayıtlı"
+    note: >-
+      shell#7: L254-L290: the first tab is selected with the count, only this course's rows, the menu draws Dersler selected and
+      no Talebeler, Onayla moves the talebe to Kayıtlı and the seat is ENROLLED
+
+  - id: a-decision-already-made-is-told
+    need: >-
+      An application someone else settled first, or the talebe took back, leaves the list when she presses and a notice says so;
+      the counts are read again.
+    evidence:
+      - node: toastGone
+      - state: settled
+      - state: approving
+      - state: rejecting
+      - source: apps/nizam/features/applications/use-decisions.ts:58
+      - test: apps/nizam/test/applications.spec.tsx
+    note: >-
+      apps/nizam/test/applications.spec.tsx: "tells a refusal from a decision someone else already made" (decisionErrorKey alone;
+      the hook is not rendered)
+
+  - id: a-barred-talebe-is-told-so
+    need: >-
+      When the talebe has been barred from the course the approval is refused and the nazım is told that, not that she lacks the
+      authority (HOME-1); a row of a barred talebe says so before she presses.
+    missing: >-
+      no issue: decisionErrorKey words every 403 as "no authority" (present.ts:183); the two course pages drop the ban the API
+      carries
+    note: >-
+      Drawn on the state approving and on the nodes toastRefused and listRowApprove, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-call-keeps-the-row
+    need: >-
+      When a decision cannot be saved (a refusal, an unknown failure, a dropped network) the row stays, the busy mark goes and she
+      is told to try again.
+    evidence:
+      - node: toastRefused
+      - node: toastFailed
+      - state: listed
+      - source: apps/nizam/features/applications/use-decisions.ts:45
+
+  - id: a-row-in-flight-says-so
+    need: >-
+      A row whose decision is on its way says so to a person who cannot see the screen, on the button she pressed, the same way in
+      all three places (CDA-2, CDA-3).
+    missing: no Linear issue; CDA-2, CDA-3
+    note: >-
+      Drawn on the nodes listRowApprove, listRowReject, ovRowApprove, ovRowReject, ovRowBusy, stuRowApprove and stuRowReject,
+      which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
+
+  - id: one-busy-mark-per-row
+    need: Two decisions pressed on two rows each keep their own busy mark until their own call ends (HOME-3).
+    missing: no Linear issue; HOME-3
+    note: >-
+      Drawn on the state approving and on the nodes listRowApprove and listRowReject, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-talebe-who-applies-again-is-listed
+    need: >-
+      A talebe whose application was rejected and who applies again appears on a page that is still open once it has been read
+      again; the page forgets a decision as soon as the server has answered it (CDA-1, decision D3).
+    missing: no Linear issue; CDA-1, D3
+    note: >-
+      Drawn on the states settled and listed, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-follows-a-decision
+    need: >-
+      After a decision the focus lands on a place a keyboard or screen-reader user can use (the next row's first button, or the
+      table's caption), and a line on the page, not only a toast, says what was decided (F-W4-6).
+    missing: no Linear issue; F-W4-6
+    note: >-
+      Drawn on the state listed and on the nodes toastApproved and toastRejected, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-menus-number-costs-no-roster-read
+    need: >-
+      The number on the menu's "Başvurular" is a count, not the whole list of waiting applications with the talebe's names and
+      e-mails, and reading it does not write an audit row each time (CDA-4).
+    missing: no Linear issue; CDA-4
+    note: >-
+      Drawn on the node sidebarBadge, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-basnazim-reads-the-list-or-is-told-why-not
+    need: >-
+      The başnazım either reads the köşk-wide list as she reads and decides on each course's pages, or the list says to her why it
+      is the nazım's alone, and the nav graph says the same (CDA-5, decision D2).
+    evidence:
+      - source: apps/tedrisat/src/course/course.controller.ts:523
+    missing: no Linear issue; CDA-5, D2; code exists in part
+    note: |-
+      Drawn on the states no_access and openedKosk, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      medaris.api:listKoskPendingEnrollments: KOSK_FORBIDDEN
+
+  - id: the-note-says-why-an-application-waits
+    need: >-
+      The note over the Talebeler table is true of the applications beneath it: it does not say the course needs no approval above
+      rows that wait because the köşk or the platform always asks, or the flag was switched off after they applied (ROSTER-1).
+    missing: no Linear issue; ROSTER-1
+    note: >-
+      Drawn on the nodes stuNoteAsks and stuNoteOpen, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: one-set-of-words-for-a-decision
+    need: "The one decision is worded once in the app: the köşk home's toasts and these pages' toasts say the same (CDA-6)."
+    missing: no Linear issue; CDA-6
+    note: >-
+      Drawn on the nodes toastApproved, toastRejected, toastGone and toastFailed, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-unreadable-roster-is-an-alert
+    need: >-
+      When the Talebeler page's roster cannot be read, the page says so as an alert with a retry, as the köşk's list and the
+      overview do (F-W4-10).
+    missing: no Linear issue; F-W4-10
+    note: >-
+      Drawn on the state load_failed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: seats-per-gender-at-approval
+    need: >-
+      Where a seat is counted, the kontenjan is two counts, one per gender, and a seat is given at approval in the order of
+      application; the three places' Onayla are among the places that give it, and follow the same rule as the köşk home, the
+      roster and the Pano (MDRS-284, per celse and weekly; no kontenjan rule exists in the code today).
+    missing: MDRS-284
+    note: >-
+      Drawn on the nodes listApprove, ovApprove and stuApprove, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).

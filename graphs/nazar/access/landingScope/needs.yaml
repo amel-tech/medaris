@@ -1,0 +1,171 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.access.landingScope
+status: proposed
+summary: >-
+  What must exist for a person who works in nazar-web to land in the scope that is theirs, and to open another scope by its
+  address only as far as their role allows: nazar.access.landingScope. Each need is what the product must do, from the flow's
+  story; none is read off what the pages do today. Nothing here comes from planned.md: no planned feature (P-nn) names the landing
+  or the opened scope. No replay has run in this phase, so no scenario is named as walked; the scenarios are bound (binding.yaml)
+  and wait for the walk phase.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code, or code that does the opposite): admin-is-told-what-he-may-do (F-L-8, F-E-17, F-L-7, F-E-4), opened-scope-is-worded-honestly (LSCOPE-1)
+# unwalked (code, and no e2e check and no replay takes it): head-and-nazirs-open-their-medreses-courses (a unit spec only),
+# a-failed-read-is-a-retry (a unit spec only: the stack cannot make the read fail), the-first-landing-is-the-first-medrese-then-course
+# (access#5 does not assert it; a unit spec and the scenarios muderris, dersNazir and medreseNazir)
+
+needs:
+  - id: root-opens-the-last-scope
+    need: >-
+      A person who works in more than one scope is taken to the one they used last when they open the portal's address, as long as
+      they still hold it, and not to a fixed first one.
+    evidence:
+      - state: courseKept
+      - state: courseOpened
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nazar/features/shell/scope.ts:186
+      - source: apps/nazar/features/shell/components/scope-memory.tsx:11
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "'/' opens the scope that was last used and falls back to the first medrese"
+      - test: apps/nazar/test/access.spec.tsx
+      - test: apps/nazar/test/scope.spec.ts
+    note: |-
+      Also drawn as the assertion memory-is-not-ignored, the assertion kept-needs-a-memory.
+      access.e2e.ts access#5 (a2 and a4: "/" reopens the course and then the medrese; a1 and a3, the cookie value, are not
+      carried: a replay does not read a cookie). The e2e seed makes the başmüderris a hoca of two courses; the scenario
+      basmuderrisCourse makes her one of a course of its own
+      the scenarios basmuderrisCourse and muderris are bound and were not walked
+
+  - id: the-first-landing-is-the-first-medrese-then-course
+    need: >-
+      A person with no memory lands in their first medrese, else their first course, else is told they have no seat, each group in
+      the order of its names.
+    evidence:
+      - state: medreseLanded
+      - state: courseLanded
+      - state: noAccess
+      - state: sorting
+      - source: apps/nazar/features/shell/scope.ts:194
+      - source: apps/nazar/app/page.tsx:13
+      - test: apps/nazar/test/access.spec.tsx
+      - test: apps/nazar/test/scope.spec.ts
+    note: >-
+      access#5 is titled "falls back to the first medrese" and does not assert it (no cookie, no assertion); the scenarios
+      medreseNazir, muderris and dersNazir are bound and were not walked; the stack's smoke run (STACK.md) saw the landing of each
+      persona once
+
+  - id: not-yours-is-the-same-404
+    need: >-
+      An address that names a scope the person does not hold shows the same page as an address that names nothing, so no one can
+      find out which medreses and courses exist.
+    evidence:
+      - state: notFound
+      - node: notFoundTitle
+      - node: notFoundText
+      - state: placing
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:108
+      - source: apps/nazar/app/not-found.tsx:10
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "a scope that is not the person's is a 404 in the same words as a missing page"
+    note: |-
+      access.e2e.ts access#6 (a1, a random medrese id: scenario missing; a2, a3 and a4 reach the same page by a random course id,
+      an unknown section of an own medrese and a medrese-only section of a course: not walked separately, a scenario has one
+      address)
+      the scenario dersNazir (a course that is not his) is bound and was not walked
+
+  - id: no-seat-is-sent-to-no-access-not-a-404
+    need: >-
+      A person who holds no scope at all is sent to the page that says so from any scoped address, and is never shown a 404 that
+      would tell them nothing.
+    evidence:
+      - state: noAccess
+      - state: placing
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:107
+      - test: apps/nazar/e2e/access.e2e.ts
+        name: "a talebe asking for a scope's page gets the no-access page, not a 404"
+      - test: apps/nazar/test/access.spec.tsx
+    note: |-
+      Also drawn as the assertion no-seat-is-no-404.
+      access.e2e.ts access#3 (a1: a scope address of a talebe goes to /erisim-yok; carried here by the scenario talebe, which is
+      nazar.access.noAccess's check)
+
+  - id: head-and-nazirs-open-their-medreses-courses
+    need: >-
+      A medrese's başmüderris and nazırs can open any course of their medrese by its address, under their medrese role, without
+      holding a seat in it, and without it becoming the scope "/" returns to.
+    evidence:
+      - state: courseOfMedrese
+      - node: headRole
+      - state: placing
+      - source: apps/nazar/features/shell/opened-scope.ts:19
+      - test: apps/nazar/test/access.spec.tsx
+    note: >-
+      the scenario head is bound and was not walked; no e2e opens a course of the medrese without a seat in it (every e2e seed
+      makes the başmüderris a hoca of its courses)
+
+  - id: admin-opens-any-scope-by-address
+    need: >-
+      The başnazım opens any medrese or course that exists by its address, whatever seat he holds, and meets the 404 for one that
+      does not; what he opens is not remembered.
+    evidence:
+      - state: adminOpened
+      - node: adminRole
+      - state: notFound
+      - state: placing
+      - source: apps/tedrisat/src/user/me.controller.ts:30
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:333
+      - source: apps/tedrisat/src/course/course.controller.ts:283
+      - source: apps/nazar/features/shell/admin-scope.ts:58
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "the başnazım opens any course's Ders nazırları by its address, gives from the whole catalog, and cannot pick himself"
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "the başnazım opens the page by its address, with every control open"
+      - test: apps/nazar/test/access.spec.tsx
+    note: |-
+      Also drawn as the assertion only-the-basnazim-opens-what-is-not-his.
+      course-nazirs.e2e.ts course-nazirs#15 (a2: the sidebar names "Medaris başnazımı"; a1 and a3 to a5, the page itself, are
+      nazar.courseNazirs.appoint's)
+      course-settings.e2e.ts course-settings#12 (a1 only: the page opens by its address, the scenario systemAdmin opens /ayarlar;
+      a2 to a4, the open controls, are nazar.courseSettings.access's)
+      the scenarios systemAdmin and systemAdminMissing are bound and were not walked; both e2e skip without a SISTEM_ADMIN account
+
+  - id: admin-is-told-what-he-may-do
+    need: >-
+      The başnazım who holds no seat is not told he has no access; the page says what he may do and gives him a way to a medrese
+      or a course, and his role is the same in every frame (decision D1).
+    missing: "F-L-8, F-E-17, F-L-7, F-E-4: no issue found; the stack's smoke run saw him land on the verdict page"
+    note: |-
+      Drawn on the states noAccess and adminOpened and on the node adminRole, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      the scenario systemAdmin is bound and records what the code does today (the verdict page, then the address that opens); it
+      was not walked
+
+  - id: a-failed-read-is-a-retry
+    need: >-
+      When the roles cannot be read the person is told so and can try again; no page ever says they have no access because of a
+      read that failed.
+    evidence:
+      - state: roles_unreadable
+      - state: reading
+      - state: opening
+      - source: apps/nazar/features/shell/reads.ts:63
+      - source: apps/nazar/features/shell/components/portal-layout.tsx:28
+      - test: apps/nazar/test/access.spec.tsx
+      - test: apps/nazar/test/reads.spec.ts
+    note: |-
+      Also drawn as the assertion a-failed-read-is-never-a-verdict.
+      nazar.shell.errorStates draws the retry state; no scenario here: tedrisat answers every read and the stack cannot make one
+      fail
+
+  - id: opened-scope-is-worded-honestly
+    need: >-
+      The picker lists only what the note under it says it lists, or the note says what else it holds, when a scope is open by its
+      address (LSCOPE-1).
+    missing: "LSCOPE-1: no issue found; read from the code, not seen"
+    note: >-
+      Drawn on the states courseOfMedrese and adminOpened, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).

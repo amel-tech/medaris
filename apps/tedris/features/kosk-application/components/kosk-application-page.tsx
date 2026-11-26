@@ -118,6 +118,7 @@ function Content({
                   maxLength={120}
                   required
                   value={draft.name}
+                  readOnly={pending}
                   onChange={(e) => set("name", e.target.value)}
                 />
               </Field>
@@ -138,6 +139,7 @@ function Content({
                   value={draft.field || null}
                   onChange={(v) => set("field", v ?? "")}
                   required
+                  disabled={pending}
                 />
               </Field>
             </div>
@@ -153,6 +155,7 @@ function Content({
                 maxLength={500}
                 required
                 value={draft.summary}
+                readOnly={pending}
                 onChange={(e) => set("summary", e.target.value)}
               />
             </Field>
@@ -168,6 +171,7 @@ function Content({
                 maxLength={3000}
                 required
                 value={draft.reason}
+                readOnly={pending}
                 onChange={(e) => set("reason", e.target.value)}
               />
             </Field>
@@ -191,6 +195,7 @@ function Content({
                   maxLength={254}
                   required
                   value={draft.email}
+                  readOnly={pending}
                   onChange={(e) => set("email", e.target.value)}
                 />
               </Field>
@@ -206,6 +211,7 @@ function Content({
                   autoComplete="tel"
                   placeholder="+90 5__ ___ __ __"
                   value={draft.phone}
+                  readOnly={pending}
                   onChange={(e) => set("phone", e.target.value)}
                 />
               </Field>
@@ -226,7 +232,12 @@ function Content({
         </Card>
 
         <div className="flex items-center justify-end gap-3">
-          <Button type="button" variant="ghost" href={discover}>
+          <Button
+            type="button"
+            variant="ghost"
+            href={discover}
+            disabled={pending}
+          >
             {t("cancel")}
           </Button>
           <Button type="submit" loading={pending} loadingLabel={t("sending")}>
@@ -256,7 +267,9 @@ function Content({
 /**
  * Köşk açma başvurusu (design tedris/37, MDRS-166): the form and the "Başvurundan
  * sonra" aside. The e-mail starts as the account's address and can be changed.
- * Nothing is saved until "Başvuruyu gönder"; "Vazgeç" only goes back.
+ * Nothing is saved until "Başvuruyu gönder"; "Vazgeç" only goes back. While
+ * the application is sent the form is held and "Vazgeç" is off: what is
+ * changed then would not be sent, and leaving would not stop it.
  */
 export function KoskApplicationPage({
   email,

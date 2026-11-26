@@ -1,0 +1,124 @@
+# The screens of tedris.discover.applyForKosk: the card at the end of Keşfet, the page "Köşk açma başvurusu" (breadcrumb, h1,
+# the form, the aside), its list of fields, the busy send, the refusal toast and the sent card "Başvurun alındı". Read from
+# apps/tedris/features/discover/components/discover-page.tsx and apps/tedris/features/kosk-application/ on 15 Nov 2026, and
+# looked at in a browser as the spare talebe (a probe, not the replay). Everything else on Keşfet is tedris.discover.browse's.
+# The words are copied from libs/i18n/src/locales/tr/tedris.json (DiscoverPage.*) and tedris-account.json (KoskApplication.*,
+# where the app reads them as `tedrisAccount.KoskApplication.*`), keys kept, root removed. `composed.KoskApplication.accountEmail`
+# is the one text the app does not keep in a file: the e-mail field starts with the account's own address (page.tsx:39); its
+# sample is overridden by the replay's scenario with the account's real address.
+# `changes` is the app's own message that says what the send does and what follows (KoskApplication.sentText): the app has no
+# message for "what this flow changes", and a graph never invents one.
+schema: delurio-graph/0
+kind: ui
+id: tedris.discover.applyForKosk
+flow: tedris.discover.applyForKosk
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples: { email: "basvuran@example.test" }
+changes: { key: KoskApplication.sentText }
+
+nodes:
+  # ---- the end of Keşfet (discover-page.tsx) ----
+  discoverPage: { type: page, component: Page, role: main, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:97 } # one <main>; no name, no initial focus: the page sets none
+  discoverTitle: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.title }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:99 } # h1
+  applyNotice: { type: text, component: Text, text: { key: DiscoverPage.applyNotice }, in: [discover], source: apps/tedris/features/discover/components/discover-page.tsx:205 }
+  applyLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: DiscoverPage.applyLink }, in: [discover], emits: OPEN_FORM, source: apps/tedris/features/discover/components/discover-page.tsx:206 } # an outline button that is an <a href="/kosk-applications/new">; shown only to a signed-in person
+
+  # ---- the page "Köşk açma başvurusu" (app/kosk-applications/new/page.tsx), drawn in every state the form page is on ----
+  formPage: { type: page, component: Page, role: main, in: [form, choosingField, refused, sending, sent], source: apps/tedris/app/kosk-applications/new/page.tsx:24 } # DSC-06 = SHL-16: it sits inside the shell's <main data-legacy-main>, so the page has two main landmarks; no name, no initial focus
+  trail: { type: page, component: Page, role: navigation, name: { key: KoskApplication.trail }, in: [form, choosingField, refused, sending, sent], source: apps/tedris/app/kosk-applications/new/page.tsx:26 } # the kit's Breadcrumb: a list of "Keşfet" (a link) and the page's own name (aria-current="page")
+  trailDiscover: { type: action, component: LinkButton, role: link, text: { key: KoskApplication.breadcrumbDiscover }, in: [form, choosingField, refused, sending, sent], source: apps/tedris/app/kosk-applications/new/page.tsx:29 } # a plain link to /discover; tedris.nav carries the way
+  trailCurrent: { type: text, component: Text, text: { key: KoskApplication.title }, in: [form, choosingField, refused, sending, sent], source: apps/tedris/app/kosk-applications/new/page.tsx:30 } # the same words as the h1; the binding finds it by aria-current
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: KoskApplication.title }, in: [form, choosingField, refused, sending, sent], source: apps/tedris/app/kosk-applications/new/page.tsx:34 } # h1
+  subtitle: { type: text, component: Text, text: { key: KoskApplication.subtitle }, in: [form, choosingField, refused, sending, sent], source: apps/tedris/app/kosk-applications/new/page.tsx:35 }
+
+  # ---- the card "Köşk" ----
+  koskTitle: { type: text, component: Heading, role: heading, text: { key: KoskApplication.koskTitle }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:106 } # h2
+  requiredNote: { type: text, component: Text, text: { key: KoskApplication.requiredNote }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:108 }
+
+  nameField: { type: field, component: TextField, role: textbox, text: { key: KoskApplication.name }, value: { literal: "" }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:116 } # maxLength 120; the label's asterisk is decorative; read-only while the form is sent (kosk-application-page.tsx:121), as what is typed then would not be sent
+  nameHelp: { type: text, component: Text, text: { key: KoskApplication.nameHelp }, in: [form, choosingField, refused, sending], when: "not textSaid", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:113 } # the error replaces the help line
+  nameError: { type: text, component: Text, text: { key: KoskApplication.errors.name }, in: [form, choosingField, refused, sending], when: textSaid, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:114 } # a plain <div>: no role, no live region (DSC-05); the box is aria-invalid
+
+  fieldSelect: { type: field, component: TextField, role: combobox, text: { key: KoskApplication.field }, in: [form, choosingField, refused, sending], disabledIn: [sending], emits: OPEN_FIELD, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:131 } # the kit's Select, a button with aria-label "Alan" showing "Alan seç" until a field is chosen; disabled while the form is sent (kosk-application-page.tsx:142), as a field chosen then would not be the one sent
+  fieldHelp: { type: text, component: Text, text: { key: KoskApplication.fieldHelp }, in: [form, choosingField, refused, sending], when: "not fieldSaid", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:128 }
+  fieldError: { type: text, component: Text, text: { key: KoskApplication.errors.field }, in: [form, choosingField, refused, sending], when: fieldSaid, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:129 }
+
+  summaryField: { type: field, component: TextField, role: textbox, text: { key: KoskApplication.summary }, value: { literal: "" }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:152 } # a textarea, 4 rows, maxLength 500; read-only while the form is sent (kosk-application-page.tsx:158), as what is typed then would not be sent
+  summaryHelp: { type: text, component: Text, text: { key: KoskApplication.summaryHelp }, in: [form, choosingField, refused, sending], when: "not textSaid", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:149 }
+  summaryError: { type: text, component: Text, text: { key: KoskApplication.errors.summary }, in: [form, choosingField, refused, sending], when: textSaid, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:150 }
+
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: KoskApplication.reason }, value: { literal: "" }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:168 } # a textarea, 6 rows, maxLength 3000; read-only while the form is sent (kosk-application-page.tsx:174), as what is typed then would not be sent
+  reasonHelp: { type: text, component: Text, text: { key: KoskApplication.reasonHelp }, in: [form, choosingField, refused, sending], when: "not textSaid", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:165 }
+  reasonError: { type: text, component: Text, text: { key: KoskApplication.errors.reason }, in: [form, choosingField, refused, sending], when: textSaid, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:166 }
+
+  # ---- the list of fields, open (the kit's Select popup) ----
+  fieldList: { type: list, component: List, role: listbox, in: [choosingField], source: libs/ui/src/mds/select.tsx:80 } # no name of its own (measured: no aria-label, no aria-labelledby)
+  optArabicLanguageSciences: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.arabicLanguageSciences }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:5 }
+  optRhetoric: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.rhetoric }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:6 }
+  optFiqh: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.fiqh }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:7 }
+  optUsulAlFiqh: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.usulAlFiqh }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:8 }
+  optHadith: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.hadith }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:9 }
+  optQuranSciences: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.quranSciences }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:10 }
+  optTafsir: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.tafsir }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:11 }
+  optAqeedahKalam: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.aqeedahKalam }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:12 }
+  optSeerah: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.seerah }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:13 }
+  optLogic: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.logic }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:14 }
+  optOther: { type: field, component: ListItem, role: option, text: { key: KoskApplication.fields.other }, in: [choosingField], source: apps/tedris/features/kosk-application/model.ts:15 }
+
+  # ---- the card "İletişim" ----
+  contactTitle: { type: text, component: Heading, role: heading, text: { key: KoskApplication.contactTitle }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:181 } # h2
+
+  emailField: { type: field, component: TextField, role: textbox, text: { key: KoskApplication.email }, value: { key: composed.KoskApplication.accountEmail, params: { email: email } }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:190 } # type=email, maxLength 254; starts as the account's address (page.tsx:39) and may be changed; read-only while the form is sent (kosk-application-page.tsx:198), as what is typed then would not be sent
+  emailHelp: { type: text, component: Text, text: { key: KoskApplication.emailHelp }, in: [form, choosingField, refused, sending], when: "not emailSaid", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:187 }
+  emailError: { type: text, component: Text, text: { key: KoskApplication.errors.email }, in: [form, choosingField, refused, sending], when: emailSaid, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:188 } # the same words for an empty and a malformed address (kosk-application-page.tsx:57)
+
+  phoneField: { type: field, component: TextField, role: textbox, text: { key: KoskApplication.phone }, value: { literal: "" }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:207 } # type=tel; the placeholder "+90 5__ ___ __ __" is not drawn; read-only while the form is sent (kosk-application-page.tsx:214), as what is typed then would not be sent
+  phoneHelp: { type: text, component: Text, text: { key: KoskApplication.phoneHelp }, in: [form, choosingField, refused, sending], when: "not phoneSaid", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:204 }
+  phoneError: { type: text, component: Text, text: { key: KoskApplication.errors.phone }, in: [form, choosingField, refused, sending], when: phoneSaid, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:205 }
+
+  privacyNotice: { type: text, component: Text, text: { key: KoskApplication.noticeBefore }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:219 } # one sentence: "Bu bilgiler yalnız başvurunu değerlendirmek için kullanılır. Ayrıntısı Aydınlatma Metni’nde."; the link is inside it
+  privacyLink: { type: action, component: LinkButton, role: link, text: { key: KoskApplication.noticeLink }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:221 } # target=_blank and nothing says so (DSC-15); landing's /aydinlatma-metni
+
+  # ---- the buttons ----
+  cancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: KoskApplication.cancel }, in: [form, refused, sending], disabledIn: [sending], emits: CANCEL, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:235 } # a plain <a href="/discover"> that also says type="button"; a link, not a button; disabled while the form is sent (kosk-application-page.tsx:239): no href, role link, aria-disabled, as leaving then would not stop the application and would invite a second one
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: KoskApplication.submit }, in: [form, choosingField, refused, sending], disabledIn: [sending], emits: SUBMIT, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:243 } # never disabled while the form is wrong; busy (aria-disabled, aria-busy) while it is sent
+  sendingStatus: { type: status, component: Status, role: status, text: { key: KoskApplication.sending }, in: [sending], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the button; empty the rest of the time
+
+  # ---- the aside ----
+  aside: { type: page, component: Page, role: complementary, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:249 } # an <aside> with no name
+  afterTitle: { type: text, component: Heading, role: heading, text: { key: KoskApplication.afterTitle }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:250 } # h2
+  step1: { type: text, component: Text, text: { key: KoskApplication.step1 }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:258 }
+  step2: { type: text, component: Text, text: { key: KoskApplication.step2 }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:258 }
+  step3: { type: text, component: Text, text: { key: KoskApplication.step3 }, in: [form, choosingField, refused, sending], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:258 }
+
+  # ---- the toast of a refusal (the kit's Toaster, Base UI) ----
+  refusedToast: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: refusedTitle }, in: [form, choosingField, refused, sending], when: "toast == 'refused'", source: libs/ui/src/mds/toast.tsx:77 } # Base UI gives a high-priority toast the role alertdialog and aria-hidden until it is focused; its region is "Bildirimler"
+  refusedTitle: { type: text, component: Text, text: { key: KoskApplication.submitFailed }, in: [form, choosingField, refused, sending], when: "toast == 'refused'", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:74 }
+  refusedBody: { type: text, component: Text, text: { key: KoskApplication.errorHint }, in: [form, choosingField, refused, sending], when: "toast == 'refused'", source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:75 }
+  refusedClose: { type: action, component: Button, role: button, intent: dismiss, name: { literal: Kapat }, in: [form, choosingField, refused, sending], when: "toast == 'refused'", source: libs/ui/src/mds/toast.tsx:95 } # the toast's own close button; its name is written in the kit (aria-label="Kapat"), not in a catalog
+
+  # ---- the sent card ----
+  sentTitle: { type: text, component: Heading, role: heading, text: { key: KoskApplication.sentTitle }, in: [sent], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:85 } # h2 of the card
+  sentAlert: { type: status, component: Status, role: status, text: { key: KoskApplication.sentText }, in: [sent], source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:90 } # the kit's Alert with tone success, role status, inserted together with the card (DSC-07)
+  sentBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskApplication.backToDiscover }, in: [sent], emits: BACK_TO_DISCOVER, source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:91 }
+
+edges:
+  - { labelledBy: [refusedToast, refusedTitle] }
+  - { triggers: [applyLink, form] }
+  - { triggers: [fieldSelect, choosingField] }
+  - { triggers: [submit, sending] }
+
+rules:
+  - { id: focus-not-set, rule: "no page here sets an initial focus: after the load of Keşfet and of the form page the focus is on the document (measured: document.activeElement is the <body>); after a choice in the list or Esc it is on the box again (measured); after an empty send it stays on \"Başvuruyu gönder\" (measured); after the send the button is gone and the focus is on the document (DSC-07). The graph says nothing of the focus" }
+  - { id: DSC-05, rule: "pressing \"Başvuruyu gönder\" with a required field empty shows each error as a plain <div class=mds-error> under its field (no role, no live region) and leaves the focus on the button; only aria-invalid on the boxes marks them (kosk-application-page.tsx:60-65, libs/ui/src/mds/field.tsx:33-53; measured: the focus is on the button, the errors are not alerts). A screen-reader user hears nothing after the try. Fix: focus the first invalid control, or give the errors role=alert and add an error summary" }
+  - { id: DSC-06, rule: "= SHL-16. /kosk-applications is missing from ownsItsMain (components/tab-view/index.tsx:12-22), so the shell wraps the page in <main data-legacy-main> and the page draws its own <main> inside it (page.tsx:24): two main landmarks (measured: getByRole(\"main\") finds two; the inventory had not verified it). Fix: add pathname.startsWith(\"/kosk-applications\") to ownsItsMain" }
+  - { id: DSC-07, rule: "after a successful send the form is replaced by the card \"Başvurun alındı\" (kosk-application-page.tsx:83-97): the focused button is unmounted, the focus falls to the document, and the success alert comes in with the card, which many screen readers do not announce. Fix: move the focus to the card's h2 (tabIndex=-1) after setSent(true)" }
+  - { id: DSC-08, rule: "any refusal of POST /kosk-applications gives one toast, \"Başvurun gönderilemedi. Biraz sonra yeniden dene.\" with \"Sunucu isteği tamamlayamadı.\", whatever the API said: its code and message are thrown away (kosk-application-page.tsx:71-77); a refused field is never named. Fix: map a 400 to a message that names the field" }
+  - { id: DSC-15, rule: "the privacy link opens a new tab (target=_blank, rel=noopener noreferrer, kosk-application-page.tsx:221-226) and its words do not say so" }
+  - { id: APPLYKOSK-1, rule: "new, provisional id, measured: the page's address check (^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$, model.ts:37) accepts \"ad@alan.c\"; the API's @IsEmail (create-kosk-application.dto.ts:48) refuses it with 400 VALIDATION_ERROR on the property email, and the person gets the toast of DSC-08, which names nothing. Fix: make the page's check the API's, or name the refused field from the 400" }
+  - { id: no-way-back, rule: "after the send the person has no page that lists the application and no way to take it back (the API has no such route; kosk-application.controller.ts has only POST), and nothing limits how many a person files (kosk-application.service.ts:10). The page says the outcome reaches them as a notification (step 3 of the aside), and that notification names the köşk without a link (F-3)" }
+  - { id: F-3, rule: "the approval names no köşk link. nizam.applications.decide draws the approval; here it is noted because this flow's row is what it acts on: approveKoskApplication records koskId without checking the köşk was opened from this application or is not attached to another (kosk-application-review.service.ts:156-181), and the notification it sends the applicant, KOSK_APPLICATION_RESULT, carries the köşk's name and no target (kosk-application-review.service.ts:225-229), although tedris's notification page can lead to /kosks/<id> from a KOSK target (features/notifications/notification-view.ts:71). Read from the code; this flow ends before the approval" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): every field's label is its name; the combobox's name is \"Alan\" and its visible words are \"Alan seç\" until a field is chosen, after which they are the field's own name and the name is still \"Alan\" (aria-label, measured)" }

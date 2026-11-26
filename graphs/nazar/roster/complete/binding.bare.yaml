@@ -1,0 +1,30 @@
+# nazar.roster.complete as the ders nazırı who holds nothing in the course: the page says "Bu sayfaya izniniz yok" under its header, with no tab
+# and no table (reader: nobody). The story of that person across the course's pages is nazar.access.dersNazirPages.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/roster/complete \
+#     --bind graphs/nazar/roster/complete/binding.bare.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. This file adds the transition `opened` to `forbidden`, which no other file reaches.
+#
+# The data: "Deneme dersi rosCom" with one talebe (the page never reads the roster for this reader), and the seeded ders nazırı appointed
+# in it with no permission at all (helpers/course-nazir-grants.mjs, `--codes none`: the post stays, so the course is in her scopes and its
+# menu is drawn). `teardown` takes the course, and the post with it, away.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.complete
+
+scenarios:
+  bare:
+    given: { reader: nobody }
+    as: dersNazir
+    open: '{nazar}/ders/{rc.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosCom, --weeks, '1', --lessons, '1', --talebe, applicantA]
+        expect: '"APPLICANT_A":"ENROLLED"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{rc.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosCom]
+        expect: 'course remove rosCom'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi rosCom%'"]
+        expect: '"n":0'

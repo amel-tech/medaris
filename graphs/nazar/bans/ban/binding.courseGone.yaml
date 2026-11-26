@@ -1,0 +1,89 @@
+# nazar.bans.ban where the course is gone: the başmüderris presses "Yasakla" on the talebe's row for the walk's course, and the course is
+# deleted while the ban is on its way, so the server answers COURSE_NOT_FOUND ("Bu ders artık yok ya da medresenin dersi değil. …") and the
+# dialog stays open.
+#   node apps/engine/src/cli.ts replay graphs/nazar/bans/ban --bind graphs/nazar/bans/ban/binding.courseGone.yaml --to rowReady --out <dir>
+# NOT RUN, and the least sure of the bindings: the deletion is the `before` of the state `rowSubmitting` (of `headerSubmitting`, for the
+# header), which the replay runs while the server action is held (replay.ts: `before`, then the check, then the release of the held
+# call), so the POST reaches the API after the course is gone. It is a file of its own because that `before` would run in every walk of a
+# file that holds the other scenarios, and these scenarios are its own because the world they need (a course that vanishes) is no other
+# scenario's.
+#
+# `setup` makes the course and enrols applicantE as binding.yaml does. The title is a literal: the made file is gone after the deletion,
+# and the screen still draws it. The deletion takes the seat, the course and the notices that point at it; `teardown` cleans again, which
+# finds nothing (a second `remove` says `none`, and no ban was written).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.ban
+
+scenarios:
+  courseGone:
+    given: { way: row, scope: course, answer: courseGone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseStudents' }
+    setup:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, make, bansban, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+    vars:
+      who: applicantE
+      whoKey: APPLICANT_E
+      whoSub: '{secret.E2E_APPLICANT_E_SUB}'
+      personName: Betül Başvuran
+      personAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      courseTitle: Deneme dersi bansban
+      reason: Ders silinmeden önce yazıldı
+      reasonSaved: Ders silinmeden önce yazıldı
+
+  # the same from the header: the course the dialog offers first is the walk's, and it is gone when the ban arrives
+  courseGoneHeader:
+    given: { way: email, scope: course, answer: courseGone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    setup:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, make, bansban, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"ENROLLED"'
+      - run: [node, helpers/api.mjs, SYSTEM_ADMIN, PATCH, '/courses/{made.course}', '{"title":"Alıştırma dersi yasak"}']
+        expect: '"title":"Alıştırma dersi yasak"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/mail.mjs, clear, 'to:{personAddress}']
+    vars:
+      who: applicantE
+      whoKey: APPLICANT_E
+      whoSub: '{secret.E2E_APPLICANT_E_SUB}'
+      personName: Betül Başvuran
+      personAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      courseTitle: Alıştırma dersi yasak
+      reason: Ders silinmeden önce yazıldı
+      reasonSaved: Ders silinmeden önce yazıldı
+
+states:
+  # the course is deleted while the call waits: the page keeps what it drew, and the API no longer knows the course
+  rowSubmitting:
+    call: '{nazar}/medrese/*/talebeler**'
+    before:
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+  headerSubmitting:
+    call: '{nazar}/medrese/*/yasaklamalar**'
+    before:
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban

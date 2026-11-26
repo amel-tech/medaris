@@ -1,0 +1,27 @@
+# nizam.grants.appoint, the note about the medrese's courses: the nazım opens İzinler of the seed's FIRST köşk, "Süleymaniye Köşkü", which hosts the seeded medrese's two courses ("Bina ve İzhar Şerhi"
+# and "İsâgûcî ile Mantığa Giriş") beside its own "Nahiv Metinleri": the page draws the note "Medrese derslerinde izni medrese kadrosu verir; burada yönetilmezler. Bu köşkte medreselere ait dersler: ..."
+# and no post (the seeded ders nazırı holds hers in a medrese course, which this page never lists). Read only: nothing is made, and the walk only opens the dialog, searches an address no account has and
+# closes it, so no seeded course is changed (e2e grants#1, the note's half; the seeded köşk's list is read, never written). One file: it opens another köşk. Walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/grants/appoint --bind graphs/nizam/grants/appoint/binding.note.yaml --cover transitions --absent --out <dir>
+# NOT RUN: loads (`--emit-spec`), nothing walked. The names in the note are the seed's titles, read from seed.json; the order the API lists the courses in is not the page's to choose (from the code).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.grants.appoint
+
+scenarios:
+  note:
+    given: { start: note, person: nobody, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    vars:
+      typed: 'kimse.yok@example.test'
+      foundName: '-'
+      foundEmail: '-'
+      rowName: '-'
+      rowEmail: '-'
+      rowSub: '-'
+      giverName: '-'
+      giverText: '-'
+      endMs: 'none'

@@ -1,0 +1,66 @@
+# nazar.sessions.manage on the local stack: Celseler of a course the walk makes, at http://localhost:4002. This file holds the scenarios that
+# add a transition the others do not: the müderris (the main story and every write), the müderris with a stale page, and a person who holds
+# neither code. The two ders nazırı who hold one code each, and add no transition, are binding.manage.yaml and binding.stream.yaml. What the
+# walks share (the course, the words, the events, the locators, the checks, what is not bound and why) is in locators.binding.yaml: read its
+# header first.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/sessions/manage \
+#     --bind graphs/nazar/sessions/manage/binding.yaml --out <dir>
+#   ... --cover transitions --absent --out <dir>       (every transition the scenarios below can drive)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end. The binding loads (`--emit-spec` writes a spec and walks nothing).
+# Every scenario makes the same course (tag sesManage) and takes it away, so they run one after the other, never together; `make` removes a tag
+# a crashed walk left, so `setup` is safe to run twice.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.sessions.manage
+
+scenarios:
+  # The main story and every write that goes through: the müderris opens Celseler by the course menu's "Celseler" (the nav graph's entry
+  # frame:ders->dersSessions), adds the link, and the coverage paths go on to the time, the in-person mark, the stream, its removal and the
+  # recording access, each with the typed value the page accepts and the one it refuses.
+  adds:
+    given: { exam: none, holds: all, changeAnswer: saved, streamAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSessions' }
+    setup:
+      - run: [node, helpers/course.mjs, make, sesManage, --weeks, '1', --lessons, '1']
+        expect: '"tag":"sesManage"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, sesManage]
+        expect: 'course remove sesManage'
+    vars: { bump: '0' }
+
+  # The page is stale: someone saved the course after it was read, so the link, the time and the in-person mark are refused with the version
+  # conflict, the page is read again and the form stays open. `bump: 1` raises the course's version as soon as one of those forms is open (the
+  # `before` of their states in locators.binding.yaml). The stream and the recording write carry no version of the page's, so no scenario makes
+  # them stale: `streamAnswer` and `releaseAnswer` are `saved` here, and their other answers are not bound.
+  stale:
+    given: { exam: none, holds: all, changeAnswer: moved, streamAnswer: saved, releaseAnswer: saved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/celseler'
+    setup:
+      - run: [node, helpers/course.mjs, make, sesManage, --weeks, '1', --lessons, '1']
+        expect: '"tag":"sesManage"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, sesManage]
+        expect: 'course remove sesManage'
+    vars: { bump: '1' }
+
+  # A ders nazırı with no code at all (the post exists, its set is empty): the page opens and refuses, "Bu sayfaya izniniz yok", with no table.
+  # The seeded one holds session.manage; this course's post is set with course-nazir-grants.mjs, as the hoca does on Ders nazırları.
+  noCodes:
+    given: { exam: none, holds: none, changeAnswer: saved, streamAnswer: saved, releaseAnswer: saved }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/celseler'
+    setup:
+      - run: [node, helpers/course.mjs, make, sesManage, --weeks, '1', --lessons, '1']
+        expect: '"tag":"sesManage"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, sesManage]
+        expect: 'course remove sesManage'
+    vars: { bump: '0' }

@@ -1,0 +1,102 @@
+# nizam.kosks.editAndHide on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, a köşk of the walk's own
+# (Ayar Deneme Köşkü, short name ayar-deneme), and its nazım, the spare talebe account applicantG.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/editAndHide \
+#     --bind graphs/nizam/kosks/editAndHide/binding.yaml --cover transitions --absent --out <dir>
+#   ... --bind .../binding.chief.yaml   the başnazım at the lock (world chiefOverrides), walked with the same flags
+# The shared parts (sign-in, events, exits, locators, effects) are in locators.binding.yaml.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/features/kosks, libs/ui/src/mds); nothing was looked for in a browser. The only things looked at on the stack were
+# read-only: the SQL of platform_policies (no row for either key, both policies off) and the köşks' table (the two seeded ones).
+#
+# The scenarios, one per world of the flow:
+#   saves           world free            the nazım changes everything the form has, saves, hides the köşk                (e2e kosks#7, #8, #9)
+#   locked          world locked          the köşk has 'Ders kayıtları herkese açılamaz' on, Medaris has switched the platform policy
+#                                         RECORDINGS_NEVER_PUBLIC on, the nazım unticks it: 409 PLATFORM_POLICY_LOCKED              (F-W3-3)
+#   chiefOverrides  world chiefOverrides  (binding.chief.yaml) the same lock, the başnazım unticks it and the server lets him
+# Not bound, with the reason: world gone (the köşk deleted between the page and the click), forbidden (the right withdrawn between) and
+# failed (a body the server refuses, no answer) and every hideAnswer but `hidden` (alreadyHidden, gone, forbidden, failed): each needs
+# the world to change between two clicks of one walk, and nothing the stack does on request does that. The toasts they would show are
+# drawn from the code.
+#
+# What a walk writes, and how it is taken away. Every scenario's `setup` makes the köşk through the API as the başnazım (walk-data.mjs
+# make: POST /kosks with applicantG as its only nazım) and its `teardown` deletes it (DELETE /kosks/<id>, hidden or not, which takes the
+# nazım's role with it in one transaction). `setup` removes a köşk of that short name first, so a walk that died before its teardown
+# leaves nothing behind. The seeded köşks are never read as data and never changed: this flow never opens or hides them.
+#
+# THE ONE PLATFORM CHANGE. `locked` and `chiefOverrides` switch the platform policy RECORDINGS_NEVER_PUBLIC on for the length of the
+# walk, because a köşk nazım is refused only while the platform's own switch is on. `setup` saves the row the table has for the key (the
+# stack has none: both policies are off and untouched) to graphs/.local/made/editandhide-policy.json and switches the policy on by SQL;
+# `teardown` puts the row back exactly (key, enabled, changed_by, changed_at), or deletes it if there was none, and removes the file
+# (helpers/policies.mjs lock | unlock). SQL because the API (PUT /nizam/platform-policies/:key) stamps changed_by and changed_at with the
+# caller and the moment and writes a platform_policy.change audit row each way, so it cannot give the row back as it was. The lock never
+# overwrites the saved original, so a second setup after a crashed walk still knows the truth. The policy closes recordings to people
+# outside a course, and the walks run one at a time under the replay lock; ALWAYS_REQUIRE_APPROVAL, which would change every
+# enrolment, is never touched. `saves` changes no platform policy.
+#
+# What stays after a walk: the audit rows the API writes and cannot remove (kosk.create, kosk.delete, and kosk.policy_change and
+# kosk.hide for what the walk did to its own köşk). applicantG holds no role after the teardown; it was a nazım only of the köşk that is
+# deleted. Run `node helpers/sql.mjs "select * from platform_policies"` in graphs/bindings/ after a run: it must say `no rows` (or what
+# it said before).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.editAndHide
+
+scenarios:
+  # The main story and e2e kosks#7 to #9: the nazım presses "Köşk ayarları" in the menu, changes the name, the tags, the cover, the
+  # description, "Listelerde gösterme" and both policies, saves, hides the köşk and lands on the list.
+  saves:
+    given: { world: free, hideAnswer: hidden }
+    as: applicantG
+    open: '{nizam}/kosks/{made.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskSettings' }
+    setup:
+      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, make, editandhide, applicantG]
+        expect: '"handle":"ayar-deneme"'
+    teardown:
+      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, remove, editandhide]
+        expect: 'kosk remove editandhide'
+    vars:
+      home: '/kosks/*/ana-sayfa'
+      owner: applicantG
+      newName: Ayar Deneme Köşkü II
+      newTags: 'Hadis, Mustalah '
+      newDescription: Hadis usûlü okuyan köşk.
+      # what the köşk holds after the save, for the effect updateKosk (the tags as the API lists them, joined by a comma)
+      savedName: Ayar Deneme Köşkü II
+      savedTags: Hadis,Mustalah
+      savedDescription: Hadis usûlü okuyan köşk.
+      savedCover: '20'
+      savedPrivate: 'true'
+      savedApproval: 'true'
+      savedRecordings: 'true'
+      savedListed: 'false' # unlisted: it is out of the open list
+
+  # The branch: the köşk has "Ders kayıtları herkese açılamaz" on and the platform policy of the same name is on. The nazım unticks the
+  # box, "Kaydet" sends it, tedrisat answers 409 and the page says only "Bir şeyler ters gitti" (F-W3-3). Nothing is saved.
+  locked:
+    given: { world: locked, hideAnswer: hidden }
+    as: applicantG
+    open: '{nizam}/kosks/{made.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskSettings' }
+    setup:
+      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, make, editandhide, applicantG, --ruled]
+        expect: '"ruled":true'
+      - run: [node, helpers/policies.mjs, lock, RECORDINGS_NEVER_PUBLIC, editandhide]
+        expect: 'policy lock RECORDINGS_NEVER_PUBLIC on'
+    teardown:
+      # the policy first, so that it is put back even if the köşk cannot be deleted
+      - run: [node, helpers/policies.mjs, unlock, editandhide]
+        expect: 'policy restore editandhide'
+      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, remove, editandhide]
+        expect: 'kosk remove editandhide'
+    vars:
+      home: '/kosks/*/ana-sayfa'
+      owner: applicantG
+      newName: Ayar Deneme Köşkü II
+      newTags: 'Hadis, Mustalah '
+      newDescription: Hadis usûlü okuyan köşk.
+      # what the köşk must still hold after the refusal: nothing was saved
+      unchangedRecordings: 'true'

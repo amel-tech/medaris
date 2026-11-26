@@ -1,0 +1,194 @@
+# What every walk of nizam.courses.roster shares: where the page's nodes are found, the events no node sends, the address each state must be at, the
+# data of the walk's own course, and what a completion, a reopening and a removal leave outside the screen. It carries no scenario, so it is not walked
+# by itself; the scenarios make their own course and take it away again:
+#   binding.yaml              runs (the story), unreadable (a Medaris nazımı: the roster is refused) and elsewhere (the course under another köşk's address)
+#   binding.barred.yaml       barred: the completed talebe is barred; Yeniden aç is refused (BAN_ACTIVE) and Yasağı kaldır is pressed
+#   binding.moved.yaml        moved: the talebe leaves while the completion is on its way (ENROLLMENT_NOT_FOUND)
+#   binding.removeMoved.yaml  removeMoved: the talebe leaves while the removal is on its way
+# NOT RUN: the graphs were written without a replay (the owner's word: the first walks are a later phase). Every locator below comes from the code and
+# the catalog; none was seen in a browser. Nothing here changes data except the effects, which only read.
+#
+# The data. No seeded course is touched. Every scenario makes "Deneme dersi rosternizam" with helpers/course.mjs in the seed's second köşk (Kubbealtı
+# Köşkü, `{seed.kosk2}`, which the seed's köşk nazımı manages and no seeded flow reads) and four SPARE talebe, applicantC to applicantG without F (H and
+# F belong to other walks): Betül Başvuran (applicantE, the first by name), Dilek Başvuran (applicantG), Esma Başvuran (applicantC) and Salih Başvuran
+# (applicantD), in the order the page sorts them (Turkish). The seeded people (talebe, talebeMale, other, medarisNazim, ...) are never enrolled. Four
+# rows are fewer than seven, so "Daha fazla göster" is never drawn on this stack: the flow's `size: long` start and the MORE step are NOT bound (the
+# spare accounts are the limit; seven are needed).
+#
+# Variables a scenario gives (they are `vars`, filled in everywhere below; none is named `address` or `password`, which are the signed-in account's own):
+#   reason, reasonSaved  what is typed in the removal dialog (with the white space a person leaves) and what the server keeps (trimmed)
+#   removedAddress       the e-mail of the talebe the walk removes (Betül, applicantE), which the removed row shows under the name
+#   removerName          the name the removed list gives the person who pressed ("Cemal Köşk Nazımı", the seeded köşk nazımı)
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.roster
+
+# a wide window, so that the sidebar is drawn and the table is a table (below 768 px it becomes cards)
+browser: { width: 1280, height: 900 }
+
+# The course of the walks, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes ({made.course}).
+data:
+  made: { json: ../.local/made/rosternizam.json }
+
+# the words a catalog message is drawn with: only the course is given; the talebe's name and the counts differ by row and by step, so a placeholder
+# with no sample matches any text
+samples:
+  course: Deneme dersi rosternizam
+
+# The events no node sends. The box is filled in at once (the filtering is the browser's own, nothing waits for the server). "e2e-basvuran-d" is a part
+# of Salih Başvuran's address and of nobody else's; "dilek" is Dilek Başvuran's first name; "böyle biri yok" is nobody's. The reason box is the only text
+# box of the open dialog.
+events:
+  NAVIGATE: [{ goto: '{nizam}/hesap' }]
+  TYPE_NAME: [{ fill: { role: searchbox, name: Talebe ara, value: dilek } }]
+  TYPE_EMAIL: [{ fill: { role: searchbox, name: Talebe ara, value: e2e-basvuran-d } }]
+  TYPE_NOBODY: [{ fill: { role: searchbox, name: Talebe ara, value: böyle biri yok } }]
+  ERASE: [{ fill: { role: searchbox, name: Talebe ara, value: '' } }]
+  TYPE_REASON: [{ fill: { role: textbox, within: { role: dialog, name: '/^Dersten çıkar$/' }, value: '{reason}' } }]
+  TYPE_BLANK: [{ fill: { role: textbox, within: { role: dialog, name: '/^Dersten çıkar$/' }, value: ' ' } }]
+  ERASE_REASON: [{ fill: { role: textbox, within: { role: dialog, name: '/^Dersten çıkar$/' }, value: '' } }]
+  # Not bound, with the reason:
+  #   SCRIM   students#6 clicks at (5, 5) outside the dialog; a binding action has no coordinates, and a click on the scrim's own element lands on the
+  #           dialog panel that covers its middle. The half of students#6 that says Vazgeç closes it and removes nobody is the CANCEL walk.
+
+# The address and the words each state must show. Every state of the page is at the same address; an exit has no nodes of this flow, so it needs one.
+# `completing`, `reopening` and `removing` are the server action's POST to the page's own address (a Next server action answers 200 there whatever the API
+# decided), so their `call` is set only in binding.yaml, to hold the busy row while it is checked, and never to compare a status.
+states:
+  unreadable: { url: '{nizam}/kosks/*/courses/*/students' }
+  applications: { url: '{nizam}/kosks/*/courses/*/students' }
+  enrolled: { url: '{nizam}/kosks/*/courses/*/students' }
+  completed: { url: '{nizam}/kosks/*/courses/*/students' }
+  removedList: { url: '{nizam}/kosks/*/courses/*/students' }
+  form: { url: '{nizam}/kosks/*/courses/*/students' }
+  formReady: { url: '{nizam}/kosks/*/courses/*/students' }
+  not_found: { url: '{nizam}/kosks/*/courses/*/students', text: Bu bölüm için izniniz yok }
+  # the ban dialog and the lift dialog open over the same address; what they do is nizam.moderation.banStudent's
+  handed_over.ban: { url: '{nizam}/kosks/*/courses/*/students' }
+  handed_over.lift: { url: '{nizam}/kosks/*/courses/*/students' }
+  # "Derse dön" is a plain link to /edit, whose page redirects to the Müfredat page (edit/page.tsx:16); the address that commits is /curriculum
+  handed_over.curriculum: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  left: { url: '{nizam}/hesap' }
+
+# Where role and name cannot find a node, or find too many. A bare role main is also matched on the page a walk leaves for, so the page is told by its
+# own subtitle. A tab's name ends with its count, a span with no space; a talebe's name is data, so the buttons are found by the start of their label and
+# the row that is pressed by its place on the page (the first item, or the only row a search leaves). The table of each tab sits in a wrapper with its own
+# test id (roster-table.tsx:250, removed-table.tsx:85). The dialog's words are also the row button's and the toast's, so each is scoped to it.
+nodes:
+  studentsPage: { role: main, hasText: '/kayıtlı talebelerin ilerlemesini izleyin/' }
+  backLink: { role: link, name: Derse dön }
+  tabApplications: { role: tab, name: '/^Başvurular/' }
+  tabEnrolled: { role: tab, name: '/^Kayıtlı/' }
+  tabCompleted: { role: tab, name: '/^Tamamlayanlar/' }
+  tabRemoved: { role: tab, name: '/^Erişimi kaldırılanlar/' }
+  countApplications: { css: '.mds-tab__count', within: { role: tab, name: '/^Başvurular/' }, hasText: '/^\d+$/' }
+  countEnrolled: { css: '.mds-tab__count', within: { role: tab, name: '/^Kayıtlı/' }, hasText: '/^\d+$/' }
+  countCompleted: { css: '.mds-tab__count', within: { role: tab, name: '/^Tamamlayanlar/' }, hasText: '/^\d+$/' }
+  countRemoved: { css: '.mds-tab__count', within: { role: tab, name: '/^Erişimi kaldırılanlar/' }, hasText: '/^\d+$/' }
+  panelApplications: { role: tabpanel, name: '/^Başvurular/' }
+  panelEnrolled: { role: tabpanel, name: '/^Kayıtlı/' }
+  panelCompleted: { role: tabpanel, name: '/^Tamamlayanlar/' }
+  panelRemoved: { role: tabpanel, name: '/^Erişimi kaldırılanlar/' }
+  # the header cell and its sort button say "Talebe", the search box "Talebe ara"
+  colStudent: { role: columnheader, name: '/^Talebe$/' }
+  removedColStudent: { role: columnheader, name: '/^Talebe$/' }
+  sortByName: { role: button, name: '/^Talebe$/' }
+  # the rows of the open tab: the talebe's name is the row header
+  rowsEnrolled: { role: rowheader, within: { testId: roster-enrolled } }
+  rowsCompleted: { role: rowheader, within: { testId: roster-completed } }
+  rowEmails: { css: 'bdi[dir=ltr]', within: { testId: roster-enrolled } }
+  rowJoined: { role: cell, within: { testId: roster-enrolled }, hasText: '/^\d{1,2} \S+ \d{4}$/' }
+  rowFirstAscending: { css: 'tbody tr:first-child th', within: { testId: roster-enrolled }, hasText: Betül Başvuran }
+  rowFirstDescending: { css: 'tbody tr:first-child th', within: { testId: roster-enrolled }, hasText: Salih Başvuran }
+  rowByName: { css: 'tbody tr th', within: { testId: roster-enrolled }, hasText: Dilek Başvuran, nth: 0 }
+  rowByEmail: { css: 'tbody tr th', within: { testId: roster-enrolled }, hasText: Salih Başvuran, nth: 0 }
+  # students#4: every bar is named after its talebe, and the one the walk set up (Esma Başvuran, 40) carries that number
+  progressBars: { role: progressbar, name: '/^Talebenin girdiği ilerleme: /', within: { testId: roster-enrolled } }
+  progressEntered: { css: '[role=progressbar][aria-valuenow="40"]', within: { testId: roster-enrolled } }
+  bannedBadge: { css: '.mds-badge', hasText: Yasaklı · Bu ders, within: { testId: roster-completed } }
+  # one button a row; the row being decided is the first one (the walk presses the first item, or the only row a search leaves)
+  complete: { role: button, name: '/^Tamamladı say: /' }
+  remove: { role: button, name: '/^Dersten çıkar: /' }
+  ban: { role: button, name: '/^Yasakla: /' }
+  reopen: { role: button, name: '/^Yeniden aç: /' }
+  banCompleted: { role: button, name: '/^Yasakla: /' }
+  lift: { role: button, name: '/^Yasağı kaldır: /' }
+  rowComplete: { role: button, name: '/^Tamamladı say: /', nth: 0 }
+  rowRemoveBusy: { role: button, name: '/^Dersten çıkar: /', nth: 0 }
+  rowBanBusy: { role: button, name: '/^Yasakla: /', nth: 0 }
+  rowReopen: { role: button, name: '/^Yeniden aç: /', nth: 0 }
+  rowReopenBan: { role: button, name: '/^Yasakla: /', nth: 0 }
+  rowReopenLift: { role: button, name: '/^Yasağı kaldır: /', nth: 0 }
+  # the counter is two numbers in one paragraph
+  showing: { testId: roster-showing, hasText: '/^\d+ talebeden \d+ tanesi gösteriliyor$/' }
+  moreButton: { role: button, name: Daha fazla göster }
+  # the busy button's hidden <output>; every button driven by `loading` draws an empty one, so it is found by its words
+  busyStatus: { css: output, hasText: Yükleniyor }
+
+  # ---- Erişimi kaldırılanlar: the new row, cell by cell (the name is a <th>, the e-mail under it; the day is "Bugün 14:05" or "Dün 18:20") ----
+  removedPerson: { role: rowheader, within: { testId: roster-removed }, hasText: Betül Başvuran }
+  removedEmail: { css: 'bdi[dir=ltr]', within: { testId: roster-removed }, hasText: '{removedAddress}' }
+  removedDay: { role: cell, within: { testId: roster-removed }, hasText: '/^(Bugün|Dün) \d{2}:\d{2}$/' }
+  removedReason: { role: cell, within: { testId: roster-removed }, hasText: '{reasonSaved}' }
+  removedBy: { role: cell, within: { testId: roster-removed }, hasText: '{removerName}' }
+
+  # ---- the dialog: the same words are the row button's text, the dialog's name and the submit's, so each is scoped ----
+  dialog: { role: dialog, name: '/^Dersten çıkar$/' }
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: Deneme dersi rosternizam, within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  dialogTitle: { role: heading, name: '/^Dersten çıkar$/', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: '/^Dersten çıkar$/' } } # every toast has a "Kapat" too
+  body: { text: '/adlı talebe .+ dersinden çıkarılacak/', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  info: { text: Talebe yeniden başvurabilir., within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  requiredNote: { text: '/zorunlu alan/', within: { role: dialog, name: '/^Dersten çıkar$/' } } # "* zorunlu alan": the star is part of the paragraph's text
+  reasonField: { role: textbox, within: { role: dialog, name: '/^Dersten çıkar$/' } } # the only text box of the dialog; its name is the label without the hidden star
+  reasonHelp: { text: 'Gerekçe, Erişimi kaldırılanlar sekmesinde ders kadrosuna görünür.', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: '/^Dersten çıkar$/' } }
+  submit: { role: button, name: '/^Dersten çıkar$/', within: { role: dialog, name: '/^Dersten çıkar$/' } }
+
+  # ---- the toasts: sonner's <li data-sonner-toast>, found by the words of its title and of its description ----
+  toastCompleted: { css: '[data-sonner-toast]', hasText: '/Talebe Tamamlayanlar.a taşındı.* dersi tamamladı\./' }
+  toastReopened: { css: '[data-sonner-toast]', hasText: '/Kayıt yeniden açıldı.* yeniden Kayıtlı sekmesinde\./' }
+  toastRemoved: { css: '[data-sonner-toast]', hasText: '/Talebe dersten çıkarıldı.* Erişimi kaldırılanlar sekmesine taşındı\./' }
+  toastMoved: { css: '[data-sonner-toast]', hasText: '/İşlem tamamlanamadı.*sayfayı yenileyin/' }
+  toastRefused: { css: '[data-sonner-toast]', hasText: '/İşlem tamamlanamadı.*Bu işlem için yetkiniz yok/' }
+  toastBarred: { css: '[data-sonner-toast]', hasText: '/İşlem tamamlanamadı.*You are barred from this course/' }
+  toastFailed: { css: '[data-sonner-toast]', hasText: İşlem tamamlanamadı }
+  toastRemoveMoved: { css: '[data-sonner-toast]', hasText: '/Talebe dersten çıkarılamadı.*sayfayı yenileyin/' }
+  toastRemoveRefused: { css: '[data-sonner-toast]', hasText: '/Talebe dersten çıkarılamadı.*Bu işlem için yetkiniz yok/' }
+  toastRemoveFailed: { css: '[data-sonner-toast]', hasText: Talebe dersten çıkarılamadı }
+
+# What a completion, a reopening and a removal leave outside the screen, read as the SQL the stack's own Postgres answers (helpers/sql.mjs, a select: nothing
+# is written) and through the API. The walk's course holds four talebe, so a completion leaves three enrolled and one completed and a reopening gives it
+# back. The flow's own effects are used, not the action's, because "setEnrollmentStatus" ends in two different ways (a completion and a reopening).
+effects:
+  completedPlain:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{made.course}' and status = 'COMPLETED'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{made.course}' and status = 'ENROLLED'"]
+      expect: '"n":3'
+  completedSearched:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{made.course}' and status = 'COMPLETED'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{made.course}' and status = 'ENROLLED'"]
+      expect: '"n":3'
+  reopened:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{made.course}' and status = 'COMPLETED'"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{made.course}' and status = 'ENROLLED'"]
+      expect: '"n":4'
+  removedToast:
+    # the seat stays as the record: REVOKED, not deleted (students#5: DB REVOKED); the first row of the list is Betül Başvuran (applicantE)
+    - run: [node, helpers/sql.mjs, "select status from enrollments where course_id = '{made.course}' and user_id = '{secret.E2E_APPLICANT_E_SUB}'"]
+      expect: '"status":"REVOKED"'
+    # Erişimi kaldırılanlar reads the audit row: the trimmed reason and who wrote it (students#5: the audit row with the reason and the actor)
+    - run: [node, helpers/api.mjs, koskNazim, GET, '/courses/{made.course}/enrollments/removed']
+      expect: '"reason":"{reasonSaved}"'
+    # RMV-1: the talebe is sent the reason, word for word (course-notifier.ts:72-85)
+    - run: [node, helpers/sql.mjs, "select type, params->>'reason' as reason from notifications where user_id = '{secret.E2E_APPLICANT_E_SUB}' and target_id = '{made.course}' and type = 'REMOVED_FROM_COURSE'"]
+      expect: '"reason":"{reasonSaved}"'
+    # NROS-1: the dialog and the removed tab say the talebe may apply again; the API answers a new application and a leave with 409 and changes nothing
+    - run: [node, helpers/api.mjs, applicantE, POST, '/courses/{made.course}/enroll', --any]
+      expect: 'HTTP 409'
+    - run: [node, helpers/api.mjs, applicantE, DELETE, '/courses/{made.course}/enrollment', --any]
+      expect: 'HTTP 409'

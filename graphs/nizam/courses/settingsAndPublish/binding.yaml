@@ -1,0 +1,145 @@
+# nizam.courses.settingsAndPublish on the local stack: the köşk's nazım (and the başnazım) of "Kubbealtı Köşkü" at http://localhost:4001, and the saves that are accepted.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/settingsAndPublish \
+#     --bind graphs/nizam/courses/settingsAndPublish/binding.yaml --cover transitions --out <scratchpad>/replay/nizam.courses.settingsAndPublish
+#   ... --bind graphs/nizam/courses/settingsAndPublish/binding.refused.yaml --cover transitions ...      (the writes that are refused, and the stale page)
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). The binding loads (`replay <dir> --bind <this file> --emit-spec
+# --out <dir>`, read-only). Every locator, every var and every expectation is from the code, unverified until a walk. binding.common.yaml holds the data, the
+# events, the exits, the locators and the effects the two files share, and settings-data.mjs is the helper of this folder (course, policies, interference, state).
+#
+# What a walk writes, and how it is taken away. Each scenario makes ONE course of its own, "Deneme dersi ssMain", with helpers/course.mjs through
+# settings-data.mjs `up`, in the seed's second köşk ("Kubbealtı Köşkü", `seed.kosk2`, which the same köşk nazım manages and no seeded flow reads): published
+# (a draft for `draft`), one week of two LIVE celses ("Celse 1", "Celse 2"), MUDERRIS its hoca, anyone takes a seat, and from `up --approval` on it asks for approval
+# (set after the two talebe APPLICANT_C and APPLICANT_D took their seats, so they are ENROLLED and the Yayın card has a number to say). A seeded course is never
+# read or changed. The köşk's two policies are recorded by `up` and put back by `down` (`teardown`) exactly as found, each change an audit row: the main story
+# ticks the köşk's "Ders kayıtları herkese açılamaz", and `fixed` and `policyLate` switch its "Kayıt her zaman onaylı" on. `up` removes what a walk that died left,
+# so `setup` is safe to run twice. What a walk cannot undo: the audit rows (course.create, course.update, course.hide, kosk.policy_change, the reads of the page
+# and of the helper's `state`: SETPUB-1) and the invitation mails of the course's celses (course.mjs clears those).
+#
+# Scenarios of this file:
+#   saves      the main story (e2e courses#6, #7, #8, #9)
+#   draft      a draft opens with Yayımla
+#   fixed      the köşk's approval policy holds the box
+#   outsider   e2e courses#20: a talebe is refused by the layout
+# Not bound, with the reason:
+#   - `world: nonManager` (state readLimited): a hoca who is a nazım of another köşk. It needs a third köşk and a course in it whose hoca is KOSK_NAZIM (course.mjs
+#     `--hoca KOSK_NAZIM --kosk <a köşk the başnazım made>`), and the köşk's removal; the first walk phase decides whether it is worth it.
+#   - `count: unread` (the caption without a number): the stats read cannot be made to fail on the stack.
+#   - the exit `load_failed`, and `no_access` for a course of another köşk or an unknown id (nizam.shell.noAccessAndNotFound walks that screen).
+#   - the way back of each press, a second round of edits, and a refusal after the sample landed (flow.yaml `scope.outOfView`).
+#   - the sidebar's and the breadcrumb's `NAVIGATE`: the walk leaves by the address '/bildirimler'.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nizam.courses.settingsAndPublish
+
+# The six writes are Next server actions: a POST to the page's own address, held while the busy screen is checked (Kaydet busy and the controls off, Yayımla busy,
+# the questions' confirming buttons busy). A server action answers 200 whatever the API said, so a refusal cannot be told from its status here: binding.refused.yaml
+# leaves `call` off.
+states:
+  sendingSample: { call: '{nizam}/kosks/*/courses/*/ayarlar' }
+  sendingCourse: { call: '{nizam}/kosks/*/courses/*/ayarlar' }
+  sendingPolicy: { call: '{nizam}/kosks/*/courses/*/ayarlar' }
+  publishing: { call: '{nizam}/kosks/*/courses/*/ayarlar' }
+  drafting: { call: '{nizam}/kosks/*/courses/*/ayarlar' }
+  hiding: { call: '{nizam}/kosks/*/courses/*/ayarlar' }
+
+scenarios:
+  # The main story, e2e courses#6, #7, #8 and #9 as one visit: the köşk's nazım of "Kubbealtı Köşkü" comes from the curriculum of a course of the walk's own to
+  # its "Ders ayarları" (the nav entry), unticks "Kayıt onayı gereksin" (the course asks for approval, as the e2e's does), ticks "Kapalı ders" and "Celseler yüz yüze
+  # yapılır", chooses "Berlin" and "Hafta 1 · Celse 1", ticks the köşk's "Ders kayıtları herkese açılamaz", presses Kaydet, sees the toast, reloads and reads each value
+  # back (the effects read the course and the köşk through the API as the başnazım), takes the course back to draft after the question and the number of the two
+  # enrolled talebe, publishes it again and hides it. `--cover transitions` also walks, from the same course: Vazgeç, Esc on each list, the other way out of each
+  # question (Vazgeç, Kapat), and the link to the public page.
+  saves:
+    given: { world: saves, stored: published, count: read }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/curriculum'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'courseCurriculum->courseSettings Curriculum.settingsLink' }
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --approval, --talebe, 'APPLICANT_C,APPLICANT_D']
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '2', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'none'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: 'unused'
+      expectKosk: '"alwaysRequireApproval":false,"recordingsNeverPublic":false'
+      expectSample: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1"'
+      expectSaved: '"isClosed":true,"requiresApproval":false,"inPerson":true,"timeZone":"Europe/Berlin","sample":"Celse 1"'
+      expectSavedKosk: '"recordingsNeverPublic":true'
+      expectRefused: 'unused'
+
+  # A course that is still a draft: the page opens with "Taslak" and "Yayımla"; the walk publishes it at once (e2e courses#7 a5 and a6, from the other end) and goes on as
+  # the main story does. No talebe is seated, so the caption of the published card says "kayıtlı 0 talebe" (SETPUB-4).
+  draft:
+    given: { world: saves, stored: draft, count: read }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --draft, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'none'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: '"status":"DRAFT"'
+      expectKosk: '"alwaysRequireApproval":false,"recordingsNeverPublic":false'
+      expectSample: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1"'
+      expectSaved: '"isClosed":true,"requiresApproval":false,"inPerson":true,"timeZone":"Europe/Berlin","sample":"Celse 1"'
+      expectSavedKosk: '"recordingsNeverPublic":true'
+      expectRefused: 'unused'
+
+  # The köşk's own policy "Kayıt her zaman onaylı" is on when the page opens: the approval box is ticked and shut with its reason. Read only. The policy is switched on by
+  # `setup` after the course is made and put back by `teardown` (settings-data.mjs `down`), so the köşk's policy is as the walk found it.
+  fixed:
+    given: { world: approvalFixed, stored: published, count: read }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --approval]
+        expect: 'up '
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, policy, approval, 'on']
+        expect: 'policy alwaysRequireApproval on'
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'none'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: 'unused'
+      expectKosk: '"alwaysRequireApproval":true,"recordingsNeverPublic":false'
+      expectSample: 'unused'
+      expectSaved: 'unused'
+      expectSavedKosk: 'unused'
+      expectRefused: 'unused'
+
+  # e2e courses#20: a talebe opens the address of a course's settings. The /kosks layout refuses before the page runs: "Bu bölüm için izniniz yok". The 403 status is the
+  # e2e's and the replay does not read it (NOACC-2 of nizam.shell.noAccessAndNotFound); the words are checked.
+  outsider:
+    given: { world: outsider, stored: published, count: read }
+    as: talebe
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'none'
+      expectLoaded: 'unused'
+      expectLoadedDraft: 'unused'
+      expectKosk: 'unused'
+      expectSample: 'unused'
+      expectSaved: 'unused'
+      expectSavedKosk: 'unused'
+      expectRefused: 'unused'

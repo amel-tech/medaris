@@ -1,0 +1,130 @@
+# What the bindings of nizam.moderation.deleteArchived share: the events no node sends, the address of each screen, the held call of
+# the filter, the locators of the page and the dialog where role and name cannot find a node, and the checks of what a step leaves in
+# the database. It carries no scenario, so it is not walked by itself:
+#   binding.yaml           the başnazım narrows the list to the köşk and the kind of his own hidden course, reads what goes (2 weeks, 4
+#                          celses, 3 talebe records, counted by the setup), cancels once, and deletes it; nothing else is hidden there
+#   binding.rest.yaml      the same, with a second hidden course of the same köşk: the list is shorter afterwards, not empty (listedAfter)
+#   binding.gone.yaml      the item is deleted behind the page's back (GONE_ELSEWHERE): before the count is asked for (the dialog says it
+#                          could not count) and while the dialog is open (the delete answers 404): the "already gone" branch
+#   binding.blocked.yaml   a hidden WEEK that holds a recording: the purge fails and the dialog stays open (MDRS-244)
+# Two scenarios must not share a `given`, and a scenario that adds no transition is never chosen by `--cover transitions` beside the
+# first, so each of the other three has a small file. They share `item: course, rest: none` (binding.yaml and binding.gone.yaml) and are
+# walked one at a time.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/features/archive/components/archive-view.tsx, libs/ui/src/mds/{alert-dialog,select,table,button,alert}.tsx,
+# libs/ui/src/components/sonner.tsx) and is unverified until a walk. Where the walk may need a fix, a comment says so.
+#
+# The row the walk deletes is found by its own title, never by position: the archive is shared by every walk that hides something, so the
+# list holds other people's rows too, and its first ten are whatever was hidden last. The scope select is chosen by the köşk's name ("Kubbealtı
+# Köşkü", the seed's second köşk, which the setup's course sits in), the type select by the kind of the row.
+#
+# --absent: the walk phase asks for it, and two things may need a fix then, both the binding's and not the app's. The row nodes are found by css
+# inside the row that holds this walk's title, and a css locator also finds the row behind an open dialog (the page behind it is inert and
+# aria-hidden, which role locators respect and css ones do not), which `--absent` calls visible in the four dialog states. And a node found by
+# a text a toast also says (toastGoneTitle, toastFailedTitle: "Silinemedi") is told apart by its pattern, not by its place. If a state fails
+# for either reason, walk it without --absent and say so in the walk report.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.moderation.deleteArchived
+
+# the course the setup made: its title, its id, its weeks and its celses, as helpers/course.mjs recorded them
+data:
+  del: { json: ../.local/made/delItem.json }
+
+events:
+  # the selects are Base UI selects: press the combobox, then the option. Each choice reads the list again after 300 ms, as a server
+  # action that `filtering` holds (see states), so the events do not wait for an answer
+  CHOOSE_SCOPE:
+    - click: { role: combobox, name: Kapsam süzgeci }
+    - click: { role: option, name: Kubbealtı Köşkü }
+  CHOOSE_TYPE:
+    - click: { role: combobox, name: Tür süzgeci }
+    - click: { role: option, name: '/^Ders$/' } # "Ders kaydı" is also an option
+  DISMISS: [{ key: Escape }] # Esc closes the dialog; the dialog has the focus, so the key goes to it
+  NAVIGATE: [{ goto: '{nizam}/' }]
+
+states:
+  # the filters are not in the address: every screen of the list is /arsiv
+  listed: { url: '{nizam}/arsiv' }
+  listedAfter: { url: '{nizam}/arsiv' }
+  listEmpty: { url: '{nizam}/arsiv' }
+  # the list is read again by a Next server action: a POST to the page's own address, held while the page is checked. It only ever
+  # answers DONE here (a failed read is not bound), so its status is never compared with a refusal's
+  filtering: { url: '{nizam}/arsiv', call: '{nizam}/arsiv' }
+  left: { url: '{nizam}/' }
+  # refused (a person who is not the başnazım: nizam.shell.noAccessAndNotFound) and read_failed (the stack cannot make a read fail) are not bound
+
+nodes:
+  # ---- the page: a bare role=main is also matched on the page a walk leaves for, so it is told by the table's caption -------------------------------------
+  archivePage: { role: main, hasText: Platformda gizlenenler }
+  # the select's own text is its choice, not its name
+  scopeAll: { role: combobox, name: Kapsam süzgeci, hasText: 'Kapsam: tümü' }
+  scopeChosen: { role: combobox, name: Kapsam süzgeci, hasText: Kubbealtı Köşkü }
+  typeAll: { role: combobox, name: Tür süzgeci, hasText: 'Tür: tümü' }
+  typeCourse: { role: combobox, name: Tür süzgeci, hasText: '/^Ders$/' }
+  typeWeek: { role: combobox, name: Tür süzgeci, hasText: '/^Hafta$/' }
+  # the live count and the line under the table are `<p>`s of the view, found by their test ids
+  count: { testId: archive-count, hasText: '/^\d+ gizli öğe$/' }
+  showing: { testId: archive-shown, hasText: '/^Toplam \d+ öğe, \d+ tanesi gösteriliyor$/' }
+
+  # ---- the row of this walk's own course: every cell is looked for inside the row that holds its title ----------------------------------------------
+  # the row header holds the title and, under it, the grey line; the cells are the köşk, the hider, the day and the buttons, in that order
+  rowTitle: { css: 'bdi.font-semibold', within: { css: '[data-testid=archive] tbody tr', hasText: '{del.title}' } }
+  rowLine: { css: 'th .mds-caption', within: { css: '[data-testid=archive] tbody tr', hasText: '{del.title}' } }
+  rowKosk: { css: 'td:nth-of-type(1) bdi', within: { css: '[data-testid=archive] tbody tr', hasText: '{del.title}' } }
+  rowHider: { css: 'td:nth-of-type(2) bdi', within: { css: '[data-testid=archive] tbody tr', hasText: '{del.title}' } }
+  rowWhen: { css: 'td:nth-of-type(3)', hasText: '/^Bugün \d{2}:\d{2}$/', within: { css: '[data-testid=archive] tbody tr', hasText: '{del.title}' } } # the walk hides it today
+  # the name is "Kalıcı olarak sil: <title>, <line>"; the title alone finds this course's, whatever the other rows are
+  deleteButton: { role: button, name: '/^Kalıcı olarak sil: {del.title}/' }
+  emptyFilteredLine: { css: 'td.mds-table__empty', hasText: Bu süzgece uyan gizli öğe yok }
+
+  # ---- the dialog: every node is looked for inside the alertdialog; the toast's close button is also "Kapat" ------------------------------------------
+  deleteDialog: { role: alertdialog, name: '/^(Dersi|Haftayı) kalıcı olarak sil$/' }
+  dialogEyebrow: { css: 'p.mds-eyebrow', within: { role: alertdialog } }
+  dialogTitle: { role: heading, name: '/^(Dersi|Haftayı) kalıcı olarak sil$/', within: { role: alertdialog } } # oneOf is found by its first text only
+  dialogClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  # "<b>{title}</b> ve ona bağlı her şey kalıcı olarak silinecek. Bu işlem geri alınamaz." is one <p> with the title in <strong>
+  dialogBody: { css: 'p', hasText: '/ ve ona bağlı her şey kalıcı olarak silinecek\. Bu işlem geri alınamaz\.$/', within: { role: alertdialog } }
+  loadingLine: { css: 'p.mds-caption', hasText: Silinecekler hesaplanıyor, within: { role: alertdialog } }
+  impactFailed: { role: status, hasText: Silinecekler hesaplanamadı, within: { role: alertdialog } }
+  impactList: { testId: impact-lines }
+  # the counts are the setup's: 2 weeks and 4 celses (--weeks 2 --lessons 2), 3 talebe (applicantC, applicantD and applicantG), each
+  # checked by the setup against the database before the walk begins. The graph's own pattern would take any number
+  impactWeeks: { css: '[data-testid=impact-lines] li', hasText: 'Ders sayfası, tanıtımı ve 2 haftalık müfredatı' }
+  impactStudents: { css: '[data-testid=impact-lines] li', hasText: '3 talebe kaydı ve talebelerin bu dersteki ilerlemesi' }
+  impactSessions: { css: '[data-testid=impact-lines] li', hasText: '4 celse, celse akışları ve toplantı bağlantıları' }
+  auditNote: { css: 'p', hasText: 'Silme, denetim kaydına adınızla yazılır.', within: { role: alertdialog } }
+  dialogCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  dialogConfirm: { role: button, name: Kalıcı olarak sil, within: { role: alertdialog } }
+  confirmBusy: { role: status, hasText: Yükleniyor, within: { role: alertdialog } } # the <output> beside the busy button; it is there, empty, before
+
+  # ---- the toasts: Sonner's, with no role; a title and a body in one element, so each is found by its words ------------------------------------------------
+  toastDeletedTitle: { css: '[data-sonner-toast]', hasText: Kalıcı olarak silindi }
+  toastDeletedBody: { css: '[data-sonner-toast]', hasText: ve bağlı kayıtları silindi. }
+  # the answer of an item that was gone: "Silinemedi" over "Bu öğe zaten silinmiş ya da artık gizli değil."
+  toastGoneTitle: { css: '[data-sonner-toast]', hasText: '/^Silinemedi.*zaten silinmiş/' }
+  toastGoneBody: { css: '[data-sonner-toast]', hasText: Bu öğe zaten silinmiş ya da artık gizli değil. }
+  # the answer of a refusal: "Silinemedi" over the server's own message, which is not the sentence above
+  toastFailedTitle: { css: '[data-sonner-toast]', hasText: '/^Silinemedi(?!Bu öğe zaten)/' }
+  toastFailedBody: { css: '[data-sonner-toast]', hasText: '/^Silinemedi(?!Bu öğe zaten).+/' }
+
+# What a step leaves in the database, read as the account that did it (e2e archive#8: "the course is gone"). `cancelled` is "Vazgeç": the
+# course is still hidden and still there.
+effects:
+  cancelled:
+    - run: [node, helpers/sql.mjs, "select archived_at is not null as hidden from courses where id = '{del.course}'"]
+      expect: '"hidden":true'
+  # archive#8's last line, and more: the course, its weeks and its talebe records are gone, and one `course.delete` row of the audit log names it
+  deleted:
+    - run: [node, helpers/sql.mjs, "select ((select count(*) from courses where id = '{del.course}') + (select count(*) from course_weeks where course_id = '{del.course}') + (select count(*) from enrollments where course_id = '{del.course}'))::int as n"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'course.delete' and entity_id = '{del.course}'"]
+      expect: '"n":1'
+  # the item was gone before the call: the person who got there first wrote the one audit row, this page wrote none
+  alreadyGone:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where id = '{del.course}'"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'course.delete' and entity_id = '{del.course}'"]
+      expect: '"n":1'

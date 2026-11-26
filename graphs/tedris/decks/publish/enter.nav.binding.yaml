@@ -1,0 +1,13 @@
+# The way into tedris.decks.publish: Desteler, then the card of a deck. tedris.nav's own binding gives no locator for an entry that needs an item
+# (`data: true`), because the item is the walk's to choose, so this file extends it and names the deck the walk made (own-deck.mjs writes its id to
+# graphs/.local/publish-deck.json), found by its address.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+data:
+  pd: { json: ../.local/publish-deck.json }
+
+entries:
+  decks->deck: { css: 'a[href="/decks/{pd.deck}"]' }

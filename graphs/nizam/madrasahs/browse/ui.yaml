@@ -1,0 +1,134 @@
+# The screens of nizam.madrasahs.browse: nizam-web's Medreseler (/medreseler, app/medreseler/page.tsx) as the başnazım and a Medaris nazımı meet
+# it: the page (features/madrasahs/components/madrasahs-view.tsx) with its header, the passive warning, the four tabs and their numbers, the
+# search box, the table with its three empty lines and the box that says the list could not be read. The dialogs its buttons open are the
+# flows that make them (nizam.madrasahs.open, headMuderris, passivate, restore); the shell around the page (sidebar, person row, bell, skip
+# link) is nizam.shell.menuPerPersona's. Read from the code on 15 Nov 2026; nothing was opened in a browser.
+#
+# Words: every `MadrasahsPage.*` key is copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as `nizam.MadrasahsPage`), the key
+# being the path inside that file. The `composed.*` keys are NOT in any i18n file: they are texts the app builds in code from data, written
+# here with their placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.MadrasahsPage.name      a medrese's name, in <bdi> (madrasahs-view.tsx:158)
+#   composed.MadrasahsPage.handle    "@" and its short name, in <bdi dir=ltr> (madrasahs-view.tsx:160)
+#   composed.MadrasahsPage.head      the başmüderris's name (madrasahs-view.tsx:172)
+#   composed.MadrasahsPage.courses   the number of courses that are not hidden (madrasahs-view.tsx:189)
+#   composed.MadrasahsPage.hosting   the köşks that host it, "A ve B" (hostingLabel, present.ts:230; madrasahs-view.tsx:196)
+#   composed.MadrasahsPage.count     a tab's number, a <span class=mds-tab__count>, formatted for the page's language (tabs.tsx:67)
+# The two dates the page spells ({dateAblative}, {dateLocative}) are the Turkish case forms of a day and a month in the viewer's zone
+# (dateWithCase, present.ts:180); the samples say one.
+# The table is Table responsive="stack": the table, its rows and its cells carry explicit roles and each cell a data-label, and the caption
+# that names it is visually hidden (libs/ui/src/mds/table.tsx:94-132).
+# The tab panel (role tabpanel, named by its tab) around the search box and the table, and the aria-busy that wrapper carries while a read
+# is pending, are not drawn; nor is the caption under a table that holds more than 50 rows (data-testid=truncated, MBROWSE-4).
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nizam.madrasahs.browse
+flow: nizam.madrasahs.browse
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek Medrese
+  handle: ornek-medrese
+  head: Örnek Kişi
+  courses: "2"
+  hosting: Örnek Köşk
+  count: "2"
+  names: Örnek Medrese ve İkinci Örnek Medrese
+  dateAblative: 15 Kasım’dan
+  dateLocative: 15 Kasım’da
+
+nodes:
+  # ---- the page: its frame, which every state that draws it shares ----
+  madrasahsPage: { type: page, component: Page, role: main, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: apps/nizam/app/medreseler/page.tsx:51 } # no name and no initialFocus: the shell's <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.title }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:332 } # h1
+  pageIntro: { type: text, component: Text, text: { key: MadrasahsPage.intro }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:333 }
+  openButton: { type: action, component: Button, role: button, intent: confirm, text: { key: MadrasahsPage.open }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], when: mayOpen, emits: OPEN, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336 } # platform.madrasah_create, or a viewer the page could not read (F-W2-2)
+
+  # ---- the warning that names the passive medreses: every passive one, whatever the tab and the text ----
+  passiveWarningOne: { type: alert, component: Alert, role: status, text: { key: MadrasahsPage.passiveTitleOne, params: { name: passive.name } }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "world == 'mixed'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:346 } # data-testid=passive-warning; a warning-tone Alert is a status, not an alert; its title is a <p>, not a heading
+  passiveBodyOne: { type: text, component: Text, text: { key: MadrasahsPage.passiveBodyOne, params: { dateLocative: passive.since } }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "world == 'mixed'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:357 } # says the başmüderris's term ended, whatever made the medrese passive (MBROWSE-1)
+  passiveWarningMany: { type: alert, component: Alert, role: status, text: { key: MadrasahsPage.passiveTitleMany, params: { count: passive.count } }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "world == 'manyPassive'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:351 }
+  passiveBodyMany: { type: text, component: Text, text: { key: MadrasahsPage.passiveBodyMany, params: { names: passive.names } }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "world == 'manyPassive'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:364 } # the names, "A ve B", then the same sentence
+
+  # ---- the section: its heading, the archive link, the tabs and the search ----
+  listSection: { type: page, component: Page, role: region, name: { labelledBy: listHeading }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:371 }
+  listHeading: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.heading }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:376 } # h2
+  archiveLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MadrasahsPage.archive }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], when: mayArchive, emits: OPEN_ARCHIVE, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380 } # a plain <a href="/arsiv">, a full page load; the başnazım's alone, unless the page could not read the person (F-W2-2)
+
+  tabsList: { type: list, component: List, role: tablist, name: { key: MadrasahsPage.tabsLabel }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: libs/ui/src/mds/tabs.tsx:103 } # Base UI tabs, activateOnFocus: the arrow keys move and select, each a navigation (MBROWSE-5)
+  tabAll: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.ALL }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], emits: TAB_ALL, source: libs/ui/src/mds/tabs.tsx:110 } # the selected one is aria-selected, which the graph cannot say; its name ends with the count (F-A-12)
+  tabActive: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.ACTIVE }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], emits: TAB_ACTIVE, source: libs/ui/src/mds/tabs.tsx:110 }
+  tabPassive: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.PASSIVE }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], emits: TAB_PASSIVE, source: libs/ui/src/mds/tabs.tsx:110 }
+  tabHidden: { type: action, component: Button, role: tab, text: { key: MadrasahsPage.tabs.HIDDEN }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], emits: TAB_HIDDEN, source: libs/ui/src/mds/tabs.tsx:110 }
+  tabAllCount: { type: text, component: Text, text: { key: composed.MadrasahsPage.count, params: { count: counts.all } }, in: [listed, emptyStatus, emptySearch, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 } # every medrese's number, whatever the tab and the search; not drawn when the read failed
+  tabActiveCount: { type: text, component: Text, text: { key: composed.MadrasahsPage.count, params: { count: counts.active } }, in: [listed, emptyStatus, emptySearch, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 }
+  tabPassiveCount: { type: text, component: Text, text: { key: composed.MadrasahsPage.count, params: { count: counts.passive } }, in: [listed, emptyStatus, emptySearch, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 }
+  tabHiddenCount: { type: text, component: Text, text: { key: composed.MadrasahsPage.count, params: { count: counts.hidden } }, in: [listed, emptyStatus, emptySearch, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 }
+
+  searchField: { type: field, component: TextField, role: searchbox, text: { key: MadrasahsPage.searchLabel }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:406 } # type=search, named by its aria-label; the placeholder (searchPlaceholder) says "Medrese ya da başmüderris ara"; it follows the address when it changes from outside (the back button), and what is typed reaches the address after 300 ms
+
+  # ---- the box that takes the table's place when the read failed ----
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: MadrasahsPage.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:419 } # an error-tone Alert is announced
+  loadFailedText: { type: text, component: Text, text: { key: MadrasahsPage.loadFailed }, in: [loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:420 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: MadrasahsPage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:421 }
+
+  # ---- the table: named by the caption of the tab, whose empty line says why it holds nothing ----
+  tableAll: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.ALL }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "tab == 'ALL'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 }
+  tableActive: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.ACTIVE }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "tab == 'ACTIVE'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 }
+  tablePassive: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.PASSIVE }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "tab == 'PASSIVE'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 }
+  tableHidden: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.HIDDEN }, in: [listed, emptyStatus, emptySearch, emptyAll], when: "tab == 'HIDDEN'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 }
+  columnMadrasah: { type: text, component: Text, role: columnheader, text: { key: MadrasahsPage.columns.madrasah }, in: [listed, emptyStatus, emptySearch, emptyAll], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:151 }
+  columnHead: { type: text, component: Text, role: columnheader, text: { key: MadrasahsPage.columns.head }, in: [listed, emptyStatus, emptySearch, emptyAll], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:167 }
+  columnCourses: { type: text, component: Text, role: columnheader, text: { key: MadrasahsPage.columns.courses }, in: [listed, emptyStatus, emptySearch, emptyAll], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:186 }
+  columnHosting: { type: text, component: Text, role: columnheader, text: { key: MadrasahsPage.columns.hosting }, in: [listed, emptyStatus, emptySearch, emptyAll], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:193 }
+  columnStatus: { type: text, component: Text, role: columnheader, text: { key: MadrasahsPage.columns.status }, in: [listed, emptyStatus, emptySearch, emptyAll], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:201 }
+  columnActions: { type: text, component: Text, role: columnheader, text: { key: MadrasahsPage.columns.actions }, in: [listed, emptyStatus, emptySearch, emptyAll], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:232 } # its text is visually hidden
+  emptyAllLine: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.emptyAll }, in: [emptyAll], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:320 }
+  emptyStatusLine: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.emptyStatus }, in: [emptyStatus], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:323 }
+  emptySearchLine: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.emptySearch }, in: [emptySearch], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:322 }
+
+  # ---- a row: the cells every row has ----
+  rowName: { type: text, component: Text, role: rowheader, text: { key: composed.MadrasahsPage.name, params: { name: madrasah.name } }, in: [listed], repeat: madrasahs, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:158 } # the row's <th scope=row>: the name, and under it the short name
+  rowHandle: { type: text, component: Text, text: { key: composed.MadrasahsPage.handle, params: { handle: madrasah.handle } }, in: [listed], repeat: madrasahs, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:160 }
+  rowCourses: { type: text, component: Text, role: cell, text: { key: composed.MadrasahsPage.courses, params: { courses: madrasah.courseCount } }, in: [listed], repeat: madrasahs, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:189 } # the courses that are not hidden
+  rowHosting: { type: text, component: Text, role: cell, text: { oneOf: [composed.MadrasahsPage.hosting, MadrasahsPage.noHosting] }, in: [listed], repeat: madrasahs, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:196 } # the köşks that hold an unrevoked right, "A ve B", or "Yok"
+
+  # ---- the başmüderris, by kind of row ----
+  rowHeadActive: { type: text, component: Text, role: cell, text: { key: composed.MadrasahsPage.head, params: { head: madrasah.headMuderris } }, in: [listed], when: showsActive, repeat: madrasahs.active, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:172 } # "Adı bilinmiyor" until the person has signed in once
+  rowHeadHidden: { type: text, component: Text, role: cell, text: { oneOf: [composed.MadrasahsPage.head, MadrasahsPage.unassigned] }, in: [listed], when: showsHidden, repeat: madrasahs.hidden, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:171 }
+  rowUnassigned: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.unassigned }, in: [listed], when: showsPassive, repeat: madrasahs.passive, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:175 }
+  rowTermEnded: { type: text, component: Text, text: { key: MadrasahsPage.termEnded, params: { dateLocative: madrasah.since } }, in: [listed], when: showsPassive, repeat: madrasahs.passive, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:178 } # said of every passive medrese, even one the başnazım passivated (MBROWSE-1)
+
+  # ---- the state, by kind of row ----
+  rowStatusActive: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.status.ACTIVE }, in: [listed], when: showsActive, repeat: madrasahs.active, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:216 } # a secondary Badge
+  rowStatusPassive: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.status.PASSIVE }, in: [listed], when: showsPassive, repeat: madrasahs.passive, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:216 } # a warning Badge with a lock
+  rowSincePassive: { type: text, component: Text, text: { key: MadrasahsPage.since, params: { dateAblative: madrasah.since } }, in: [listed], when: showsPassive, repeat: madrasahs.passive, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:224 }
+  rowStatusHidden: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.status.HIDDEN }, in: [listed], when: showsHidden, repeat: madrasahs.hidden, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:220 } # plain text with an eye-off glyph, no badge
+  rowSinceHidden: { type: text, component: Text, text: { key: MadrasahsPage.since, params: { dateAblative: madrasah.since } }, in: [listed], when: showsHidden, repeat: madrasahs.hidden, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:224 }
+
+  # ---- the buttons of a row, by kind of row and by what the viewer may do ----
+  restoreButton: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.restoreLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.restore }, in: [listed], when: "showsHidden and mayRows", repeat: madrasahs.hidden, emits: RESTORE, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:239 } # busy while the call runs; a row the viewer's kademe may not bring back has a sentence instead (nizam.madrasahs.restore)
+  assignButton: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.assignLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.assign }, in: [listed], when: "showsPassive and mayRows", repeat: madrasahs.passive, emits: ASSIGN, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:258 }
+  nazarLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: MadrasahsPage.openInNazarLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.openInNazar }, in: [listed], when: "showsActive and mayNazar", repeat: madrasahs.active, emits: OPEN_NAZAR, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:270 } # target=_blank rel=noopener noreferrer; the başnazım's, and only while NAZAR_URL is set; its name says the tab is new, which Hesap's buttons do not (ACC-08)
+  changeButton: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.changeLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.change }, in: [listed], when: "showsActive and mayRows", repeat: madrasahs.active, emits: CHANGE, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:283 } # drawn when the row has a başmüderris, which an active row always has
+  passivateButton: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.passivateLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.passivate }, in: [listed], when: "showsActive and mayRows", repeat: madrasahs.active, emits: PASSIVATE, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:300 }
+
+  # ---- the line under the section ----
+  footnote: { type: text, component: Text, text: { key: MadrasahsPage.footnote }, in: [listed, emptyStatus, emptySearch, emptyAll, loadFailed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:450 }
+
+edges:
+  - { labelledBy: [listSection, listHeading] }
+
+rules:
+  - { id: focus-not-set, rule: "Medreseler sets no initial focus (no autoFocus and no focus() in features/madrasahs or app/medreseler), so the page node has no `initialFocus`. A press on a tab or the typing keeps the focus where it was (a soft navigation of the same page), and the recorded silence is not a finding; the inventory does not call it one." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): every row button's aria-label is its visible text, a colon and the medrese's name, and \"Nazar’da aç, yeni sekmede: <ad>\" starts with its visible words and says the tab is new" }
+  - { id: F-W2-2, rule: "madrasahAbilities switches every ability on when the roles or the permission codes could not be read (present.ts:103: `!me || me.systemAdmin || !held`), so a Medaris nazımı who holds one platform.madrasah_* code is offered the buttons of the other two and the Arşiv link, and meets a refusal toast from tedrisat for each. The comment says it is on purpose (\"tedrisat refuses what is not theirs\"). Fix: keep the failure visible (a notice) or hide the buttons. Drawn as the viewer `unread`; the stack cannot make the reads fail, so it is not walked." }
+  - { id: F-W2-10, rule: "After \"Geri al\" or an assignment the row's button is replaced or removed by the refresh and nothing moves the focus; only a toast tells the result and the focus falls to the page (the W5 pattern, F-X-7). The buttons are drawn here and the dialogs and toasts by nizam.madrasahs.restore and nizam.madrasahs.headMuderris; this flow only starts them. Fix: move the focus to the next row's control or the page heading." }
+  - { id: F-A-12, rule: "A tab's content is its label immediately followed by the count <span> with no whitespace (tabs.tsx:65-69, the same component as nazar's Arşiv tabs), so its name can read \"Etkin1\". The e2e finds the number by `.mds-tab__count`, not by the name, and asks the tab by /^Etkin/. Not verified in a browser. Fix: a visually hidden space, or the count in an aria-label." }
+  - { id: MBROWSE-1, rule: "Pasif is told as an ended term and is not one. The only code that makes a medrese passive here is the başnazım's \"Pasife al\", which revokes the başmüderris and sets passive_since and passiveReason DEACTIVATED_BY_ADMIN (madrasah.repository.ts:746-747); the directory sends only `since`, never the reason (madrasah.repository.ts:922, :984), and the page words every passive medrese as \"Görev süresi <tarih> doldu\" (madrasahs-view.tsx:178, present.ts termEndedLabel) and its warning as \"Başmüderrisin görev süresi <tarih> doldu\" (MadrasahsPage.passiveBodyOne). A medrese whose başmüderris's term really ran out (a role row whose expires_at passed) is Etkin here: the status reads passive_since alone (madrasah.repository.ts:849), the başmüderris cell says \"Atanmamış\", and an active row has no \"Başmüderris ata\" (madrasahs-view.tsx:266-309), so the way to it is Pasif kapsamlar. Found by grep for passive_since in apps/tedrisat/src: the only code that sets it for a medrese is deactivate (madrasah.repository.ts:746); setHeadMuderris (:620) and the assignment of an inactive scope (inactive-scope.repository.ts:308) clear it. Not seen in a browser; the stack's walk will show the wording on the medrese it passivates. Fix: send the reason and word by it, and count a medrese with no sitting başmüderris as passive, as Pasif kapsamlar does. Proposed id; not in the inventory (decision D1)." }
+  - { id: MBROWSE-2, rule: "The tab numbers and the passive warning are every medrese's, not what the status and the text leave (directory `counts` and `passive`, madrasah.service.ts:206-209). So \"Tümü 3\" sits over one row after a search, and a text typed in Tümü that finds a hidden medrese shows a row the Etkin tab, with the same text, does not. Nothing says so: the table's hidden caption and the numbers do not change with the text. Proposed id; not in the inventory. Fix: say how many rows fit (\"<n> medrese\") in a status line, or give the numbers the text's meaning." }
+  - { id: MBROWSE-3, rule: "A tab or a search changes the rows and nothing announces it: the wrapper carries aria-busy while the navigation is pending (madrasahs-view.tsx:402), which a screen reader does not read, and no status line or live region says how many rows are left (compare nazar's F-B-4). The e2e waits for the rows to change; a person who cannot see them does not know that they did. Proposed id; not in the inventory. Fix: a visually hidden role=status line with the row count that follows each read." }
+  - { id: MBROWSE-4, rule: "The page asks for 50 rows (DIRECTORY_PAGE_SIZE, reads.ts:14) and never a page: past 50 medreses the table keeps the first 50 by name and a caption says \"Toplam <total> medrese, <shown> tanesi gösteriliyor\" (madrasahs-view.tsx:435-442), with no control to the rest. Only the search (or a tab) reaches them. The stack holds a handful, so it is not walked. Proposed id; not in the inventory. Fix: a pager that sends `page`, which the API already takes." }
+  - { id: MBROWSE-5, rule: "The tab list is Base UI tabs with activateOnFocus (tabs.tsx:105), and each tab's onValueChange is router.push of the new address (madrasahs-view.tsx:111-114): a keyboard user who arrows from Tümü to Gizli reads the directory three times and leaves three history entries, so Back undoes one tab at a time. Not verified in a browser. Proposed id; not in the inventory. Fix: let the arrow keys move the focus and Enter or Space select (manual activation), or replace the entry for a tab as the typing does." }

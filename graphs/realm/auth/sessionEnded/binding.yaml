@@ -1,0 +1,102 @@
+# realm.auth.sessionEnded on the local stack: tedris-web :4000, Keycloak :8080 (realm medaris, the Medaris theme), the talebe account.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/realm/auth/sessionEnded --bind graphs/realm/auth/sessionEnded/binding.yaml [--to <state>]... --out <dir>
+#
+# How the session is ended. The walk signs the talebe in (the base's `signIn`), opens the page, and SESSION_ENDED runs
+# ./end-session.mjs of this folder: through Keycloak's admin REST API (E2E_KEYCLOAK_ADMIN_USER and _PASSWORD of
+# graphs/.local/accounts.env, never printed) it deletes the sessions of the account that started in the last 2 minutes and name
+# tedris-local, which is the walk's own (the account has many older ones: every helper token leaves one), and fails if there were none.
+# MINUTE_PASSES then waits 62 s. The wait is the point: the apps keep the session in the browser's cookie here (no Valkey), and
+# libs/auth's proxy asks Keycloak's userinfo whether the SSO session still exists only once a minute per session (renewal.ts:196-205),
+# so a request sooner than that after the delete is answered as if nothing had happened (measured by hand: GET /api/auth/session read
+# the session for 57 s and null at 70 s). `store: cookie` is what this stack is; the Valkey side of keycloakCallsBack is not walked.
+# Keycloak's back-channel call to the app is not even answered 501 here: its log says "Connect to host.docker.internal:4000 failed:
+# Connection refused". It does not matter to the walk: the proxy's own check ends the session.
+#
+# What is not walked, and why:
+#   - TAB_SHOWN. The engine has no action that shows a tab again or fires `focus`, so the event is bound to `reload`: the page is loaded
+#     anew with the session ended, which is what the SessionProvider does once its read of GET /api/auth/session answers null
+#     (session-context.ts:96-104). The read itself, and the 5-second and hidden-tab guards, are not driven by the replay. They were
+#     driven by hand in a throw-away script (`window.dispatchEvent(new Event("focus"))` on /discover with the session ended: one reload,
+#     then the visitor bar) and are reported as such.
+#   - store: valkey (the 200 of the back-channel logout and the app knowing at once): there is no Valkey here, and Keycloak's call
+#     does not reach the app.
+#   - TOKEN_REFUSED and everything after it (handed_over.reauth): tedrisat verifies the token's signature locally, so a session ended at
+#     Keycloak still passes its check until the token runs out, and nothing local makes it refuse a token Keycloak signed.
+#   - A write inside the first minute (it saves a note: saving's DONE), a link followed there, the app's error box
+#     (realm.auth.signInFailures), the visitor's "Giriş yap" (handed_over.sign_in_link; it joins realm.auth.signIn), `left`.
+#   - nazar and nizam (not drawn).
+# The walk saves nothing: the note is typed and never reaches tedrisat. Nothing to tear down: the walk's browser is discarded, and the
+# ended session was the walk's own.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.sessionEnded
+
+scenarios:
+  # the main story: a talebe on the celse page with a note typed, whose session ends; they press "Notu ekle"
+  celseWrites:
+    given: { page: protectedPage, store: cookie }
+    as: talebe
+    open: '{tedris}/courses/{seed.courses.open}/lessons/{seed.sessions.open.next}'
+    vars: { draft: 'Oturum bitmeden önce yazdığım not.' }
+  # a page a visitor may read: Keşfet. The tab is shown again after the end, and the page renders as the visitor's.
+  discoverStale:
+    given: { page: publicPage, store: cookie }
+    as: talebe
+    open: '{tedris}/discover'
+
+events:
+  # a person's typing is not a node of the graph: the field is filled
+  TYPE_NOTE:
+    - fill: { role: textbox, name: Not, value: '{draft}' }
+  # Keycloak ends the session
+  SESSION_ENDED:
+    - run: [node, ../realm/auth/sessionEnded/end-session.mjs, end, talebe, --client, tedris-local, --within, '120']
+      expect: 'ended talebe'
+  # a minute goes by: the proxy's check of Keycloak is due at the next request (62 s, for a margin over SESSION_CHECK_INTERVAL_MS)
+  MINUTE_PASSES:
+    - run: [sleep, '62']
+  # the SessionProvider's read answered null and the page reloaded; the read is not driven (see above)
+  TAB_SHOWN:
+    - reload: true
+  # closing the page, as the other bindings of this folder's neighbours do it
+  NAVIGATE:
+    - goto: 'about:blank'
+
+states:
+  # the start route: GET /api/auth/signin answers 303 (a redirect is not an error to the call check)
+  startingSignIn: { call: '{tedris}/api/auth/signin**' }
+  # Where the three ways end. Keycloak's form is where the round trip rests, so the address check waits for it (the app's own sign-in
+  # page moves on to the start route by itself within a second); that the page was named on the way is checked on the wire, from the
+  # responses the browser had since the step: the sign-in page served for the address the person asked for, then the start route
+  # with the same callbackUrl, answered 303.
+  handed_over.sign_in_form:
+    url: '{keycloak}/realms/medaris/**'
+    before:
+      - waitResponse: { url: '{tedris}/api/auth/signin?callbackUrl=%2Fcourses%2F{seed.courses.open}%2Flessons%2F{seed.sessions.open.next}&locale=tr**', status: 303 }
+  handed_over.sign_in_page_reload:
+    url: '{keycloak}/realms/medaris/**'
+    before:
+      - waitResponse: { url: '{tedris}/auth/signin?callbackUrl=%2Fcourses%2F{seed.courses.open}%2Flessons%2F{seed.sessions.open.next}**', status: 200 }
+      - waitResponse: { url: '{tedris}/api/auth/signin?callbackUrl=%2Fcourses%2F{seed.courses.open}%2Flessons%2F{seed.sessions.open.next}&locale=tr&auto=1**', status: 303 }
+  handed_over.sign_in_page_link:
+    url: '{keycloak}/realms/medaris/**'
+    before:
+      - waitResponse: { url: '{tedris}/auth/signin?callbackUrl=%2Fmy-courses**', status: 200 }
+      - waitResponse: { url: '{tedris}/api/auth/signin?callbackUrl=%2Fmy-courses&locale=tr&auto=1**', status: 303 }
+  handed_over.sign_in_link:
+    url: '{keycloak}/realms/medaris/**'
+  left: { url: 'about:blank' }
+
+# What the end leaves at Keycloak, read through the admin API after the step: none of the sessions the helper ended is left.
+effects:
+  endsAtKeycloak:
+    - run: [node, ../realm/auth/sessionEnded/end-session.mjs, gone, talebe]
+      expect: 'gone talebe 0/'
+
+nodes:
+  # two pages, each with a <main>: told apart by what is in them
+  celsePage: { role: main, hasText: Notlarım }
+  discoverPage: { role: main, hasText: Keşfet }
+  # "Derslerim" is the bar's link to /my-courses, in the nav "Ana menü"
+  coursesLink: { role: link, name: Derslerim, within: { role: navigation, name: Ana menü } }

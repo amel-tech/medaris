@@ -1,0 +1,31 @@
+# tedris.celse.attend on the local stack (graphs/README.md, "The stack and the bindings"): the celse page of tedris-web on :4000 as the
+# spare talebe `applicantE` (a woman, every profile attribute set, no enrolment anywhere), whom `setup` seats in a course of the walk's own.
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/attend --bind graphs/tedris/celse/attend/binding.yaml --out <dir>
+# This file is the main story, scenario `opening`: the celse that begins in eight minutes, so the join window is open. The other standings
+# have a small file each (binding.live.yaml, binding.liveStream.yaml, binding.inPersonStream.yaml, binding.over.yaml, binding.ahead.yaml,
+# binding.inPerson.yaml, binding.noLink.yaml, binding.exam.yaml); the data, the exits and the locators are in locators.binding.yaml, read its header first.
+#
+# The walk's page is opened by its address: the course's page is reached by other flows, and the entry `course->celse` of tedris.nav needs
+# the celse to be chosen from the programme. A walk that came in through the nav would first have to find a row of a programme whose
+# celses are all minutes from now; not done.
+#
+# Not bound, so the replay cannot reach them (reported): CLOCK (nothing the walk presses moves the page's own clock), OPEN_NEIGHBOUR and
+# the exits that leave for other flows' pages (their nodes are found; pressing them is a later walk), WRITE_NOTE (the notes panel is the
+# writing flows' node), `locked_shown`, `cancelled_shown` and `not_found` (other people's pages and a failed read: nothing here makes one).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.attend
+
+scenarios:
+  opening:
+    given: { access: open, standing: opening, means: link, place: online, agenda: listed, resources: listed, exam: none, neighbours: next }
+    as: applicantE
+    open: '{tedris}/courses/{att.course}/lessons/{att.opening}'
+    vars: { steps: 3 }
+    setup:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, up]
+        expect: 'attend-data up'
+    teardown:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, down]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

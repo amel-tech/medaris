@@ -1,0 +1,20 @@
+# tedris.course.readProgramme as a talebe whose seat the course team took away (e2e course#9): the lock card and "Derslerime dön", no
+# next-celse card, the programme locked. Same course, data and locators as binding.yaml (see its header); the scenario is the only
+# difference.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/readProgramme --bind graphs/tedris/course/readProgramme/binding.revoked.yaml \
+#     --to curriculum --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.readProgramme
+
+scenarios:
+  revoked:
+    given: { read: ok, who: revoked, ahead: noLink, course: rich, tabParam: none, views: none }
+    as: applicantA
+    open: '{tedris}/courses/{prog.course}'
+    setup:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, make]
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, seat, REVOKED]
+    teardown:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, remove]

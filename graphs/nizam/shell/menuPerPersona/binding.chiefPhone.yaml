@@ -1,0 +1,17 @@
+# nizam.shell.menuPerPersona for the başnazım on a phone (390 x 844), as shell#9 does: the sheet holds the whole menu and the role line
+# "Medaris başnazımı", and has no picker ("Köşk değiştir" is nowhere in it). It makes and removes nothing.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.chiefPhone.yaml \
+#     --to sheet --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 390, height: 844 }
+
+scenarios:
+  chiefPhone:
+    given: { opensAt: phone, who: chief, unread: none, waiting: none }
+    as: systemAdmin
+    open: '{nizam}/'

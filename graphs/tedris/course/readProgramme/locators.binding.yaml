@@ -1,0 +1,98 @@
+# What tedris.course.readProgramme's bindings share: the address of each exit, the events no node sends, and where role and name
+# cannot find a node of the course page (or would find several). It carries no scenario, so it is not walked by itself:
+#   binding.yaml          the talebe who holds a seat (the main story) and the one who completed the course
+#   binding.locked.yaml   the talebe whose seat was taken away and the one whose application waits: the locked programme
+#   binding.passive.yaml  the enrolled talebe of a passive scope (PROG-2, MDRS-265)
+# A scenario is in its own file, because `--to <state>` takes the shortest way from the first scenario that reaches the state, and
+# the states here are the same for every relation to the course; a file that holds one relation walks that one.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.course.readProgramme
+
+browser: { width: 1280, height: 900 }
+
+# The course of the walk is graphs/.local/read-programme.json, written by programme-data.mjs (this folder). Its ids are read after the
+# scenario's `setup` has run.
+data:
+  prog: { json: ../.local/read-programme.json }
+
+events:
+  # the page is read again: the address stays what it was, so the tab is chosen from it once more (PROG-1)
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  # An exit has no nodes, so its address is all the replay can check. The tabs and the menus open on the course page itself.
+  celse_opened: { url: '{tedris}/courses/{prog.course}/lessons/{prog.next}' }
+  celse_locked_opened: { url: '{tedris}/courses/{prog.course}/lessons/**' }
+  recordings_tab_opened: { url: '{tedris}/courses/{prog.course}' }
+  deck_tab_opened: { url: '{tedris}/courses/{prog.course}' }
+  questions_tab_opened: { url: '{tedris}/courses/{prog.course}' }
+  grades_tab_opened: { url: '{tedris}/courses/{prog.course}' }
+  leave_menu_opened: { url: '{tedris}/courses/{prog.course}' }
+  calendar_menu_opened: { url: '{tedris}/courses/{prog.course}' }
+  my_courses_opened: { url: '{tedris}/my-courses' }
+  kosk_opened: { url: '{tedris}/kosks/{seed.kosk2}' }
+  not_found_page: { url: '{tedris}/courses/**' }
+  error_page: { url: '{tedris}/courses/**' }
+  left: { url: '{tedris}/discover' }
+
+# Where role and name cannot find a node, or would find several. A node whose words carry a placeholder with no value here is found
+# by a pattern of its words (the engine's default), which is too wide for a name that is a title: those are found by the kit's own
+# hooks (the classes the week accordion and the lesson row draw), by the address a link goes to, or by the card's place.
+nodes:
+  # the celse page has a <main> of its own; the tab list is only on the course page
+  coursePage: { css: 'main:has([role=tablist])' }
+  courseTitle: { role: heading, name: '{prog.title}' }
+  # the köşk's name is the breadcrumb's first item and the first link of the line under the title
+  breadcrumbKosk: { role: link, name: Kubbealtı Köşkü, within: { role: navigation, name: Sayfa yolu } }
+  koskLink: { css: 'p.mds-body-sm a[href^="/kosks/"]' }
+  # "4 hafta", "7 celse", "6 saat": spans of one line
+  weeksCount: { text: '/^\d+ hafta$/' }
+  sessionsCount: { text: '/^\d+ celse$/' }
+  hoursCount: { text: '/^\d+ saat$/' }
+  # the card is the page's one <aside>
+  card: { css: 'main aside' }
+  # "Devam ediyor" is also the badge of the week in progress, lower on the page: the card's is the one in the aside
+  statusBadge: { text: Devam ediyor, within: { css: 'main aside' } }
+  seatNextEyebrow: { css: 'main aside p.mds-eyebrow' }
+  seatNextDay: { css: 'main aside .mds-card:nth-of-type(1) .mds-badge--secondary' }
+  seatNextTitle: { css: 'main aside h2.mds-h3[dir=auto]' }
+  seatNextWhen: { css: 'main aside p.mds-num' }
+  completedNote: { text: '/^Ders kadrosu .+ onayladı\. Ders sürerken celselere ve ders kayıtlarına erişimin sürer\.$/' }
+  pendingSubmitted: { text: '/^Başvurun .+ ders kadrosuna iletildi\. Onaylandığında bildirim alırsın\.$/' }
+  lockedNextDay: { css: 'main aside .mds-card:nth-of-type(2) .mds-badge--secondary' }
+  lockedNextCelse: { css: 'main aside p.mds-h3' }
+  lockedNextMeta: { text: '/^Hafta \d+ · \d+ dk$/' }
+  # the resources card sits beside the aside, not in it; a locked row is not a link
+  resourceLink: { css: '[data-testid=course-resources] a[href="https://example.com/okuma-listesi"]' }
+  resourceName: { css: '[data-testid=course-resources] li:not(:has(a))' }
+  # the programme: the week accordion's and the lesson row's own classes
+  programmeSummary: { text: '/^\d+ hafta · \d+ celse · saatler .+ saatiyle$/' }
+  assignmentsPending: { testId: assignments-pending }
+  weekToggle: { css: '.mds-week__trigger', count: 4 }
+  # the first week that is shut at first, for a seat holder (it has not begun) and for anyone else (it is locked): the third
+  openShutWeek: { css: '.mds-week[data-week="3"] .mds-week__trigger[aria-expanded=false]' }
+  closeShutWeek: { css: '.mds-week[data-week="3"] .mds-week__trigger[aria-expanded=true]' }
+  weekEnded: { css: '.mds-week__trigger .mds-badge--success' }
+  weekActive: { css: '.mds-week__trigger .mds-badge--brand' }
+  weekOpensOn: { css: '.mds-week__trigger time[datetime]' }
+  weekMeta: { css: '.mds-week__trigger .mds-week__meta > span:last-child' }
+  lessonLink: { css: '.mds-lesson-row .mds-lesson-row__title[href*="/lessons/"]' }
+  lessonLocked: { css: '.mds-lesson-row.is-locked span.mds-lesson-row__title' }
+  nextMarker: { css: '.mds-lesson-row__marker' }
+  sampleRow: { css: '.mds-lesson-row .mds-lesson-row__title[href="#ornek-celse"]' }
+  sampleMark: { text: Örnek celse · Canlı ders }
+  cancelledBadge: { css: '.mds-lesson-row__trailing .mds-badge', hasText: İptal edildi }
+  cancelNote: { css: '.mds-lesson-row__note' }
+  examBadge: { testId: exam-badge }
+  homeworkPendingMark: { css: '[data-testid=assignment-mark]', hasText: '/^Ödev teslim edilmedi$/' }
+  homeworkMark: { css: '[data-testid=assignment-mark]', hasText: '/^Ödev$/' }
+  # the block "Örnek celse" under the tabs
+  sampleWeek: { css: '#ornek-celse p.mds-eyebrow' }
+  sampleTitle: { css: '#ornek-celse h3' }
+  agendaStep: { css: '#ornek-celse ol li' }
+  sampleSource: { css: '#ornek-celse p.mbs-2' }
+  # the tab Hocalar: one compact card each
+  teacherCard: { css: '[role=tabpanel] .mds-card p.mds-body' }

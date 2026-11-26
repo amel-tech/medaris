@@ -29,6 +29,7 @@ import { FileErrorNotice } from "./file-error-notice";
 import { LessonNotes } from "./lesson-notes";
 import { SessionActionCard, type WatchPoster } from "./session-action-card";
 import { SessionAgenda } from "./session-agenda";
+import { SessionExam } from "./session-exam";
 import { SessionHeader } from "./session-header";
 import { SessionHomework } from "./session-homework";
 import { SessionPager } from "./session-pager";
@@ -60,11 +61,14 @@ export const SessionPage = async ({
   session,
   koskName,
   now,
+  examEntry,
 }: {
   course: CourseDetailResponse;
   session: SessionResponse;
   koskName: string | null;
   now: Date;
+  /** An online exam's "Sınava gir" (MDRS-299), drawn under the exam's card. */
+  examEntry?: ReactNode;
 }) => {
   const t = await getTranslations("tedris");
   const fileErrors = await getTranslations("tedrisLearn.FileDownload");
@@ -155,7 +159,11 @@ export const SessionPage = async ({
       />
     ) : null;
 
-  const cancellation: ReactNode = cancelled ? (
+  // MDRS-248: the note the müderris wrote for talebe when cancelling, whole,
+  // above what follows from the cancellation. This page is where the note is
+  // read in full: it is never cut here.
+  const cancelNote = cancelled ? session.cancelReason?.trim() || null : null;
+  const afterCancel: ReactNode = cancelled ? (
     replacement?.startsAt ? (
       <>
         {t.rich("SessionPage.replacement", {
@@ -179,6 +187,20 @@ export const SessionPage = async ({
       t("SessionPage.noReplacement")
     )
   ) : null;
+  const cancellation: ReactNode = cancelNote ? (
+    <>
+      <span
+        className="block whitespace-pre-line break-words"
+        dir="auto"
+        data-testid="cancel-note"
+      >
+        {t("SessionPage.cancelNote", { note: cancelNote })}
+      </span>
+      {afterCancel}
+    </>
+  ) : (
+    afterCancel
+  );
 
   const time = session.startsAt
     ? celseTimeWords(session.startsAt, session.durationMinutes, {
@@ -247,6 +269,31 @@ export const SessionPage = async ({
         cancellation={cancellation}
         contentLocked={session.contentLocked}
         labels={sessionActionLabels(t)}
+      />
+    ) : null;
+
+  // An exam celse (MDRS-248): its form, its place and its topics.
+  const exam =
+    session.exam && !cancelled ? (
+      <SessionExam
+        exam={session.exam}
+        labels={{
+          title: t(
+            session.exam.isRetake
+              ? "CoursePage.retakeBadge"
+              : "CoursePage.examBadge"
+          ),
+          format: t(
+            session.exam.format === "ORAL"
+              ? "SessionPage.examOral"
+              : session.exam.format === "MULTIPLE_CHOICE"
+                ? "SessionPage.examMultipleChoice"
+                : "SessionPage.examWritten"
+          ),
+          maxScore: t("SessionPage.examMaxScore", {
+            max: session.exam.maxScore,
+          }),
+        }}
       />
     ) : null;
 
@@ -327,6 +374,10 @@ export const SessionPage = async ({
       />
 
       {card}
+
+      {exam}
+
+      {cancelled ? null : examEntry}
 
       {notes}
 

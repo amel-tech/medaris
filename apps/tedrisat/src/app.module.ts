@@ -8,6 +8,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { AppealModule } from "./appeal/appeal.module";
 import { ArchiveModule } from "./archive/archive.module";
 import { AssignmentModule } from "./assignment/assignment.module";
 import { AuditModule } from "./audit/audit.module";
@@ -19,6 +20,8 @@ import { CourseModule } from "./course/course.module";
 import { CourseRequestModule } from "./course-request/course-request.module";
 import { DatabaseModule } from "./database/database.module";
 import { DeckReviewModule } from "./deck-review/deck-review.module";
+import { EvaluationModule } from "./evaluation/evaluation.module";
+import { ExamModule } from "./exam/exam.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { HostingModule } from "./hosting/hosting.module";
@@ -30,12 +33,14 @@ import { KoskApplicationModule } from "./kosk-application/kosk-application.modul
 import { LessonNoteModule } from "./lesson-note/lesson-note.module";
 import { LessonQuestionModule } from "./lesson-question/lesson-question.module";
 import { LessonSubmissionModule } from "./lesson-submission/lesson-submission.module";
+import { LessonViewModule } from "./lesson-view/lesson-view.module";
 import { MadrasahCourseModule } from "./madrasah/course/madrasah-course.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
 import { MadrasahNazirModule } from "./madrasah/nazir/madrasah-nazir.module";
 import { MadrasahPortalModule } from "./madrasah/portal/madrasah-portal.module";
 import { NizamDashboardModule } from "./nizam-dashboard/nizam-dashboard.module";
 import { NotificationModule } from "./notification/notification.module";
+import { OnlineExamModule } from "./online-exam/online-exam.module";
 import { PlatformPolicyModule } from "./platform-policy/platform-policy.module";
 import { ScheduleModule } from "./schedule/schedule.module";
 import { UserModule } from "./user/user.module";
@@ -66,8 +71,11 @@ import { UserModule } from "./user/user.module";
     HostingModule,
     CourseModule,
     LessonNoteModule,
+    LessonViewModule,
     LessonQuestionModule,
     LessonSubmissionModule,
+    EvaluationModule,
+    ExamModule,
     CalendarFeedModule,
     KoskApplicationModule,
     NotificationModule,
@@ -84,12 +92,15 @@ import { UserModule } from "./user/user.module";
     AuditModule,
     PlatformPolicyModule,
     CourseRequestModule,
+    AppealModule,
     BanModule,
     NizamDashboardModule,
     UserModule,
     // Partner enrollments: `/integrations/*`, the course's partner codes and
     // nizam's "Ortak uygulamalar".
     IntegrationModule,
+    // Online multiple-choice exams (MDRS-299), last so their routes come last in the OpenAPI document.
+    OnlineExamModule,
   ],
   controllers: [AppController],
   providers: [AppService],

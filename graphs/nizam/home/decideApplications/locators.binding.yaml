@@ -1,0 +1,90 @@
+# What the walks of nizam.home.decideApplications share: the data they read, where the page's nodes are found where role and name
+# cannot find them, the pages' addresses, and the checks of what a decision leaves behind. Nothing here changes data; each scenario
+# (binding.yaml, binding.gone.yaml, binding.barred.yaml, binding.passive.yaml) makes its own course and removes it.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and
+# the catalog; none was seen in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.home.decideApplications
+
+# a wide window, so that the sidebar (where the badge is) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+# The courses of the walks, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes. A tag is not the
+# start of another, so removing one never clears another's mails.
+data:
+  nhdMain: { json: ../.local/made/nhdMain.json }
+  nhdLocked: { json: ../.local/made/nhdLocked.json }
+  nhdGone: { json: ../.local/made/nhdGone.json }
+  nhdBarred: { json: ../.local/made/nhdBarred.json }
+  nhdPassive: { json: ../.local/made/nhdPassive.json }
+
+events:
+  NAVIGATE: [{ goto: '{nizam}/bildirimler' }]
+  # a field the person types in has no node that sends an event: the binding fills it in (the dialog's textarea)
+  WRITE_REASON:
+    - fill: { role: textbox, name: '/^Ret gerekçesi/', value: '{reason}' }
+
+# `no_access` and `load_failed` are not bound: the first is nizam.home.koskNazimLanding's walk (another köşk's home), the second needs
+# tedrisat to fail a read, which the stack cannot be made to do. The two decisions are Next server actions: a POST to the page's own
+# address, held while the busy state is checked. (The page's own reads are GETs with a query, so the glob, which is anchored, matches
+# only the POST.) A server action answers 200 on that address, whatever the API said, so a walk through FAIL.<class> reports "HTTP 200"
+# for the status it compares: an engine limit, not the app.
+states:
+  listed: { url: '{nizam}/kosks/*/ana-sayfa' }
+  empty: { url: '{nizam}/kosks/*/ana-sayfa' }
+  locked: { url: '{nizam}/kosks/*/ana-sayfa' }
+  approving: { call: '{nizam}/kosks/*/ana-sayfa' }
+  rejecting: { call: '{nizam}/kosks/*/ana-sayfa' }
+  left: { url: '{nizam}/bildirimler' }
+
+# Where role and name cannot find a node. The page's <main> is also matched on the page a walk leaves for, so it is found by a word of
+# its own. The names of a row end with the walk's course ("Deneme dersi nhdMain"): every spare account has the surname Başvuran, and the
+# seed's own waiting application is not in a köşk the walks use, so a row of another person is never pressed. The page lists newest
+# first and a repeated node is pressed on its first item, so a walk decides the application that was made last; the busy row is that
+# first item (`nth: 0`).
+nodes:
+  homePage: { role: main, hasText: Bekleyen başvuru }
+  # the Stat is a caption and a value in two spans of one card: the value is found inside the card that holds the caption
+  pendingNumber: { css: .mds-stat__value, hasText: '/^\d+$/', within: { css: .mds-stat, hasText: Bekleyen başvuru } }
+  # the link's name carries the number and its hidden word, so it is found by its beginning; the badge is the number's own span
+  sidebarApplications: { role: link, name: '/^Başvurular/', within: { role: navigation, name: Ana menü } }
+  sidebarBadge: { css: .mds-nav-item__count, hasText: bekleyen, within: { role: navigation, name: Ana menü } }
+  approve: { role: button, name: '/^Onayla: .+, Deneme dersi nhd\w+$/' }
+  reject: { role: button, name: '/^Reddet: .+, Deneme dersi nhd\w+$/' }
+  rowApprove: { role: button, name: '/^Onayla: .+, Deneme dersi nhd\w+$/', nth: 0 }
+  rowReject: { role: button, name: '/^Reddet: .+, Deneme dersi nhd\w+$/', nth: 0 }
+  # the hidden <output> beside a busy button; the other rows' are empty
+  rowBusy: { css: output, hasText: Yükleniyor }
+  submitBusyStatus: { css: output, hasText: Yükleniyor, within: { role: dialog, name: Başvuruyu reddet } }
+  # the field the dialog's WRITE_REASON types in: the same locator as the event's `fill`, so that the replay stops comparing its (empty)
+  # value once it has typed there
+  reasonField: { role: textbox, name: '/^Ret gerekçesi/' }
+  # a toast's own "Kapat" is a button of the same name: the dialog's buttons are found inside the dialog
+  rejectEyebrow: { css: .mds-eyebrow, within: { role: dialog, name: Başvuruyu reddet } }
+  rejectClose: { role: button, name: Kapat, within: { role: dialog, name: Başvuruyu reddet } }
+  rejectCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Başvuruyu reddet } }
+  rejectSubmit: { role: button, name: '/^Reddet$/', within: { role: dialog, name: Başvuruyu reddet } }
+  rejectSubmitBusy: { role: button, name: '/^Reddet$/', within: { role: dialog, name: Başvuruyu reddet } }
+  # The toasts are found by their own classes, not by role: while the dialog is open the rest of the page is inert and whether the
+  # toast's viewport is still reachable by role is not known (not verified).
+  toastApproved: { css: .mds-toast--success, hasText: Başvuru onaylandı }
+  toastRejected: { css: .mds-toast--success, hasText: Başvuru reddedildi }
+  toastGone: { css: .mds-toast--error, hasText: artık bekleyenler arasında değil }
+  toastRefused: { css: .mds-toast--error, hasText: karar verme yetkiniz yok }
+  toastFailed: { css: .mds-toast--error, hasText: Beklenmeyen bir hata }
+
+# What a decision leaves outside the screen, read through the database (the course is the scenario's own). Each holds whichever of the
+# decisions came first, so a walk that takes the two in another order passes too (dashboard#5 and #6 pinned one seat, one deleted row and
+# the audit row with its reason or none).
+effects:
+  approved:
+    - run: [node, helpers/sql.mjs, "select (count(*) > 0) as seated from enrollments where course_id = '{course}' and status = 'ENROLLED'"]
+      expect: '"seated":true'
+  rejectedWithReason:
+    - run: [node, helpers/sql.mjs, "select (count(*) > 0) as kept from audit_log where action = 'enrollment.reject' and entity_id = '{course}' and details->>'reason' = 'Ön koşul sağlanmıyor.'"]
+      expect: '"kept":true'
+  rejectedWithNone:
+    - run: [node, helpers/sql.mjs, "select (count(*) > 0) as bare from audit_log where action = 'enrollment.reject' and entity_id = '{course}' and details->>'reason' is null"]
+      expect: '"bare":true'

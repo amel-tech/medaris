@@ -1,0 +1,133 @@
+# realm.auth.signInFailures on the local stack: tedris-web :4000, nizam-web :4001, nazar-web :4002, Keycloak :8080 (realm medaris,
+# the Medaris theme). Nobody signs in first (`signIn: false`): a scenario opens an address as a visitor, or types an account's
+# address and password into Keycloak's real form (as realm.auth.signIn does). `as` only says whose {address} and {password} are.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/realm/auth/signInFailures --bind graphs/realm/auth/signInFailures/binding.yaml --out <dir> [--to <state>]
+# It extends tedris's file, which lists every app (the first only matters to a navigation replay).
+#
+# What the stack can walk, and what was walked (the status of each scenario is in the report of the replay phase; this file says what
+# it is meant to drive):
+#   tedrisAccessDenied   the main story: a final code, tedris's box, "Ana sayfaya dön". Needs no Keycloak.
+#   nizamConfiguration   nizam's box for a final code and its way home (nizam shows its welcome page).
+#   nazarSignInLimit     nazar's box (a main landmark) and its way home, which nazar's gate sends on to Keycloak (SIF-4).
+#   tedrisAutoRetry      a retryable code with the retry fresh: the page starts the round trip by itself and hands over.
+#   lockedApplicantB     Keycloak's pause: before the form is posted a helper makes applicantB's pause (two wrong passwords through
+#                        the real form), the walk types the right password and meets the pause text; LOCK_ENDS is bound to the
+#                        admin API's unlock; the next press goes through. applicantB is the one spare account the brief allows; it is
+#                        unlocked again in `setup` and `teardown`.
+#   disabledAccount      a throwaway user that is switched off (made and removed through the admin API by kc.mjs, its address and a
+#                        random password in graphs/.local/sign-in-failures.env, which is git-ignored); the walk types them and meets
+#                        "Hesap devre dışı".
+#   requestRefused       Keycloak's error page by an address that carries a redirect address the client does not allow.
+#   cookieBlocked        the same page for a form address opened with no cookie (a fresh browser).
+# NOT bound: pageExpired (login-page-expired.ftl is the answer to a POST of a form whose code ran out or was replayed from the Back
+# button; the walk has no history step and no five-minute wait, and a GET of the stale address shows the form with Keycloak's own
+# alert instead), the retry-spent states of the apps' boxes (they need a second visit to the sign-in page in the same tab: see
+# tedrisRetrySpent, written but not driven), and SignInLimit from a spent budget (the stack raises both budgets to 1000 a minute).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.signInFailures
+
+# kc.mjs writes the throwaway user's address and password here and removes the file again; the walk reads them from it. A source
+# whose file does not exist yet is allowed. Paths are relative to graphs/bindings/ (the base's root).
+data:
+  sif: { dotenv: ../.local/sign-in-failures.env }
+
+accounts:
+  disabledUser:
+    address: '{sif.SIF_DISABLED_EMAIL}'
+    password: '{sif.SIF_DISABLED_PASSWORD}'
+    entry: '{tedris}'
+
+# `vars`: appUrl is the app the person signs in to, homeAt where "Ana sayfaya dön" ends, prepare what kc.mjs does to the world just
+# before the form is posted (`lock` the account of `lockee`, or `none`), lockee the account that is locked and unlocked.
+scenarios:
+  tedrisAccessDenied: # the main story
+    given: { app: tedris, cause: AccessDenied, retry: fresh, session: none }
+    open: '{tedris}/auth/signin?error=AccessDenied'
+    vars: { appUrl: '{tedris}', homeAt: '{tedris}/discover' }
+  nizamConfiguration:
+    given: { app: nizam, cause: Configuration, retry: fresh, session: none }
+    open: '{nizam}/auth/signin?error=Configuration'
+    vars: { appUrl: '{nizam}', homeAt: '{nizam}/' }
+  nazarSignInLimit:
+    given: { app: nazar, cause: SignInLimit, retry: fresh, session: none }
+    open: '{nazar}/auth/signin?error=SignInLimit'
+    vars: { appUrl: '{nazar}', homeAt: '{keycloak}/realms/medaris/**' }
+  tedrisAutoRetry: # the first visit with a retryable code spends the tab's retry and goes to Keycloak at once
+    given: { app: tedris, cause: OAuthCallback, retry: fresh, session: none }
+    open: '{tedris}/auth/signin?error=OAuthCallback'
+    vars: { appUrl: '{tedris}' }
+  tedrisRetrySpent: # written, not driven: the second visit in the same tab, after the first one went to Keycloak
+    given: { app: tedris, cause: OAuthCallback, retry: spent, session: none }
+    open: '{tedris}/auth/signin?error=OAuthCallback'
+    vars: { appUrl: '{tedris}', again: '{tedris}/auth/signin?error=OAuthCallback' }
+  lockedApplicantB:
+    given: { app: tedris, cause: accountLocked, retry: fresh, session: none }
+    as: applicantB
+    signIn: false
+    open: '{tedris}/my-courses'
+    vars: { appUrl: '{tedris}', prepare: lock, lockee: applicantB }
+    setup:
+      - run: [node, ../realm/auth/signInFailures/kc.mjs, unlock, applicantB]
+    teardown:
+      - run: [node, ../realm/auth/signInFailures/kc.mjs, unlock, applicantB]
+  disabledAccount:
+    given: { app: tedris, cause: accountDisabled, retry: fresh, session: none }
+    as: disabledUser
+    signIn: false
+    open: '{tedris}/my-courses'
+    vars: { appUrl: '{tedris}', prepare: none, lockee: applicantB }
+    setup:
+      - run: [node, ../realm/auth/signInFailures/kc.mjs, make-disabled]
+        expect: make-disabled
+    teardown:
+      - run: [node, ../realm/auth/signInFailures/kc.mjs, drop-disabled]
+  requestRefused: # Keycloak's error page: a redirect address the client does not allow
+    given: { app: tedris, cause: requestRefused, retry: fresh, session: none }
+    open: '{keycloak}/realms/medaris/protocol/openid-connect/auth?client_id=tedris-local&redirect_uri=https%3A%2F%2Fevil.example%2F&response_type=code&scope=openid&state=x'
+    vars: { appUrl: '{tedris}' }
+  cookieBlocked: # the form's address with no cookie in a fresh browser: Keycloak says the browser blocked the cookie
+    given: { app: tedris, cause: cookieBlocked, retry: fresh, session: none }
+    open: '{keycloak}/realms/medaris/login-actions/authenticate?client_id=tedris-local&tab_id=abcdef&session_code=zzz&execution=00000000-0000-0000-0000-000000000000'
+    vars: { appUrl: '{tedris}' }
+
+# NAVIGATE (they close the page) as the other bindings do it; LOCK_ENDS is the pause running out, which the walk causes by
+# lifting it through the admin API (only applicantB, only in lockedApplicantB).
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+  LOCK_ENDS:
+    - run: [node, ../realm/auth/signInFailures/kc.mjs, unlock, applicantB]
+      expect: 'unlock APPLICANT_B ok'
+
+states:
+  # Keycloak's pages
+  loginForm: { url: '{keycloak}/realms/medaris/**' }
+  formDisabled: { url: '{keycloak}/realms/medaris/**' }
+  formLocked: { url: '{keycloak}/realms/medaris/**' }
+  expiredPage: { url: '{keycloak}/realms/medaris/**' }
+  errorPage: { url: '{keycloak}/realms/medaris/**' }
+  # where the person ends. The native form post has no `call`: a held navigation stalls every read of the page (see
+  # realm.auth.signIn's binding).
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.keycloak_form: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.callback: { url: '{appUrl}/**' }
+  went_on_signed_in: { url: '{appUrl}/**' }
+  home_opened: { url: '{homeAt}' }
+  app_opened: { url: '{appUrl}/**' }
+  left: { url: 'about:blank' }
+  # the page's own session read, reached only with a retry that is spent: that needs the second visit to the sign-in page in the
+  # same tab, which is made when the walk reaches the state (written, not driven)
+  readingSession: { call: '{appUrl}/api/auth/session', before: [{ goto: '{again}' }] }
+
+# A press of the button types the address and the password first, and, in the pause scenario, makes the pause just before the
+# click (so it cannot run out before it is met: it lasts a minute). After a refusal the second press types the password again.
+nodes:
+  signIn:
+    before:
+      - fill: { css: '#username', value: '{address}' }
+      - fill: { css: '#password', value: '{password}' }
+      - run: [node, ../realm/auth/signInFailures/kc.mjs, '{prepare}', '{lockee}']
+  signInAgain:
+    before:
+      - fill: { css: '#password', value: '{password}' }

@@ -1,0 +1,1619 @@
+# Sessions (celse), live streams, recordings and resource files: the actions of apps/tedrisat's lesson, live-stream,
+# recording-upload, recording and resource-file controllers, and the background jobs of the same area (domain.md of the
+# inventory, lines 1935-2259).
+#
+# The chapter has 21 handlers: lesson.controller 10, live-stream.controller 2, recording-upload.controller 2, recording.controller 3,
+# resource-file.controller 4. This file has 21 actions with a route, plus 3 jobs with none (pollRecordingEncoding,
+# announceReleasedRecordings, sweepStorageDeletions). The lesson invitation sweep (sweepLessonInvitations) belongs to the courses file.
+#
+# Names. Each action carries the operationId its controller publishes in swagger (`@ApiOperation({ operationId })`), which is
+# the controller method made specific: create becomes createLesson, update updateLesson, cancel cancelLesson, archive archiveLesson,
+# list listCourseLiveStreams, set setLessonLiveStream, start startRecordingUpload, resign resignRecordingUpload, add
+# createLessonRecording, change updateRecording, setAvailability setLessonRecordingAvailability, calendar getLessonCalendar,
+# previewBatch previewSessionBatch, createBatch createSessionBatch, hideWeek hideCourseWeek, listRecordings listCourseRecordings,
+# and the four file methods uploadCourseFile, downloadCourseFile, uploadLessonFile, downloadLessonFile become
+# uploadCourseResourceFile, downloadCourseResourceFile, uploadLessonResourceFile, downloadLessonResourceFile. getSession keeps its name.
+#
+# There is no route that deletes or hides a recording or deletes a single resource file. A recording is only replaced (updateRecording,
+# startRecordingUpload); the archive's `recording` type lists nothing and answers 404 (archive/archive-types.ts:8). A resource goes
+# only through a whole-list write (PUT /courses/{id}, updateLesson with `resources`) or the purge, and its object then leaves storage
+# through sweepStorageDeletions.
+#
+# Anchors. A route's `source` is the line of its route decorator (`@Get`, `@Post`, ...). Every refusal names the line that throws it,
+# checked against the code of this branch; many `libs/common` and schema anchors of the inventory were stale and are re-anchored here.
+#
+# 401 HTTP_401 (libs/common/src/auth-guard/auth-guard.ts:41, :46, :54: a Nest UnauthorizedException, type HTTP_ERROR) and the 429 of the
+# throttlers are covered by the pipeline invariants access-token-only and rate-limit-before-auth of domain.yaml. An action lists HTTP_401
+# only where a flow draws what a signed-out caller meets (domain.yaml says why).
+# The other refusals every guarded route can give are written on each action that can really give them, and not once here:
+#   403 AUTHZ_FORBIDDEN     libs/common/src/authz/authz.guard.ts:92 (the permission the route asks is not held on the course)
+#   404 COURSE_NOT_FOUND    a course of a hidden köşk answers 404 before the permission is asked, to everyone but a holder of course.hide or
+#                           platform.kosk_edit (libs/common/src/authz/authz.guard.ts:89, closure at apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:106)
+#   400 VALIDATION_ERROR    libs/common/src/pipes/validation.pipe.ts:52 (on every route with a body)
+# S1-S4 of domain.yaml are reached here only through getDetail (course.service.ts:306, 328, 352, 366); S13 (SELF_GRANT_REFUSED),
+# S6-S8 (KEYCLOAK_ADMIN_UNAVAILABLE) and S19 outside updateLesson and cancelLesson are not reachable from this area.
+# The session writes bump `courses.version`, so a whole-course save loaded before them is refused; only updateLesson and
+# cancelLesson carry the version they saw. Creating a lesson, updating one and creating a batch write no audit row of their own,
+# apart from resource.file_delete for each stored file an update's resource list drops.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+actions:
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Sessions: reads (lesson.controller.ts)
+  # ------------------------------------------------------------------------------------------------------------------------
+  getLessonCalendar:
+    route: GET /lessons/{id}/calendar.ics
+    summary: One session as an iCalendar file, for Apple Calendar, Google Calendar and Outlook
+    description: >-
+      The entry is authorized exactly like the course page: whoever getDetail shows the course to may have it, and every
+      CourseNotFound is answered as LESSON_NOT_FOUND, so a hidden course is not told apart from a lesson that never existed. Any
+      lesson type with a scheduled time has an entry; the session page and the weekly batch are what deal with LIVE lessons alone.
+    needs: any signed-in caller (@AuthzExempt, no permission code); the rule is decided in the service (CourseService.getScheduledLesson)
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        locale: { enum: [tr, en, ar], default: tr, description: the language of the entry's one-line description; titles are the course's own }
+    result:
+      status: 200
+      type: string
+      contentMediaType: text/calendar
+      description: >-
+        One VEVENT in the Istanbul time zone, sent as an attachment named medaris-<lessonId>.ics with Cache-Control private, no-store.
+        UID is derived from the lesson id and SEQUENCE is the course version, so a re-import after a change updates the event.
+        STATUS:CANCELLED once the session is cancelled. URL and LOCATION are the Medaris session page (TEDRIS_WEB_URL), never the meeting
+        link. The one-line description says how the session is attended (in person, streamed, or by the meeting link on the page); whether
+        it has a link or a stream, and whether it is an exam, is said only to a caller holding course.view_details.
+    refusals:
+      HTTP_400:
+        status: 400
+        note: the id is not a uuid, or locale is not tr, en or ar (ParseUUIDPipe, ParseEnumPipe)
+        source: apps/tedrisat/src/course/lesson.controller.ts:179
+      CALENDAR_NOT_CONFIGURED:
+        status: 503
+        note: TEDRIS_WEB_URL (config tedrisWeb.url) is not set; checked first, before any lookup
+        source: apps/tedrisat/src/course/lesson.controller.ts:184
+      LESSON_NOT_FOUND:
+        status: 404
+        note: >-
+          no such lesson; or the course is a draft, hidden, or of a hidden köşk to this caller (every CourseNotFoundError of getDetail is
+          rethrown as this, course.service.ts:634); or the lesson is archived (the detail carries live lessons only, :643)
+        source: apps/tedrisat/src/course/course.service.ts:627
+      LESSON_NOT_SCHEDULED:
+        status: 409
+        note: the lesson has no scheduled_at
+        source: apps/tedrisat/src/course/course.service.ts:644
+    sideEffects: []
+    source: apps/tedrisat/src/course/lesson.controller.ts:165
+
+  getSession:
+    route: GET /courses/{courseId}/sessions/{sessionId}
+    summary: One live session, for its page (celse sayfası)
+    description: >-
+      The response is a derived view of a Lesson, its week, its recording and the course's müderris list, not a stored row. It is
+      built from the filtered course detail, so a draft, a hidden course and the content rule behave as on the course page. The
+      content keys are removed, never nulled, for a caller without course.view_details; a sample session (is_preview) also keeps
+      kaynak and agenda and its PUBLIC recording for a locked caller. A cancelled session has no meetingUrl even for a content reader.
+      liveStreamUrl is sent to content readers from the scheduled start until the session has a recording open to talebe, and at most
+      24 hours after the scheduled end when none replaces it (LIVE_STREAM_HOURS_AFTER_END, which the code itself labels "A PROPOSAL,
+      NOT AN OWNER DECISION", domain/recording.ts:207); a cancelled or untimed session has none. recording.url is null before its
+      availableAt except to a recording.manage holder, and a Bunny link is signed for the response (lifetime
+      BUNNY_STREAM_EMBED_TTL_SECONDS, 6 hours by default); the Bunny video id never reaches the response.
+    needs: course.view on the course, with or without a token (@AuthzPublic); the content keys need course.view_details
+    result:
+      returns: Lesson
+      status: 200
+      type: object
+      required: [id, title, weekNumber, startsAt, status, courseId, weekId, weekTitle, durationMinutes, cancelledAt, replacementSessionId, replacement, inPerson, resources, previous, next, muderris, contentLocked]
+      properties:
+        id: { type: string, format: uuid, references: Lesson }
+        title: { type: string }
+        weekNumber: { type: integer }
+        startsAt: { type: [string, "null"], format: date-time }
+        status: { enum: [SCHEDULED, LIVE, ENDED, CANCELLED], description: "derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED at or after start plus length (60 minutes when it has none), LIVE from the start, else SCHEDULED; a session with no start is SCHEDULED" }
+        courseId: { type: string, format: uuid, references: Course }
+        weekId: { type: string, format: uuid, references: CourseWeek }
+        weekTitle: { type: string }
+        durationMinutes: { type: [integer, "null"] }
+        cancelledAt: { type: [string, "null"], format: date-time }
+        replacementSessionId: { type: [string, "null"], format: uuid, references: Lesson }
+        replacement: { type: [object, "null"], description: "the make-up session as a reference: id, title, weekNumber, startsAt, status" }
+        inPerson: { type: boolean, description: "to everyone: the session's own mark, else the course's; a label, not a way in" }
+        resources: { type: array, description: "LessonResource rows: the name is programme, each url and file only for a content reader" }
+        previous: { type: [object, "null"], description: "the neighbouring live session before this one, cancelled ones skipped" }
+        next: { type: [object, "null"], description: "the neighbouring live session after this one, cancelled ones skipped" }
+        muderris: { type: array, description: "the course's müderris list, public: name, title, unvan, isImam" }
+        contentLocked: { type: boolean }
+        meetingUrl: { type: [string, "null"], description: "content key; null for a cancelled or finished session" }
+        agenda: { type: [array, "null"], description: content key }
+        kaynak: { type: [string, "null"], description: content key }
+        cancelReason: { type: [string, "null"], description: content key }
+        hasLiveStream: { type: boolean, description: "content key; sent whatever the status" }
+        liveStreamUrl: { type: [string, "null"], description: content key }
+        assignment: { type: [object, "null"], description: content key }
+        exam: { type: [object, "null"], description: content key }
+        recording: { type: [object, "null"], description: "content key, or the PUBLIC recording of a sample session: id, title, recordedAt, durationMinutes, provider, url, visibility, status, availableAt" }
+    refusals:
+      HTTP_400:
+        status: 400
+        note: sessionId is not a uuid (a malformed courseId is a 404 from the resolver)
+        source: apps/tedrisat/src/course/lesson.controller.ts:234
+      COURSE_NOT_FOUND:
+        status: 404
+        note: >-
+          the course id is not a uuid or names no course (resolver); a draft, a hidden course, a course of a hidden köşk, or, with no
+          token, a course of an unlisted köşk, to a caller who may not see it
+        source: apps/tedrisat/src/course/lesson.controller.ts:114
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a LIVE, non-archived lesson of this course (a video, document or quiz lesson, an archived one, one of another course)
+        source: apps/tedrisat/src/course/course.service.ts:692
+    sideEffects:
+      - "audit:course.content_read (only when the caller holds course.view_details and is neither a müderris of the course nor an enrolled talebe, a talebe who also holds a role in the chain and the başnazım included; written before the body is returned, so a failed write fails the read)"
+    source: apps/tedrisat/src/course/lesson.controller.ts:230
+
+  listCourseRecordings:
+    route: GET /courses/{id}/recordings
+    summary: The course's lesson recordings, newest week first
+    description: >-
+      A caller holding course.view_details sees every recording that is not FAILED. Everyone else (a pending, removed or barred
+      talebe, a stranger, a visitor with no token) sees only the PUBLIC ones, and none when the course is closed, the platform policy
+      RECORDINGS_NEVER_PUBLIC is on, or the köşk has recordings_never_public. A FAILED recording is listed to no one, the course team
+      included. A PROCESSING recording is listed with a null url, and so is a READY one before its availableAt, except for a
+      recording.manage holder. A READY Bunny recording carries a player link signed for this response.
+    needs: course.view on the course, with or without a token (@AuthzPublic)
+    result:
+      status: 200
+      type: array
+      description: sorted by weekNumber descending, then recordedAt descending
+      items:
+        type: object
+        required: [id, lessonId, weekId, weekNumber, weekTitle, title, recordedAt, durationMinutes, provider, url, visibility, status, availableAt]
+        properties:
+          id: { type: string, format: uuid, references: LessonRecording }
+          lessonId: { type: string, format: uuid, references: Lesson }
+          weekId: { type: string, format: uuid, references: CourseWeek }
+          weekNumber: { type: integer }
+          weekTitle: { type: string }
+          title: { type: string }
+          recordedAt: { type: [string, "null"], format: date-time }
+          durationMinutes: { type: [integer, "null"] }
+          provider: { enum: [YOUTUBE, DRIVE, OTHER, BUNNY] }
+          url: { type: [string, "null"], description: "null while PROCESSING and before availableAt; for a Bunny recording a player link https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<sha256>&expires=<unix> when a token key is set" }
+          visibility: { enum: [PUBLIC, ENROLLED] }
+          status: { enum: [PROCESSING, READY] }
+          availableAt: { type: [string, "null"], format: date-time, description: the later of the session's start and the release time the team set }
+    refusals:
+      HTTP_400:
+        status: 400
+        note: the id is not a uuid (ParseUUIDPipe)
+        source: apps/tedrisat/src/course/lesson.controller.ts:260
+      COURSE_NOT_FOUND:
+        status: 404
+        note: no such course, a draft, a hidden course, a course of a hidden köşk, or, with no token, a course of an unlisted köşk, to a caller who may not see it
+        source: apps/tedrisat/src/course/course.service.ts:306
+    sideEffects:
+      - "audit:course.content_read (via recordings; under the same condition as getSession)"
+    source: apps/tedrisat/src/course/lesson.controller.ts:257
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Sessions: writes (lesson.controller.ts). session.manage is course-scoped content: MUDERRIS of the course, MEDRESE_BASMUDERRIS
+  # of a medrese course and KOSK_NAZIM of a köşk course hold it by default; a passive scope closes it.
+  # ------------------------------------------------------------------------------------------------------------------------
+  createLesson:
+    route: POST /courses/{courseId}/weeks/{weekId}/lessons
+    summary: Add a lesson to the end of a week (Celse ekle)
+    description: >-
+      The lesson takes the next order index of the week's live lessons. course.edit alone is not enough: adding a session is session
+      work. One transaction bumps the course version first (unconditionally, no expected version), then checks the week, so any refusal
+      rolls the bump back.
+    needs: session.manage on the course (the permission, not course.edit)
+    body:
+      type: object
+      additionalProperties: false
+      required: [title, type]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        type: { enum: [VIDEO, DOCUMENT, LIVE, QUIZ] }
+        durationMinutes: { type: integer, minimum: 1, maximum: 1440 }
+        kaynak: { type: string, maxLength: 120 }
+        scheduledAt: { type: string, format: date-time }
+        meetingUrl: { type: string, format: uri, pattern: "^https://", maxLength: 500, description: "https of any host: there is no platform allow-list" }
+        agenda:
+          type: array
+          items:
+            type: object
+            required: [time, title]
+            properties:
+              time: { type: string, maxLength: 40 }
+              title: { type: string, minLength: 1, maxLength: 200 }
+        isPreview: { type: boolean, default: false }
+        inPersonOverride: { type: [boolean, "null"], description: "null follows the course's inPerson" }
+        resources:
+          type: array
+          description: >-
+            the session's own resources, in order. On create every row is new (a row's id names no stored row), so every row needs a
+            url; files come only through uploadLessonResourceFile
+          items:
+            type: object
+            additionalProperties: false
+            required: [name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string, minLength: 1, maxLength: 200 }
+              meta: { type: [string, "null"], maxLength: 120 }
+              url: { type: [string, "null"], maxLength: 500, pattern: "^https?://" }
+    result:
+      returns: Lesson
+      status: 201
+      type: object
+      description: the lesson's fields with resources (LessonResource rows) and courseVersion, the course's new version
+      properties:
+        resources: { type: array }
+        courseVersion: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.manage is not held on the course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: weekId is not a uuid; for the başnazım, whom the guard lets through unresolved, courseId too
+        source: apps/tedrisat/src/course/lesson.controller.ts:279
+      VALIDATION_ERROR:
+        status: 400
+        note: a field breaks the limits above (an http(s) address for a resource, an https address for the meeting link)
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      RESOURCE_URL_REQUIRED:
+        status: 400
+        note: a resource row has no url (RESOURCE_IS_FILE, course.repository.ts:953, cannot fire here, the lesson has no stored row yet)
+        source: apps/tedrisat/src/course/course.repository.ts:957
+      COURSE_NOT_FOUND:
+        status: 404
+        note: >-
+          no such course (the role resolver for anyone else, the repository for the başnazım); or a course of a hidden köşk to a caller
+          who may not open it
+        source: apps/tedrisat/src/course/course.repository.ts:840
+      WEEK_NOT_FOUND:
+        status: 404
+        note: the week is archived or not in this course
+        source: apps/tedrisat/src/course/course.repository.ts:860
+    sideEffects:
+      - "kicks sweepLessonInvitations (calendar mail to the ENROLLED talebe)"
+      - "no notification: SESSION_ADDED is declared and has no producer"
+    source: apps/tedrisat/src/course/lesson.controller.ts:272
+
+  previewSessionBatch:
+    route: POST /courses/{courseId}/sessions/batch/preview
+    summary: Preview the sessions a weekly pattern would create
+    description: >-
+      Expands the pattern exactly as createSessionBatch would, numbers the weeks the same way, and writes nothing. Answers 200 though
+      it is a POST.
+    needs: session.manage on the course
+    body:
+      type: object
+      additionalProperties: false
+      required: [weekdays, startTime, startDate]
+      description: >-
+        exactly one of endDate and count; a pattern with both or neither is INVALID_SESSION_PATTERN (END_OR_COUNT_REQUIRED), which the
+        DTO cannot say
+      properties:
+        weekdays: { type: array, minItems: 1, maxItems: 7, uniqueItems: true, items: { type: integer, minimum: 1, maximum: 7 }, description: "ISO weekdays, 1 is Monday" }
+        startTime: { type: string, pattern: "^([01]\\d|2[0-3]):[0-5]\\d$", description: "local 24-hour HH:mm in timeZone" }
+        timeZone: { type: string, maxLength: 64, description: "an IANA zone; the course's own when omitted; the local wall time is kept across daylight-saving changes" }
+        startDate: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "the Monday-to-Sunday week that holds it is Hafta 1, unless the course already has dated sessions" }
+        endDate: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "last calendar day, inclusive" }
+        count: { type: integer, minimum: 1, maximum: 200 }
+    result:
+      status: 200
+      type: object
+      required: [timeZone, sessions]
+      properties:
+        timeZone: { type: string }
+        sessions:
+          type: array
+          items:
+            type: object
+            required: [scheduledAt, localDate, weekNumber]
+            properties:
+              scheduledAt: { type: string, format: date-time }
+              localDate: { type: string }
+              weekNumber: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.manage is not held on the course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: courseId is not a uuid (the başnazım only, see createLesson)
+        source: apps/tedrisat/src/course/lesson.controller.ts:305
+      VALIDATION_ERROR:
+        status: 400
+        note: a field breaks the limits above
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      INVALID_SESSION_PATTERN:
+        status: 400
+        note: >-
+          context.problem is one of INVALID_DATE (not a calendar day), END_OR_COUNT_REQUIRED (both or neither of endDate and count),
+          END_BEFORE_START, RANGE_TOO_LONG (more than 366 days, or count sessions that do not fit in 366 days), TOO_MANY_SESSIONS (more
+          than 200), NO_SESSIONS (no listed weekday falls in the range)
+        source: apps/tedrisat/src/course/course.service.ts:1447
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the course has no time zone row, so it does not exist; or it is of a hidden köşk to a caller who may not open it
+        source: apps/tedrisat/src/course/course.service.ts:1388
+    sideEffects: []
+    source: apps/tedrisat/src/course/lesson.controller.ts:300
+
+  createSessionBatch:
+    route: POST /courses/{courseId}/sessions/batch
+    summary: Create live sessions from a weekly pattern
+    description: >-
+      One transaction: bump the course version, expand the pattern in its IANA zone, create the missing weeks as "Hafta N" after the
+      last, and insert the sessions as LIVE lessons (is_preview false). Only the earliest session gets the meeting link, because links
+      change every week. With an exam, the pattern must give exactly one session, and one lesson_exams row is written for it; the
+      session is marked in person when the exam has a location and online when it has none, and without an exam a session follows
+      the course's in-person mark. A refusal rolls the version bump back.
+    needs: session.manage on the course
+    body:
+      type: object
+      additionalProperties: false
+      required: [weekdays, startTime, startDate, title, durationMinutes]
+      description: the weekly pattern of previewSessionBatch plus the fields below; exactly one of endDate and count
+      properties:
+        weekdays: { type: array, minItems: 1, maxItems: 7, uniqueItems: true, items: { type: integer, minimum: 1, maximum: 7 } }
+        startTime: { type: string, pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" }
+        timeZone: { type: string, maxLength: 64 }
+        startDate: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        endDate: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        count: { type: integer, minimum: 1, maximum: 200 }
+        title: { type: string, minLength: 1, maxLength: 200, description: the title every generated session gets }
+        durationMinutes: { type: integer, minimum: 1, maximum: 1440 }
+        meetingUrl: { type: string, format: uri, pattern: "^https://", maxLength: 500, description: set on the first session only }
+        exam:
+          type: object
+          description: '"Sınav": the celse is planned as an exam; `{}` is a written exam out of 100'
+          properties:
+            format: { enum: [WRITTEN, ORAL], default: WRITTEN }
+            maxScore: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+            topics: { type: [string, "null"], maxLength: 2000 }
+            location: { type: [string, "null"], maxLength: 200 }
+            isRetake: { type: boolean, default: false }
+    result:
+      status: 201
+      type: object
+      required: [courseVersion, timeZone, weeks, lessons]
+      properties:
+        courseVersion: { type: integer }
+        timeZone: { type: string }
+        weeks:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: CourseWeek }
+              weekNumber: { type: integer }
+              title: { type: string }
+              created: { type: boolean }
+        lessons:
+          type: array
+          description: the created sessions in start order, each a lesson with weekNumber and no resources
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid, references: Lesson }
+              weekNumber: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.manage is not held on the course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: courseId is not a uuid (the başnazım only, see createLesson)
+        source: apps/tedrisat/src/course/lesson.controller.ts:334
+      VALIDATION_ERROR:
+        status: 400
+        note: a field breaks the limits above
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      INVALID_SESSION_PATTERN:
+        status: 400
+        note: as in previewSessionBatch; raised inside the transaction, so the version bump is rolled back
+        source: apps/tedrisat/src/course/course.service.ts:1447
+      EXAM_ONE_SESSION:
+        status: 400
+        note: an exam was sent and the pattern gives other than one session ("An exam is one session; the pattern gives N"); context.count
+        source: apps/tedrisat/src/course/course.service.ts:1418
+      COURSE_NOT_FOUND:
+        status: 404
+        note: no such course (the role resolver for anyone else, the repository for the başnazım), or a course of a hidden köşk to a caller who may not open it
+        source: apps/tedrisat/src/course/course.repository.ts:840
+    sideEffects:
+      - "notification:EXAM_SCHEDULED (with an exam: to the ENROLLED seats except the actor, per session, not for a session already over)"
+      - "kicks sweepLessonInvitations (calendar mail to the ENROLLED talebe)"
+    source: apps/tedrisat/src/course/lesson.controller.ts:329
+
+  updateLesson:
+    route: PATCH /lessons/{id}
+    summary: Update a lesson; a new weekId moves it and keeps its id
+    description: >-
+      Only the keys sent change; title, type, isPreview, weekId, orderIndex and resources are "omitted but not null", the others
+      accept null to clear. A weekId other than the current one is an UPDATE (the lesson keeps its id and everything that points at
+      it): the target must be a live week of the same course, and the order index is the one given or the next in that week. A
+      changed scheduledAt resets lesson_exams.reminded_at, so a moved exam is reminded again. With resources sent, the list replaces
+      the stored one: a stored row whose id is listed is rewritten whole (a stored file keeps its file and refuses a url), any other
+      listed row is added (and needs a url), and a stored row left out is deleted, a file with its object queued in StorageDeletion
+      and the removal audited resource.file_delete. Left out, the resources are untouched. The check of version comes first, in the
+      same statement that bumps it, so a conflict changes nothing.
+    needs: session.manage on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 0, description: the course version the caller last saw }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        type: { enum: [VIDEO, DOCUMENT, LIVE, QUIZ] }
+        isPreview: { type: boolean }
+        weekId: { type: string, format: uuid }
+        orderIndex: { type: integer, minimum: 0 }
+        durationMinutes: { type: [integer, "null"], minimum: 1, maximum: 1440 }
+        kaynak: { type: [string, "null"], maxLength: 120 }
+        scheduledAt: { type: [string, "null"], format: date-time }
+        meetingUrl: { type: [string, "null"], format: uri, pattern: "^https://", maxLength: 500, description: "https of any host" }
+        agenda: { type: [array, "null"], description: "steps of {time up to 40 characters, title 1 to 200}" }
+        inPersonOverride: { type: [boolean, "null"] }
+        resources:
+          type: array
+          description: "never null; rows of {id?, name 1 to 200, meta? up to 120, url? an http(s) address up to 500}"
+    result:
+      returns: Lesson
+      status: 200
+      type: object
+      description: the lesson's fields with resources (LessonResource rows) and courseVersion, the course's new version
+      properties:
+        resources: { type: array }
+        courseVersion: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.manage is not held on the lesson's course, whether or not the lesson is still live (the resolver finds archived lessons too)
+        source: libs/common/src/authz/authz.guard.ts:92
+      VALIDATION_ERROR:
+        status: 400
+        note: a field breaks the limits above, or version is missing
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      RESOURCE_IS_FILE:
+        status: 400
+        note: a url was sent for a row that is a stored file
+        source: apps/tedrisat/src/course/course.repository.ts:953
+      RESOURCE_URL_REQUIRED:
+        status: 400
+        note: a listed row that is no stored row of this lesson has no url
+        source: apps/tedrisat/src/course/course.repository.ts:957
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver, lesson.controller.ts:91 and :95); or the lesson is archived (the write needs a live one)
+        source: apps/tedrisat/src/course/course.repository.ts:883
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      WEEK_NOT_FOUND:
+        status: 404
+        note: the target weekId is not a live week of this course
+        source: apps/tedrisat/src/course/course.repository.ts:860
+      COURSE_VERSION_CONFLICT:
+        status: 409
+        note: version is not the course's current one ("Course X has changed since version N was loaded")
+        source: apps/tedrisat/src/course/course.repository.ts:837
+    sideEffects:
+      - "notification:SESSION_RESCHEDULED (to the ENROLLED seats except the actor, only when the start moved between two non-null times, the session is not cancelled and not over)"
+      - "audit:resource.file_delete (one per stored file the new resource list drops)"
+      - "kicks sweepLessonInvitations (calendar mail to the ENROLLED talebe)"
+      - "kicks sweepStorageDeletions (when resources was sent)"
+    source: apps/tedrisat/src/course/lesson.controller.ts:355
+
+  cancelLesson:
+    route: POST /lessons/{id}/cancel
+    summary: Cancel a live session; it keeps its slot, marked cancelled
+    description: >-
+      The session stays in the programme as "İptal edildi" and its meeting link is no longer sent, not even to content readers. The
+      reason (trimmed, blank becomes null) is course content. replacementLessonId names the make-up (telafi), which must be a
+      non-archived LIVE session of the same course that is not the session itself, not cancelled, and not already the make-up of
+      another session; this is checked under the course row's lock, after the version check. The route has no lesson-type check: a
+      VIDEO, DOCUMENT or QUIZ lesson can be cancelled too, though only LIVE lessons appear as sessions.
+    needs: session.manage on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 0, description: the course version the caller last saw }
+        reason: { type: string, maxLength: 500 }
+        replacementLessonId: { type: string, format: uuid, references: Lesson }
+    result:
+      returns: Lesson
+      status: 200
+      type: object
+      description: the lesson's fields with resources (LessonResource rows) and courseVersion, the course's new version
+      properties:
+        resources: { type: array }
+        courseVersion: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.manage is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      VALIDATION_ERROR:
+        status: 400
+        note: a field breaks the limits above, or version is missing
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      LESSON_REPLACEMENT_INVALID:
+        status: 400
+        note: >-
+          the make-up is the session itself (:1391), or not a non-archived LIVE session of the same course (:1410), or is cancelled
+          (:1417); the message says which
+        source: apps/tedrisat/src/course/course.repository.ts:1394
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver); or the lesson is archived
+        source: apps/tedrisat/src/course/course.repository.ts:883
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      COURSE_VERSION_CONFLICT:
+        status: 409
+        note: version is not the course's current one; checked before the make-up rules
+        source: apps/tedrisat/src/course/course.repository.ts:837
+      LESSON_ALREADY_CANCELLED:
+        status: 409
+        note: the session is cancelled already; checked first when a make-up is named (:1348), and by the update that matches no un-cancelled row (:1362)
+        source: apps/tedrisat/src/course/course.repository.ts:1351
+      LESSON_REPLACEMENT_TAKEN:
+        status: 409
+        note: the named make-up already makes up for another cancelled session
+        source: apps/tedrisat/src/course/course.repository.ts:1432
+    sideEffects:
+      - "audit:lesson.cancel (details courseId, reason, replacementLessonId)"
+      - "notification:SESSION_CANCELLED (to the ENROLLED seats except the actor, params sessionAt and reason; only for a session with a time that is not over)"
+      - "kicks sweepLessonInvitations (a CANCEL calendar mail carrying the reason)"
+    source: apps/tedrisat/src/course/lesson.controller.ts:389
+
+  archiveLesson:
+    route: DELETE /lessons/{id}
+    summary: Hide a lesson from the course; it is archived, never deleted
+    description: >-
+      Sets archived_at, archived_by and archived_level on a live lesson and bumps the course version (no expected version). The level
+      is the highest rung of COURSE_HIDE_LADDER the caller holds on the course (platform: platform.course_hide or the başnazım; köşk:
+      course.hide; medrese: madrasah.course_hide), else course; a restore needs that level or above. Everything attached (recordings,
+      resources, homework) is kept. The answer's resource links and files are removed for a caller without course.view_details, so a
+      week.hide-only holder opens no content.
+    needs: week.hide or session.manage on the lesson's course (either one)
+    result:
+      returns: Lesson
+      status: 200
+      type: object
+      description: the lesson's fields with resources (LessonResource rows, links and files only for a content reader) and courseVersion
+      properties:
+        resources: { type: array }
+        courseVersion: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: neither week.hide nor session.manage is held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver); or the lesson is archived already (the write needs a live one, :880, and a concurrent hide, :1639)
+        source: apps/tedrisat/src/course/course.repository.ts:883
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+    sideEffects:
+      - "audit:session.hide (entity session; details title, level, courseId, weekId, koskId, madrasahId; the swagger text of the route says lesson.hide)"
+      - "kicks sweepLessonInvitations (CANCEL mails: the session leaves the talebe's calendars)"
+    source: apps/tedrisat/src/course/lesson.controller.ts:416
+
+  hideCourseWeek:
+    route: POST /courses/{courseId}/weeks/{weekId}/hide
+    summary: Hide a week with its sessions (Gizle)
+    description: >-
+      Nothing is deleted. The week and all its non-archived lessons get the SAME archived_at, archived_by and archived_level stamp, so
+      a restore of the week brings back exactly the sessions hidden with it, not one hidden earlier. The course version is bumped
+      with no expected version, so an editor that loaded the course before is refused with 409 on its next save.
+    needs: week.hide on the course
+    result:
+      status: 200
+      type: object
+      required: [id, courseVersion, hiddenSessions]
+      properties:
+        id: { type: string, format: uuid, references: CourseWeek }
+        courseVersion: { type: integer }
+        hiddenSessions: { type: integer, description: how many live sessions were hidden with the week }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: week.hide is not held on the course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: weekId is not a uuid; for the başnazım, whom the guard lets through unresolved, courseId too
+        source: apps/tedrisat/src/course/lesson.controller.ts:442
+      COURSE_NOT_FOUND:
+        status: 404
+        note: no such course (the role resolver for anyone else, the repository for the başnazım), or a course of a hidden köşk to a caller who may not open it
+        source: apps/tedrisat/src/course/course.repository.ts:840
+      WEEK_NOT_FOUND:
+        status: 404
+        note: the week is hidden already or belongs to another course
+        source: apps/tedrisat/src/course/course.repository.ts:1694
+    sideEffects:
+      - "audit:week.hide (entity week; details title, level, courseId, koskId, madrasahId, and sessions, the count hidden)"
+      - "kicks sweepLessonInvitations (CANCEL mails for the hidden sessions)"
+    source: apps/tedrisat/src/course/lesson.controller.ts:436
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Live stream (live-stream.controller.ts). session.live_link: MUDERRIS, MEDRESE_BASMUDERRIS and KOSK_NAZIM by default, a
+  # DERS_NAZIR when granted. The course version is NOT bumped by either route.
+  # ------------------------------------------------------------------------------------------------------------------------
+  listCourseLiveStreams:
+    route: GET /courses/{id}/live-streams
+    summary: The course's live stream links, for its staff
+    description: >-
+      Every non-archived lesson of the course that has a stream link, in programme order (week order, then lesson order). 403 for
+      anyone without session.live_link, so the link never reaches a caller who may not set it; the talebe read the link from the
+      session page (getSession) only.
+    needs: session.live_link on the course
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [lessonId, liveStreamUrl]
+        properties:
+          lessonId: { type: string, format: uuid, references: Lesson }
+          liveStreamUrl: { type: [string, "null"] }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.live_link is not held on the course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: the id is not a uuid (the başnazım only, see createLesson)
+        source: apps/tedrisat/src/course/live-stream.controller.ts:68
+      COURSE_NOT_FOUND:
+        status: 404
+        note: no such course (the role resolver for anyone else; for the başnazım the service re-checks), or a course of a hidden köşk to a caller who may not open it
+        source: apps/tedrisat/src/course/live-stream.service.ts:38
+    sideEffects: []
+    source: apps/tedrisat/src/course/live-stream.controller.ts:67
+
+  setLessonLiveStream:
+    route: PUT /lessons/{id}/live-stream
+    summary: Set, change or clear a session's live stream link
+    description: >-
+      The link is parsed as a YouTube video (libs/utils/src/youtube-live.js) and stored normalised as https://www.youtube.com/live/<id>.
+      Accepted, with or without www. or m.: youtube.com/watch?v=<id>, /live/<id>, /embed/<id>, youtu.be/<id>, youtube-nocookie.com, and
+      the Studio link studio.youtube.com/video/<id>/livestreaming; a link with no scheme is read as https; the id must match
+      ^[\w-]{6,32}$. Refused: http://, channel links (/@handle/live, /channel/, /c/, /user/), other hosts, a page naming no video, an
+      empty string (send null to clear). The lesson row is locked, the link and updated_at are written, the course version is NOT
+      bumped. The permission is asked before the link is read, so a caller who may not set one learns nothing from the validation.
+    needs: session.live_link on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      additionalProperties: false
+      required: [liveStreamUrl]
+      properties:
+        liveStreamUrl: { type: [string, "null"], maxLength: 500, description: "the key must be sent; null clears the link" }
+    result:
+      returns: Lesson
+      status: 200
+      type: object
+      required: [lessonId, liveStreamUrl]
+      description: the lesson's id and its stream link as stored (normalised), no other Lesson field
+      properties:
+        lessonId: { type: string, format: uuid, references: Lesson }
+        liveStreamUrl: { type: [string, "null"] }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.live_link is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      VALIDATION_ERROR:
+        status: 400
+        note: liveStreamUrl is missing, not a string or null, or longer than 500
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      LIVE_STREAM_URL_INVALID:
+        status: 400
+        note: >-
+          context.problem is one of empty ("send null to clear it"), too-long, invalid, not-https, not-youtube, channel, no-video
+        source: apps/tedrisat/src/course/live-stream.service.ts:59
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver; the service re-checks for the başnazım, :54); or the lesson is archived (:824)
+        source: apps/tedrisat/src/course/recording.repository.ts:824
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      LESSON_NOT_LIVE:
+        status: 409
+        note: the lesson's type is not LIVE
+        source: apps/tedrisat/src/course/recording.repository.ts:826
+      LESSON_CANCELLED:
+        status: 409
+        note: >-
+          the session is cancelled. The message is shared with the recording routes and reads "a cancelled session takes no live stream
+          link", which is right for this route and wrong for createLessonRecording
+        source: apps/tedrisat/src/course/recording.repository.ts:829
+    sideEffects:
+      - "audit:lesson.live_stream_set or lesson.live_stream_clear (details courseId, liveStreamUrl, previous)"
+    source: apps/tedrisat/src/course/live-stream.controller.ts:91
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Recordings: the Bunny Stream upload (recording-upload.controller.ts), pasted links and the release time
+  # (recording.controller.ts). The course version is NOT bumped by any of them. recording.upload and recording.manage: MUDERRIS,
+  # MEDRESE_BASMUDERRIS and KOSK_NAZIM by default, a DERS_NAZIR when granted.
+  # ------------------------------------------------------------------------------------------------------------------------
+  startRecordingUpload:
+    route: POST /lessons/{id}/recordings/uploads
+    summary: Start uploading a session's recording to Bunny Stream
+    description: >-
+      Creates an empty video in the Medaris Bunny Stream library (in BUNNY_STREAM_COLLECTION_ID when set), records it as the
+      session's one recording with provider BUNNY and status PROCESSING (url null, upload_expires_at 24 hours ahead), and returns what
+      the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The checks run in this order: the
+      lesson exists (archived included), then the library is configured, then the lesson is not archived, then the existing
+      recording is replaceable (all before Bunny is called), then the Bunny call, then the same checks again under the lesson's row
+      lock. An upload takes the place of the existing recording when that is a link (YOUTUBE, DRIVE, OTHER), or a Bunny upload that
+      FAILED, or when replaceVideo is true (any Bunny status, PROCESSING included): the same row is reused with this title and
+      visibility, and a Bunny video it held is queued in BunnyVideoRemoval (replaced_by_video_id the new one) to be deleted once this
+      upload is over. The session's release time is left as it is. A caller without recording.upload gets 403 before Bunny is called
+      and before any 503. Unlike createLessonRecording, this route never looks at cancelled_at, so a cancelled session takes an upload
+      (invariant recording-upload-refuses-cancelled-session).
+    needs: recording.upload on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200, description: "trimmed; also the video's title in Bunny" }
+        visibility: { enum: [PUBLIC, ENROLLED], default: ENROLLED }
+        recordedAt: { type: string, format: date-time, description: "null is stored when absent" }
+        replaceVideo: { type: boolean, default: false }
+    result:
+      status: 201
+      type: object
+      required: [recordingId, endpoint, libraryId, videoId, authorizationExpire, authorizationSignature]
+      properties:
+        recordingId: { type: string, format: uuid, references: LessonRecording }
+        endpoint: { type: string, const: "https://video.bunnycdn.com/tusupload" }
+        libraryId: { type: string }
+        videoId: { type: string, format: uuid, description: "the Bunny video; the browser needs it, it is never sent by a read" }
+        authorizationExpire: { type: integer, description: "unix seconds, 24 hours ahead" }
+        authorizationSignature: { type: string, sensitivity: credential, description: "SHA256_HEX(libraryId + apiKey + expire + videoId); Cache-Control private, no-store" }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: recording.upload is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      VALIDATION_ERROR:
+        status: 400
+        note: title empty or longer than 200, a visibility that is not PUBLIC or ENROLLED, a date that is not a date
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver, and :56); or the lesson is archived (:83, checked before Bunny, so no empty video is left; and again under the lock, recording.repository.ts:456)
+        source: apps/tedrisat/src/course/recording-upload.service.ts:83
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      RECORDING_EXISTS:
+        status: 409
+        note: a Bunny recording that is PROCESSING or READY is held and replaceVideo was not sent (checked again under the lock, recording.repository.ts:473)
+        source: apps/tedrisat/src/course/recording-upload.service.ts:88
+      BUNNY_STREAM_NOT_CONFIGURED:
+        status: 503
+        note: BUNNY_STREAM_LIBRARY_ID or BUNNY_STREAM_API_KEY is not set
+        source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:78
+      BUNNY_STREAM_UNAVAILABLE:
+        status: 503
+        note: Bunny did not answer, answered non-2xx, or answered without a guid
+        source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:104
+    sideEffects:
+      - "bunny:createVideo (POST https://video.bunnycdn.com/library/<id>/videos)"
+      - "audit:recording.upload_start (details courseId, recordingId, bunnyVideoId, visibility, replacedVideoId, replacedLink)"
+      - "bunnyVideoRemovals:queue (the replaced Bunny video, when there was one)"
+      - "no notification now: RECORDING_ADDED comes when the recording turns READY and is released"
+    note: >-
+      Not verified, from reading: a refusal inside the transaction that comes after the Bunny call (the session archived, or a
+      recording that appeared, in between) leaves the empty video in the library with nothing queued to delete it.
+    source: apps/tedrisat/src/course/recording-upload.controller.ts:81
+
+  resignRecordingUpload:
+    route: POST /lessons/{id}/recordings/uploads/{videoId}/signature
+    summary: Sign a session's Bunny upload again, to resume it
+    description: >-
+      Finds the lesson's BUNNY recording with that video id and signs the same video again with the ORIGINAL expiry (re-signing never
+      extends it), so an interrupted TUS upload continues where it stopped. No Bunny call is made and nothing is written.
+    needs: recording.upload on the lesson's course (byLessonCourse)
+    result:
+      status: 200
+      type: object
+      required: [recordingId, endpoint, libraryId, videoId, authorizationExpire, authorizationSignature]
+      description: the same shape as startRecordingUpload
+      properties:
+        recordingId: { type: string, format: uuid, references: LessonRecording }
+        endpoint: { type: string }
+        libraryId: { type: string }
+        videoId: { type: string, format: uuid }
+        authorizationExpire: { type: integer }
+        authorizationSignature: { type: string, sensitivity: credential }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: recording.upload is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: videoId is not a uuid (ParseUUIDPipe)
+        source: apps/tedrisat/src/course/recording-upload.controller.ts:110
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver, and the service for the başnazım)
+        source: apps/tedrisat/src/course/recording-upload.service.ts:56
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      RECORDING_UPLOAD_NOT_FOUND:
+        status: 404
+        note: the lesson has no BUNNY recording with this video id
+        source: apps/tedrisat/src/course/recording-upload.service.ts:122
+      RECORDING_UPLOAD_CLOSED:
+        status: 409
+        note: context.reason is not-processing (the status is not PROCESSING, :124) or expired (upload_expires_at has passed, :127)
+        source: apps/tedrisat/src/course/recording-upload.service.ts:124
+      BUNNY_STREAM_NOT_CONFIGURED:
+        status: 503
+        note: the library keys are not set; no Bunny call is made, only the signature is computed
+        source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:78
+    sideEffects: []
+    source: apps/tedrisat/src/course/recording-upload.controller.ts:106
+
+  createLessonRecording:
+    route: POST /lessons/{id}/recordings
+    summary: Add a session's recording by pasting its link
+    description: >-
+      The recording is READY at once; the link is read by its host (detectRecordingLink, pure, no host is called). A YouTube link
+      (youtube.com, youtube-nocookie.com, youtu.be, any subdomain; watch?v=, youtu.be/, /live/, /shorts/, /embed/) is YOUTUBE and is
+      stored as https://www.youtube.com/watch?v=<id>, whatever the visibility (the owner dropped "a YouTube recording is always
+      PUBLIC" on 3 October). A player link of the Medaris Bunny library (player.mediadelivery.net, iframe.mediadelivery.net or
+      video.bunnycdn.com, /embed/<libraryId>/<videoId> or /play/..., the library equal to BUNNY_STREAM_LIBRARY_ID) is BUNNY and only
+      the video id is stored (the foreign token query is dropped; played through a freshly signed link). Any other host on a Bunny
+      domain (mediadelivery.net, bunnycdn.com, b-cdn.net) is refused, never read as OTHER. drive.google.com and docs.google.com are
+      DRIVE, any other https host OTHER, both as pasted. One transaction with the lesson row locked: optionally writes the
+      session's release time (availableAt, absent leaves it), then inserts the recording, or reuses the row when the existing one is
+      a FAILED Bunny upload (its video then queued for deletion unless the link names it). recorded_at is the session's start, else
+      now; duration_minutes the session's. A session holds one recording.
+    needs: recording.manage on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      additionalProperties: false
+      required: [title, url]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200, description: trimmed }
+        url: { type: string, format: uri, pattern: "^https://", maxLength: 500, description: trimmed }
+        visibility: { enum: [PUBLIC, ENROLLED], default: ENROLLED }
+        availableAt: { type: [string, "null"], format: date-time, description: "the session's release time; absent leaves it unchanged, null opens the recording as soon as it is READY; a recording never opens before its session's start" }
+    result:
+      returns: LessonRecording
+      status: 201
+      type: object
+      description: the recording as listCourseRecordings gives it (a READY Bunny one carries the signed player link, the course team plays it before its release time)
+      properties:
+        id: { type: string, format: uuid, references: LessonRecording }
+        lessonId: { type: string, format: uuid, references: Lesson }
+        provider: { enum: [YOUTUBE, DRIVE, OTHER, BUNNY] }
+        status: { enum: [READY] }
+        url: { type: [string, "null"] }
+        availableAt: { type: [string, "null"], format: date-time }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: recording.manage is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      VALIDATION_ERROR:
+        status: 400
+        note: the title is empty or longer than 200, the url is not an https address or is longer than 500
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      RECORDING_LINK_INVALID:
+        status: 400
+        note: >-
+          context.reason is one of invalid, not-https, youtube-no-video, bunny-no-video, bunny-foreign-library (another library's link,
+          or any Bunny link while none is configured) or bunny-video-used (that Bunny video is another session's recording, checked in
+          the transaction)
+        source: apps/tedrisat/src/course/domain/recording-link.ts:122
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver, and :62); or the lesson is archived (:893)
+        source: apps/tedrisat/src/course/recording.repository.ts:893
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      LESSON_CANCELLED:
+        status: 409
+        note: >-
+          the session is cancelled. The message is the shared one ("a cancelled session takes no live stream link"); the code is right
+          and the sentence is about streams only
+        source: apps/tedrisat/src/course/recording.repository.ts:895
+      RECORDING_EXISTS:
+        status: 409
+        note: the session already has a recording, except a FAILED Bunny upload; context lessonId and recordingId
+        source: apps/tedrisat/src/course/recording.repository.ts:923
+    sideEffects:
+      - "audit:recording.add (entity lesson_recording; details courseId, lessonId, provider, visibility, url, bunnyVideoId, replacedVideoId, recordingAvailableAt)"
+      - "bunnyVideoRemovals:queue (the replaced FAILED Bunny video, unless the link names it)"
+      - "notification:RECORDING_ADDED (announce: to the ENROLLED seats except the actor, once, claimed through notified_at; only when the recording is released, READY, the session has begun and the release time has passed, otherwise the release poll announces it later)"
+    source: apps/tedrisat/src/course/recording.controller.ts:102
+
+  updateRecording:
+    route: PATCH /recordings/{id}
+    summary: Rename a recording, replace its link, or change who may watch it
+    description: >-
+      Only the keys sent change (title, url and visibility are "omitted but not null"). A new link is read as on
+      createLessonRecording and written with every provider column, with status READY ("a link that is replaced is a link that
+      plays"), also over a PROCESSING upload. A Bunny video replaced by another link is queued for deletion, unless the same video's
+      link is pasted again. availableAt, when sent, updates lessons.recording_available_at. The recording's row is locked.
+    needs: recording.manage on the recording's course (byRecordingCourse)
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: string, format: uri, pattern: "^https://", maxLength: 500 }
+        visibility: { enum: [PUBLIC, ENROLLED] }
+        availableAt: { type: [string, "null"], format: date-time }
+    result:
+      returns: LessonRecording
+      status: 200
+      type: object
+      description: the recording as createLessonRecording gives it
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: recording.manage is not held on the recording's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      VALIDATION_ERROR:
+        status: 400
+        note: a field breaks the limits above
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      RECORDING_LINK_INVALID:
+        status: 400
+        note: as createLessonRecording (bunny-video-used when another recording holds the video)
+        source: apps/tedrisat/src/course/domain/recording-link.ts:122
+      RECORDING_NOT_FOUND:
+        status: 404
+        note: >-
+          the id is not a uuid or names no recording (resolver, recording.controller.ts:57 and :62; the service re-checks, :83); or the
+          recording's lesson is archived
+        source: apps/tedrisat/src/course/recording.repository.ts:1012
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the recording's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+    sideEffects:
+      - "audit:recording.update (entity lesson_recording; details courseId, lessonId, previous, next)"
+      - "bunnyVideoRemovals:queue (the replaced Bunny video, unless the same link is pasted again)"
+      - "notification:RECORDING_ADDED (announce, as createLessonRecording: once)"
+    source: apps/tedrisat/src/course/recording.controller.ts:126
+
+  setLessonRecordingAvailability:
+    route: PUT /lessons/{id}/recording-availability
+    summary: Set when the session's talebe may watch its recording
+    description: >-
+      Kept on the session (lessons.recording_available_at), so it may be set before any recording exists and survives a replaced
+      recording. null opens the recording as soon as it is READY, which is how a session starts. Whatever is set, a recording never
+      opens before its session's scheduled start: its availableAt is the later of the two. The lesson row is locked first.
+    needs: recording.manage on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      additionalProperties: false
+      required: [availableAt]
+      properties:
+        availableAt: { type: [string, "null"], format: date-time, description: the key must be sent }
+    result:
+      status: 200
+      type: object
+      required: [lessonId, recordingAvailableAt]
+      properties:
+        lessonId: { type: string, format: uuid, references: Lesson }
+        recordingAvailableAt: { type: [string, "null"], format: date-time }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: recording.manage is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      VALIDATION_ERROR:
+        status: 400
+        note: availableAt is missing or not a date or null
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      LESSON_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no lesson (resolver); or the lesson is archived
+        source: apps/tedrisat/src/course/recording.repository.ts:335
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+    sideEffects:
+      - "audit:lesson.recording_availability_set (details courseId, recordingAvailableAt, previous)"
+      - "notification:RECORDING_ADDED (announce: a recording this opens now is announced now, once; one it holds back is announced by the release poll at the time)"
+    source: apps/tedrisat/src/course/recording.controller.ts:147
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Resource files in Bunny Storage (resource-file.controller.ts). The two upload routes carry UploadGateInterceptor and the
+  # validation pipe; the order is the guards (@Authz), then the interceptor, then the pipe, then the service. The interceptor
+  # answers 503 STORAGE_NOT_CONFIGURED before the body is read and 413 FILE_TOO_LARGE when Content-Length is past 25 MB plus 64 KB
+  # without reading it, then parses multipart/form-data with multer: ONE file in memory under the field `file`, 4 fields, 1 KB per
+  # field, 6 parts, names read as UTF-8; multer's own size limit is mapped to 413 FILE_TOO_LARGE. Other multer limit violations (a
+  # second file, an unexpected field name, too many parts) keep Nest's 400 mapping: NOT VERIFIED which message.
+  # ------------------------------------------------------------------------------------------------------------------------
+  uploadCourseResourceFile:
+    route: POST /courses/{id}/resources/files
+    summary: Upload a file as one of the course's resources
+    description: >-
+      The file is checked by its bytes and size (acceptUpload), stored under a key tedrisat builds
+      (<prefix>/courses/<courseId>/resources/<uuid>) and added as the LAST resource. The order is: a StorageDeletion row for the new
+      key due in one hour (upload.unclaimed); the object put to Bunny Storage; then one transaction that bumps courses.version
+      (unconditionally), inserts the CourseResource row (order_index max+1, url null, sanitised file_name), claims the reservation
+      and writes the audit row. On any failure the key is queued for removal at once (upload.failed) and the sweep is kicked. The
+      course must be one the caller may write: a müderris does not write to a course the köşk hid.
+    needs: course.edit on the course (byExistingCourse; hidden courses count as existing)
+    body:
+      type: object
+      required: [file]
+      description: multipart/form-data
+      properties:
+        file: { type: string, format: binary, description: "at most 25 MB; PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text, as read from its bytes" }
+        name: { type: string, maxLength: 200, description: "the listed name; the file's own name without its extension when absent or blank" }
+        meta: { type: string, maxLength: 120, description: a short line under the name }
+    result:
+      returns: CourseResource
+      status: 201
+      type: object
+      required: [resource, courseVersion]
+      description: the new CourseResource and the course's new version
+      properties:
+        resource: { type: object, description: "the CourseResource as the course page lists it, with file {name, contentType, sizeBytes, downloadUrl}; downloadUrl is tedrisat's download route for it, a path from the API's root (/courses/<id>/resources/<rid>/file), which needs the caller's own token" }
+        courseVersion: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: course.edit is not held on the course
+        source: libs/common/src/authz/authz.guard.ts:92
+      FILE_REQUIRED:
+        status: 400
+        note: no file part, or an empty one
+        source: apps/tedrisat/src/storage/upload.ts:150
+      VALIDATION_ERROR:
+        status: 400
+        note: name or meta longer than their limits
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      COURSE_NOT_FOUND:
+        status: 404
+        note: >-
+          the id is not a uuid or names no course (resolver); a draft, a hidden course or a course of a hidden köşk to a caller who may
+          not write it (getDetail in write mode)
+        source: apps/tedrisat/src/course/course.controller.ts:111
+      FILE_TOO_LARGE:
+        status: 413
+        note: more than 25 MB, by the announced length (:120), by multer (:126) or by the buffered size (:151)
+        source: apps/tedrisat/src/storage/upload.ts:151
+      FILE_TYPE_NOT_ALLOWED:
+        status: 415
+        note: the bytes are not one of the accepted types (HTML, SVG, a plain ZIP, an executable and a macro-enabled Office file are refused)
+        source: apps/tedrisat/src/storage/upload.ts:153
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: the BUNNY_STORAGE_* keys are not set (S17); answered by the interceptor before the body is read
+        source: apps/tedrisat/src/storage/object-storage.ts:68
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: the store did not answer or answered with an error; no resource row is recorded and the key is queued for removal
+        source: apps/tedrisat/src/storage/bunny-object-storage.ts:155
+    sideEffects:
+      - "storage:put (Bunny Storage, the object under the new key)"
+      - "audit:resource.file_upload (entity resource; details courseId, name, fileName, contentType, sizeBytes)"
+      - "storageDeletions:reserve (the key, due in one hour, claimed by the same transaction that records the row)"
+      - "kicks sweepStorageDeletions (only when the upload fails)"
+    source: apps/tedrisat/src/course/resource-file.controller.ts:93
+
+  downloadCourseResourceFile:
+    route: GET /courses/{id}/resources/{resourceId}/file
+    summary: Download a file of the course's resources
+    description: >-
+      Streamed through tedrisat as an attachment with the recorded content type and the sanitised name (Content-Disposition
+      attachment; filename*=...), X-Content-Type-Options nosniff, Cache-Control private, no-store and Content-Security-Policy
+      default-src 'none'; sandbox. No store address is ever sent. The read is the course page's (viewDetail), so a hidden course and
+      a draft are not found and a content read by someone who is neither an enrolled talebe nor a müderris is audited.
+    needs: course.view_details on the course (byExistingCourse), held by the enrolled talebe and the course team
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: course.view_details is not held on the course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: resourceId is not a uuid (ParseUUIDPipe)
+        source: apps/tedrisat/src/course/resource-file.controller.ts:124
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the id is not a uuid or names no course (resolver); a draft, a hidden course or a course of a hidden köşk to a caller who may not see it
+        source: apps/tedrisat/src/course/course.controller.ts:111
+      RESOURCE_FILE_NOT_FOUND:
+        status: 404
+        note: >-
+          no such resource in this course, the resource is a link, or the store no longer has the object (:38 of stored-file.ts);
+          the content-locked branch (:115) is defensive, the route already asks course.view_details
+        source: apps/tedrisat/src/course/resource-file.service.ts:115
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: the BUNNY_STORAGE_* keys are not set; checked first, before any lookup
+        source: apps/tedrisat/src/storage/object-storage.ts:68
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: the store did not answer or answered with an error
+        source: apps/tedrisat/src/storage/bunny-object-storage.ts:163
+    sideEffects:
+      - "storage:get (Bunny Storage)"
+      - "audit:course.content_read (via resource.download; only when the reader is neither a müderris nor an enrolled talebe)"
+    source: apps/tedrisat/src/course/resource-file.controller.ts:120
+
+  uploadLessonResourceFile:
+    route: POST /lessons/{id}/resources/files
+    summary: Upload a file as one of a session's own resources
+    description: >-
+      As uploadCourseResourceFile, under the key <prefix>/courses/<courseId>/lessons/<lessonId>/resources/<uuid>, inserting a
+      LessonResource as the session's last resource and bumping the course version. The session must be live (non-archived) and in a
+      course the caller may write; a hidden session answers LESSON_NOT_FOUND, before anything is stored and again under the write.
+    needs: session.manage on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      required: [file]
+      description: multipart/form-data, as uploadCourseResourceFile
+      properties:
+        file: { type: string, format: binary }
+        name: { type: string, maxLength: 200 }
+        meta: { type: string, maxLength: 120 }
+    result:
+      returns: LessonResource
+      status: 201
+      type: object
+      required: [resource, courseVersion]
+      description: the new LessonResource and the course's new version
+      properties:
+        resource: { type: object, description: "the LessonResource with file {name, contentType, sizeBytes, downloadUrl}; downloadUrl is /lessons/<id>/resources/<rid>/file" }
+        courseVersion: { type: integer }
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: session.manage is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      FILE_REQUIRED:
+        status: 400
+        note: no file part, or an empty one
+        source: apps/tedrisat/src/storage/upload.ts:150
+      VALIDATION_ERROR:
+        status: 400
+        note: name or meta longer than their limits
+        source: libs/common/src/pipes/validation.pipe.ts:52
+      LESSON_NOT_FOUND:
+        status: 404
+        note: >-
+          the id is not a uuid or names no lesson (resolver); the session is hidden, or of a course the caller may not see or write
+          (findWritableLessonCourse turns every CourseNotFound into this, :545, and a hidden session is :549); or it is hidden under
+          the write (course.repository.ts:883)
+        source: apps/tedrisat/src/course/course.service.ts:553
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      FILE_TOO_LARGE:
+        status: 413
+        note: more than 25 MB, by the announced length, by multer or by the buffered size
+        source: apps/tedrisat/src/storage/upload.ts:151
+      FILE_TYPE_NOT_ALLOWED:
+        status: 415
+        note: the bytes are not one of the accepted types
+        source: apps/tedrisat/src/storage/upload.ts:153
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: the BUNNY_STORAGE_* keys are not set (S17); answered by the interceptor before the body is read
+        source: apps/tedrisat/src/storage/object-storage.ts:68
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: the store did not answer or answered with an error; no resource row is recorded and the key is queued for removal
+        source: apps/tedrisat/src/storage/bunny-object-storage.ts:155
+    sideEffects:
+      - "storage:put (Bunny Storage, the object under the new key)"
+      - "audit:resource.file_upload (entity resource; details as uploadCourseResourceFile plus lessonId)"
+      - "storageDeletions:reserve (the key, due in one hour, claimed by the same transaction that records the row)"
+      - "kicks sweepStorageDeletions (only when the upload fails)"
+    source: apps/tedrisat/src/course/resource-file.controller.ts:156
+
+  downloadLessonResourceFile:
+    route: GET /lessons/{id}/resources/{resourceId}/file
+    summary: Download a file of a session's own resources
+    description: >-
+      As downloadCourseResourceFile. The session must be live: a hidden session keeps its resources but serves none.
+    needs: course.view_details on the lesson's course (byLessonCourse)
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+    refusals:
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: course.view_details is not held on the lesson's course
+        source: libs/common/src/authz/authz.guard.ts:92
+      HTTP_400:
+        status: 400
+        note: resourceId is not a uuid (ParseUUIDPipe)
+        source: apps/tedrisat/src/course/resource-file.controller.ts:187
+      LESSON_NOT_FOUND:
+        status: 404
+        note: >-
+          the id is not a uuid or names no lesson (resolver, and course.service.ts:516); the course is a draft, hidden or of a hidden
+          köşk to a caller who may not see it (turned from CourseNotFound, :517); or the session is hidden (resource-file.service.ts:140)
+        source: apps/tedrisat/src/course/resource-file.service.ts:140
+      COURSE_NOT_FOUND:
+        status: 404
+        note: the lesson's course is in a hidden köşk and the caller may not open it
+        source: libs/common/src/authz/authz.guard.ts:89
+      RESOURCE_FILE_NOT_FOUND:
+        status: 404
+        note: no such resource of this session, the resource is a link, or the store no longer has the object (stored-file.ts:38)
+        source: apps/tedrisat/src/course/resource-file.service.ts:144
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: the BUNNY_STORAGE_* keys are not set; checked first, before any lookup
+        source: apps/tedrisat/src/storage/object-storage.ts:68
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: the store did not answer or answered with an error
+        source: apps/tedrisat/src/storage/bunny-object-storage.ts:163
+    sideEffects:
+      - "storage:get (Bunny Storage)"
+      - "audit:course.content_read (via resource.download; only when the reader is neither a müderris nor an enrolled talebe)"
+    source: apps/tedrisat/src/course/resource-file.controller.ts:183
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Background jobs of the area: in-process timers, none under the test runner, no route and no caller. The inventory's section 2
+  # lists them; there is no Bunny webhook route, polling was chosen "because how Bunny's webhooks are authenticated was not checked".
+  # ------------------------------------------------------------------------------------------------------------------------
+  pollRecordingEncoding:
+    summary: Settle the Bunny uploads that are still PROCESSING, then delete the replaced videos from Bunny
+    description: >-
+      One pass (RecordingEncodingPoller.pollOnce). Settling: reads up to 50 PROCESSING Bunny uploads, least recently updated first,
+      from Bunny (getVideo) and decides by the video's status: FINISHED (4) or the JIT playlists created (8) is READY, ERROR (5) or
+      UPLOAD_FAILED (6) is FAILED, CREATED (0) after upload_expires_at is FAILED, a video gone from the library is FAILED, anything
+      else keeps waiting (even past the lifetime, because the file arrived in time and is being encoded). A READY upload gets
+      duration_minutes = max(1, round(length / 60)) and is announced. The write is conditional on the row still being PROCESSING
+      with the same video id, so several instances polling at once are harmless. A row left waiting or not answered for goes to the
+      back of the queue. Removing: then deletes up to 20 queued replaced videos, least recently tried first, once the upload that
+      replaced each is over; a video Bunny no longer has counts as deleted, a video a recording holds again is never deleted, a
+      refusal bumps attempts and is tried again later with no cap.
+    needs: the system itself (an in-process timer); no caller, no token, no permission
+    result:
+      type: object
+      description: the counts of one pass, which the poller returns and no route sends
+      properties:
+        ready: { type: integer }
+        failed: { type: integer }
+        waiting: { type: integer }
+        errors: { type: integer }
+        removed: { type: integer }
+        removeErrors: { type: integer }
+    refusals: {}
+    sideEffects:
+      - "bunny:getVideo (GET /library/<id>/videos/<videoId>, per PROCESSING upload)"
+      - "bunny:deleteVideo (DELETE, per queued replaced video; a 404 counts as deleted)"
+      - "notification:RECORDING_ADDED (announce, with no actor, when an upload turns READY and its release time has passed)"
+      - "audit:recording.video_delete (per video deleted from Bunny)"
+    note: >-
+      Trigger: setInterval every 60 seconds (ENCODING_POLL_INTERVAL_MS), started at application bootstrap only when the Bunny Stream
+      library is configured (BUNNY_STREAM_LIBRARY_ID and BUNNY_STREAM_API_KEY), so a server without the keys, every test app among
+      them, runs no timer. A pass still running when the next tick comes is not overlapped. An error on one video is logged, counted
+      in errors and retried on a later pass.
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:100
+
+  announceReleasedRecordings:
+    summary: Announce the recordings whose release time has come
+    description: >-
+      One pass (RecordingReleasePoller.releaseDue). Claims up to 100 READY recordings that were not announced and whose release time
+      has come, one statement per recording that checks and marks notified_at, and tells the talebe of each (RECORDING_ADDED). A
+      recording opens on every read at its own time, so playing needs no job; only the announcement waits for this one. The writes
+      that may have opened a recording (a pasted link, a link replaced, a release time changed) and the encoding poll call announce
+      themselves, and whichever gets there first claims it; a recording is announced once and never again.
+    needs: the system itself (an in-process timer); no caller, no token, no permission
+    result:
+      type: integer
+      description: how many recordings the pass claimed
+    refusals: {}
+    sideEffects:
+      - "notification:RECORDING_ADDED (to the ENROLLED seats of the session's course, no actor left out; a hidden session is not news)"
+    note: >-
+      Trigger: setInterval every 60 seconds (RELEASE_POLL_INTERVAL_MS), started at application bootstrap and never under the test
+      runner (isTestRunner). A pass still running when the next tick comes is not overlapped. A failure to claim or to write the
+      notification is logged and never undoes anything.
+    source: apps/tedrisat/src/course/recording-release.poller.ts:103
+
+  sweepStorageDeletions:
+    summary: Delete from Bunny Storage the objects that no row points at any more
+    description: >-
+      One pass (StorageDeletionService.pass) claims up to 50 StorageDeletion rows that are due with FOR UPDATE SKIP LOCKED, moving
+      their due time 15 minutes ahead and counting an attempt, removes each object from the store, and deletes the rows of the
+      objects removed. A failure keeps the row with last_error and a backoff of one minute doubling to at most six hours. A kick
+      goes round again while a full batch is claimed, at most 20 rounds. The rows are written by the transactions that drop a file's
+      last reference (a removed resource, a purge, a deleted homework file) and by the upload routes (upload.unclaimed, upload.failed), so
+      the database decides what is gone and the sweep only catches the store up.
+    needs: the system itself (an in-process timer, or a kick after a write); no caller, no token, no permission
+    refusals: {}
+    sideEffects:
+      - "storage:delete (Bunny Storage, per due object; an object already gone is not an error)"
+    note: >-
+      Trigger: setInterval every 5 minutes (STORAGE_SWEEP_INTERVAL_MS) and once at bootstrap, only when the object store is
+      configured (BUNNY_STORAGE_*) and never under the test runner; and StorageDeletionService.kick() after each write that lets
+      a file go (updateLesson with resources, uploads that fail, a purge, a köşk delete, the whole-course save). Without storage no
+      sweep runs and the rows wait. Several instances sweeping at once is harmless.
+    source: apps/tedrisat/src/storage/storage-deletion.service.ts:118
+
+invariants:
+  # Sessions
+  - id: session-is-a-live-lesson
+    rule: >-
+      A "session" (celse) is a lesson of type LIVE. The session page, previous and next, and the weekly batch deal with LIVE lessons
+      only, so a VIDEO, DOCUMENT or QUIZ lesson is a 404 LESSON_NOT_FOUND on the session page, and only a LIVE lesson takes a stream
+      link or is a make-up.
+    source: apps/tedrisat/src/course/domain/session-view.ts:165
+
+  - id: session-status-follows-the-clock
+    rule: >-
+      A session's status is never stored: CANCELLED when cancelled_at is set, else ENDED once now is at or after the start plus the
+      length (60 minutes when it has none), LIVE from the start, else SCHEDULED; a session with no start is SCHEDULED.
+    source: apps/tedrisat/src/course/domain/session-view.ts:131
+
+  - id: session-content-is-view-details
+    rule: >-
+      The meeting link, agenda, kaynak, cancel reason, how a session is attended (inPerson excepted), the stream link, the release
+      time of its recording, its homework, its exam and the links and files of its resources are sent only to a caller holding
+      course.view_details, and the keys are removed, never nulled. The programme (title, type, schedule, length, the names of its
+      resources, the in-person mark) is public. A sample session (is_preview) also shows kaynak, agenda and its PUBLIC recording to a
+      locked caller. A cancelled session's meeting link is null even to a content reader.
+    source: apps/tedrisat/src/course/domain/course-content.ts:78
+
+  - id: session-meeting-link-any-https-host
+    rule: >-
+      A stored meeting link is an https address of at most 500 characters on any host; the API has no host allow-list (the Meet,
+      Zoom or Jitsi chip is a display helper of the web apps). Only the first session of a weekly batch gets the link, because links
+      change every week.
+    source: apps/tedrisat/src/course/dto/create-course.dto.ts:178
+
+  - id: session-attendance-has-three-ways
+    rule: >-
+      A session is attended by its meeting link, its live stream, or in person (lessons.in_person, else courses.in_person); a link
+      that is null or only whitespace is no link. A session with none of the three is "without access", which the course menu badge,
+      the köşk home and the medrese Pano flag; a cancelled session and one finished without a recording are not counted.
+    source: apps/tedrisat/src/course/domain/session-access.ts:82
+
+  - id: session-cancel-keeps-the-slot
+    rule: >-
+      Cancelling a session sets cancelled_at, cancel_reason and replacement_lesson_id and writes the audit row lesson.cancel; the
+      session stays in the programme, its meeting link is no longer sent, and a cancelled session takes no live stream link and no
+      pasted recording (409 LESSON_CANCELLED). A second cancel is 409 LESSON_ALREADY_CANCELLED.
+    source: apps/tedrisat/src/course/course.repository.ts:1333
+
+  - id: session-make-up-rules
+    rule: >-
+      The make-up of a cancelled session is a non-archived LIVE session of the same course, not the session itself, not cancelled,
+      and the make-up of at most one cancelled session; checked under the course row's lock, after the version check.
+    source: apps/tedrisat/src/course/course.repository.ts:1387
+
+  - id: session-hide-never-deletes
+    rule: >-
+      These routes hide a lesson or a week (archived_at, archived_by, archived_level) and never delete one. A week hides its live
+      sessions at one instant with one stamp. The hider's level, the highest rung of COURSE_HIDE_LADDER the caller holds, decides who
+      may restore it: the same level or above. Everything attached (recordings, resources, homework) is kept; the real delete is the
+      başnazım's purge.
+    source: apps/tedrisat/src/course/course.repository.ts:1622
+
+  - id: session-writes-bump-the-version
+    rule: >-
+      courses.version is bumped by createLesson, updateLesson, cancelLesson, archiveLesson, hideCourseWeek, createSessionBatch and both
+      resource file uploads, under the course row's lock, so a whole-course save loaded before them is refused. Only updateLesson and
+      cancelLesson carry the version they saw and are refused 409 COURSE_VERSION_CONFLICT when it is stale; the others bump with no
+      expected version. The live stream, the recordings and the release time do not bump it, because they are no part of the course
+      document.
+    source: apps/tedrisat/src/course/course.repository.ts:809
+
+  - id: session-batch-pattern-limits
+    rule: >-
+      A weekly pattern has 1 to 7 unique ISO weekdays, a local HH:mm start in an IANA zone (the course's by default; the local wall
+      time is kept across daylight-saving changes), exactly one of endDate and count, at most 200 sessions, a range of at most 366
+      days, and at least one session; an exam batch is exactly one session.
+    source: apps/tedrisat/src/course/domain/weekly-pattern.ts:144
+
+  - id: session-batch-week-placement
+    rule: >-
+      A session of a batch goes into the week whose dates hold it, counted from the course's existing dated weeks in sevens (never
+      below 1); with no dated week the pattern's own numbering applies (the Monday-to-Sunday week of startDate is week 1); a missing
+      week is created as "Hafta N" after the last. The preview and the write number a session the same way.
+    source: apps/tedrisat/src/course/domain/weekly-pattern.ts:224
+
+  - id: session-live-stream-is-youtube
+    rule: >-
+      Only a LIVE, non-cancelled session takes a stream link, only a YouTube video link, stored normalised as
+      https://www.youtube.com/live/<id>. Content readers are shown it from the scheduled start until a released recording replaces it,
+      and at most 24 hours after the scheduled end; never to anyone else.
+    source: apps/tedrisat/src/course/live-stream.service.ts:48
+
+  - id: session-content-reads-are-audited
+    rule: >-
+      A content read (the session page, the recordings list, a resource download) by a caller who holds course.view_details and is
+      neither a müderris of the course nor an enrolled talebe writes the audit row course.content_read before the body is returned,
+      and a failed write fails the read. The audit keys this area writes are session.hide, week.hide, lesson.cancel,
+      lesson.live_stream_set, lesson.live_stream_clear, lesson.recording_availability_set, recording.upload_start, recording.add,
+      recording.update, recording.video_delete, resource.file_upload, resource.file_delete, course.content_read and scope.passive_open.
+    source: apps/tedrisat/src/course/course.service.ts:415
+
+  # Recordings
+  - id: recording-one-per-session
+    rule: >-
+      A session has at most one recording (a unique index on lesson_recordings.lesson_id) and a Bunny video belongs to at most one
+      recording (a unique index on bunny_video_id). A second recording is 409 RECORDING_EXISTS unless the existing one is a FAILED
+      Bunny upload (a paste may replace it) or a link, a FAILED upload or, with replaceVideo, any Bunny upload (an upload may replace it).
+    source: apps/tedrisat/src/database/schema/course.schema.ts:454
+
+  - id: recording-provider-columns
+    rule: >-
+      A BUNNY recording carries bunny_video_id and upload_expires_at and no url; every other provider carries a url and no video id
+      (and a PROCESSING row may have neither), by the CHECK lesson_recordings_provider_columns.
+    source: apps/tedrisat/src/database/schema/course.schema.ts:456
+
+  - id: recording-status-machine
+    rule: >-
+      A Bunny upload is PROCESSING until the encoding poll settles it: FINISHED or JIT playlists created is READY, ERROR or
+      UPLOAD_FAILED is FAILED, CREATED after upload_expires_at is FAILED, a video gone from the library is FAILED, any other status
+      keeps waiting. A pasted link is READY at once, and a replaced link is READY again. A FAILED recording is listed to no one and is
+      retried through the upload route.
+    source: apps/tedrisat/src/bunny-stream/bunny-signature.ts:136
+
+  - id: recording-opens-when-released
+    rule: >-
+      A recording opens to talebe when it is READY, its session has begun and the release time the course team set
+      (lessons.recording_available_at) has passed: its availableAt is the later of the two, null only for a session with neither.
+      Before that it is listed with availableAt and no link, except to recording.manage holders. It is announced once (RECORDING_ADDED,
+      claimed through notified_at) by whichever of the write, the encoding poll or the release poll gets there first.
+    source: apps/tedrisat/src/course/domain/recording.ts:100
+
+  - id: recording-visibility-caps
+    rule: >-
+      An ENROLLED recording is for content readers. A PUBLIC one is also for everyone else, token or not, unless the course is closed
+      (is_closed), the platform policy RECORDINGS_NEVER_PUBLIC is on, or the köşk has recordings_never_public; a pending, removed or
+      barred talebe counts as everyone else.
+    source: apps/tedrisat/src/course/course.service.ts:861
+
+  - id: recording-public-honours-medrese-policy
+    rule: >-
+      A PUBLIC recording of a medrese course is hidden from visitors when the medrese's policy "no public recordings"
+      (madrasah_settings.policy_no_public_recordings) is on, as the köşk's and the platform's flags hide it.
+    holds: false
+    finding: policy-no-public-recordings-inert
+    note: >-
+      The policy is stored, edited on the medrese settings route and loaded into the authz policy list, but publicRecordingsAllowed
+      reads only is_closed, the platform policy and the köşk flag, so a PUBLIC recording of a medrese course is still shown to
+      visitors. The schema comment says the other two medrese policies "are kept for the courses and recordings that will read them".
+      setting.recordings_public is closed by the policy in the engine and no handler asks it.
+    source: apps/tedrisat/src/course/course.service.ts:861
+
+  - id: recording-bunny-link-own-library
+    rule: >-
+      A pasted Bunny player link is accepted only for the configured library, any other Bunny host or library is refused, and a
+      Bunny video can be the recording of one session only. The video id is never sent to a client; the player link is signed on every
+      response with an expiry (6 hours by default, 60 seconds to 7 days).
+    source: apps/tedrisat/src/course/domain/recording-link.ts:116
+
+  - id: recording-upload-signature-24h
+    rule: >-
+      A TUS upload is signed for 24 hours (Bunny asks for at least one hour); re-signing keeps the original expiry and is possible
+      only for a PROCESSING upload that has not expired.
+    source: apps/tedrisat/src/bunny-stream/bunny-signature.ts:10
+
+  - id: recording-replaced-videos-leave-bunny
+    rule: >-
+      A Bunny video that leaves its recording (replaced by an upload, by a pasted link, or after a FAILED upload) is queued in
+      bunny_video_removals in the same transaction and deleted by the encoding poll, 20 per pass, once the upload that replaced it is
+      over; a video a recording holds again is never deleted, and the deletion is audited recording.video_delete.
+    source: apps/tedrisat/src/course/recording.repository.ts:653
+
+  - id: recording-upload-refuses-cancelled-session
+    rule: "A cancelled session takes no recording: an upload is refused with 409 LESSON_CANCELLED exactly as a pasted link is."
+    holds: false
+    finding: upload-on-cancelled-session
+    note: >-
+      POST /lessons/{id}/recordings/uploads never looks at cancelled_at (recording-upload.service.ts:53-117,
+      recording.repository.ts:445-545), while POST /lessons/{id}/recordings answers 409 LESSON_CANCELLED (recording.repository.ts:895).
+      No spec covers an upload on a cancelled session.
+    source: apps/tedrisat/src/course/recording.repository.ts:445
+
+  - id: session-cancel-takes-live-sessions-only
+    rule: Only a LIVE session can be cancelled, as only LIVE lessons are sessions and only LIVE lessons can be a make-up.
+    holds: false
+    finding: cancel-no-type-check
+    note: >-
+      cancelLesson has no lesson-type check, so a VIDEO, DOCUMENT or QUIZ lesson can be cancelled, though it appears nowhere as a
+      session (course.repository.ts:1333).
+    source: apps/tedrisat/src/course/course.repository.ts:1333
+
+  - id: session-hide-audit-key-is-documented
+    rule: The audit action DELETE /lessons/{id} writes is the one its published description names.
+    holds: false
+    finding: archive-lesson-audit-name
+    note: >-
+      The route's swagger description says the hide is written "as lesson.hide" (lesson.controller.ts:410); the code writes
+      session.hide (entity session, archive/hide-audit.ts) and the e2e spec pins session.hide (week-hide.e2e.spec.ts#5).
+    source: apps/tedrisat/src/course/lesson.controller.ts:410
+
+  - id: session-cancelled-message-fits-its-route
+    rule: The sentence of a 409 LESSON_CANCELLED says why the route refused.
+    holds: false
+    finding: lesson-cancelled-text-streams-only
+    note: >-
+      LessonCancelledError has one message, "Lesson X is cancelled; a cancelled session takes no live stream link", and
+      createLessonRecording answers it too. The code is right; the sentence is about streams only.
+    source: apps/tedrisat/src/course/errors/lesson-cancelled.error.ts:11
+
+  # Resource files
+  - id: resource-link-xor-file
+    rule: >-
+      A resource is a link or a stored file, never both and never half a file (the CHECKs course_resources_link_or_file and
+      lesson_resources_link_or_file; course_resources.url may also be null on legacy rows). A stored file keeps its file on a whole-list
+      save and refuses a url (400 RESOURCE_IS_FILE); a new row in a list needs a url (files come only through the upload routes); a
+      row left out of a list is deleted and its object queued.
+    source: apps/tedrisat/src/database/schema/course.schema.ts:291
+
+  - id: resource-upload-limits
+    rule: >-
+      One file of at most 25 MB per request. The type is read from the bytes, never the header or the extension: PDF, PNG, JPEG, WebP,
+      Word docx, Excel xlsx, PowerPoint pptx or plain UTF-8 text; HTML, SVG and everything else are 415. The stored name is sanitised
+      (last path segment, control and bidi characters dropped, <>:"|?* replaced, at most 200 characters, the extension forced to agree
+      with the type: ödev.html that is a PDF is stored ödev.html.pdf). The storage key is built by tedrisat from ids and a random uuid
+      only, never from user text.
+    source: apps/tedrisat/src/storage/upload.ts:147
+
+  - id: resource-upload-leaves-no-orphan
+    rule: >-
+      An upload reserves its key (a StorageDeletion row due in one hour), stores the object, then records it in a transaction that
+      claims the reservation; a failure queues the key at once. Every dropped last reference (a removed resource, a purge, a deleted
+      homework file) writes a StorageDeletion row in the same transaction, and a sweep every five minutes and after writes deletes the
+      objects, retrying with a backoff of at most six hours. Without storage no sweep runs.
+    source: apps/tedrisat/src/storage/upload-store.ts:32
+
+  - id: resource-download-is-content
+    rule: >-
+      Only content readers download a file, streamed through the API as an attachment with nosniff, no-store and a sandbox CSP; the
+      store's address is never sent; a hidden session serves no files; a link is never a download.
+    source: apps/tedrisat/src/storage/stored-file.ts:30

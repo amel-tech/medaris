@@ -1,0 +1,53 @@
+# nizam.moderation.banStudent where the person is already barred in that scope (BANST-2): a stale roster. The page is read first; the binding
+# then places the ban through the API as KOSK_NAZIM (bans.mjs up, the same route the window posts to) while the reason is being typed, so the
+# window's own press meets the open ban: tedrisat answers the standing ban with the same 201, writes nothing and tells nobody, and the window
+# says "Yasak kaydedildi" all the same. The reason the helper gave stands, not the one typed.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent \
+#     --bind graphs/nizam/moderation/banStudent/binding.already.yaml --cover transitions --absent --out <dir>
+# NOT RUN. The helper's ban is the one notice the Medaris nazımı holds (`notice … total=1`), because the window's ban adds none. Data and
+# clean-up as binding.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.banStudent
+
+scenarios:
+  already:
+    given: { scope: course, answer: already, session: ahead }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/students'
+    setup:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+      - run: [node, helpers/course.mjs, make, banst, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, banst]
+        expect: course remove banst
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+    vars:
+      who: applicantC
+      whoKey: APPLICANT_C
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      courseTitle: Deneme dersi banst
+      reason: Bu gerekçe yazılır ama kaydedilmez
+      reasonSaved: Başka bir nazım önce yasakladı
+      expectedBan: 'ban APPLICANT_C COURSE course={made.course} from=- role=KOSK_NAZIM reason=Başka bir nazım önce yasakladı'
+
+events:
+  # the people first (another nazım bars her), then the reason: this file's TYPE_REASON replaces the shared one
+  TYPE_REASON:
+    - run: [node, ../nizam/moderation/banStudent/bans.mjs, up, banst, --user, applicantC, --scope, COURSE, --reason, Başka bir nazım önce yasakladı]
+      expect: 'banned APPLICANT_C COURSE'
+    - fill: { role: textbox, name: Yasaklama gerekçesi, value: '{reason}', within: { role: dialog, name: Talebeyi yasakla } }

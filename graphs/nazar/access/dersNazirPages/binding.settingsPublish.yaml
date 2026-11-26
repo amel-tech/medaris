@@ -1,0 +1,28 @@
+# nazar.access.dersNazirPages, the ders nazırı given course.settings and course.publish and not course.edit (e2e course-settings#9): Ders ayarları opens
+# with every box shut, the line “Bu ayarları değiştirmek için “Dersi düzenle” izni de gerekir.” and no “Kaydet” in the form; the card Hocalar ve unvanları
+# is open with its own “Kaydet” (F-D2c-14, which is why the e2e's “no Kaydet” is stale), and “Yayın” says the status with no button. Müfredat refuses.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.settingsPublish.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+scenarios:
+  settingsPublish:
+    given: { held: settingsPublish }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'course.settings,course.publish']
+        expect: 'course-nazir-grants APPLICANT_D'
+    teardown:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --dismiss]
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

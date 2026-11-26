@@ -1,0 +1,57 @@
+# nazar.access.noAccess on the local stack: "Bu portala erişiminiz yok" at http://localhost:4002/erisim-yok, as a person who holds no medrese and
+# no course seat, as one who holds a seat, and as the başnazım, who holds none either. This file is the main story and the scenarios that
+# between them take every transition the stack can drive:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/noAccess \
+#     --bind graphs/nazar/access/noAccess/binding.yaml --cover transitions --absent --out <dir>
+# A scenario that takes no transition of its own (another person on the same states) is not walked by `--cover transitions`, so each has a file
+# of its own, with the nodes, events and effects they share in locators.binding.yaml:
+#   binding.kosk.yaml      the nazım of two köşks: the role line says "Köşk nazımı"                              (--to verdict)
+#   binding.platform.yaml  the Medaris nazımı: the role line says "Medaris nazımı"                               (--to verdict)
+#   binding.hesap.yaml     the talebe opening Hesap: sent here, not to a 404                                     (--to verdict; e2e access#3 a2)
+#   binding.chief.yaml     the başnazım opens "/", is told he has no access, types a medrese's address and opens it (--to opened_by_address; F-E-17)
+# NOT RUN: the graphs were written without a replay (the owner's word: replays come once, at the end). What is written here comes from the
+# code and from the stack's smoke run (scratchpad/stack/smoke: each persona signed in at nazar, its page kept as a screenshot; the başnazım,
+# the köşk nazımı, the Medaris nazımı and the talebe all landed on this page). Every locator is unverified until a walk.
+#
+# What the scenarios here start from (STACK.md; the seed holds a seat for the başmüderris and none for the other five):
+#   talebe           the seeded TALEBE, no seat, opens "/"                                                         (the main story; e2e access#1)
+#   talebeAsksScope  the same person opens the address of a medrese that is not theirs: sent here, not to a 404    (e2e access#3 a1)
+#   chiefAsksScope   the başnazım opens the medrese's address first: the layout asks GET /me and lets him in       (F-E-17)
+#   staff            the seeded başmüderris opens /erisim-yok: sent on to the portal                               (e2e access#4)
+# Nothing is created, changed or removed: every scenario only reads. The one press with an effect is "Çıkış yap" (SIGN_OUT), which ends the
+# walk's own browser session at Keycloak and nothing else; each scenario signs in again in a fresh browser.
+#
+# Not walked, with the reason:
+#   - `read: assignmentsFailed` and `read: meFailed` (exit load_failed): tedrisat answers every read on this stack and nothing makes it refuse
+#     one. The unit spec apps/nazar/test/access.spec.tsx proves the markup; nazar.shell.errorStates owns the retry state.
+#   - "Tedris’e dön" when TEDRIS_URL is empty, and the e-mail line when the session has none: the stack sets both.
+#   - `enter`: the nav graph's way to this page is `start->erisimYok`, a redirect (`how: auto`), which cannot be pressed, and its binding skips
+#     the page `start`; so every scenario opens its own address and is sent on by the app.
+#   - `call` is on no state: the reads are server-side, so the browser makes no fetch to hold, and "Çıkış yap" is a native form post, on which
+#     `call` would hang the walk.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.access.noAccess
+
+scenarios:
+  talebe:
+    given: { who: noRole, entry: root, read: ok }
+    as: talebe
+    open: '{nazar}/'
+    vars: { acct: TALEBE, held: '"assignments":[]', chief: 'false' }
+  talebeAsksScope:
+    given: { who: noRole, entry: scope, read: ok }
+    as: talebe
+    open: '{nazar}/medrese/a0000000-0000-4000-8000-0000000000ff' # a well-formed id no medrese has (e2e access#3)
+    vars: { acct: TALEBE, held: '"assignments":[]', chief: 'false' }
+  chiefAsksScope:
+    given: { who: chief, entry: scope, read: ok }
+    as: systemAdmin
+    open: '{nazar}/medrese/{seed.madrasah}'
+    vars: { acct: SYSTEM_ADMIN, held: '"assignments":[]', chief: 'true' }
+  staff:
+    given: { who: staff, entry: here, read: ok }
+    as: basmuderris
+    open: '{nazar}/erisim-yok'
+    vars: { acct: MEDRESE_BASMUDERRIS, held: '"role":"MEDRESE_BASMUDERRIS"', chief: 'false' }

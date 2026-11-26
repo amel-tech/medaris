@@ -1,0 +1,252 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.kosks.manage
+status: proposed
+summary: >-
+  What must exist for the Medaris management to read and run one köşk: nizam.kosks.manage. Each need is what the product must do,
+  from the flow's story and the findings it touches; none is read off what the page does today. Nothing here comes from
+  planned.md: no planned feature (P-nn) names this page.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# No replay has run yet (the first walks are a later phase), so no `walked` entry names a replay scenario; the scenarios that will walk
+# a need are named in a comment beside it ("bound, not run").
+#
+# Gaps of this file, for that merge:
+# missing:   the-view-offers-only-what-the-reader-can-do (F-W3-4, MANAGE-1), a-stale-page-is-read-again (MANAGE-2),
+# a-write-is-said-where-the-person-is (MANAGE-3), the-tab-names-the-kosk (F-W3-9), a-disabled-button-says-why
+# (F-W3-1, F-X-3), a-lookup-runs-on-request (F-W3-14, F-X-14), a-hidden-kosk-cannot-be-followed-from-here (F-5)
+# unwalked:  restore-at-once, add-a-nazim-from-here, a-hosting-only-nazim-is-sent-to-hosting, others-are-refused (code, no e2e of
+# this page; a replay of each is bound and has not run), an-unreadable-page-says-so (code, no e2e, no replay: the stack
+# cannot make the overview fail)
+
+needs:
+  - id: read-a-kosk-on-one-page
+    need: >-
+      The başnazım, or a Medaris nazımı who may edit köşks, reads one köşk on one page: how many courses it has and in what state,
+      how many talebe are registered, how many nazımları and which medreses host in it, and its name, short name, description,
+      status, visibility, opening and policies; and sees the nazımları, the hosting rights and the courses in tables.
+    evidence:
+      - state: viewing
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:177
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:297
+      - source: apps/tedrisat/src/hosting/hosting.controller.ts:72
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:234
+      - source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:73
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/20 — the başnazım's page fills every section and the numbers are the database's (criteria 1, 6)"
+    note: |-
+      Also drawn as the assertion only-the-chief-and-the-kosk-editor-see-the-view.
+      kosk-view#1: carried: the h1, the notice, the numbers' line, the medrese in the summary and in the hosting section; not
+      carried: the comparisons with the database, the imam star and the tab counts of the course table (data the walk's köşk does
+      not hold)
+      replay chief (bound, not run)
+
+  - id: hide-asks-first
+    need: >-
+      Hiding a köşk asks once, names the köşk and who loses sight of it, says nothing is deleted and who can bring it back, and
+      then hides it from every list; nothing changes if the person cancels.
+    evidence:
+      - state: hideConfirm
+      - state: hiding
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:354
+      - source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/20 — 'Köşkü gizle' asks first, hides the köşk and writes the audit row (criteria 2, 7)"
+    note: |-
+      Also drawn as the assertion a-hidden-kosk-is-restored-not-hidden-again.
+      kosk-view#3: carried: the dialog names the köşk, Vazgeç changes nothing, Gizle hides, the toast; not carried: the audit row,
+      the köşk's row under "Gizli" in the directory (nizam.kosks.browse)
+      replay chief (bound, not run): HIDE, CONFIRM_HIDE, CANCEL, CLOSE
+
+  - id: restore-at-once
+    need: >-
+      A hidden köşk is brought back with one press by the level that hid it or above, and comes back active, or passive when it
+      has no nazım; nobody is offered a button the API would refuse.
+    evidence:
+      - state: restoring
+      - state: viewing
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:382
+      - source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:100
+    note: >-
+      walked: nothing of this page's. e2e kosks#3 brings a köşk back from the directory (nizam.kosks.browse). Replays hiddenStart
+      and chief (bound, not run).
+
+  - id: take-out-of-service-after-reading-what-it-takes
+    need: >-
+      Taking a köşk out of service shows first what it takes along (the nazımları who leave, the courses that close, the talebe
+      who lose access, the live celses of the coming days) and is confirmed on those numbers; if they changed meanwhile, the fresh
+      ones are shown and asked about again; nothing is hidden or deleted, and a nazım added brings the köşk back.
+    evidence:
+      - state: passiveLoading
+      - state: passiveReady
+      - state: passivating
+      - state: passiveChanged
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:255
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:277
+      - source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:65
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/20 — 'Köşkü pasife al' takes the nazımları off the post and writes the audit row (criterion 7)"
+    note: |-
+      Also drawn as the assertion only-an-active-kosk-is-taken-out-of-service, the assertion a-passive-kosk-has-no-nazim.
+      kosk-view#4: carried: the dialog's words, "Yine de pasife al", the toast; not carried: the numbers of the e2e's own seed (2
+      talebe), the database and audit checks. The changed-numbers branch has no e2e (a replay, IMPACT_CHANGED, is bound, not run)
+
+  - id: add-a-nazim-from-here
+    need: >-
+      The başnazım adds a köşk nazımı from the köşk's page by the person's exact e-mail address; a person who already is one is
+      refused in words, a passive köşk becomes active again, and the page shows the new nazım.
+    evidence:
+      - state: addForm
+      - state: looking
+      - state: addReady
+      - state: adding
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109
+    note: >-
+      walked: nothing of this page's. e2e kosks#12 and #13 add a nazım from the settings page (nizam.kosks.nazims). Replays chief,
+      passiveStart, noRights (bound, not run).
+
+  - id: revoke-a-hosting-right-from-here
+    need: >-
+      The başnazım takes a hosting right back from a medrese on the köşk's page and, when the medrese has open courses in the
+      köşk, chooses what becomes of them: they go on, or they are hidden (and come back from the Arşiv); with none open there is
+      nothing to ask; nothing changes if the person cancels.
+    evidence:
+      - state: revokeOpening
+      - state: revokeForm
+      - state: revokeReady
+      - state: revoking
+      - source: apps/tedrisat/src/hosting/hosting.controller.ts:143
+      - source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/20 — 'Barındırma hakkını geri al' updates the table (criterion 6)"
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/27 — no answer is chosen for the nazım: the button is off until one is, and 'Dersler sürsün' takes the right and leaves the courses (criteria 1 to 3, 5)"
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/27 — 'Dersleri gizle' hides the medrese's courses here (criterion 4) and 'Vazgeç' and Escape change nothing"
+    note: |-
+      Also drawn as the assertion a-revoke-asks-what-becomes-of-open-courses.
+      madrasahs.e2e.ts madrasahs#11, #12
+      kosk-view#5: carried with "Dersler sürsün"; not carried: the database check; "Dersleri gizle" and the right with no course
+      are the replays' (bound, not run)
+      madrasahs#11, #12: the same dialog from the hosting page: nizam.hosting.grantAndRevoke carries them
+
+  - id: a-kosks-own-nazim-is-sent-to-dersler
+    need: >-
+      A köşk's own nazımı who opens the Medaris management address is sent to the page they work in, and never sees the management
+      view.
+    evidence:
+      - state: routing
+      - state: dersler_opened
+      - source: apps/nizam/features/kosks/kosk-entry.ts:48
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/20 — a köşk nazımı who opens the köşk lands on Dersler"
+    note: |-
+      Also drawn as the assertion only-the-chief-and-the-kosk-editor-see-the-view.
+      kosk-view#6: carried: the redirect to /kosks/<id>/dersler; the heading "Dersler" is nizam.courses.list's
+
+  - id: a-hosting-only-nazim-is-sent-to-hosting
+    need: >-
+      A Medaris nazımı who holds only the permission to give hosting rights is sent to the one köşk page their permission opens.
+    evidence:
+      - state: readingHosting
+      - state: readingHeld
+      - state: placing
+      - state: hosting_opened
+      - source: apps/nizam/features/kosks/kosk-entry.ts:52
+    note: "walked: no e2e (MDRS-137 has none for the redirect). Replay hostingOnly (bound, not run)."
+
+  - id: others-are-refused
+    need: >-
+      A person the köşk is not open to (a nazım of another köşk, a Medaris nazımı with neither permission) is told they have no
+      permission, and the page does not say whether the köşk exists.
+    evidence:
+      - state: placing
+      - state: no_access
+      - source: apps/nizam/features/kosks/kosk-entry.ts:52
+    note: >-
+      walked: no e2e of this page (kosks#11 and grants#3 are other pages). Replay stranger (bound, not run); the screen is
+      nizam.shell.noAccessAndNotFound's.
+
+  - id: no-permanent-delete-here
+    need: >-
+      The Medaris management's view of a köşk has no way to delete it for good; the delete is in the Arşiv, for hidden köşks and
+      for the başnazım alone, and the page says so.
+    evidence:
+      - state: viewing
+      - source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:537
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/20 — criterion 5: there is no permanent delete on the page, only the way to the Arşiv"
+    note: >-
+      kosk-view#2: carried in part: the link to the Arşiv is drawn; the two absences (no "Kalıcı olarak sil", no "Hocaları
+      düzenle") hold by the drawing and cannot be checked by a replay (the rule no-permanent-delete-here)
+
+  - id: the-view-offers-only-what-the-reader-can-do
+    need: >-
+      A Medaris nazımı who may edit köşks is shown only the buttons and sections they can use; a section whose read they are
+      refused says they have no permission, and a link leads only where the person may go.
+    missing: F-W3-4 and MANAGE-1, decision D1 of the flow; no Linear issue
+    note: |-
+      Drawn on the states viewing, addForm and addReady and on the node hostingUnavailable, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Also drawn as the assertion the-editor-cannot-add-a-nazim.
+
+  - id: a-stale-page-is-read-again
+    need: >-
+      When the API says the köşk is already in the state the person asked for, the page is read again, so what it offers is true.
+    missing: MANAGE-2, decision D2; no Linear issue
+    note: >-
+      Drawn on the states hideConfirm, hiding and restoring, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-write-is-said-where-the-person-is
+    need: >-
+      After a write the person is told what happened where they are looking, and the focus goes somewhere that exists, not to the
+      page's start because the pressed button was replaced.
+    missing: MANAGE-3; no Linear issue
+    note: |-
+      Drawn on the state viewing, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      Also drawn as the rule toast-is-the-only-word.
+
+  - id: the-tab-names-the-kosk
+    need: The tab and the history name the köşk, so that two köşks open in two tabs can be told apart.
+    missing: F-W3-9; no Linear issue
+    note: >-
+      Drawn on the node koskTitle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-disabled-button-says-why
+    need: A button that is off says what is missing, in words a screen reader reads, in every dialog of the page.
+    missing: F-W3-1 and F-X-3; no Linear issue
+    note: >-
+      Drawn on the nodes addSubmit, revokeSubmit and deactivateOff, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-lookup-runs-on-request
+    need: >-
+      A person's address is looked up when the person asks, not when the field is passed through, since every lookup is audited.
+    missing: F-W3-14 and F-X-14; no Linear issue
+    note: >-
+      Drawn on the state looking and on the node addEmail, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-hidden-kosk-cannot-be-followed-from-here
+    need: >-
+      The public page the management view links to does not let anyone follow a köşk that is hidden, and the link says where it
+      leads for a köşk the public cannot see.
+    missing: >-
+      no Linear issue; F-5 (ledger/security.md), the API's; the link is this page's, the follow is tedris.discover.followKosk's
+    note: >-
+      Drawn on the node publicPage, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: an-unreadable-page-says-so
+    need: When the köşk cannot be read at all the page says so in place and offers to try again.
+    evidence:
+      - state: loadFailed
+      - source: apps/nizam/features/kosks/components/load-failed.tsx:23
+    note: "walked: nothing. Not bound: the stack's API cannot be made to fail this read."

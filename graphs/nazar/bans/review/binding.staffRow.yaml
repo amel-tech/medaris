@@ -1,0 +1,43 @@
+# nazar.bans.review, finding ban-staff-check-gaps: a person who runs the course is still offered "Medreseden de yasakla".
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/bans/review \
+#     --bind graphs/nazar/bans/review/binding.staffRow.yaml --to listed --out <dir>
+# NOT RUN: written without a replay.
+#
+# A file of its own because its `given` is the main walk's: `setup` is the same data as binding.yaml's `reads` plus a MUDERRIS row for Ömer on
+# "Bina ve İzhar Şerhi" (`--staff`, role_assignments, written by SQL because no route seats a person who has no account), and the walk holds
+# that his row still draws "Medreseden de yasakla: Ömer Yasaklı". The code does it today: `viewerMayEscalate` never asks who the person is
+# (apps/tedrisat/src/ban/ban.service.ts:702-706), and the route behind the button reads no role either (ban.service.ts:515-557), where the two
+# create routes refuse such a person with BAN_TARGET_INVALID. The walk only reads: it presses nothing and writes nothing, and the check below
+# reads the role back. When the finding is fixed this walk fails at that node, which is how it is meant to close.
+# Not verified: that the route accepts it (not probed: it would write a ban on a person who runs the course); the read of the code is the evidence.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.bans.review
+
+scenarios:
+  staffRow:
+    given: { read: ok, active: some, lifted: some, scopeHolds: some, match: some, mix: full }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    vars: { typed: Ömer, course: Bina ve İzhar Şerhi, active: '4', lifted: '3' }
+    setup:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, up, --staff]
+        expect: 'ready: 4 open, 3 lifted, omer teaches'
+    teardown:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, down]
+        expect: removed
+
+# The row of the person who runs the course: the same node as the walk's `escalate`, bound to him by name, so that a fix (the button gone for
+# him) shows as a mismatch here and nowhere else.
+nodes:
+  escalate: { role: button, name: 'Medreseden de yasakla: Ömer Yasaklı' }
+
+# The premise, read back: the counts of the tabs as before, and the role the SQL gave him.
+effects:
+  listMadrasahBans:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/bans']
+      expect: '"activeCount":{active},"liftedCount":{lifted}'
+    - run: [node, helpers/sql.mjs, "select role from role_assignments where user_id = 'bb0e0000-0000-4000-8000-000000000001' and revoked_at is null"]
+      expect: '"role":"MUDERRIS"'

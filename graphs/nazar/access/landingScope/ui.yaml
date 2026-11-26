@@ -1,0 +1,64 @@
+# The screens of nazar.access.landingScope: what a person sees where "/" and the address of a scope leave them in nazar-web, drawn only as
+# far as the landing needs: the shell around a scope's page (its menu, the sidebar's scope card and role), the Pano's title and a
+# course's title, the verdict page, and the 404 page. The pages' own contents belong to nazar.pano.decideApplications,
+# nazar.course.overview, nazar.access.noAccess and nazar.shell.errorStates. "/" itself draws nothing. Read from apps/nazar on 15 Nov
+# 2026; nothing was seen in a browser.
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/nazar.json (the app reads it as
+# `nazar.<key>`), the key being the path inside that file. The `composed.*` keys are texts the app builds from data, in no i18n file:
+#   composed.LandingScope.scopeName    the scope's name, the first line of the sidebar's scope card (scope-picker.tsx:67), a medrese's
+#                                      name or a course's title as the API has it
+#   composed.LandingScope.courseTitle  the course's title, the first words of Genel bakış's h1 (course-overview-page.tsx:90); the h1 goes
+#                                      on with the state badge ("Yayında" or "Taslak"), which the binding's pattern allows for
+# Samples are invented and neutral. This flow changes nothing, so it has no `changes` note.
+schema: delurio-graph/0
+kind: ui
+id: nazar.access.landingScope
+flow: nazar.access.landingScope
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek Medrese
+  title: Örnek Ders
+
+# Nothing in these pages sets the focus on load (no autoFocus, no focus() in features/shell, app/not-found.tsx or the no-access page):
+# no `initialFocus` and no `focus` here (rule focus-not-set).
+nodes:
+  # ---- the shell around the page of a scope: AppShell's <main> and the sidebar ------------------------------------------------------
+  framePage: { type: page, component: Page, role: main, in: [medreseLanded, courseLanded, courseKept, medreseOpened, courseOpened, courseOfMedrese, adminOpened, noAccess], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main" data-density="compact">; it has no name
+  scopeMenu: { type: list, component: List, role: navigation, name: { key: Shell.navLabel }, in: [medreseLanded, courseLanded, courseKept, medreseOpened, courseOpened, courseOfMedrese, adminOpened], source: libs/ui/src/mds/app-shell.tsx:98 } # the sidebar's <nav>, which is drawn only while there is a scope (none on the no-access page); a medrese's entries or a course's
+  scopeName: { type: text, component: Text, text: { key: composed.LandingScope.scopeName, params: { name: scope.name } }, in: [medreseLanded, courseLanded, courseKept, medreseOpened, courseOpened, courseOfMedrese, adminOpened], source: apps/nazar/features/shell/components/scope-picker.tsx:67 } # in the scope card (a menu button for a person with two or more scopes, a plain card for one)
+  medreseRole: { type: text, component: Text, text: { oneOf: [Roles.MEDRESE_BASMUDERRIS, Roles.MEDRESE_NAZIR] }, in: [medreseLanded, medreseOpened], source: apps/nazar/features/shell/scope-option.ts:13 } # the second line of the scope card: the stronger role held in the medrese
+  courseRole: { type: text, component: Text, text: { oneOf: [Roles.MUDERRIS, Roles.DERS_NAZIR] }, in: [courseLanded, courseKept, courseOpened], source: apps/nazar/features/shell/scope-option.ts:13 } # a hoca's imam star follows it only among several hocas of a course (out of view)
+  headRole: { type: text, component: Text, text: { oneOf: [Roles.MEDRESE_BASMUDERRIS, Roles.MEDRESE_NAZIR] }, in: [courseOfMedrese], source: apps/nazar/features/shell/opened-scope.ts:42 } # the course's card names the person's medrese role (`role: medrese.role`)
+  adminRole: { type: text, component: Text, text: { key: Roles.SYSTEM_ADMIN }, in: [adminOpened], source: apps/nazar/features/shell/admin-scope.ts:73 } # on the scope card, and on the person's row when he holds no other role (e2e course-nazirs#15 a2 reads the aside)
+
+  # ---- the two pages "/" lands on, told apart by their titles ------------------------------------------------------------------------
+  panoTitle: { type: text, component: Heading, role: heading, text: { key: Pano.title }, in: [medreseLanded, medreseOpened], source: apps/nazar/features/pano/components/pano-page.tsx:94 } # h1 of the medrese's own address; a section of the medrese has a title of its own, which nazar.pano.decideApplications and the flows of the sections draw
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: composed.LandingScope.courseTitle, params: { title: scope.name } }, in: [courseLanded, courseKept, courseOpened, courseOfMedrese], source: apps/nazar/features/course-overview/components/course-overview-page.tsx:90 } # h1 of the course's own address, with the state badge after the title; a section of the course has a title of its own, and so has the page the başnazım's scenario opens (adminOpened), where neither title is drawn
+
+  # ---- the verdict page, drawn only as far as the landing needs ----------------------------------------------------------------------
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [noAccess], source: apps/nazar/features/access/no-access-page.tsx:30 } # h1 of a <section> inside the shell's <main>
+  noAccessText: { type: text, component: Text, text: { key: NoAccess.text }, in: [noAccess], source: apps/nazar/features/access/no-access-page.tsx:58 }
+
+  # ---- the 404 page: its own <main>, with no sidebar (from the code, F-L-15) -------------------------------------------------------------
+  notFoundPage: { type: page, component: Page, role: main, name: { labelledBy: notFoundTitle }, in: [notFound], source: apps/nazar/app/not-found.tsx:14 } # SystemState without `shell` is the page's <main>
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: NotFound.title }, in: [notFound], source: apps/nazar/app/not-found.tsx:16 } # h1
+  notFoundText: { type: text, component: Text, text: { key: NotFound.text }, in: [notFound], source: apps/nazar/app/not-found.tsx:23 }
+  notFoundBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NotFound.back }, in: [notFound], emits: OPEN_ROOT, source: apps/nazar/app/not-found.tsx:18 } # href "/", which sends the person to their landing
+
+edges:
+  - { labelledBy: [notFoundPage, notFoundTitle] }
+  - { triggers: [notFoundBack, reading] }
+
+rules:
+  - { id: F-L-8, rule: "A başnazım who holds no seat lands, from \"/\", on \"Bu portala erişiminiz yok\" (app/page.tsx:16, scope.ts:206, erisim-yok/page.tsx:27), though the layout opens any medrese or course for him by its address (admin-scope.ts:58-79): the page tells him the opposite of what the layout allows, and offers no address field or list. Seen now: the stack's smoke run, STACK.md, SYSTEM_ADMIN in nazar. Fix: read GET /me on the verdict page and, for roles.systemAdmin, say so and offer a way in, or send him to Nizam (decision D1)." }
+  - { id: F-E-17, rule: "The same finding from the account side: the verdict is false for the başnazım and the page offers no way to the address that would open (no-access-page.tsx:30-33). One fix with F-L-8." }
+  - { id: F-L-7, rule: "The başnazım's role is told two ways. In a frame he opened by address the scope card says \"Medaris başnazımı\" (admin-scope.ts:73) and the person's row says it only when he holds no other role (`adminRoles`, portal-layout.tsx:73-74; heldRoles has no SYSTEM_ADMIN, scope.ts:58-65). On Hesap and Bildirimler, with no seat, the frame has no scope, no menu and no bell and the row is not a link. Fix: list the başnazım role in heldRoles when GET /me says so." }
+  - { id: F-E-4, rule: "The verdict page's person row says \"Talebe\" for a person with no role row (portal-frame.tsx:53, `roles.length > 0 ? roles : [\"STUDENT\"]`), and so for the başnazım with no seat, who is \"Medaris başnazımı\" in every frame he opens by address; on Hesap the same fallback is F-E-4. Not seen in a browser. Fix: reuse the layout's `adminRoles` fallback here." }
+  - { id: F-L-15, rule: "NotFound draws a <main> and an h1 (SystemState without `shell`), and a notFound() thrown by a layout or a page makes the root's boundary replace the tree below the root layout, so, from the code, the 404 has no sidebar and one <main>. If it were drawn inside the shell there would be two <main> landmarks. Not verified in a browser; `notFoundPage` and the absence of `scopeMenu` there are what the replay will test." }
+  - { id: LSCOPE-1, rule: "A scope opened by its address is added to the picker's options (`scopes={[...portal.scopes, opened.scope]}`, portal-layout.tsx:98), so a başmüderris or a başnazım who holds another scope sees the opened course listed with a check mark under the note \"Yalnız görev aldığınız medrese ve dersler listelenir.\" (scopeNote, scope-picker.tsx:184), which is false for it. A person with no other scope gets a plain card, no list. New finding (not in the inventory); read from the code, not seen. Fix: leave the opened scope out of the list, or word the note for it." }
+  - { id: focus-not-set, rule: "No page here moves the focus on load: not the frame, the verdict page or the 404 (no autoFocus, no focus() in features/shell, features/access or app/not-found.tsx). The graph draws no focus." }
+  - { id: same-words-for-missing-and-not-yours, rule: "A scope that is not the person's, a medrese or course the API does not know, an id that is not a uuid and a section with no page answer in the same words, \"Sayfa bulunamadı\", so no id is told apart (not-found.tsx:5-9, access#6). Holds. The one thing it does tell is a person who holds no scope at all, who is sent to the no-access page and not to the 404 (portal-layout.tsx:107)." }

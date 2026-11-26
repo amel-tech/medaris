@@ -1,0 +1,155 @@
+# tedris.account.notifications on the local stack (graphs/README.md, "The stack and the bindings"): Bildirimler (tedris-web, :4000), reached from the
+# bar's bell (the tedris navigation graph's entry frame:app->notifications), read and marked as the spare talebe `applicantH`.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/account/notifications \
+#     --bind graphs/tedris/account/notifications/binding.yaml --cover transitions --out <dir>
+# NOT RUN in the writing phase: the owner moved every replay to the end. What follows is from the code; it loads (`--emit-spec`), nothing has been
+# walked. walk.common.binding.yaml holds what every walk shares (events, states, the places nodes are found by, the effects) and its header
+# says what the data is: notifications-data.mjs writes the rows of `applicantH` as tedrisat's producers write them and takes them away.
+#
+# What a walk will need. The stack up with tedris-web and tedrisat; `applicantH` in accounts.env; the seed's own course, one of its celses, a
+# deck and the köşk (read, never changed): {seed.courses.open}, {seed.sessions.open.next}, {seed.decks.course}, {seed.kosk}. Nothing else is made.
+# The main story is 11 events. `states.markingOne`, `markingLast`, `markingAll`, `loadingUnread` and `loadingMore` hold the server action (a POST to
+# the page's own address) while the screen is checked; a server action answers 200 whatever it did, so a refusal's status cannot be compared
+# there: the refused mark is binding.gone.yaml, with no `call`.
+#
+# Scenarios (each has its own `given`; the rows are the same seven in the first four):
+#   triage       the main story                                  e2e: none; unit specs notifications-page.spec.ts, notification-state.spec.ts
+#   toCelse      the row of a cancelled celse is opened          exit celse_opened
+#   toDeck       the row of a deck's result is opened            exit deck_opened
+#   toKosk       the row of an unknown type, "Bildirim"          exit kosk_opened (ACC-06)
+#   lastOne      one unread row, marked                          markingLast, then allRead
+#   allReadList  every row read                                  allRead from the start
+#   longList     twenty-five unread rows                         "Daha fazla göster" reads the last five
+#   noNotices    none                                            emptyAll
+# Not walked, with the reason: readFailed, retryingFirst, unreadFailed, moreFailed and the refusal of "Tümünü okundu say" (the stack has no way
+# to make tedrisat refuse a read, or a read-all; the unit spec notifications-page.spec.ts covers the retry box); sent_to_sign_in (ending the
+# session under an open page would end the walk's own); RELOAD (bound, but no scenario reaches it before a mark that the world would keep, see
+# flow.yaml scope.outOfView); CLOSE_TOAST and the toasts (binding.gone.yaml). The link of a row marks an unread row read as it leaves (NOTIF-1),
+# which no effect reads: the answer comes after the page is gone, so a check straight after OPEN_ROW would race it.
+# Time. The rows are placed in Istanbul's today, yesterday and earlier, so the day groups are the same whatever the hour; the browser's zone is
+# Europe/Istanbul (the base binding), and so is the account's default.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.account.notifications
+
+scenarios:
+  # The main story: six unread rows of seven, the Okunmamış tab, one row marked from its menu, every row marked, back to Tümü, the first row's link (e2e: none; the unit specs notifications-page.spec.ts and notification-state.spec.ts).
+  triage:
+    given: { read: ok, holds: several, pages: one, answer: ok, row: course }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Başvurun onaylandı, unreadAfterOne: '5' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, triage, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up triage APPLICANT_H 6 unread of 7'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # The row that leads to a celse page: a celse cancelled, with its make-up time and the hoca's note.
+  toCelse:
+    given: { read: ok, holds: several, pages: one, answer: ok, row: celse }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Celse iptal edildi, unreadAfterOne: '5' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, triage, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up triage APPLICANT_H 6 unread of 7'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # The row that leads to a deck.
+  toDeck:
+    given: { read: ok, holds: several, pages: one, answer: ok, row: deck }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Deste yayınlandı, unreadAfterOne: '5' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, triage, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up triage APPLICANT_H 6 unread of 7'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # The row of a type tedris has no words for (KOSK_BAN_PLACED, ACC-06): titled "Bildirim", no sentence, a link to the köşk.
+  toKosk:
+    given: { read: ok, holds: several, pages: one, answer: ok, row: kosk }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Bildirim, unreadAfterOne: '5' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, triage, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up triage APPLICANT_H 6 unread of 7'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # Exactly one unread row: marking it leaves nothing unread (markingLast) and the button disabled.
+  lastOne:
+    given: { read: ok, holds: one, pages: one, answer: ok, row: course }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Başvurun onaylandı, unreadAfterOne: '0' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, one, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up one APPLICANT_H 1 unread of 2'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # Every row read: the button is disabled from the start, no badge and no menu, and Okunmamış says there is nothing.
+  allReadList:
+    given: { read: ok, holds: allRead, pages: one, answer: ok, row: course }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Başvurun onaylandı, unreadAfterOne: '0' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, allRead, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up allRead APPLICANT_H 0 unread of 3'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # Twenty-five unread rows: the first page holds twenty and "Daha fazla göster" reads the other five.
+  longList:
+    given: { read: ok, holds: several, pages: several, answer: ok, row: course }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Başvurun onaylandı, unreadAfterOne: '24' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, long, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up long APPLICANT_H 25 unread of 25'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+  # No row at all: "Bildirim yok", the tabs at 0 and no button.
+  noNotices:
+    given: { read: ok, holds: nothing, pages: one, answer: ok, row: course }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->notifications' }
+    vars: { linkName: Başvurun onaylandı, unreadAfterOne: '0' }
+    setup:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, up, empty, --course, '{seed.courses.open}', --lesson, '{seed.sessions.open.next}', --deck, '{seed.decks.course}', --kosk, '{seed.kosk}']
+        expect: 'notifications-data up empty APPLICANT_H 0 unread of 0'
+    teardown:
+      - run: [node, ../tedris/account/notifications/notifications-data.mjs, down]
+        expect: 'notifications-data down APPLICANT_H 0 unread of 0'
+
+states:
+  # the server action is a POST to the page's own address; the page's reads after it are GETs with a query, so this matches only the POSTs
+  markingOne: { call: '{tedris}/notifications' }
+  markingLast: { call: '{tedris}/notifications' }
+  markingAll: { call: '{tedris}/notifications' }
+  loadingUnread: { call: '{tedris}/notifications' }
+  loadingMore: { call: '{tedris}/notifications' }

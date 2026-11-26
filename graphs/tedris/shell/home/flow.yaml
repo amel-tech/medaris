@@ -1,0 +1,321 @@
+# Ana sayfa of tedris-web (/home, reached from `/`): what a signed-in talebe meets first, and where it leads. A visitor never
+# sees it: the page sends them to Keşfet before it reads anything. Written from the code of the branch (captured); nothing here
+# is a plan. What it leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   SHL-05  `/` takes a permanent redirect to /home from next.config.js and /home sends a visitor on to /discover: two hops, and the
+#           page's own choice in app/page.tsx is never reached
+#   SHL-08  a failed section offers "Yeniden dene", which is a link to the page's own address: it reloads the whole page, it does not
+#           retry the section
+#   SHL-04  the bell is named "Bildirimler" with no unread count; SHL-09 the phone sheet calls every account "Talebe": both are the
+#           frame's (tedris.shell.frame), recorded here because the inventory lists them for this page
+#   SHL-01  the page sets no title of its own: the tab says "Medaris Tedris"
+#   HOME-1  (new, provisional id) the read of the celses fails into one sentence under the greeting: no alert, no retry, and the two
+#           celse blocks vanish
+#   HOME-2  (new, provisional id) the next celse's card and the rows of "Sonraki celseler" call every celse "Canlı ders", an in-person
+#           one too; the celse page says "Yüz yüze"
+# E2E carried: learn#1-#6 (Ana sayfa tedris/01) up to what a replay can hold, anonymous#21 (the visitor's redirect, as `effects`
+# on the wire and the exit's address), schedule#16 (the greeting, the intro line, the card with "Celse sayfası" and "Takvime ekle",
+# "Programım"). The seed does not give any of the three persons the data the e2e seed made, so the replay's scenario makes its own
+# (home-data.mjs) instead of reading the e2e fixtures.
+schema: delurio-graph/0
+kind: flow
+id: tedris.shell.home
+status: captured
+domain: medaris.api
+ui: tedris.shell.home
+title: Land on Ana sayfa
+summary: >-
+  A signed-in talebe opens tedris-web and is carried to Ana sayfa (`/` is sent to `/home`). The page greets them by first
+  name and says in one sentence when their next celse is. Under it, the next celse with its card (its day and hour, a
+  countdown, the platform, and either the way in or why there is none), a link to its page and "Takvime ekle"; beside it the
+  celses after it with the way to Programım. Then three sections that each read for themselves: "Kaldığın yerden devam et"
+  (up to three courses in progress), "Bugün çalışılacak desteler" (the decks that wait, each with "Çalış") and "Takip
+  ettiğin köşklerden" (courses of followed köşks the person is not in). Each section can be empty, and each can fail alone
+  into a box with "Yeniden dene", which reloads the page. A visitor is sent to Keşfet without any of it.
+
+scope:
+  shows: the page a talebe lands on, the reads behind it, the join card of the next celse, and every link that leaves it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame around the page: the wide bar, the phone's app bar and its sheet, the theme switch, the bell, Hesabım and the privacy footer (tedris.shell.frame; SHL-04, SHL-09)"
+    - "the loading skeletons: the celse read blocks the whole page and has no loading.tsx, and each section shows `SectionSkeleton` (an aria-busy region named by its title) until its own read answers"
+    - "a visitor beyond the redirect: Keşfet itself and the visitor's path to signing in (tedris.discover.visitorPath); and the two hops of `/` (SHL-05) beyond what the exit's address and the wire checks say"
+    - "a token tedrisat refuses: the page sends the person to sign in again with `reauth`, which is not a failed read (realm.auth.sessionEnded)"
+    - "the menu that \"Takvime ekle\" opens, and what its three items do (tedris.learning.addToCalendar)"
+    - "an exam celse: its label says so with a countdown (examRunLabel, MDRS-248) instead of \"Canlı ders\" in the rows of \"Sonraki celseler\" and above the next celse's run line"
+    - "a celse that runs out under an open page: the card's clock moves it to \"Sona erdi\" with no body, until the page is read again"
+    - "the imam's star after a hoca's name, which shows only among more than one müderris of a course"
+    - "a celse that is live and has no meeting link: its card says how it is attended (the stream or the in-person sentence) as `elsewhere` does before the start"
+    - "a session whose name is empty: the greeting then reads \"Selâmün aleyküm\" with no name"
+    - "the layout below 768 px (one column, learn#6) and the order in which the sections arrive"
+    - "kontenjan and the gender rule of a seat: nothing on this page decides a seat (the in-person registration is planned, MDRS-284)"
+
+decisions:
+  D1:
+    question: >-
+      Should the box of a failed section offer a retry that reads that section again, or be named for what it does?
+    recommend: >-
+      Name it for what it does: "Sayfayı yenile". The box says "Bu bölüm şu an okunamadı." and offers "Yeniden dene", which is an
+      `<a href="">` to the page's own address (home-sections.tsx:56): it reloads the page and the two other sections with it. A
+      button that calls `router.refresh()` would retry only the section's own read (SHL-08).
+    affects: [home]
+  D2:
+    question: >-
+      Should the failed read of the celses be told as the sections' failures are: an alert box with a way to read again?
+    recommend: >-
+      Yes: draw the same box in place of the two celse blocks and keep the intro line out of it. Today one `<p>` under the
+      greeting says "Celselerin şu an okunamadı." and the person cannot tell it from the line that says there are no celses
+      except by its words (HOME-1).
+    affects: [home]
+
+context:
+  who:
+    values: [visitor, member]
+    initial: any
+    say:
+      visitor: "no session, or a session that has ended: the page redirects before it reads anything"
+      member: "a person with a usable token"
+  next:
+    values: [failed, none, waiting, joinable, elsewhere, live]
+    initial: any
+    say:
+      failed: "the read of the person's next celses fails (GET /me/upcoming-lessons answers an error or nothing)"
+      none: "the read answers and no celse stands within 180 days"
+      waiting: "the next celse has not begun, has a meeting link and its start is more than ten minutes away: the card counts down and says when the link opens"
+      joinable: "the next celse has not begun, has a meeting link and its start is within ten minutes: the card offers \"Celseye katıl\""
+      elsewhere: "the next celse has not begun and has no meeting link: the card says how it is attended instead"
+      live: "the next celse is running and has a meeting link: the card says it is live and offers \"Celseye katıl\""
+  later:
+    values: [none, some]
+    initial: any
+    say:
+      none: "no celse stands after the next one"
+      some: "at least one more celse stands after the next one (up to three are listed)"
+  courses:
+    values: [failed, empty, listed]
+    initial: any
+    say:
+      failed: "the read of the person's courses fails (GET /courses/enrolled)"
+      empty: "the person is in no course that is still in progress"
+      listed: "the person is in at least one course in progress (up to three are drawn)"
+  decks:
+    values: [failed, empty, listed]
+    initial: any
+    say:
+      failed: "the read of the decks to study today fails (GET /flashcard/decks/due)"
+      empty: "no deck has cards waiting and none of the collected decks has grown"
+      listed: "at least one deck has cards waiting or new cards (up to three are drawn)"
+  followed:
+    values: [failed, empty, listed]
+    initial: any
+    say:
+      failed: "the read of the followed köşks' courses fails (GET /kosks/followed/courses)"
+      empty: "no followed köşk has a published course the person is not in"
+      listed: "at least one followed köşk has such a course (up to four are drawn)"
+
+guards:
+  member: "who == 'member'"
+  hasNext: "next not in ['failed', 'none']"
+  upcoming: "next in ['waiting', 'joinable', 'elsewhere']"
+  hasLink: "next in ['waiting', 'joinable', 'live']"
+  canJoin: "next in ['joinable', 'live']"
+  hasLater: "hasNext and later == 'some'"
+  coursesListed: "courses == 'listed'"
+  decksListed: "decks == 'listed'"
+  followedListed: "followed == 'listed'"
+  anySectionFailed: "courses == 'failed' or decks == 'failed' or followed == 'failed'"
+  hasCourseLink: "hasNext or coursesListed or followedListed"
+
+effects:
+  visitorSent: { set: { who: visitor } } # no change: the redirect is a response, and the replay checks it on the wire
+  again: { havoc: [next, later, courses, decks, followed] } # a reload reads everything again, and any read may answer differently
+
+failures:
+  readingCelses: { from: listMyUpcomingLessons, unreadable: [] }
+  readingCourses: { from: listEnrolledCourses, unreadable: [] }
+  readingDecks: { from: listDecksDueToday, unreadable: [] }
+  readingFollowed: { from: listFollowedKoskCourses, unreadable: [] }
+# `unreadable` stands for any answer but a refused token: each read turns a network error, a 5xx and a 4xx alike into `null`
+# (features/schedule/reads.ts:36-38, features/home/reads.ts:28-31), and a refused token is `reauthIfRefused`, which is out of view.
+# The domain lists no refusal code for these four reads that the page could meet (the only one is HTTP_400 on a limit the page
+# never sends wrong).
+
+# The main story: a talebe who is in a course whose next celse has a link, with a deck waiting and a followed köşk, lands on Ana
+# sayfa, reads it, and opens the celse page of the next celse.
+main:
+  given: { who: member, next: waiting, later: some, courses: listed, decks: listed, followed: listed }
+  events: [DONE, DONE, DONE, DONE, OPEN_CELSE]
+
+initial: arriving
+states:
+  arriving:
+    title: Open Ana sayfa
+    description: >-
+      The address is `/home`, or `/`, which next.config.js sends there with a permanent redirect before the page runs (SHL-05).
+      /home is on the public paths, so the proxy lets a visitor in, and the page itself asks whether there is a token and sends
+      a visitor to Keşfet before it reads anything. Everything on Ana sayfa is personal.
+    source: apps/tedris/app/home/page.tsx:26
+    always:
+      - { guard: member, target: readingCelses, say: "there is a token, so the page reads the person's own data" }
+      - { target: sent_to_discover, effect: [visitorSent], starts: { flow: tedris.discover.visitorPath }, say: "no token: a redirect to /discover, a visitor's first page", source: apps/tedris/app/home/page.tsx:27 }
+
+  readingCelses:
+    title: Read the next celses
+    description: >-
+      The page reads GET /me/upcoming-lessons?limit=4 and the session's name together (Promise.all), and waits for both before it
+      draws anything: no loading.tsx stands in for the page. A failed read is `null`, which the page tells in one sentence under
+      the greeting (HOME-1).
+    includes: ["the first of up to four celses as the next one and the rest as the later ones"]
+    source: apps/tedris/features/schedule/reads.ts:28
+    invoke: { action: listMyUpcomingLessons }
+    on:
+      DONE: { guard: "next != 'failed'", target: readingCourses }
+      FAIL.unreadable: { guard: "next == 'failed'", target: readingCourses, say: "the celses could not be read: the page still goes on and reads the sections" }
+
+  readingCourses:
+    title: Read the courses in progress
+    description: >-
+      "Kaldığın yerden devam et" reads GET /courses/enrolled inside its own Suspense, so a slow or failed read holds nothing else
+      back. The page keeps the courses whose enrolment is ENROLLED and whose progress is under 100, the soonest next celse first,
+      and draws three at most.
+    source: apps/tedris/features/home/reads.ts:36
+    invoke: { action: listEnrolledCourses }
+    on:
+      DONE: { guard: "courses != 'failed'", target: readingDecks }
+      FAIL.unreadable: { guard: "courses == 'failed'", target: readingDecks, say: "the section will say it could not be read; the others are not held back" }
+
+  readingDecks:
+    title: Read the decks to study today
+    description: >-
+      "Bugün çalışılacak desteler" reads GET /flashcard/decks/due?limit=3: the decks of the caller's own list with cards waiting,
+      then the collected decks of other people that grew since they were collected. An own deck with nothing waiting is not listed.
+    source: apps/tedris/features/home/reads.ts:40
+    invoke: { action: listDecksDueToday }
+    on:
+      DONE: { guard: "decks != 'failed'", target: readingFollowed }
+      FAIL.unreadable: { guard: "decks == 'failed'", target: readingFollowed, say: "the section will say it could not be read; the others are not held back" }
+
+  readingFollowed:
+    title: Read the followed köşks' courses
+    description: >-
+      "Takip ettiğin köşklerden" reads GET /kosks/followed/courses?limit=4: published courses of the köşks the person follows,
+      newest first, leaving out every course the person has a row in, a waiting application included.
+    source: apps/tedris/features/home/reads.ts:48
+    invoke: { action: listFollowedKoskCourses }
+    on:
+      DONE: { guard: "followed != 'failed'", target: home }
+      FAIL.unreadable: { guard: "followed == 'failed'", target: home, say: "the section will say it could not be read" }
+
+  home:
+    title: Read Ana sayfa
+    by: human
+    goal: true
+    description: >-
+      The page: the greeting and one sentence about the next celse (or that none stands, or that the celses could not be read,
+      HOME-1); "Sıradaki celse" with a link to its page, the run line (course, week, köşk) and the join card; "Sonraki celseler"
+      with "Programım"; then "Kaldığın yerden devam et", "Bugün çalışılacak desteler" and "Takip ettiğin köşklerden", each with
+      the link to the page it summarises and each empty or failed on its own. The join card says "Canlı ders" whatever the celse
+      is, an in-person one too (HOME-2). A failed section is a box with "Bu bölüm şu an okunamadı." and "Yeniden dene", which is a
+      link to the page's own address: pressing it reloads everything (SHL-08, decision D1). The page sets no initial focus
+      (`focus-not-set`) and no title of its own (SHL-01).
+    source: apps/tedris/features/schedule/components/home-sessions.tsx:77
+    on:
+      OPEN_CELSE:
+        guard: hasNext
+        target: celse_opened
+        starts: { flow: tedris.celse.attend }
+        say: "\"Celse sayfası\" or a title in \"Sonraki celseler\" opens that celse's page in this tab"
+        source: apps/tedris/features/schedule/components/home-sessions.tsx:109
+      OPEN_COURSE:
+        guard: hasCourseLink
+        target: course_opened
+        starts: { flow: tedris.course.readProgramme }
+        say: "the course of the next celse, the title of a card in \"Kaldığın yerden devam et\" or the title of a followed köşk's course opens the course page in this tab"
+        source: apps/tedris/features/schedule/components/home-sessions.tsx:121
+      OPEN_MY_COURSES:
+        target: my_courses_opened
+        starts: { flow: tedris.learning.myCourses }
+        say: "\"Derslerim\" in the head of \"Kaldığın yerden devam et\""
+        source: apps/tedris/features/home/components/home-sections.tsx:46
+      OPEN_SCHEDULE:
+        guard: hasLater
+        target: schedule_opened
+        starts: { flow: tedris.learning.schedule }
+        say: "\"Programım\" in the head of \"Sonraki celseler\", which is drawn only when a celse follows the next one"
+        source: apps/tedris/features/schedule/components/home-sessions.tsx:172
+      OPEN_DECKS:
+        target: decks_opened
+        starts: { flow: tedris.decks.browse }
+        say: "\"Desteler\" in the head of \"Bugün çalışılacak desteler\""
+        source: apps/tedris/features/home/components/home-sections.tsx:46
+      OPEN_DECK:
+        guard: decksListed
+        target: deck_opened
+        starts: { flow: tedris.decks.readAndCopy }
+        say: "a deck's title opens the deck's page"
+        source: apps/tedris/features/home/components/home-sections.tsx:299
+      OPEN_STUDY:
+        guard: decksListed
+        target: study_opened
+        starts: { flow: tedris.decks.study }
+        say: "\"Çalış\" opens the deck's study page"
+        source: apps/tedris/features/home/components/home-sections.tsx:316
+      OPEN_DISCOVER:
+        target: discover_opened
+        starts: { flow: tedris.discover.browse }
+        say: "\"Keşfet\" in the head of \"Takip ettiğin köşklerden\", and \"Keşfet'e git\" in the empty \"Kaldığın yerden devam et\""
+        source: apps/tedris/features/home/components/home-sections.tsx:46
+      ADD_TO_CALENDAR:
+        guard: upcoming
+        target: calendar_menu_opened
+        starts: { flow: tedris.learning.addToCalendar }
+        say: "\"Takvime ekle\" opens a menu on the card; it is offered only before the celse begins"
+        source: apps/tedris/features/schedule/components/home-sessions.tsx:152
+      JOIN:
+        guard: canJoin
+        target: home
+        say: "\"Celseye katıl\" opens the meeting in a new tab (target=_blank); this tab stays on Ana sayfa"
+        source: libs/ui/src/mds/session-join.tsx:347
+      RELOAD:
+        guard: anySectionFailed
+        target: readingCelses
+        effect: [again]
+        say: "\"Yeniden dene\" in a failed section is a link to the page's own address: the whole page is read again, all five reads, and any of them may answer differently (SHL-08)"
+        source: apps/tedris/features/home/components/home-sections.tsx:56
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  sent_to_discover:
+    type: final
+    title: A visitor is sent to Keşfet
+    description: >-
+      A 307 from /home to /discover with no cache (`Cache-Control: no-store`), and before it the 308 from `/` to `/home` that
+      next.config.js answers: two hops for a visitor, and the page's own choice in app/page.tsx is dead code (SHL-05).
+  celse_opened: { type: final, title: A celse's page is opened }
+  course_opened: { type: final, title: A course's page is opened }
+  my_courses_opened: { type: final, title: Derslerim is opened }
+  schedule_opened: { type: final, title: Programım is opened }
+  decks_opened: { type: final, title: Desteler is opened }
+  deck_opened: { type: final, title: A deck's page is opened }
+  study_opened: { type: final, title: A deck's study page is opened }
+  discover_opened: { type: final, title: Keşfet is opened }
+  calendar_menu_opened: { type: final, title: The calendar menu of the next celse is opened }
+  left: { type: final, title: The person leaves Ana sayfa, leavesPage: true }
+
+assertions:
+  - id: only-a-member-reads-the-page
+    never: "state in ['readingCelses', 'readingCourses', 'readingDecks', 'readingFollowed', 'home'] and not member"
+    say: "A visitor is redirected before any read: no state that reads the person's data or draws their page is reached without a token"
+    source: apps/tedris/app/home/page.tsx:26
+  - id: a-visitor-goes-to-discover
+    never: "state == 'sent_to_discover' and member"
+    say: "Only a visitor is sent to Keşfet; a person with a token keeps Ana sayfa"
+    source: apps/tedris/app/home/page.tsx:26
+  - id: calendar-only-before-the-start
+    never: "state == 'calendar_menu_opened' and not upcoming"
+    say: "\"Takvime ekle\" is offered only while the next celse has not begun: not on a live one, and not when there is no next celse"
+    source: apps/tedris/features/courses/components/session-join-live.tsx:119
+  - id: a-celse-link-needs-a-celse
+    never: "state == 'celse_opened' and not hasNext"
+    say: "The links to a celse's page exist only when a celse stands"
+    source: apps/tedris/features/schedule/components/home-sessions.tsx:98

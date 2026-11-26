@@ -1,0 +1,151 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.courseSettings.partnerCodes
+status: proposed
+summary: >-
+  What must exist for a köşk nazımı or the başnazım to map a partner application's codes to a course and take them off: the flow's
+  product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code): kosk-nazim-reaches-the-card (none: PCODES-1), focus-after-a-refusal (none: F-D2c-9),
+# a-removal-is-told-in-the-page (none: F-L-17), a-partner-seat-follows-the-gender-quota (MDRS-284),
+# a-card-says-why-it-is-absent (none: decision D2)
+# Unwalked (code, no e2e and no replay that has passed): the-card-lists-the-partners-codes, a-code-is-added,
+# a-code-must-have-the-right-shape, a-code-held-elsewhere-is-refused, a-code-is-taken-off, the-card-is-for-its-holders.
+# The unit test apps/nazar/test/partner-codes.spec.tsx pins the page's rules with the reads and the two actions stubbed; there is
+# no e2e (the inventory says none) and no replay has been run yet (the owner's word: replays happen once, at the end).
+
+needs:
+  - id: the-card-lists-the-partners-codes
+    need: >-
+      A person who may map a partner application's codes sees, on the course's settings page, each partner application the
+      course's köşk works with and the codes of it that are mapped to this course, oldest first, or says that there are none.
+    evidence:
+      - state: empty
+      - state: listed
+      - node: card
+      - node: codeList
+      - node: emptyLine
+      - source: apps/tedrisat/src/integration/partner-codes.controller.ts:63
+      - source: apps/nazar/features/course-settings/components/course-settings-page.tsx:144
+      - test: apps/nazar/test/partner-codes.spec.tsx
+
+  - id: the-card-is-for-its-holders
+    need: >-
+      Only a person who holds the permission to map partner codes in the course is shown the card, and only while the köşk works
+      with a partner application that is switched on; a müderris and a köşk with no partner are shown no card, and a read that
+      fails says so in place without taking the page down.
+    evidence:
+      - state: notDrawn
+      - state: unreadable
+      - source: apps/nazar/features/course-settings/components/course-settings-page.tsx:151
+      - source: apps/nazar/features/course-settings/partner-codes.ts:32
+      - test: apps/nazar/test/partner-codes.spec.tsx
+    note: Also drawn as the assertion no-card-for-a-hoca, the assertion no-card-without-a-partner.
+
+  - id: kosk-nazim-reaches-the-card
+    need: >-
+      The köşk nazımı, whom the permission is named for, can open the card for every course of their köşk, with no seat in the
+      course, from the place they work in (decision D1). Today nazar gives a köşk nazımı no scope and sends them to the no-access
+      page, so only the başnazım (by address) and a nazım who also teaches the course reach it.
+    missing: "PCODES-1: no issue yet"
+    note: >-
+      Drawn on the state notDrawn, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-code-is-added
+    need: >-
+      The person types a partner application's code for the course and adds it; it is mapped at once, shown in the list, and the
+      people who are approved under that code in the partner application are enrolled in the course as talebe. Adding a code the
+      course holds already changes nothing and does not pretend it did (PCODES-2).
+    evidence:
+      - state: empty
+      - state: listed
+      - state: adding
+      - state: settled
+      - node: toastAdded
+      - source: apps/tedrisat/src/integration/partner-codes.controller.ts:91
+      - source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:85
+      - test: apps/nazar/test/partner-codes.spec.tsx
+    note: Also drawn as the assertion only-a-sendable-code-is-sent.
+
+  - id: a-code-must-have-the-right-shape
+    need: >-
+      A blank code, or one with a space, a capital the page cannot fold, a symbol or a leading hyphen, is told under the field
+      before anything is sent, in words that say what a code is made of; the API refuses the same shape.
+    evidence:
+      - state: empty
+      - state: listed
+      - node: fieldEmpty
+      - node: fieldShape
+      - node: codeHelp
+      - source: apps/tedrisat/src/integration/partner-codes.controller.ts:91
+      - source: apps/nazar/features/course-settings/partner-codes.ts:21
+      - test: apps/nazar/test/partner-codes.spec.tsx
+
+  - id: a-code-held-elsewhere-is-refused
+    need: >-
+      A code that another course holds is refused as taken, in words that say it must first be taken off the other course and that
+      name nothing of that course; a partner application that stopped working with the köşk since the page was read is refused
+      with a line that says to read the page again.
+    evidence:
+      - state: adding
+      - node: fieldTaken
+      - node: fieldUnknownPartner
+      - source: apps/tedrisat/src/integration/partner-codes.controller.ts:91
+      - source: apps/nazar/features/course-settings/partner-codes.ts:38
+      - test: apps/nazar/test/partner-codes.spec.tsx
+
+  - id: a-code-is-taken-off
+    need: >-
+      The person takes a code off the course in one press; the people the code enrolled stay in the course, the partner
+      application's later calls with the code find no course, and the person is told so.
+    evidence:
+      - state: listed
+      - state: removing
+      - state: settled
+      - node: toastRemoved
+      - node: removeButton
+      - source: apps/tedrisat/src/integration/partner-codes.controller.ts:113
+      - source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:114
+      - test: apps/nazar/test/partner-codes.spec.tsx
+
+  - id: focus-after-a-refusal
+    need: >-
+      The field keeps the focus while a code is sent, and a refusal is announced and puts the focus back on the field (F-D2c-9,
+      F-D2c-4).
+    missing: no Linear issue; F-D2c-9
+    note: >-
+      Drawn on the state adding and on the nodes fieldTaken and fieldShape, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-removal-is-told-in-the-page
+    need: >-
+      After a code is taken off, the focus lands on a place a keyboard or screen-reader user can use (the card's heading or the
+      next row), and a line on the page, not only a toast of six seconds, says what was done (F-L-17).
+    missing: no Linear issue; F-L-17
+    note: >-
+      Drawn on the state listed and on the node toastRemoved, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-card-says-why-it-is-absent
+    need: >-
+      A person who holds the permission and finds no card is told why: the köşk works with no partner application, and where one
+      is bound (decision D2).
+    missing: no Linear issue; decision D2
+    note: >-
+      Drawn on the state notDrawn, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-partner-seat-follows-the-gender-quota
+    need: >-
+      Where a partner application's registration gives a person a seat in the course, the seat follows the same kontenjan as every
+      other seat: two counts, one per gender, with gender always known. The code only decides which course the registration names;
+      today a partner seat reads no gender, quota or capacity (MDRS-284, per celse and weekly; no kontenjan rule exists in the
+      code today).
+    missing: MDRS-284
+    note: >-
+      Drawn on the node cardIntro, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

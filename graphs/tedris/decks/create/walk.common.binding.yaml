@@ -1,0 +1,86 @@
+# What every walk of tedris.decks.create shares (graphs/README.md, "The stack and the bindings"): the events a person types with, the
+# addresses of the states, the places the walk finds nodes by, and the checks of what a step writes. The scenarios are in binding.yaml
+# (the main story and a refusal), binding.short.yaml, binding.manyTags.yaml and binding.longTag.yaml: a scenario that adds no
+# transition of its own is walked only from a file of its own, so each case of what is typed has one.
+#
+# NOT RUN: nothing here was replayed (the owner's decision: one run of every graph at the end). Every locator below is from the code of
+# the page and of the kit, not from a look at the running page.
+#
+# What a walk writes, and how it is taken away. The main story really makes a deck (POST /flashcard/decks) of the spare talebe
+# `applicantC`, titled `{deckTitle}`. Nothing else is touched: own-decks.mjs (in this folder) finds that account's own decks of that
+# exact title with GET /flashcard/decks/summary, reads one with GET /flashcard/decks/{id} and deletes with DELETE /flashcard/decks/{id},
+# all through tedrisat's own API as the account (no SQL, no other account's data, no seeded deck). `setup` removes what an earlier walk
+# that died left, and `teardown` removes what this one made, so a walk leaves the stack as it found it. The other flows of the decks area use
+# applicantD, G and H (read in their bindings on 15 Nov 2026), so none of them looks at this account's decks.
+# `creating` has a `call` to hold the busy state. The server action answers 200 on the page's own address whatever the API said, so a
+# walk through FAIL.refused ends with one mismatch there (the replay compares the 400 of the refusal with the 200 it sees): an engine
+# limit, not the app's, as on tedris.discover.applyForKosk.
+# Not bound, so the replay cannot reach it (reported): `sent_to_sign_in` (the stack cannot end the session in the middle of a send).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.create
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills each one in. The name, the description and the tags
+  # come from the scenario; the card type is chosen by pressing its radio (CHOOSE_*), which the graph's nodes send.
+  FILL_IN:
+    - fill: { role: textbox, name: Deste adı, value: '{deckName}' }
+    - fill: { role: textbox, name: Açıklama, value: '{deckDescription}' }
+    - fill: { role: textbox, name: Etiketler, value: '{deckTags}' }
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  # one address through every state of the form: the checks and the toast change nothing in it (decks#9 a7)
+  form: { url: '{tedris}/decks/create' }
+  formAttempted: { url: '{tedris}/decks/create' }
+  # the server action is a POST to the page's own address; the page's reads are GETs with a query, so this matches only the POST
+  creating: { call: '{tedris}/decks/create' }
+  # the new deck's own page: /decks/<uuid>, and its h1 is the name that was typed (a glob `*` also matches /decks/create, hence the text)
+  deck_opened: { url: '{tedris}/decks/*', text: '{deckTitle}' }
+  decks_opened: { url: '{tedris}/decks' }
+  left: { url: '{tedris}/notifications' }
+
+effects:
+  # decks#11 a3, read through the API and not the database: one deck of that name, private (isPublic false, PRIVATE), and its tags as
+  # the API normalised them ({deckTags} is " sarf , nahiv,, Sarf ": trimmed, blanks and the repeat in Turkish case dropped).
+  # card_type is not pinned: it is the radio the walk's path ends with, which the cover chooses (the main story ends on Kelime)
+  createDeck:
+    - run: [node, ../tedris/decks/create/own-decks.mjs, show, applicantC, '{deckTitle}']
+      expect: '"count":1,"isPublic":false,"publishStatus":"PRIVATE","tags":["sarf","nahiv"]'
+  # decks#12: "Vazgeç" and the breadcrumb leave the page and make nothing
+  dropForm:
+    - run: [node, ../tedris/decks/create/own-decks.mjs, show, applicantC, '{deckTitle}']
+      expect: '"count":0'
+  # a refused create keeps the form and makes nothing
+  toastRefused:
+    - run: [node, ../tedris/decks/create/own-decks.mjs, show, applicantC, '{deckTitle}']
+      expect: '"count":0'
+
+nodes:
+  # a bare `main` is also the page a walk leaves for (the new deck's page has one): this one holds the form
+  page: { css: 'main:has(form[aria-label="Deste oluştur"])' }
+  # the shell's bar has a "Desteler" link too, and the breadcrumb is the page's own navigation
+  trail: { role: navigation, name: Sayfa yolu, within: { css: 'main:has(form[aria-label="Deste oluştur"])' } }
+  trailDecks: { role: link, name: Desteler, within: { role: navigation, name: Sayfa yolu, within: { css: 'main:has(form[aria-label="Deste oluştur"])' } } }
+  # the breadcrumb's last item has the h1's words; it is the one marked as the current page (the shell's bar marks its own)
+  trailCurrent: { css: '[aria-current=page]', within: { css: 'main:has(form[aria-label="Deste oluştur"])' } }
+  # the radio's name is its label, and the radio is a <span role=radio> whose label sits beside it: found by role and name, not by text
+  radioVocabulary: { role: radio, name: Kelime }
+  radioHadeeth: { role: radio, name: Hadis }
+  # an alert has no name from its content: found by its own class and words (the toast has a role=alert announcer too, so not by role alone)
+  kindRequired: { css: 'p.mds-error[role=alert]', hasText: 'Bir kart türü seç.' }
+  # the neutral kit Alert: role=status, its title and its text inside
+  notice: { css: '.mds-alert', hasText: 'Başka üyeler göremez.' }
+  # "Ön yüz" and "Arka yüz" are also the first words of the sentences under the radios ("Ön yüzde Arapça kelime…"): the preview's own labels
+  frontLabel: { css: 'aside p.mds-eyebrow', hasText: 'Ön yüz' }
+  backLabel: { css: 'aside p.mds-eyebrow', hasText: 'Arka yüz' }
+  # the design draws no visibility choice (decks#9 a4: getByText("Herkese açık", { exact: true }) finds nothing)
+  publicChoice: { text: '/^Herkese açık$/' }
+  # the busy button's hidden <output>
+  sendingStatus: { css: 'output', hasText: Yükleniyor }
+  # Base UI's toast: a high-priority one is an alertdialog and aria-hidden until it is focused, so it is found by its role attribute
+  refusedToast: { css: '[role=alertdialog]', hasText: 'Deste oluşturulamadı' }
+  refusedTitle: { css: '[role=alertdialog] p', hasText: 'Deste oluşturulamadı' }
+  refusedBody: { css: '[role=alertdialog] p', hasText: 'yazdıkların korundu' }
+  refusedClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }

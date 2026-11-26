@@ -1,0 +1,69 @@
+# K. Applications and requests: 3 tables (inventory/domain.md section 7, K). The appeals table is in entities-moderation.yaml
+# and deck_proposals in entities-decks.yaml. The status columns here are text with no database check, except the legacy
+# offsite_course_requests, which uses the one database enum among the request tables.
+# A user column holds a Keycloak sub and is no foreign key. All timestamps here are with time zone.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  KoskApplication: # a request to open a new köşk (tedris), answered once by Medaris management (nizam)
+    source: apps/tedrisat/src/database/schema/kosk-application.schema.ts:36
+    required: [id, applicantId, name, field, summary, reason, email, status, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      applicantId: { type: string, format: uuid, note: "Keycloak sub" }
+      name: { type: string }
+      field:
+        enum: [ARABIC_LANGUAGE_SCIENCES, RHETORIC, FIQH, USUL_AL_FIQH, HADITH, QURAN_SCIENCES, TAFSIR, AQEEDAH_KALAM, SEERAH, LOGIC, OTHER]
+        note: "a text column with no database check; KOSK_APPLICATION_FIELDS (kosk-application.schema.ts:9), validated by @IsIn in create-kosk-application.dto.ts:29"
+      summary: { type: string }
+      reason: { type: string }
+      email: { type: string, format: email, sensitivity: personal, note: "what the applicant typed, which the form pre-fills from the account; not the account's own. A reviewer reading it and the phone is audited as kosk_application.contact_read (kosk-application/kosk-application-review.repository.ts:232)" }
+      phone: { type: [string, "null"], sensitivity: personal }
+      status: { enum: [PENDING, APPROVED, REJECTED], default: PENDING, note: "a text column with no database check (kosk-application.schema.ts:24)" }
+      decidedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      decidedAt: { type: [string, "null"], format: date-time }
+      rejectReason: { type: [string, "null"] }
+      koskId: { type: [string, "null"], format: uuid, references: Kosk, note: "no foreign key: the köşk an approval opened; the row is the record of the decision and outlives a hidden or deleted köşk" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> PENDING: a person applies (kosk-application/kosk-application.service.ts:22)"
+      - "PENDING -> APPROVED: Medaris management approves exactly once, conditional on PENDING, with its audit row in the same transaction (kosk-application/kosk-application-review.repository.ts:183, audit kosk_application.approve); the approval opens the köşk, sets koskId and notifies the applicant with KOSK_APPLICATION_RESULT"
+      - "PENDING -> REJECTED: refused with a reason, once and conditional on PENDING (audit kosk_application.reject); the applicant is notified with KOSK_APPLICATION_RESULT, and a notification that fails never undoes the decision (kosk-application/kosk-application-review.service.ts:190)"
+
+  CourseRequest: # a medrese's request to run a course in a köşk it does not belong to; the başmüderris sends it and the köşk's nazım answers it
+    source: apps/tedrisat/src/database/schema/course-request.schema.ts:25
+    required: [id, koskId, madrasahId, title, reason, requestedBy, status, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      koskId: { type: string, format: uuid, references: Kosk, note: "on delete cascade" }
+      madrasahId: { type: string, format: uuid, references: Madrasah, note: "on delete cascade" }
+      title: { type: string }
+      reason: { type: string }
+      requestedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING, note: "a text column with no database check (course-request.schema.ts:12)" }
+      rejectReason: { type: [string, "null"] }
+      decidedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      decidedAt: { type: [string, "null"], format: date-time }
+      courseId: { type: [string, "null"], format: uuid, references: Course, note: "on delete set null; the course the köşk opened by accepting" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> PENDING: the başmüderris of a medrese sends the request (course-request/course-request.repository.ts:209 and madrasah/course/madrasah-course.repository.ts:410, audit course_request.create); since migration 0067 nazar writes this table, not offsite_course_requests"
+      - "PENDING -> ACCEPTED: the köşk's nazım accepts it by opening the course, and courseId then points at it; answered once, with its audit row in the same transaction (course-request/course-request.repository.ts:214, audit course_request.accept)"
+      - "PENDING -> REJECTED: refused with a reason, once (audit course_request.reject)"
+      - "REJECTED -> PENDING: an accepted appeal puts the request back with its decision cleared, so the köşk decides again (appeal/appeal.repository.ts:258)"
+
+  OffsiteCourseRequest: # LEGACY: nazar's off-site request wrote it before migration 0067; nothing in src reads or writes it now
+    source: apps/tedrisat/src/database/schema/offsite-course-request.schema.ts:35
+    required: [id, madrasahId, koskId, title, reason, requestedBy, status, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      madrasahId: { type: string, format: uuid, references: Madrasah, note: "on delete cascade" }
+      koskId: { type: string, format: uuid, references: Kosk, note: "on delete cascade" }
+      title: { type: string }
+      reason: { type: string }
+      requestedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING, note: "the one database enum among the request tables (offsite_request_status). Migration 0067 copied the rows into course_requests and left this table for a later migration to drop (0067_offsite_requests_reach_kosk.sql:1); do not seed it" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> PENDING: written by nazar's off-site request until migration 0067 moved that to course_requests; no code reads or writes it now, and its rows were copied to course_requests"

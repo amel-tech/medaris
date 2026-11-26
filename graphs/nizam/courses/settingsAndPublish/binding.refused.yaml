@@ -1,0 +1,167 @@
+# nizam.courses.settingsAndPublish, the writes the API refuses and the pages that are out of date, on the local stack. Same data as binding.yaml (binding.common.yaml).
+# Each walk opens the page as the köşk's nazım (the başnazım for `gone` and `goneDraft`) of a course of the walk's own, presses what its world presses, and then
+# something is done to the course or the köşk behind the page, so that the next write is answered with a refusal. `nodes.<button>.before` is the something: it runs when
+# the walk presses the button (settings-data.mjs `interfere`, which does it once and says `already` after). The writes have no `call` here, so the replay passes through
+# them: a server action answers 200 whatever the API said, and the busy screens are checked in binding.yaml.
+#
+#   stale          the sample write is refused for a stale page (COURSE_VERSION_CONFLICT); the page is not read again; she reloads and saves
+#   policyLate     the köşk's approval policy comes on: unticking "Kayıt onayı gereksin" is refused (PLATFORM_POLICY_LOCKED), worded as the generic sentence
+#   gone           the course is deleted: Kaydet, "Taslağa çek" and "Gizle" are refused
+#   goneDraft      the same, for "Yayımla" on a draft
+#   alreadyHidden  the course was hidden meanwhile: "Gizle" is answered 409 and taken as done
+#
+# NOT RUN: written without a replay. A check after a refusal reads the course through the API as the başnazım; after `gone` the helper says `gone`.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nizam.courses.settingsAndPublish
+
+# the other person's act, once, just before the press it is meant to meet
+nodes:
+  submit:
+    role: button
+    name: '/^Kaydet$/'
+    within: { css: 'main form' }
+    before:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, interfere, '{interfere}']
+        expect: interfere
+  publishButton:
+    role: button
+    name: '/^Yayımla$/'
+    within: { role: region, name: Yayın }
+    before:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, interfere, '{interfere}']
+        expect: interfere
+  unpublishConfirm:
+    role: button
+    name: '/^Taslağa çek$/'
+    within: { role: alertdialog, name: Dersi taslağa çek }
+    before:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, interfere, '{interfere}']
+        expect: interfere
+  hideConfirm:
+    role: button
+    name: '/^Gizle$/'
+    within: { role: alertdialog, name: Dersi gizle }
+    before:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, interfere, '{interfere}']
+        expect: interfere
+
+scenarios:
+  # Someone else saves the course (its version moves) after the page was read. The nazım chooses "Hafta 1 · Celse 1" and presses Kaydet: the sample write carries the old
+  # version and is refused, the toast says "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.", nothing is written and the
+  # page is not read again; the same Kaydet is refused again. She reloads, chooses the sample again and saves. `nodes.submit.before` is the other save: it runs when the walk
+  # presses Kaydet, once (settings-data.mjs `interfere version`).
+  stale:
+    given: { world: stale, stored: published, count: read }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'version'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: 'unused'
+      expectKosk: '"alwaysRequireApproval":false,"recordingsNeverPublic":false'
+      expectSample: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1"'
+      expectSaved: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1"'
+      expectSavedKosk: '"recordingsNeverPublic":false'
+      expectRefused: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+
+  # The course asks for approval; the köşk's own "Kayıt her zaman onaylı" comes on while the page is open (`interfere policy`, before Kaydet); she unticks "Kayıt onayı
+  # gereksin" and saves: 409 PLATFORM_POLICY_LOCKED, which the page words as "İşlem tamamlanamadı. Biraz sonra yeniden deneyin." (SETPUB-2). Whether the köşk's nazım is subject
+  # to the köşk's own policy is from the code (the page itself shuts the box for her when the policy is on at load) and not verified. `down` puts the policy back.
+  policyLate:
+    given: { world: policyLate, stored: published, count: read }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'policy'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: 'unused'
+      expectKosk: '"alwaysRequireApproval":false,"recordingsNeverPublic":false'
+      expectSample: 'unused'
+      expectSaved: 'unused'
+      expectSavedKosk: 'unused'
+      expectRefused: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+
+  # The course is deleted behind the page (`interfere delete`, before the first write the walk presses): Kaydet, the question's "Taslağa çek" and the question's "Gizle" are
+  # each answered 404, worded "İşlem tamamlanamadı. Biraz sonra yeniden deneyin." and "Ders gizlenemedi". It is walked as the başnazım (the chief persona) because for the
+  # köşk's nazım a deleted course may read as a 403 from the guard (`byParam`), which the page words differently ("Bu işlem için yetkiniz yok."): not verified.
+  gone:
+    given: { world: gone, stored: published, count: read }
+    as: systemAdmin
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'delete'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: 'unused'
+      expectKosk: '"alwaysRequireApproval":false,"recordingsNeverPublic":false'
+      expectSample: 'unused'
+      expectSaved: 'unused'
+      expectSavedKosk: 'unused'
+      expectRefused: 'gone'
+
+  # The same for a draft: the course is deleted before "Yayımla" is pressed, and the card answers with the generic sentence and still offers Yayımla.
+  goneDraft:
+    given: { world: gone, stored: draft, count: read }
+    as: systemAdmin
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --draft, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'delete'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: '"status":"DRAFT"'
+      expectKosk: '"alwaysRequireApproval":false,"recordingsNeverPublic":false'
+      expectSample: 'unused'
+      expectSaved: 'unused'
+      expectSavedKosk: 'unused'
+      expectRefused: 'gone'
+
+  # Someone else hides the course after the page was read (`interfere hidden`, before the question's Gizle): the hide answers 409 COURSE_ALREADY_HIDDEN, which the page
+  # takes as done: the same toast and the same list as a hide of its own.
+  alreadyHidden:
+    given: { world: alreadyHidden, stored: published, count: read }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, up, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', title: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin, count: '0', kosk: Kubbealtı Köşkü }
+    vars:
+      interfere: 'hidden'
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'
+      expectLoadedDraft: 'unused'
+      expectKosk: '"alwaysRequireApproval":false,"recordingsNeverPublic":false'
+      expectSample: 'unused'
+      expectSaved: 'unused'
+      expectSavedKosk: 'unused'
+      expectRefused: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null'

@@ -1,0 +1,272 @@
+# Completing or changing the profile on Keycloak's own page, "Profilini tamamla" (login-update-profile.ftl), as the code does it
+# today (status captured; the code is PR #394's). The page is the Medaris theme's apps/keycloak-theme/src/login/pages/
+# LoginUpdateProfile.tsx, its fields are the realm's user profile drawn by libs/ui/src/giris/profile-field.tsx, and the round
+# trip around it is libs/auth (GET /api/auth/signin, GET /api/auth/callback/keycloak).
+#
+# Two ways in, and what each one shows.
+#   entry == 'signIn': after the right password Keycloak holds the person on this page because the account lacks something the
+#     realm's profile requires (VERIFY_PROFILE: the "Aydınlatma Metni'ni okudum" box, or the gender). realm.auth.signIn starts
+#     this flow. The page has a sentence under its title and no "Vazgeç".
+#   entry == 'account': a signed-in person pressed "Değiştir" (or "Ekle") beside their gender on tedris's Hesap page. The app's
+#     start route asked Keycloak for kc_action=UPDATE_PROFILE (an application-initiated action). tedris.account.profile starts
+#     this flow. The page has no sentence under its title and has "Vazgeç".
+#
+# How Keycloak is drawn (as in realm.auth.signIn). Keycloak is not a domain: its page is the screen of ui.yaml, and the POST of
+# the page's form (url.loginAction) is a state that `invoke`s { external: keycloak.loginAction }. What the app does around it is
+# libs/auth's two routes, which are domain actions (startSignIn, finishSignIn).
+#
+# What is not here, by FLOWS.md's split of the realm's pages: the e-mail verification page (login-verify-email.ftl, drawn by
+# realm.auth.register) and the new-password page (login-update-password.ftl, drawn by realm.auth.forgotPassword). They are the
+# other two pages Keycloak can hold a person on after the password; realm.auth.signIn hands over to each of the three.
+#
+# Findings the page has today (each is in ui.yaml `rules`; the first three were looked at in a browser on 15 Nov 2026):
+# K7 the save button is natively disabled and the missing field is marked only by a generic line, which is no live region;
+# PROFILE-3 taking the tick out of the box gives a broken message, "1 en az 1, en fazla {2} değer içermelidir."; PROFILE-1 no
+# control has the initial focus; K2 every Keycloak page has one tab title; PROFILE-2 the save button shows no busy state while
+# the form posts (read from the code, not looked at); K13 the privacy notice link is a hard-coded production address.
+# What the inventory had wrong: the page has no "Kullanıcı adı" field. Keycloak leaves it out of the attributes it gives the
+# page (editUsernameAllowed is false), so the theme's read-only line for it is never shown here.
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.profileUpdate
+status: captured
+domain: medaris.api
+ui: realm.auth.profileUpdate
+title: Complete or change the profile on the realm's page
+summary: >-
+  Keycloak shows the profile form with the account's own values in it: first name, last name, gender, e-mail address
+  and the box "Aydınlatma Metni'ni okudum." An account that lacks the gender or the box is stopped on this page once, at
+  sign-in; a signed-in person can open it on purpose from tedris's Hesap page. "Kaydet ve devam et" is off until every required
+  answer is given. Saving writes the profile at Keycloak and sends the browser back to the app, which stores a new session whose
+  tokens carry the change. From Hesap, "Vazgeç" sends the browser back the same way and changes nothing.
+scope:
+  shows: >-
+    The profile page as the two entries meet it, what the person has to give before the save button is on, the save and the
+    cancel, and the round trip back to the app.
+  world: open
+  outOfView:
+    - "the e-mail verification page and the new-password page, the other two pages a required action holds a person on after the password: realm.auth.register and realm.auth.forgotPassword"
+    - "the login form that comes first when the single sign-on session has ended before an account action (realm.auth.signIn); and the app's own pages around the round trip, tedris's Hesap page (tedris.account.profile) and the app's sign-in page"
+    - "Keycloak answering the page again after the post, with a reason under a field (a check only the server can make, such as an e-mail address another account holds): the reason is Keycloak's own text; not drawn and not walked"
+    - "the person changing the first name, last name or e-mail address before saving: the fields are free text and the graph does not follow what is typed; only the two answers that switch the save button are followed"
+    - "the privacy notice link, which opens landing's notice in a new tab at a hard-coded production address (K13); the page stays where it is"
+    - "the language of the page (tr; the apps pass ui_locales and kc_locale), the logo and the app's name under it (from the client id): realm.auth.signIn draws them"
+    - "the tabs and the single sign-on: a second tab in the same round trip, a session another tab brought"
+
+context:
+  entry:
+    values: [signIn, account]
+    initial: any
+    say:
+      signIn: "Keycloak held them on this page after the right password, because the account lacks something the profile requires"
+      account: "they pressed Değiştir or Ekle on tedris's Hesap page, which asked Keycloak for the profile form on purpose"
+  lacks:
+    values: [privacyNotice, gender, both, nothing]
+    initial: any
+    say:
+      privacyNotice: "the account has no tick on the privacy notice (the seed's account of this kind has its gender)"
+      gender: "the account has no gender and the notice is ticked"
+      both: "the account has neither the gender nor the tick"
+      nothing: "the account is complete (a person changing their profile on purpose; sign-in never stops a complete account here)"
+  genderEdit:
+    values: [untouched, chosen]
+    initial: untouched
+    say: { untouched: "the gender is as the account holds it", chosen: "they pressed a gender" }
+  noticeEdit:
+    values: [untouched, ticked, unticked]
+    initial: untouched
+    say:
+      untouched: "the box is as the account holds it"
+      ticked: "they ticked the box"
+      unticked: "they took the tick out"
+  saved:
+    values: [false, true]
+    initial: false
+    say: { "true": "Keycloak has saved the profile", "false": "nothing has been saved" }
+
+guards:
+  # keycloakify's isFormSubmittable: every required answer is given (LoginUpdateProfile.tsx:48, UserProfileFormFields.tsx:36)
+  genderOk: "genderEdit == 'chosen' or lacks == 'privacyNotice' or lacks == 'nothing'"
+  noticeOk: "noticeEdit == 'ticked' or (noticeEdit == 'untouched' and (lacks == 'gender' or lacks == 'nothing'))"
+  ready: "genderOk and noticeOk"
+  # what the page marks as missing on arrival: the server's own reason, drawn under the field (keycloakify reads it as the field's error)
+  genderFlagged: "genderEdit == 'untouched' and (lacks == 'gender' or lacks == 'both')"
+  noticeFlagged: "noticeEdit == 'untouched' and (lacks == 'privacyNotice' or lacks == 'both')"
+  fromAccount: "entry == 'account'"
+
+effects:
+  chosenGender: { set: { genderEdit: chosen } }
+  tickedNotice: { set: { noticeEdit: ticked } }
+  untickedNotice: { set: { noticeEdit: unticked } }
+  profileSaved: { set: { saved: true } }
+
+failures:
+  startingAccountAction:
+    from: startSignIn
+    retryable: [OAuthSignin]
+    final: [SignInLimit]
+  finishingRoundTrip:
+    from: finishSignIn
+    retryable: [OAuthCallback]
+    final: [AccessDenied, Configuration]
+
+# The main story: the seed's account that lacks only the privacy-notice tick is stopped after its password, ticks the box, and
+# saves; Keycloak redirects to the app, which lands it on the page it had asked for.
+main:
+  given: { entry: signIn, lacks: privacyNotice }
+  events: [TOGGLE_PRIVACY_NOTICE, SUBMIT, DONE, DONE]
+
+initial: begin
+states:
+  begin:
+    title: Which way in
+    description: >-
+      Not a screen. From sign-in the person is already on the page: Keycloak showed it instead of redirecting. From Hesap the
+      app's start route (GET /api/auth/signin?action=UPDATE_PROFILE) has first to send the browser to Keycloak. Only that one
+      action is allowed, and a link cannot open any other of Keycloak's actions in the app's name.
+    source: libs/auth/src/server/routes.ts:158
+    always:
+      - { target: startingAccountAction, guard: fromAccount, say: "the Hesap page's link goes to the app's start route with action=UPDATE_PROFILE" }
+      - { target: settle, say: "Keycloak already shows the page: it is what the sign-in was held on" }
+
+  startingAccountAction:
+    title: The app starts the account action
+    description: >-
+      GET /api/auth/signin with action=UPDATE_PROFILE and callbackUrl=/account: the cap of five starts in five minutes, the session
+      store, Keycloak's discovery document, then a 303 to Keycloak's authorization endpoint with kc_action=UPDATE_PROFILE and
+      ui_locales and kc_locale. A browser that already holds a session is not sent straight back (an account action always goes
+      through Keycloak), and the visit still counts as a start. Keycloak shows the form at once when its single sign-on session
+      lives, and the login form first when it has ended (realm.auth.signIn).
+    source: libs/auth/src/server/routes.ts:240
+    invoke: { action: startSignIn }
+    on:
+      DONE: { target: settle, say: "Keycloak shows the profile form" }
+      FAIL.retryable: { target: error_box.retryable, say: "Keycloak's discovery document or the session store could not be asked" }
+      FAIL.final: { target: error_box.final, say: "this browser has started five round trips in five minutes" }
+
+  settle:
+    title: Is the save button on?
+    description: >-
+      Not a screen: after every answer the button is on or off. keycloakify holds the values and checks them as the person
+      types and leaves a field; "Kaydet ve devam et" is natively disabled until every required answer is given
+      (`disabled={!isFormSubmittable}`). Here the answers that can be missing are the gender and the box. It starts off for a
+      render and is switched on by an effect, so a complete form is on a moment after the page is drawn.
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:81
+    always:
+      - { target: profileReady, guard: ready, say: "every required answer is given: the button is on" }
+      - { target: profileForm, say: "the gender or the box is missing: the button is off, and only the line under the field says which (K7)" }
+
+  profileForm:
+    title: The profile form, the save button off
+    by: human
+    description: >-
+      Keycloak's login-update-profile.ftl: one card with the title "Profilini tamamla", under it the sentence "Hesabında eksik
+      bilgi var…" (only when the person was stopped at sign-in), "* zorunlu alan", then the realm's profile in its own order: Ad,
+      Soyad, the gender as two radios (Kadın, Erkek), E-posta, and the box "Aydınlatma Metni'ni okudum." whose link opens a new
+      tab. There is no Kullanıcı adı field: Keycloak leaves it out of the page's attributes. The fields hold the account's values;
+      the gender the account holds is the checked radio; the box is ticked when the account holds it. When Keycloak stopped the
+      person for a missing answer, that field carries its reason from the start, drawn by the page as a line under it: Keycloak's
+      generic "Lütfen bu alanı doldurun." (the box is marked invalid; the line is no live region and nothing moves the focus to it).
+      "Kaydet ve devam et" is natively disabled and says nothing of what is missing (K7). Taking the tick out of the box and
+      leaving it gives a line that reads "1 en az 1, en fazla {2} değer içermelidir.", a message with a placeholder left in it
+      (PROFILE-3). "Vazgeç" is there only when the person asked for the page from Hesap. Nothing has the focus (PROFILE-1) and
+      the tab title is Keycloak's one title (K2). The gender line is drawn from the same code as the box's and was not looked at:
+      no account the stack can make lacks a gender.
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:51
+    on:
+      CHOOSE_GENDER: { target: settle, effect: [chosenGender], source: libs/ui/src/giris/profile-field.tsx:134, say: "they press a gender" }
+      TOGGLE_PRIVACY_NOTICE:
+        - { target: settle, guard: noticeOk, effect: [untickedNotice], source: libs/ui/src/giris/profile-field.tsx:154, say: "they take the tick out of the box and move on: the button goes off and the line under it reads the broken message (PROFILE-3)" }
+        - { target: settle, effect: [tickedNotice], source: libs/ui/src/giris/profile-field.tsx:154, say: "they tick the box" }
+      CANCEL: { target: cancelling, guard: fromAccount, source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:85, say: "they press Vazgeç: it works with the save button off (formNoValidate)" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  profileReady:
+    title: The profile form, the save button on
+    by: human
+    description: >-
+      The same page with "Kaydet ve devam et" on. Pressing it posts the form; the button shows no busy state while the post is on
+      its way (PROFILE-2).
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77
+    on:
+      CHOOSE_GENDER: { target: settle, effect: [chosenGender], source: libs/ui/src/giris/profile-field.tsx:134, say: "they press a gender" }
+      TOGGLE_PRIVACY_NOTICE:
+        - { target: settle, guard: noticeOk, effect: [untickedNotice], source: libs/ui/src/giris/profile-field.tsx:154, say: "they take the tick out of the box and move on: the button goes off and the line under it reads the broken message (PROFILE-3)" }
+        - { target: settle, effect: [tickedNotice], source: libs/ui/src/giris/profile-field.tsx:154, say: "they tick the box" }
+      SUBMIT: { target: saving, source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:63, say: "they press Kaydet ve devam et" }
+      CANCEL: { target: cancelling, guard: fromAccount, source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:85, say: "they press Vazgeç" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  saving:
+    title: Keycloak saves the profile
+    description: >-
+      The form posts to url.loginAction with every field it holds (firstName, lastName, gender, email, privacyNoticeRead; the page's
+      attributes are those five). This post is Keycloak's own, not an action of the domain. Keycloak writes the profile,
+      ends the required action and redirects to the app's callback. The post is a navigation, so the replay can look at nothing in
+      between and passes through this state.
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:63
+    invoke: { external: keycloak.loginAction }
+    on:
+      DONE: { target: finishingRoundTrip, effect: [profileSaved], say: "Keycloak redirects to /api/auth/callback/keycloak with the code and the state" }
+
+  cancelling:
+    title: Keycloak ends the action without a change
+    description: >-
+      Vazgeç is a second submit button of the same form (name cancel-aia, value true, formNoValidate). Keycloak ends the
+      application-initiated action, changes nothing and redirects to the callback, as it does after a save, so the app stores a
+      new session whose tokens are as they were. Only an action an app asked for has this button.
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:86
+    invoke: { external: keycloak.loginAction }
+    on:
+      DONE: { target: finishingRoundTrip, say: "Keycloak redirects to /api/auth/callback/keycloak with the code and the state" }
+
+  finishingRoundTrip:
+    title: The app finishes the round trip
+    description: >-
+      GET /api/auth/callback/keycloak, as after a sign-in: the flow cookie of this browser is found by the state, the code is
+      exchanged, the session is stored under a new id (the one this browser had is ended) and the browser is sent on (303) to the
+      destination the flow cookie holds: the page the sign-in asked for, or the app's landing for a person who named none; for an
+      account action tedris's /account. The new tokens carry the saved profile (the gender claim).
+    source: libs/auth/src/server/routes.ts:277
+    invoke: { action: finishSignIn }
+    on:
+      DONE: { target: back_in_app, say: "the destination is where the round trip began" }
+      FAIL.retryable: { target: error_box.retryable, say: "no round trip of this browser has this state, or the grant failed" }
+      FAIL.final: { target: error_box.final, say: "Keycloak refused the account (access_denied) or the app (invalid_client)" }
+
+  back_in_app:
+    type: final
+    title: The person is back in the app
+    description: >-
+      Signed in, with the new tokens. From sign-in the page is the one the sign-in asked for, or the app's landing (/ sends a tedris
+      person to /home); from Hesap it is /account. The pages are the apps' own: realm.auth.signIn and tedris.account.profile
+      draw where each of them leaves the person.
+
+  error_box.retryable:
+    type: final
+    title: The app's sign-in page shows its error box after a retryable failure
+    description: "OAuthSignin or OAuthCallback: the page tries once by itself, then shows Giriş sayfasına dön. realm.auth.signInFailures draws it."
+
+  error_box.final:
+    type: final
+    title: The app's sign-in page shows its error box after a failure no retry fixes
+    description: "SignInLimit, AccessDenied or Configuration: the box at once, with Ana sayfaya dön. realm.auth.signInFailures draws it."
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+assertions:
+  - id: a-form-the-button-allowed-is-the-one-sent
+    never: "state == 'saving' and not ready"
+    say: "Only a form with every required answer given is posted by Kaydet ve devam et: the button is natively disabled until then."
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:81
+  - id: sign-in-waits-for-the-profile
+    never: "state == 'finishingRoundTrip' and entry == 'signIn' and not saved"
+    say: "A person Keycloak held at sign-in is never sent back to the app before the profile is saved: Keycloak keeps them on the page until it is."
+    source: libs/auth/src/server/routes.ts:277
+  - id: cancel-only-for-an-account-action
+    never: "state == 'cancelling' and entry == 'signIn'"
+    say: "A person held at sign-in has no Vazgeç: Keycloak shows it only for an action an app asked for."
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:85

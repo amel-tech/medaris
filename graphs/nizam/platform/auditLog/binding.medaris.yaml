@@ -1,0 +1,30 @@
+# nizam.platform.auditLog as the seeded Medaris nazımı ("Selma", who holds platform.audit_read among five permissions): the same page, opened by its address
+# because the Medaris menu has no entry for it (AUDIT-7), and the same export. It adds no transition to binding.yaml's walk, so it has a file of its own to be
+# walked at all.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/platform/auditLog \
+#     --bind graphs/nizam/platform/auditLog/binding.medaris.yaml --cover transitions --out <dir>
+#
+# NOT RUN (see binding.yaml). The rows she reads are the ones the başnazım's switch wrote, found by their number as in binding.yaml (setup and teardown are the
+# same helper, which acts as the başnazım). Her export writes an audit.export row of her own, which teardown removes with the başnazım's (see binding.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nizam.platform.auditLog
+
+data:
+  made: { json: ../.local/made/audit-log.json }
+
+scenarios:
+  medaris:
+    given: { viewer: medaris, older: some, olderRead: ok, policyChange: true }
+    as: medarisNazim
+    open: '{nizam}/denetim-kaydi'
+    setup: [{ run: [node, ../nizam/platform/auditLog/audit-rows.mjs, up], expect: 'audit-rows up' }]
+    teardown: [{ run: [node, ../nizam/platform/auditLog/audit-rows.mjs, down], expect: 'audit-rows down' }]
+    samples: { person: Vedat Başnazım }
+    vars:
+      exporter: MEDARIS_NAZIM
+      person: Vedat
+      nobody: yokboyle
+      longText: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

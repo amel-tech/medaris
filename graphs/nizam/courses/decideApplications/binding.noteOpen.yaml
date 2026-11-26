@@ -1,0 +1,39 @@
+# nizam.courses.decideApplications at a course's Talebeler when the course's own approval flag is off while an application waits
+# (ROSTER-1): the note over the table says "Bu ders onay istemiyor; talebeler başvurur başvurmaz kaydolur." above a row that waits.
+#   node apps/engine/src/cli.ts replay graphs/nizam/courses/decideApplications --bind graphs/nizam/courses/decideApplications/binding.noteOpen.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the case is made: the walk's own course "Deneme dersi cdaNote" is made asking for approval and applicantC applies; then the köşk's
+# nazım switches the approval off (PATCH /courses/:id {requiresApproval:false}, as the course's settings page does: it needs
+# setting.approval_off, which the nazım holds unless a platform, köşk or medrese policy says always-ask, and then the PATCH answers 409
+# PLATFORM_POLICY_LOCKED and `setup` fails: not verified). The application stays PENDING (the API does not approve the waiting ones when
+# the flag changes: course.service.ts:999 only checks who may), so the course page shows a waiting row under the "open" note. The seeded
+# courses' settings are not touched. The scenario adds no transition the students file lacks; it is its own file because its `given` is
+# the one `note: open` and the first scenario of a file wins.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.decideApplications
+
+states:
+  listed: { url: '{nizam}/kosks/*/courses/*/students' }
+  empty: { url: '{nizam}/kosks/*/courses/*/students' }
+  approving: { call: '{nizam}/kosks/*/courses/*/students' }
+  rejecting: { call: '{nizam}/kosks/*/courses/*/students' }
+
+scenarios:
+  noteOpen:
+    given: { approval: needed, place: students, note: open }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{cdaNote.course}/students'
+    vars: { course: '{cdaNote.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cdaNote, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_D":"PENDING"'
+      - run: [node, helpers/api.mjs, koskNazim, PATCH, '/courses/{cdaNote.course}', '{"requiresApproval":false}']
+        expect: '"requiresApproval":false'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cdaNote]
+        expect: 'course remove cdaNote'
+      - run: [node, helpers/sql.mjs, "select count(*) as revoked from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"revoked":0'

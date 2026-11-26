@@ -1,5 +1,6 @@
 import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { LessonExamResponse } from "../../exam/dto/exam.dto";
 import { LIVE_STREAM_HOURS_AFTER_END } from "../domain/recording";
 import { SessionStatus } from "../domain/session-status.enum";
 import {
@@ -105,6 +106,14 @@ export class SessionResponse extends SessionRefResponse {
       " The homework the course team set on the session, apart from its `resources`: a description and its own files; null when it has none. A caller who may not read the content is not told whether there is any.",
   })
   assignment?: LessonAssignmentResponse | null;
+  @ApiPropertyOptional({
+    type: () => LessonExamResponse,
+    nullable: true,
+    description:
+      'What makes the session an exam ("Sınav", MDRS-248); null when it is not one. ' +
+      CONTENT_FIELD,
+  })
+  exam?: LessonExamResponse | null;
   @ApiPropertyOptional({
     type: SessionRecordingResponse,
     nullable: true,

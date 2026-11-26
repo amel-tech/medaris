@@ -1,0 +1,214 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.decks.openAndFill
+status: proposed
+summary: >-
+  What must exist for the staff of a course to open a deck and fill it with cards: the flow's product list. No e2e check of
+  nazar-web touches Ders desteleri, and no replay has been run, so no `walked` entry names one: the unit spec
+  apps/nazar/test/decks.spec.ts, which pins the page's rules (the title and the faces, the paste, the body of a create), is listed
+  as `test:`, not as e2e or replay.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code, Linear key `none`): staff-change-every-card-of-a-course-deck, a-refusal-says-why, a-saved-edit-says-so,
+# writes-are-announced, required-fields-are-said, cards-have-names, a-failed-call-is-told, the-dialog-starts-in-the-title,
+# a-deck-page-is-told-by-its-title
+# unwalked (code, no e2e and no replay yet): see-the-decks-of-the-course, open-a-deck, fill-a-deck-with-the-keyboard, paste-a-batch,
+# edit-a-card-in-place, delete-a-card-after-asking, the-talebe-see-the-published-deck
+
+needs:
+  - id: see-the-decks-of-the-course
+    need: >-
+      Whoever holds deck.manage_course in a course sees the course's decks, drafts included, each with its size, its type, its
+      week, whether the talebe see it yet and how much of it they have mastered, and the totals above them; a course with no deck
+      says so and says how to begin.
+    evidence:
+      - state: emptyList
+      - state: deckList
+      - node: listSummary
+      - node: emptyTitle
+      - node: emptyBody
+      - node: deckCard
+      - node: importButton
+      - node: newButton
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:68
+      - source: apps/nazar/features/decks/components/decks-page.tsx:30
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: open-a-deck
+    need: >-
+      The same person opens a deck of the course from the list: a title of 5 to 100 characters, an optional description, a card
+      type, an optional week and whether it is a draft; the deck exists at once, the person is told, and lands on its page. A
+      title that is not acceptable is refused before anything is sent.
+    evidence:
+      - state: newDeck
+      - state: newDeckProblem
+      - state: creating
+      - node: titleField
+      - node: draftBox
+      - node: newDeckSubmit
+      - node: toastCreated
+      - state: deck
+      - node: deckPublished
+      - node: deckDraftLine
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:86
+      - source: apps/nazar/features/decks/components/deck-form-dialog.tsx:74
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: fill-a-deck-with-the-keyboard
+    need: >-
+      Cards go in one after the other with the keyboard alone: both faces typed, Enter, the boxes empty and the focus back on the
+      first, and a line says the card is added; a blank card is refused and the line says so. The cards are on the page as soon as
+      they are added.
+    evidence:
+      - state: deck
+      - state: faceProblem
+      - state: addingCard
+      - state: cardAdded
+      - node: addFront
+      - node: addBack
+      - node: lineAdded
+      - node: lineRequired
+      - node: cardsHeading
+      - node: tileFront
+      - node: tileBack
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
+      - source: apps/nazar/features/decks/components/card-quick-add.tsx:65
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: paste-a-batch
+    need: >-
+      Two columns copied from a spreadsheet become cards in one press; the lines that are no card are named by their number so
+      that the person can correct them, and a paste with no usable line adds nothing and says so. All the cards of a batch are
+      added or none.
+    evidence:
+      - state: batchReady
+      - state: batchEmpty
+      - state: addingBatch
+      - state: batchAdded
+      - state: batchFailed
+      - node: batchSummary
+      - node: batchNone
+      - node: batchAddAll
+      - node: batchDrop
+      - node: lineBatchAdded
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
+      - source: apps/nazar/features/decks/components/card-quick-add.tsx:87
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: edit-a-card-in-place
+    need: >-
+      A card is changed where it stands: its two faces open as a form, Enter or "Kaydet" stores them, Escape or "Vazgeç" leaves
+      them as they were, and a face that is not acceptable is refused in the form.
+    evidence:
+      - state: editing
+      - state: savingCard
+      - node: editForm
+      - node: editFront
+      - node: editBack
+      - node: editSave
+      - node: editCancel
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:291
+      - source: apps/nazar/features/decks/components/card-tile.tsx:46
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: delete-a-card-after-asking
+    need: >-
+      A card is deleted only after the person is asked once, in words that say what happens, and the deck's page and its count
+      follow at once; the person is told it is gone.
+    evidence:
+      - state: confirmRemove
+      - state: removing
+      - node: removeDialog
+      - node: removeBody
+      - node: removeConfirm
+      - node: toastRemoved
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:318
+      - source: apps/nazar/features/decks/components/deck-detail-screen.tsx:45
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: staff-change-every-card-of-a-course-deck
+    need: >-
+      Whoever holds deck.manage_course in a course can read, add, edit and delete the cards of every deck of the course, whoever
+      opened the deck; today the deck routes allow it and the card routes answer 404 to anyone but the deck's author (OPENFILL-1).
+    missing: "no issue: the domain's course-deck-staff-card-routes-404 (apps/tedrisat/src/flashcard/flashcard.service.ts:86)"
+    note: >-
+      Drawn on the states savingCard, editFailed, removing and removeFailed, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-says-why
+    need: >-
+      A card edit or delete the API refuses says why and what can be done about it, in place of "Tekrar deneyin" for a refusal
+      that trying again never changes (OPENFILL-1, decision D1).
+    missing: no Linear issue; findings OPENFILL-1
+    note: >-
+      Drawn on the states editFailed and removeFailed and on the nodes editLine and removeLine, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-saved-edit-says-so
+    need: A card edit that was stored says so, and the focus goes somewhere a keyboard user can use (OPENFILL-5, decision D2).
+    missing: no Linear issue; findings OPENFILL-5
+    note: >-
+      Drawn on the state deck, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: writes-are-announced
+    need: >-
+      Every outcome of a write on these two pages is announced to a screen-reader user: an error as an alert, a saved edit and a
+      delete as a status, and after a save, a cancel or a delete the focus does not fall to the document (F-D1-11, F-D1-16).
+    missing: no Linear issue; findings F-D1-11, F-D1-16
+    note: >-
+      Drawn on the nodes titleError, editLine, removeLine, newDeckAlert and lineAdded, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: required-fields-are-said
+    need: A screen reader is told which fields of the "Deste aç" dialog are required (F-D1-03).
+    missing: no Linear issue; findings F-D1-03
+    note: >-
+      Drawn on the nodes titleField and cardTypeField, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: cards-have-names
+    need: >-
+      Each card's buttons say which card they act on, and the two boxes of the "Kart ekle" row have a visible label (F-D1-25,
+      F-D1-26).
+    missing: no Linear issue; findings F-D1-25, F-D1-26
+    note: >-
+      Drawn on the nodes editCard, removeCard, addFront and addBack, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-call-is-told
+    need: When a write cannot reach the server at all, its button stops being busy and the person is told to try again (F-D1-20).
+    missing: no Linear issue; findings F-D1-20
+    note: >-
+      Drawn on the states creating, addingCard, addingBatch, savingCard and removing, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-dialog-starts-in-the-title
+    need: The "Deste aç" dialog puts the focus on its first field when it opens (OPENFILL-2).
+    missing: no Linear issue; findings OPENFILL-2
+    note: >-
+      Drawn on the nodes newDeckDialog and titleField, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-deck-page-is-told-by-its-title
+    need: >-
+      The document's title of a deck's page names the deck, and the language of the deck's title is not marked with a value that
+      is no language tag (OPENFILL-4, F-D1-14).
+    missing: no Linear issue; findings OPENFILL-4, F-D1-14
+    note: >-
+      Drawn on the node deckHeading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-talebe-see-the-published-deck
+    need: >-
+      A deck that is not a draft shows at once to the talebe enrolled in the course, and a draft does not (the page says which:
+      "Yayında · talebe görünür", "Taslak · talebe görünmez"). The talebe's side is tedris.course.deckTab.
+    evidence:
+      - node: draftBox
+      - node: deckPublished
+      - node: deckDraftLine
+      - node: draftHelp
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:86
+      - source: apps/nazar/features/decks/components/deck-detail-page.tsx:86

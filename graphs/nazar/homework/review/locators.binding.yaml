@@ -1,0 +1,103 @@
+# What every walk of nazar.homework.review shares (graphs/README.md, "The stack and the bindings"): the walk's course as data, the events a person
+# types or presses with no node of the graph, the address each state must show, the server calls held while a busy control is checked, where role and
+# name cannot find a node, and the check of what a step writes. The scenarios are in binding.yaml (the müderris, five worlds and a refusal) and
+# binding.dersNazir.yaml (a ders nazırı who holds submission.read does the same review): a scenario that adds no transition of its own is walked only
+# from a file of its own.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and the catalog; none
+# was seen in a browser. Read-only looks at the running app were not needed.
+#
+# Data. Every scenario makes its own course (review-data.mjs make <variant> -> helpers/course.mjs make nhwrev: "Deneme dersi nhwrev", three celses of
+# one week, applicantC seated) and removes it (review-data.mjs remove). course.mjs writes graphs/.local/made/nhwrev.json and review-data.mjs adds
+# `submission`, read here as {made.course}, {made.lessons.N} and {made.submission}. No seeded course, celse, homework, hand-in or talebe is touched.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.homework.review
+
+# a wide window, so that the course's sidebar (and its menu, which every walk but the refusal enters by) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/nhwrev.json }
+
+# the talebe's note on the hand-in of the `changed` world: the page shows it in the Not cell and again in the dialog
+samples:
+  note: Düzeltmeyi ekledim; üçüncü satırı yeniden yazdım.
+
+events:
+  # the dialog's note: the textarea "Talebeye not"; the typed words are the scenario's own
+  TYPE_NOTE:
+    - fill: { role: textbox, name: Talebeye not, value: '{typedNote}' }
+  CLEAR_NOTE:
+    - fill: { role: textbox, name: Talebeye not, value: '' }
+  # Esc closes the celse list and the dialog alike
+  DISMISS: [{ key: Escape }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+  # PICK_FILE is not bound: the replay has no action that sets a native file input (its verbs are goto, reload, click, fill, key, waitUrl, waitText,
+  # waitResponse and run, and Playwright's `fill` refuses a file input). So no walk reaches `uploading`, and the transitions out of it are not walked.
+
+# `not_found`, `loadFailed` and `sent_to_sign_in` are not bound: tedrisat answers every read here and the stack cannot end the browser's session or make
+# a read fail. The downloads and the reload they cause are navigations, so they hold no `call` (it would hang the walk) and show no node of their own.
+states:
+  listed: { url: '{nazar}/ders/*/odevler**' }
+  filtered: { url: '{nazar}/ders/*/odevler**' }
+  filteredQuiet: { url: '{nazar}/ders/*/odevler**' }
+  choosing: { url: '{nazar}/ders/*/odevler**' }
+  empty: { url: '{nazar}/ders/*/odevler**' }
+  forbidden: { url: '{nazar}/ders/*/odevler**' }
+  reviewing: { url: '{nazar}/ders/*/odevler**' }
+  reviewingEmpty: { url: '{nazar}/ders/*/odevler**' }
+  uploadPanel: { url: '{nazar}/ders/*/odevler**' }
+  # the two server actions are POSTs to the page's own address (a Next server action answers 200 there, so a walk through a refusal compares
+  # nothing): held while the busy controls are checked
+  removing: { call: '{nazar}/ders/*/odevler' }
+  sending: { call: '{nazar}/ders/*/odevler' }
+  # the upload is a fetch to this app's route: it would hold the request and compare its status (503 on this stack); unreachable until a file input can be set
+  uploading: { call: '{nazar}/api/files/courses/*/reviews/*' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot find a node, or find too many. A placeholder the binding gives no sample for matches any text, so most nodes need nothing:
+# the heading, the region and the table of each celse are found by their pattern. What follows names the walk's own file, the one row, and the controls
+# that share a name.
+nodes:
+  # the page's one <main>; the page a walk leaves for (about:blank) has none, and the sidebar's own words are outside it
+  hwPage: { css: main, hasText: '/^Ödevler/' }
+  # a note-less row's dash is an aria-hidden span in the table
+  noNoteDash: { css: 'table span[aria-hidden="true"]', hasText: '—', within: { css: '[data-testid="homework"]' } }
+  talebeName: { role: rowheader, hasText: Esma Başvuran }
+  # the page's own link to the hand-in's file: the dialog's is portaled outside the list's wrapper
+  fileLink: { role: link, name: ödev.pdf dosyasını indir, within: { css: '[data-testid="homework"]' } }
+  # the one <time> inside a table: the celse's own start time stands in the status line, outside it
+  changedTime: { css: 'table time', within: { css: '[data-testid="homework"]' } }
+  # an info and a neutral Alert are statuses; the words are their titles
+  emptyAlert: { role: status, hasText: Henüz ödev yok }
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  # "<who sent it> · <when>" is the one caption of the review cell
+  sentBy: { css: 'span.mds-caption', within: { css: '[data-testid="review-{made.submission}"]' } }
+  # the celse list's options: the text of each differs only in the number of the celse, so each is found by its whole line
+  optionBusy: { role: option, hasText: 'Hafta 1 · Celse 1 (1)' }
+  optionQuiet: { role: option, hasText: 'Hafta 1 · Celse 3 (0)' }
+  # the dialog: the eyebrow is the celse's heading again, which the page behind also draws; the X and the footer's button share the name "Kapat"
+  reviewEyebrow: { css: 'p.mds-eyebrow', within: { css: '.mds-dialog' } }
+  closeIcon: { css: 'button.mds-dialog__close' }
+  closeFooter: { role: button, name: Kapat, within: { css: '.mds-dialog__footer' } }
+  handedInFile: { role: link, name: ödev.pdf dosyasını indir, within: { css: '[data-testid="review-dialog"]' } }
+  handedInNote: { text: Düzeltmeyi ekledim; üçüncü satırı yeniden yazdım., within: { css: '[data-testid="review-dialog"]' } }
+  reviewFileLink: { role: link, name: duzeltilmis-odev.pdf dosyasını indir }
+  removeFile: { role: button, name: duzeltilmis-odev.pdf dosyasını kaldır }
+  busySend: { css: 'output.mds-visually-hidden', hasText: Yükleniyor, within: { css: '.mds-dialog__footer' } }
+  # <input type=file>: Chromium exposes it as a button whose name is its label's and its state's
+  fileInput: { css: 'input[type=file]' }
+
+# What a step leaves outside the screen, read through SQL on tedrisat's database (helpers/sql.mjs) as the walk's own rows.
+effects:
+  # the review is stored and sent together (reviewed_at and reviewed_by are set together, the table's own check), and the talebe is notified
+  sendSubmissionReview:
+    - run: [node, helpers/sql.mjs, "select (reviewed_at is not null) as sent, review_note is not null as noted from lesson_submissions where id = '{made.submission}'"]
+      expect: '"sent":true'
+    - run: [node, helpers/sql.mjs, "select type from notifications where user_id = '{secret.E2E_APPLICANT_C_SUB}' and target_id = '{made.lessons.0}'"]
+      expect: SUBMISSION_REVIEWED
+  # the review file's row is gone (each world holds one)
+  deleteSubmissionReviewFile:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from submission_review_files where submission_id = '{made.submission}'"]
+      expect: '"n":0'

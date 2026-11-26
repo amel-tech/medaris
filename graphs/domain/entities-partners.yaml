@@ -1,0 +1,70 @@
+# J. Partner applications and integration: 4 tables (inventory/domain.md section 7, J).
+# A registered partner's token is refused on every route except /integrations/*, and a disabled partner is refused there too.
+# A user column holds a Keycloak sub and is no foreign key. All timestamps here are with time zone, except
+# enrollmentCreatedAt and enrollmentRemovedAt of PartnerEnrollmentLink, which copy the enrollment's timestamps without time zone.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  IntegrationPartner: # a partner application whose registrations become course enrollments, kept by the başnazım in nizam ("Ortak uygulamalar"); never deleted through the API
+    source: apps/tedrisat/src/database/schema/integration-partner.schema.ts:31
+    key: [clientId]
+    required: [clientId, name, enabled, createdAt]
+    fields:
+      clientId: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", note: "the partner's Keycloak client id, the azp of its tokens (pattern from config/integration-partners-env.ts)" }
+      name: { type: string, minLength: 1, maxLength: 100, note: "what nazar, nizam and the audit log call it (check integration_partners_name_length)" }
+      enabled: { type: boolean, default: true }
+      createdAt: { type: string, format: date-time }
+      createdBy: { type: [string, "null"], format: uuid, note: "Keycloak sub; null for a partner seeded at boot from the deprecated INTEGRATION_PARTNERS variable" }
+    lifecycle:
+      - "none -> enabled: the başnazım registers a partner (integration/partner-registry.repository.ts:133, audit integration_partner.create), or the boot seeds it from INTEGRATION_PARTNERS with createdBy null (integration/partner-registry.seeder.ts:35, integration/partner-registry.repository.ts:286), leaving a partner already registered untouched"
+      - "enabled -> enabled: renamed (integration/partner-registry.repository.ts:169, audit integration_partner.rename)"
+      - "enabled -> disabled: audit integration_partner.disable; the partner is refused on /integrations/* too"
+      - "disabled -> enabled: audit integration_partner.enable"
+
+  IntegrationPartnerKosk: # the köşks a partner works with; its codes are mapped, listed and honoured only in courses of these köşks
+    source: apps/tedrisat/src/database/schema/integration-partner.schema.ts:63
+    key: [clientId, koskId]
+    required: [clientId, koskId, createdAt]
+    fields:
+      clientId: { type: string, references: IntegrationPartner, note: "on delete cascade (foreign key integration_partner_kosks_client_id_fk)" }
+      koskId: { type: string, format: uuid, references: Kosk, note: "on delete cascade" }
+      createdAt: { type: string, format: date-time }
+      createdBy: { type: [string, "null"], format: uuid, note: "Keycloak sub; null for a binding seeded at boot from the codes a partner already had" }
+    lifecycle:
+      - "none -> bound: setKosks makes the partner's köşks exactly the ones given and binds the new ones (integration/partner-registry.repository.ts:246, audit integration_partner.kosk_bind under the köşk); the boot also seeds bindings (:300)"
+      - "bound -> none: setKosks unbinds the rest (integration/partner-registry.repository.ts:256, audit integration_partner.kosk_unbind), and in the same transaction takes the partner's codes off that köşk's courses, one audit course.partner_code_remove each; binding the köşk again brings none back, and the registrations' links stay"
+
+  PartnerCourseCode: # a partner application's own code for a course or weekly activity, mapped to the Medaris course its registrations enrol people in (nazar "Ortak uygulama kodları")
+    source: apps/tedrisat/src/database/schema/partner-enrollment.schema.ts:23
+    required: [id, partnerClientId, code, courseId, createdBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      partnerClientId: { type: string, references: IntegrationPartner, note: "no foreign key: these rows predate the partner table and a partner is only ever disabled" }
+      code: { type: string, note: "unique with partnerClientId (partner_course_codes_partner_code_uq): a code belongs to one partner and maps to at most one course; a course may carry several codes of one partner. A code counts only in a course of a köşk its partner is bound to" }
+      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict; the course purge removes these rows first (course/course-purge.ts:170)" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub; who mapped it" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> mapped: a code is mapped to a course (integration/partner.repository.ts:182, audit course.partner_code_add)"
+      - "mapped -> none: the mapping is removed (integration/partner.repository.ts:228, audit course.partner_code_remove)"
+
+  PartnerEnrollmentLink: # one registration of a partner application for one course code, and the Medaris enrollment it stands for
+    source: apps/tedrisat/src/database/schema/partner-enrollment.schema.ts:68
+    required: [id, partnerClientId, registrationRef, courseCode, courseId, userId, createdEnrollment, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      partnerClientId: { type: string, references: IntegrationPartner, note: "no foreign key; unique with registrationRef and courseCode (partner_enrollment_links_partner_ref_code_uq)" }
+      registrationRef: { type: string, note: "the partner's own reference to the registration" }
+      courseCode: { type: string, note: "the partner's own code; the link stays bound to its course and person even if the code is later mapped elsewhere" }
+      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict" }
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      createdEnrollment: { type: boolean, default: false, note: "true when this link seated the person (a new seat, a waiting request approved, or a seat the integration had taken away given back); false when they were already enrolled on their own or through another link. A DELETE from the partner removes only what the integration added" }
+      enrollmentCreatedAt: { type: [string, "null"], format: date-time, note: "the createdAt of the enrollment row it owns; a row with another one is a seat the person took again on their own after leaving, and is theirs" }
+      enrollmentRemovedAt: { type: [string, "null"], format: date-time, note: "the enrollment's updatedAt right after this link's DELETE revoked it; while the row still says exactly that nobody else has touched it and a new registration may give it back" }
+      createdAt: { type: string, format: date-time }
+      closedAt: { type: [string, "null"], format: date-time, note: "set by the partner's DELETE; a closed link answers the same DELETE again with what it did" }
+    lifecycle:
+      - "none -> open: the partner registers a person for a course code (integration/partner.repository.ts:282, audit enrollment.partner_add)"
+      - "open -> closed: the partner's DELETE sets closedAt and revokes only the enrollment this link created"
+      - "closed -> open: a PUT from the partner reopens it"

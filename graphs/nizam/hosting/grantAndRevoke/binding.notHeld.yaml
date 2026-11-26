@@ -1,0 +1,41 @@
+# nizam.hosting.grantAndRevoke, the refusal HOSTING_RIGHT_NOT_FOUND of the withdrawal: someone else (the başnazım, or another nazım of the
+# köşk) withdrew the right after the page was drawn, so the call is answered 404 and the toast "Geri alınamadı" says "Bu medresenin bu köşkte
+# barındırma hakkı yok.". The table is not read again (HOST-4): the row and its button are still there. A hook does what the other person
+# does: `nodes.revokeSubmit.before` runs walk-data.mjs withdraw before every press of "Barındırma hakkını geri al", which no other scenario may
+# do, and that is why this scenario has a file of its own. The medrese has no open course, so the window asks nothing and the first press is
+# the one that is refused; a second finds the right gone and says `no right`.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/nizam/hosting/grantAndRevoke --bind graphs/nizam/hosting/grantAndRevoke/binding.notHeld.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Data: the walk's own köşk and medrese with the right held and no course (binding.yaml says how they
+# are made and removed).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.hosting.grantAndRevoke
+
+scenarios:
+  notHeld:
+    given: { read: ok, before: some, tabs: shown, options: some, courses: none, rest: none, answer: notHeld }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting, --held]
+        expect: '"tag":"hosting"'
+    teardown:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: KOSK_NAZIM, hideLevel: kosk }
+
+nodes:
+  revokeSubmit:
+    role: button
+    name: '/^Barındırma hakkını geri al$/'
+    within: { role: dialog, name: Barındırma hakkını geri al }
+    before:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, withdraw, hosting, KEEP]
+        expect: 'walk-data withdraw hosting'
+
+states:
+  # no server call here, for the reason binding.madrasahGone.yaml gives
+  revoking: { url: '{nizam}/kosks/*/ayarlar/barindirma' }

@@ -1,0 +1,360 @@
+# The "Ortak uygulama kodları" card of Ders ayarları in nazar-web (/ders/<id>/ayarlar), read from the code of PR #394 on
+# 15 Nov 2026 (apps/nazar/features/course-settings/{partner-codes.ts, actions.ts, components/partner-codes-card.tsx,
+# components/course-settings-page.tsx} and the API's apps/tedrisat/src/integration/partner-codes.{controller,service}.ts). It
+# draws this card and nothing else of the page: the form of access and time zone, the Hocalar ve unvanları card and the
+# Yayın card are nazar.courseSettings.access, .hocaTitles and .publish. It says what the code does today:
+#   - the card is for a caller who holds course.partner_codes in the course (the köşk's nazımı and the başnazım, "not the
+#     müderris") and only while the course's köşk works with a partner application that is switched on. Its audience is
+#     smaller than that sentence says: nazar gives a köşk nazımı no scope at all (features/shell/scope.ts:89), so a nazım with
+#     no seat in the course is sent to /erisim-yok from this very address (or meets the 404 page, if they hold a seat in another
+#     course); only the başnazım (by address, MDRS-270) and a nazım
+#     who also teaches the course reach it (PCODES-1). `reader` carries the three cases.
+#   - one write is one call and nothing asks first: "Ekle" maps the typed code (trimmed and lower-cased, sent only when it
+#     matches ^[a-z0-9][a-z0-9-]{0,63}$), "Kaldır" takes a code off; a refusal of an add is said under the field, a refusal
+#     of a removal in a toast that stays, and the page reads itself again after a success.
+#   - the field is disabled while a call runs, so the key that started the call loses the focus and a refusal is said under a
+#     field that no longer has it (F-D2c-9).
+schema: delurio-graph/0
+kind: flow
+id: nazar.courseSettings.partnerCodes
+status: captured
+domain: medaris.api
+ui: nazar.courseSettings.partnerCodes
+title: Add and remove a partner application's codes for a course
+summary: >-
+  The başnazım, or a köşk nazımı who teaches the course, opens Ders ayarları. Where the course's köşk works with a partner
+  application, a card lists that application's codes for this course, each with "Kaldır", and a field "Kod ekle" with
+  "Ekle". An add is checked in the page (a blank or a wrongly shaped code is said under the field and nothing is sent), then
+  sent; a code another course holds is refused as "taken" without naming that course. A removal is one press: the code is
+  off the course, the people it enrolled stay, and a toast says so. A müderris holds no such code and the page draws no
+  card; a köşk with no partner application draws none either. The focus is lost when a call disables the field or the
+  pressed button's row goes (F-D2c-9, F-L-17); nothing moves it.
+
+scope:
+  shows: >-
+    the Ortak uygulama kodları card of one course: its heading, the partner application's codes with Kaldır, the add field
+    with its refusals, the busy states, the toasts, and the places where the card is not drawn
+  world: open
+  outOfView:
+    - "the rest of Ders ayarları (the access form, Hocalar ve unvanları, Yayın): nazar.courseSettings.access, .hocaTitles, .publish; the page's own refusal 'Bu sayfaya izniniz yok' for a caller who holds none of its codes"
+    - "registering a partner application and choosing its köşks, which is what makes the card appear: nizam.partners.registerAndScope"
+    - "the partner application's own side, which enrols a person under a code: the /integrations routes and the partner consent page (realm.auth.partnerConsent); a code removed here only stops the partner's later calls from finding this course"
+    - "a köşk nazımı with no seat in the course, whom nazar sends to the no-access page: nazar.access.noAccess"
+    - "a partner of the köşk that lists several: the card then repeats the partner block per partner; the walk binds one"
+    - "a code the course holds already: adding it again writes nothing and the page still says 'Kod eklendi' (PCODES-2)"
+
+decisions:
+  D1:
+    question: >-
+      Should a köşk nazımı who has no seat in the course reach this card? The permission is named for them
+      (course.partner_codes belongs to the köşk's nazımı and the başnazım), the card exists nowhere else, and nazar builds
+      its scopes from medrese and course seats alone, so the nazım is sent to /erisim-yok from /ders/<id>/ayarlar (or meets the 404 page when they hold a seat in another course).
+    recommend: >-
+      Yes: let nazar open a course of the köşk a person manages (the way it opens any course for the başnazım), or put the
+      card in nizam's köşk pages where the nazım already works. Until then only the başnazım, or a nazım who also teaches
+      the course, can use it.
+    affects: [notDrawn]
+  D2:
+    question: >-
+      Should the page say why there is no card when the köşk works with no partner application? It draws nothing, so a
+      başnazım who looks for the card cannot tell a missing binding from a missing permission.
+    recommend: >-
+      Leave the card out for a caller who may not use it, and for one who may, draw the heading with a line that names where
+      the partner applications are bound (nizam's Ortak uygulamalar).
+    affects: [notDrawn]
+
+context:
+  reader:
+    values: [chief, nazim, hoca]
+    initial: any
+    say:
+      chief: "the başnazım: he opens the course by its address (MDRS-270) and holds every code of a course, course.partner_codes among them"
+      nazim: "a köşk nazımı who also teaches the course, so nazar has a scope for them; the köşk role gives them course.partner_codes in every course of the köşk"
+      hoca: "a müderris of the course: they hold the other settings codes and not course.partner_codes"
+  partners:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the course's köşk works with at least one partner application that is switched on"
+      none: "no partner application of the köşk is switched on, or none is bound to it"
+  codes:
+    values: [none, some]
+    initial: any
+    say:
+      none: "the course holds no code of the partner when the page is read"
+      some: "the course already holds at least one code of the partner"
+  attempt:
+    values: [added, blank, badShape, taken, unknownPartner, forbidden, invalid, failed]
+    initial: any
+    say:
+      added: "they type a code of the right shape that no other course holds, and the API maps it"
+      blank: "they type nothing, or only spaces"
+      badShape: "they type a code with a space, a capital the page cannot fold, a hyphen first or another character"
+      taken: "the code is right but another course holds it already (409)"
+      unknownPartner: "the partner was switched off or unbound from the köşk since the page was read (404)"
+      forbidden: "the caller lost course.partner_codes since the page was read (403)"
+      invalid: "the API refuses the shape the page let through (400)"
+      failed: "any other refusal, such as the course being gone, or a call that does not answer"
+  removal:
+    values: [removedLast, removedOne, forbidden, unknownPartner, failed]
+    initial: any
+    say:
+      removedLast: "the API takes the code off (204) and it was the only code the course held, so the card is empty after"
+      removedOne: "the API takes the code off (204) and the course holds other codes of the partner, so the list stays"
+      forbidden: "the caller lost course.partner_codes since the page was read (403)"
+      unknownPartner: "no partner is registered under that id (404); a partner is never deleted, so the card cannot cause it"
+      failed: "any other refusal, or a call that does not answer"
+  typed:
+    values: [true, false]
+    initial: false
+  rows:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the card shows 'Bu derse bağlı kod yok.' and no list"
+      some: "the card shows the list of codes with a Kaldır on each"
+  said:
+    values: [none, empty, shape, taken, unknownPartner, forbidden, failed]
+    initial: none
+    say:
+      none: "the field shows its help line"
+      empty: "'Bir kod yazın.' is under the field"
+      shape: "'Kod yalnız küçük harf, rakam ve tire içerebilir; …' is under the field"
+      taken: "'Bu kod başka bir derse bağlı. …' is under the field"
+      unknownPartner: "'Bu ortak uygulama artık bu köşkle çalışmıyor. Sayfayı yenileyin.' is under the field"
+      forbidden: "'Bunu yapma izniniz yok.' is under the field"
+      failed: "'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.' is under the field"
+  last:
+    values: [nothing, added, removed, removeRefused, removeUnknown, removeFailed]
+    initial: nothing
+    say:
+      nothing: "no write has been made in this visit, or its toast is gone"
+      added: "a code was just added (a toast of 6 seconds)"
+      removed: "a code was just taken off (a toast of 6 seconds)"
+      removeRefused: "a removal was refused for lack of permission (an error toast that stays)"
+      removeUnknown: "a removal named a partner nobody registered (an error toast that stays)"
+      removeFailed: "a removal failed another way (an error toast that stays)"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  typedSomething: { set: { typed: true, said: none } }
+  sawCodes: { set: { rows: some } }
+  saidEmpty: { set: { said: empty } }
+  saidShape: { set: { said: shape } }
+  saidTaken: { set: { said: taken } }
+  saidUnknownPartner: { set: { said: unknownPartner } }
+  saidForbidden: { set: { said: forbidden } }
+  saidFailed: { set: { said: failed } }
+  added: { set: { rows: some, typed: false, said: none, last: added } }
+  removedLast: { set: { rows: none, last: removed } }
+  removedOne: { set: { last: removed } }
+  removeRefused: { set: { last: removeRefused } }
+  removeUnknown: { set: { last: removeUnknown } }
+  removeFailed: { set: { last: removeFailed } }
+
+guards:
+  # the page sends the code only when it is not blank and matches the pattern (partner-codes-card.tsx:88-93)
+  sendable: "typed and attempt != 'blank' and attempt != 'badShape'"
+
+failures:
+  reading:
+    from: getCoursePartnerCodes
+    unreadable: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+  adding:
+    from: addCoursePartnerCode
+    taken: [PARTNER_CODE_TAKEN]
+    unknownPartner: [PARTNER_UNKNOWN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    invalid: [VALIDATION_ERROR]
+    failed: [COURSE_NOT_FOUND]
+  removing:
+    from: removeCoursePartnerCode
+    forbidden: [AUTHZ_FORBIDDEN]
+    unknownPartner: [PARTNER_UNKNOWN]
+    failed: [COURSE_NOT_FOUND]
+
+# The story the card tells first: the başnazım opens a course whose köşk has a partner application and no code yet, types a
+# code, adds it, and takes it off again.
+main:
+  given: { reader: chief, partners: some, codes: none, attempt: added, removal: removedLast }
+  events: [DONE, TYPE_CODE, ADD, DONE, REMOVE, DONE]
+
+initial: start
+
+states:
+  start:
+    title: Does this person hold the permission?
+    description: >-
+      Not a screen. The page asks the API what the caller holds in the course (GET /courses/:id/my-permissions) and reads the
+      partner codes only for a holder of course.partner_codes (`PartnerCodesSection`). A müderris holds every other settings
+      code and not this one, so for them no read is made and the card is left out; the başnazım and a köşk nazımı hold it.
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:151
+    always:
+      - { guard: "reader == 'hoca'", target: notDrawn, say: "no course.partner_codes: nothing is read and nothing is drawn" }
+      - { target: reading, say: "the caller holds course.partner_codes" }
+
+  reading:
+    title: The partners of the köşk and their codes are read
+    description: >-
+      GET /courses/:id/partner-codes on the server, behind the page's loading skeleton. The answer lists the partner
+      applications that are switched on and bound to the course's köşk, each with its codes for this course, oldest first (the
+      partners by name). An empty list draws nothing. A 404 is Next's not-found page; a 403 or any other failure draws an
+      error alert in place and the rest of the page stands (a 403 is worded as a read that failed, which no retry mends;
+      the route and the page's own permission read use the same rule, so it is not expected).
+    invoke: { action: getCoursePartnerCodes }
+    on:
+      DONE:
+        - { guard: "partners == 'none'", target: notDrawn, source: apps/nazar/features/course-settings/components/course-settings-page.tsx:164, say: "no partner application of the köşk: the section draws nothing" }
+        - { guard: "codes == 'none'", target: empty, say: "the card is drawn with no code" }
+        - { target: listed, effect: [sawCodes], say: "the card is drawn with its codes" }
+      FAIL.unreadable: unreadable
+      FAIL.missing: not_found
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:153
+
+  notDrawn:
+    title: The page has no partner codes card
+    description: >-
+      The rest of Ders ayarları is drawn and the card is not: for a müderris, who does not hold course.partner_codes, and for
+      a başnazım or a köşk nazımı whose köşk has no partner application switched on and bound. Nothing says which, so a
+      holder cannot tell a missing binding from a missing permission (decision D2). A köşk nazımı with no seat in the course
+      does not get here at all: nazar sends them to /erisim-yok before the page is read (PCODES-1, decision D1).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:152
+
+  unreadable:
+    title: The card says it cannot be read
+    description: >-
+      An error alert in the place of the card, titled "Ortak uygulama kodları", says "Ortak uygulama kodları şu an
+      okunamıyor. Biraz sonra yeniden deneyin."; whether the köşk has a partner is not known, so nothing is guessed, and the
+      other cards stand. A reload tries again.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they reload or follow a link" }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:156
+
+  empty:
+    title: The card holds no code
+    description: >-
+      The card for the partner application: its heading, the line "Bu derse bağlı kod yok.", and the add form (the field
+      "Kod ekle" with its help, and "Ekle"). Both are enabled; "Ekle" is never switched off for an empty field, it says
+      "Bir kod yazın." instead. The page keeps no focus of its own.
+    by: human
+    on:
+      TYPE_CODE: { target: empty, effect: [typedSomething], say: "they type in the field: an error under it goes away at the first key" }
+      ADD:
+        - { guard: "not typed or attempt == 'blank'", target: empty, effect: [clearNote, saidEmpty], source: apps/nazar/features/course-settings/partner-codes.ts:22, say: "the field is empty or holds only spaces: 'Bir kod yazın.' under the field, nothing is sent" }
+        - { guard: "attempt == 'badShape'", target: empty, effect: [clearNote, saidShape], source: apps/nazar/features/course-settings/partner-codes.ts:23, say: "the code has a character that is not a small letter, a digit or a hyphen, or starts with a hyphen: the shape sentence under the field, nothing is sent" }
+        - { target: adding, effect: [clearNote], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:94, say: "they press Ekle, or Enter in the field, with a code the page lets through" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:144
+
+  listed:
+    title: The card lists the codes
+    description: >-
+      The partner's name over a list named "{name} kodları", one row per code (in the order they were added), each in a
+      left-to-right mono text with "Kaldır" (named "Kaldır {code}" by a visually hidden code), and the add form under it. A
+      toast of the last write may stand in the page for 6 seconds, or an error toast that stays. Findings read here: F-D2c-9
+      (the field), F-D2c-4 (the error under it is no live region), F-L-17 (the row that goes takes the focus with it),
+      PCODES-3 (with several partners every "Ekle", "Kod ekle" and "Kaldır {code}" is named alike).
+    by: human
+    goal: true
+    on:
+      TYPE_CODE: { target: listed, effect: [typedSomething], say: "they type in the field" }
+      ADD:
+        - { guard: "not typed or attempt == 'blank'", target: listed, effect: [clearNote, saidEmpty], source: apps/nazar/features/course-settings/partner-codes.ts:22, say: "the field is empty or holds only spaces: 'Bir kod yazın.' under the field, nothing is sent" }
+        - { guard: "attempt == 'badShape'", target: listed, effect: [clearNote, saidShape], source: apps/nazar/features/course-settings/partner-codes.ts:23, say: "the code has a character that is not a small letter, a digit or a hyphen, or starts with a hyphen: the shape sentence under the field, nothing is sent" }
+        - { target: adding, effect: [clearNote], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:94, say: "they press Ekle, or Enter in the field, with a code the page lets through" }
+      REMOVE: { target: removing, effect: [clearNote], say: "they press Kaldır on a row: nothing asks first" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:147
+
+  adding:
+    title: The code is on its way
+    description: >-
+      Reached only with a code the page let through: it folds the typed text (trimmed, lower-cased with toLowerCase, not the
+      Turkish rule) and checks it against ^[a-z0-9][a-z0-9-]{0,63}$ before any call (`partnerCodeProblem`); nothing typed, or only
+      spaces, is "Bir kod yazın." and any other mismatch is the shape sentence, said under the field from `empty` or `listed`
+      with nothing sent (the field has maxLength 64, so a code that is too long cannot be typed). The server action
+      addPartnerCode calls POST /courses/:id/partner-codes {partner, code}. "Ekle" is busy (aria-disabled,
+      aria-busy, a spinner, and a hidden "Yükleniyor" from a hard-coded default, F-D2c-13), the field is disabled so it loses
+      the focus (F-D2c-9) and every "Kaldır" is off. The partner must be one of the course's: switched on and bound to its
+      köşk, or the add is 404 PARTNER_UNKNOWN. A code the course holds already is answered with the existing row and writes
+      nothing (PCODES-2); a code another course holds is 409 PARTNER_CODE_TAKEN, which does not name that course. A success
+      empties the field, shows the toast "Kod eklendi" and reads the page again, and the new code appears in the list; a
+      refusal is worded from its code under the field, and the typed text stays.
+    invoke: { action: addCoursePartnerCode }
+    on:
+      DONE: { guard: "attempt == 'added'", target: settled, effect: [added], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:102, say: "the code is mapped: the field is cleared, a toast says so, the list is read again" }
+      FAIL.taken: { guard: "attempt == 'taken'", target: settled, effect: [saidTaken], source: apps/nazar/features/course-settings/partner-codes.ts:40, say: "'Bu kod başka bir derse bağlı. Önce o dersten kaldırılması gerekir.' under the field" }
+      FAIL.unknownPartner: { guard: "attempt == 'unknownPartner'", target: settled, effect: [saidUnknownPartner], source: apps/nazar/features/course-settings/partner-codes.ts:44, say: "'Bu ortak uygulama artık bu köşkle çalışmıyor. Sayfayı yenileyin.' under the field" }
+      FAIL.forbidden: { guard: "attempt == 'forbidden'", target: settled, effect: [saidForbidden], source: apps/nazar/features/course-settings/partner-codes.ts:46, say: "'Bunu yapma izniniz yok.' under the field" }
+      FAIL.invalid: { guard: "attempt == 'invalid'", target: settled, effect: [saidShape], source: apps/nazar/features/course-settings/partner-codes.ts:42, say: "the API's 400 is worded as the shape sentence" }
+      FAIL.failed: { guard: "attempt == 'failed'", target: settled, effect: [saidFailed], source: apps/nazar/features/course-settings/partner-codes.ts:48, say: "'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.' under the field" }
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:95
+
+  removing:
+    title: The code is being taken off
+    description: >-
+      The server action removePartnerCode calls DELETE /courses/:id/partner-codes/:partner/:code, with no confirmation and no
+      reason. The pressed "Kaldır" is busy (aria-disabled, aria-busy, hidden "Yükleniyor"), the other rows' buttons, "Ekle"
+      and the field are disabled. Any registered partner's code can be taken off, switched on or not, and a code the course
+      does not have is no error. The people the code enrolled stay, and the partner's later cancellations still reach them. A
+      success shows the toast "Kod kaldırıldı" (it says the talebe stay) and reads the page again; a refusal is an error toast
+      "Kod kaldırılamadı" that stays, worded from the code, and the row stays (VALIDATION_ERROR would read as the shape
+      sentence there; the code comes from the server's own list, so the card cannot cause it).
+    invoke: { action: removeCoursePartnerCode }
+    on:
+      DONE:
+        - { guard: "removal == 'removedLast'", target: settled, effect: [removedLast], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:128, say: "the code is off the course and it was the last: a toast says so, the list is read again and the empty line is back" }
+        - { guard: "removal == 'removedOne'", target: settled, effect: [removedOne], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:128, say: "the code is off the course and others remain: a toast says so, the list is read again" }
+      FAIL.forbidden: { guard: "removal == 'forbidden'", target: settled, effect: [removeRefused], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:121, say: "an error toast: 'Bunu yapma izniniz yok.'" }
+      FAIL.unknownPartner: { guard: "removal == 'unknownPartner'", target: settled, effect: [removeUnknown], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:121, say: "an error toast: 'Bu ortak uygulama artık bu köşkle çalışmıyor. Sayfayı yenileyin.'" }
+      FAIL.failed: { guard: "removal == 'failed'", target: settled, effect: [removeFailed], source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:121, say: "an error toast: 'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.'" }
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:117
+
+  settled:
+    title: The card follows the write
+    description: >-
+      Not a screen. After a success the page reads itself again (router.refresh, in a transition during which the field and
+      the buttons stay disabled), which draws the list or the empty line; after a refusal nothing is read. The pressed
+      "Kaldır" and its row are gone when a removal succeeded (F-L-17).
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:135
+    always:
+      - { guard: "rows == 'none'", target: empty }
+      - { target: listed }
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the partner-codes read is Next's not-found page (lib/tedrisat-read.ts:46)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: no-card-for-a-hoca
+    never: "(state == 'empty' or state == 'listed') and reader == 'hoca'"
+    say: A müderris is never shown the card; the page does not even read the partner codes for them.
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:152
+  - id: no-card-without-a-partner
+    never: "(state == 'empty' or state == 'listed') and partners == 'none'"
+    say: The card is drawn only while a partner application is switched on and bound to the course's köşk.
+    source: apps/nazar/features/course-settings/partner-codes.ts:32
+  - id: the-empty-line-means-no-codes
+    never: "(state == 'empty' and rows == 'some') or (state == 'listed' and rows == 'none')"
+    say: The empty line shows only while the course holds no code, the list only while it holds one.
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:144
+  - id: only-a-sendable-code-is-sent
+    never: "state == 'adding' and not sendable"
+    say: Nothing is sent for a blank code, a code of the wrong shape, or a field nobody typed in.
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:90
+  - id: a-row-is-removed-only-from-a-list
+    never: "state == 'removing' and rows == 'none'"
+    say: A removal starts from a row of the list; the empty card has none.
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:161

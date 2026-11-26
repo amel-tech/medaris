@@ -1,0 +1,45 @@
+# nizam.courses.list: the nazım opens the Dersler of a köşk she does not manage (403: `refused`) and of an address no köşk has (404: `not_found`).
+# The screen is the same for both, "Bu bölüm için izniniz yok", with the HTTP status the only difference, so the walk can tell them apart by
+# neither. Its whole story is nizam.shell.noAccessAndNotFound's; this file only walks the two exits of `reading`.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/list \
+#     --bind graphs/nizam/courses/list/binding.refused.yaml --cover transitions --out <dir>
+# NOT RUN. The refusal is the data's and the event is the binding's own: it takes the walk to the address (that the replay runs the event while it
+# holds `reading`, a state with no screen, is not verified). Read only the walks that cover `FAIL.forbidden` and `FAIL.missing`.
+# Data: a second köşk, "Deneme köşkü nclx", whose only nazım is APPLICANT_F (a spare talebe account), so KOSK_NAZIM is refused there.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.list
+
+data:
+  nclx: { json: ../.local/made/nclx.json }
+
+events:
+  FAIL.forbidden:
+    - goto: '{nizam}/kosks/{nclx.kosk}/dersler'
+  FAIL.missing:
+    - goto: '{nizam}/kosks/00000000-0000-4000-8000-000000000000/dersler'
+
+scenarios:
+  refused:
+    given: { courses: some, held: none }
+    as: koskNazim
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, nclx, APPLICANT_F]
+        expect: '"tag":"nclx"'
+    teardown:
+      - run: [node, helpers/make-kosk.mjs, remove, nclx]
+        expect: 'kosk remove nclx'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where name like 'Deneme köşkü nclx%'"]
+        expect: '"n":0'
+
+states:
+  refused: { text: Bu bölüm için izniniz yok }
+  not_found: { text: Bu bölüm için izniniz yok }
+
+# no course is made here, so the checks of the shared file (they read nclOwn) have nothing to read
+effects:
+  cancelled: []
+  hideCourse: []
+  restoreCourse: []

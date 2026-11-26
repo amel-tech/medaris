@@ -1,0 +1,613 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.youtube.liveBroadcasts
+status: proposed
+summary: >-
+  What must exist for the Medaris channel to be connected once and for a hoca to run her live celses through YouTube without
+  opening YouTube Studio: the flow's product list, written from MDRS-195 and its children (MDRS-237, 238, 239, 240; 241 is
+  optional), from the planned items P-24, P-25 and P-26, and from the open decisions of flow.yaml.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Everything here is PLANNED. `built` names only what exists today (the menu entry, the permission code, the manual stream link, the recording that a
+# hoca adds by hand, and the notification the talebe get once); `walked` names only an e2e that passes today. No replay is named: this flow has no
+# binding ("not walkable: no code"). `drawn` is where this graph draws the need: a state, or a node of ui.yaml.
+#
+# For needs.gaps (written 16 Nov 2026; MDRS-237 is the owner's own work, no code):
+# missing  MDRS-237: owner-setup-is-done, legal-pages-name-youtube-api-services
+# missing  MDRS-238: menu-entry-opens-the-page, connect-the-channel, only-a-holder-connects, connection-status-and-reconnect, the-connect-failures-are-told,
+# the-token-is-kept-encrypted, course-choice-youtube, visibility-is-stated-explicitly, a-broadcast-per-celse, one-stream-per-hoca,
+# the-quota-is-guarded, reschedule-and-cancel-reach-the-broadcast, every-call-on-the-channel-is-audited, the-stream-key-panel,
+# the-key-is-masked-shown-and-copied, only-the-streams-people-see-the-key, the-key-is-never-stored-logged-or-sampled
+# missing  MDRS-239: follow-the-life-of-the-broadcast, states-in-plain-words, missed-start-warns, youtube-starts-and-stops-by-itself,
+# the-talebes-player-shows-the-state, one-worker-shared-by-all-lessons, monitor-preview (optional)
+# missing  MDRS-240: attach-the-recording-when-the-broadcast-ends, ready-only-when-youtube-has-processed, a-failed-archive-is-told,
+# the-recording-visibility-follows-the-course
+# missing  MDRS-241 (optional): live-chat-feed-in-medaris-ui
+# missing  MDRS-147 (research): live-lesson-in-tedris-with-timestamp-and-chat
+# missing  MDRS-204 (deferred): publish-to-the-medaris-channel
+# missing  none (an open decision of the owner, D1 to D15 of flow.yaml): open-where-the-hoca-runs-it, a-celse-with-none-can-be-given-one,
+# how-the-key-is-shown-is-decided, whose-stream-a-ders-nazir-uses, public-broadcast-under-the-platform-policy, the-manual-link-beside-a-broadcast,
+# which-notification-the-talebe-get, a-hocas-recording-is-kept, disconnect-the-channel, where-the-callback-lives, polling-or-sse,
+# paid-courses-answer-is-recorded, who-else-may-connect, when-youtube-does-not-answer, a-never-started-broadcast
+# unwalked none: every need that is built has an e2e
+
+needs:
+  - id: menu-entry-exists
+    need: The başnazım finds "YouTube bağlantısı" under Ayarlar in the nizam menu.
+    evidence:
+      - state: menu
+      - node: menuLink
+      - source: apps/nizam/lib/shell-nav.ts:149
+      - test: apps/nizam/e2e/shell.e2e.ts
+        name: "nizam/50 — Medaris başnazımı: the platform's whole menu"
+    note: |-
+      shell.e2e.ts shell#9 (the başnazım's whole menu, "YouTube bağlantısı" among Ayarlar; test nizam/50, :351)
+      ===================== the menu entry and phase 0 =====================
+
+  - id: menu-entry-opens-the-page
+    need: >-
+      The entry opens a page, "YouTube bağlantısı" at /ayarlar/youtube, and not "Sayfa bulunamadı" (F-P0-4, F-W3-10, F-X-11). The
+      page tells whether a channel is connected, and which.
+    evidence:
+      - state: reading
+      - state: notConnected
+      - state: connected
+      - state: reconnect
+      - node: pageMain
+      - node: pageTitle
+      - node: pageIntro
+      - node: channelRegion
+    missing: MDRS-238; findings F-P0-4, F-X-11
+
+  - id: owner-setup-is-done
+    need: >-
+      Phase 0, the owner's own work, is done before any of this works: a Google Cloud project with YouTube Data API v3, the OAuth
+      app in production and verified for the sensitive scope youtube.force-ssl (testing mode lasts 7 days and takes 100 users),
+      the web-application client with tedrisat's dev and prod callback URLs, a Brand Account channel verified by phone with live
+      streaming enabled, and the client id, secret and API key in Coolify. Until then the connect button says so.
+    evidence:
+      - state: starting
+      - node: problemNotConfigured
+    missing: MDRS-237
+
+  - id: legal-pages-name-youtube-api-services
+    need: >-
+      The privacy notice says Medaris uses YouTube API Services, links Google's privacy policy, says how the data is used, links
+      the revocation page and gives a contact; the terms link YouTube's Terms of Service (the Developer Policies, III.A). The
+      notice itself is built (MDRS-102, done); these words are not.
+    missing: MDRS-237
+
+  - id: paid-courses-answer-is-recorded
+    need: >-
+      The owner records whether any course will be paid: the Developer Policies forbid charging users to watch content in an
+      embedded YouTube player, and the answer decides whether a paid course may turn the choice on (D12).
+    evidence:
+      - state: courseSetting
+    missing: an owner decision; MDRS-237 item 9 asks for it
+
+  - id: connect-the-channel
+    need: >-
+      The başnazım connects the Medaris channel once, through Google's consent, as the channel's owner or a Brand Account manager;
+      Medaris keeps a refresh token (access_type offline, scope youtube.force-ssl) and the page shows the channel and whether
+      YouTube has opened live streaming on it. A channel connected by channel permission only is refused with a reason.
+    evidence:
+      - state: notConnected
+      - state: starting
+      - state: atGoogle
+      - state: connecting
+      - state: connected
+      - node: connectButton
+      - node: connectHelp
+      - node: channelName
+      - node: connectedBy
+      - node: toastConnected
+    missing: MDRS-238
+    note: "===================== phase 1: connect the channel ====================="
+
+  - id: only-a-holder-connects
+    need: >-
+      Only the başnazım, or a Medaris nazımı who holds platform.youtube_manage, reads or changes the connection; everybody else is
+      told they may not. The code is in the catalogue and no handler asks for it today (MDRS-208), so the new routes are its first
+      check.
+    evidence:
+      - state: reading
+      - state: refused
+      - node: refusedTitle
+      - node: refusedHome
+    missing: MDRS-238
+
+  - id: who-else-may-connect
+    need: >-
+      Whether the menu entry is shown to a Medaris nazımı who holds the code, or the code is kept from being granted: today the
+      entry is the başnazım's alone and a holder would find the page only by its address (D13).
+    evidence:
+      - state: menu
+      - state: reading
+    missing: no Linear issue
+
+  - id: connection-status-and-reconnect
+    need: >-
+      The page shows the connection's status: connected, or lost because the token was revoked or has expired, with a "Yeniden
+      bağla" alert, and no new broadcast is made until it is fixed.
+    evidence:
+      - state: connected
+      - state: reconnect
+      - node: revokedAlert
+      - node: revokedText
+      - node: reconnectButton
+      - node: statusConnected
+      - node: statusRevoked
+      - node: liveReady
+      - node: liveWaiting
+    missing: MDRS-238
+
+  - id: the-connect-failures-are-told
+    need: >-
+      A connect that fails says why on the page: the environment is not set up, the permission was not given, the account owns no
+      channel, or Google refused. Nothing is stored in any of these.
+    evidence:
+      - node: problemNotConfigured
+      - node: problemDenied
+      - node: problemNoChannel
+      - node: problemFailed
+    missing: MDRS-238
+
+  - id: the-token-is-kept-encrypted
+    need: The refresh token is stored encrypted, goes to no client and into no log or audit row.
+    missing: MDRS-238
+
+  - id: disconnect-the-channel
+    need: >-
+      Whether the başnazım can disconnect the channel (delete and revoke the token); the issues have connect and reconnect only,
+      and the policies ask for a link to the revocation page (D9).
+    evidence:
+      - state: connected
+    missing: no Linear issue
+
+  - id: where-the-callback-lives
+    need: >-
+      Where Google's callback is served: tedrisat, as MDRS-237 registers it, with a one-time state bound to the caller; or nizam's
+      web app, which holds the session cookie (D10).
+    evidence:
+      - state: starting
+      - state: connecting
+    missing: no Linear issue
+
+  - id: open-where-the-hoca-runs-it
+    need: >-
+      Where the hoca and the ders nazırı run it: nazar-web (the hoca's app, drawn) or nizam's course pages (as MDRS-238 names), or
+      both on one API (D1).
+    evidence:
+      - state: courseSetting
+      - state: noBroadcast
+      - state: waiting
+      - state: panel
+    missing: no Linear issue
+    note: "===================== phase 1: the course's choice and a broadcast per celse ====================="
+
+  - id: course-choice-youtube
+    need: >-
+      A hoca (or a ders nazırı who holds course.settings) turns "YouTube ile canlı yayın" on or off for a course, in Ders
+      ayarları; from then on every live celse she plans or generates in a batch gets a broadcast. Nothing changes for the celses
+      already planned.
+    evidence:
+      - state: courseSetting
+      - state: savingSetting
+      - node: broadcastCard
+      - node: useSwitch
+      - node: saveButton
+      - node: toastSettingSaved
+      - node: toastSettingNotConnected
+      - node: toastSettingForbidden
+      - node: toastSettingFailed
+    missing: MDRS-238
+
+  - id: visibility-is-stated-explicitly
+    need: >-
+      The choice says whether the broadcast is "Liste dışı" or "Herkese açık", explicitly and never by default: YouTube's policy
+      asks that visibility and the actions taken on the user's behalf are shown with the user's consent.
+    evidence:
+      - node: privacyGroup
+      - node: privacyLegend
+      - node: radioUnlisted
+      - node: radioPublic
+      - node: unlistedHelp
+      - node: publicHelp
+    missing: MDRS-238
+
+  - id: public-broadcast-under-the-platform-policy
+    need: >-
+      Whether "Herkese açık" is refused while the platform policy "Ders kayıtları herkese açılamaz" is on (it says no recording
+      "YouTube’a yüklenemez"): drawn as refused, with the sentence Ders ayarları already has (D5; nothing reads that policy for
+      recordings today, RECADD-1).
+    evidence:
+      - state: savingSetting
+      - node: toastSettingPolicy
+    missing: no Linear issue; findings RECADD-1
+
+  - id: a-broadcast-per-celse
+    need: >-
+      When a live celse of a course that uses YouTube is planned, or generated in a batch, Medaris makes its YouTube broadcast
+      (the celse's title and time, the course's visibility, embed on, made-for-kids off so that the chat works, auto start and
+      auto stop, DVR and record-from-start on), binds it to the hoca's stream and writes the celse's stream link from the
+      broadcast id, so that the talebe's page and "Katılım" read it as they read a pasted link.
+    evidence:
+      - state: creating
+      - state: waiting
+      - node: attendanceStream
+      - node: badgeWaiting
+    missing: MDRS-238
+
+  - id: a-celse-with-none-can-be-given-one
+    need: >-
+      A celse that has no broadcast (planned before the choice, or one whose first try failed) says why and has "YouTube yayını
+      oluştur" for a holder of session.live_link: the story's "a hoca creates a broadcast per celse". The issues say made at plan;
+      the button is this graph's reading of the story (D2).
+    evidence:
+      - state: noBroadcast
+      - node: noBroadcastBadge
+      - node: whyNotReady
+      - node: whyQuota
+      - node: whyFailed
+      - node: createButton
+    missing: no Linear issue
+
+  - id: one-stream-per-hoca
+    need: >-
+      Each hoca has one reusable YouTube stream (RTMP, a fixed resolution and frame rate), made on her first YouTube lesson and
+      kept; two lessons at the same time need two streams, so the stream is the hoca's and not the course's. Rotating the key is
+      deleting and recreating the stream.
+    evidence:
+      - state: creating
+    missing: MDRS-238
+
+  - id: whose-stream-a-ders-nazir-uses
+    need: Whose stream a celse uses when a ders nazırı plans it or presses the button, or a course has several hocas (D4).
+    evidence:
+      - state: creating
+      - state: revealingKey
+    missing: no Linear issue
+
+  - id: the-quota-is-guarded
+    need: >-
+      The day's budget (10,000 units; about 100 for a broadcast and 180 for the polling of a lesson) is checked before a call, and
+      before a whole course's batch; a call that would pass it is not made and the row says the quota is spent.
+    evidence:
+      - state: creating
+      - node: whyQuota
+    missing: MDRS-238
+
+  - id: reschedule-and-cancel-reach-the-broadcast
+    need: >-
+      When a celse's time changes its broadcast is updated with the whole part, and when the celse is cancelled its broadcast is
+      deleted and its stream link cleared. If YouTube does not answer, the celse's own change stands and the row warns that the
+      broadcast still has the old time or stays on the channel (D14).
+    evidence:
+      - state: rescheduling
+      - state: removing
+      - state: cancelled.removed
+      - state: cancelled.left_on_youtube
+      - node: toastStale
+    missing: MDRS-238
+
+  - id: when-youtube-does-not-answer
+    need: >-
+      Which wins when YouTube does not answer a reschedule or a cancel, and whether a later pass puts the broadcast right (D14).
+    evidence:
+      - state: rescheduling
+      - state: removing
+    missing: no Linear issue
+
+  - id: every-call-on-the-channel-is-audited
+    need: >-
+      Every call made on the channel's behalf (connect, a stream made, a broadcast made, moved or deleted, a key read, a recording
+      attached) is written to the audit log with who caused it: the Developer Policies ask that such actions are clearly
+      identified.
+    evidence:
+      - state: starting
+      - state: creating
+      - state: rescheduling
+      - state: removing
+      - state: revealingKey
+      - state: ended
+    missing: MDRS-238
+
+  - id: the-stream-key-panel
+    need: >-
+      A holder of session.live_link opens "Yayın bilgileri" on a celse and finds the RTMPS address (with a copy button), the
+      stream key, the OBS settings that match the stream's resolution and frame rate, and a line that YouTube starts and ends the
+      broadcast when OBS starts and stops. There is no go-live from the browser: a hoca needs OBS or an RTMP(S) phone app.
+    evidence:
+      - state: panel
+      - node: panelDialog
+      - node: panelTitle
+      - node: addressValue
+      - node: copyAddress
+      - node: obsHeading
+      - node: obsValues
+      - node: autoNote
+      - node: keyWarning
+      - node: detailsButton
+      - node: panelClose
+    missing: MDRS-238
+    note: "===================== phase 1: the stream key panel ====================="
+
+  - id: the-key-is-masked-shown-and-copied
+    need: >-
+      The key is masked in the panel; "Göster" reads it from YouTube and shows it, "Kopyala" copies it, closing the dialog masks
+      it again, and a toast says it was copied without saying what it was. The key is never stored by Medaris.
+    evidence:
+      - state: panel
+      - state: revealingKey
+      - state: panelShown
+      - node: keyMasked
+      - node: keyValue
+      - node: revealButton
+      - node: hideButton
+      - node: copyKey
+      - node: toastCopiedKey
+      - node: toastKeyFailed
+    missing: MDRS-238
+
+  - id: how-the-key-is-shown-is-decided
+    need: >-
+      How exactly the key is shown: once, masked with copy (the issue's words), copy without showing, a timeout that masks it
+      again, a "new key" button to replace a leaked one, and whether each read is audited (D3).
+    evidence:
+      - state: panel
+      - state: panelShown
+    missing: no Linear issue
+
+  - id: only-the-streams-people-see-the-key
+    need: >-
+      Only the stream's hoca and the course staff who hold session.live_link see the address and the key; a person who holds
+      session.manage alone sees the state of the broadcast and no "Yayın bilgileri". The API decides, and the key is in no list
+      answer.
+    evidence:
+      - node: detailsButton
+      - state: revealingKey
+    missing: MDRS-238
+
+  - id: the-key-is-never-stored-logged-or-sampled
+    need: >-
+      The stream key is a credential: it is in no log line, no audit detail, no notification, no catalog and no sample, and the
+      answer that carries it is not cached.
+    evidence:
+      - node: keyValue
+      - node: toastCopiedKey
+    missing: MDRS-238
+
+  - id: follow-the-life-of-the-broadcast
+    need: >-
+      Medaris follows each broadcast from about 15 minutes before its time until about 15 minutes after the celse ends, reading
+      YouTube's lifecycle (created, ready, testing, liveStarting, live, complete, revoked) and the stream's health, and shows it
+      on the celse's row.
+    evidence:
+      - state: waiting
+      - state: live
+      - state: weak
+      - state: ended
+      - state: missedStart
+      - state: neverWent
+      - node: badgeWaiting
+      - node: badgeLive
+      - node: badgeWeak
+      - node: badgeEnded
+    missing: MDRS-239
+    note: "===================== phase 2: follow the broadcast ====================="
+
+  - id: states-in-plain-words
+    need: >-
+      The row says "Yayın bekleniyor", "Yayında", "Bağlantı zayıf" or "Bitti", and the stream's configuration issues in plain
+      words.
+    evidence:
+      - node: badgeWaiting
+      - node: badgeLive
+      - node: badgeWeak
+      - node: weakHelp
+      - node: badgeEnded
+      - node: panelStateWaiting
+      - node: panelStateLive
+      - node: panelStateWeak
+    missing: MDRS-239
+
+  - id: missed-start-warns
+    need: Five minutes after the celse's time with no broadcast live, the row warns the hoca and the staff.
+    evidence:
+      - state: missedStart
+      - node: badgeMissed
+      - node: missedHelp
+      - node: panelStateMissed
+    missing: MDRS-239
+
+  - id: youtube-starts-and-stops-by-itself
+    need: >-
+      No transition call is made: with auto start and auto stop YouTube starts the broadcast when the encoder starts and ends it
+      about a minute after it stops. A "test before going live" flow (a monitor stream and manual transitions) is out of scope
+      unless asked.
+    evidence:
+      - state: waiting
+      - state: live
+      - state: ended
+      - node: autoNote
+    missing: MDRS-239
+
+  - id: one-worker-shared-by-all-lessons
+    need: >-
+      One worker polls YouTube about every 30 seconds for all the lessons due (many ids in one call, 1 unit each), never one poll
+      per screen or per viewer.
+    missing: MDRS-239
+
+  - id: polling-or-sse
+    need: Whether the state reaches the screens by polling or by SSE; drawn as polling (D11).
+    evidence:
+      - state: waiting
+      - state: live
+      - state: weak
+    missing: no Linear issue
+
+  - id: the-talebes-player-shows-the-state
+    need: >-
+      The talebe's celse page shows the same state in its player, from the session read (tedris.celse.watchStream), and not the
+      host's page, which does not exist before the broadcast starts. Today the server never learns that a stream has ended and
+      keeps the link for a clock window (YT-2).
+    evidence:
+      - state: live
+    missing: MDRS-239; findings YT-2
+
+  - id: monitor-preview
+    need: >-
+      Optional: the hoca's panel shows the monitor preview (contentDetails.streamDetails.monitorStreamEmbedHtml) before the
+      encoder starts.
+    missing: MDRS-239; optional
+
+  - id: a-never-started-broadcast
+    need: >-
+      What becomes of a broadcast nobody started, and of one in flight when the token is revoked (D15): drawn as "Yayın yapılmadı"
+      and nothing attached.
+    evidence:
+      - state: neverWent
+      - state: live
+    missing: no Linear issue
+
+  - id: attach-the-recording-when-the-broadcast-ends
+    need: >-
+      When YouTube says the broadcast is complete, Medaris writes the celse's recording: provider YOUTUBE, the broadcast's watch
+      link (the broadcast id is the video id), the broadcast's title, status PROCESSING. A celse holds one recording.
+    evidence:
+      - state: ended
+      - state: archiving
+      - node: recordingTitle
+      - node: providerChip
+    missing: MDRS-240
+    note: "===================== phase 3: the recording ====================="
+
+  - id: ready-only-when-youtube-has-processed
+    need: >-
+      The recording is READY, with its length from the video, only when YouTube reports processingStatus succeeded (videos.list
+      with the owner's token); until then the row says "Hazırlanıyor" and keeps the sentence that it plays when YouTube has
+      archived the stream, and the talebe cannot watch it and are not told. This is the answer to RECADD-2 of
+      nazar.recordings.add, where "Yayını kayıt olarak ekle" stores the link READY at once.
+    evidence:
+      - state: archiving
+      - node: processingBadge
+      - node: processingNote
+      - state: recorded
+      - node: readyBadge
+    missing: MDRS-240; findings RECADD-2
+
+  - id: the-talebe-are-told-once-when-ready
+    need: >-
+      The course's enrolled talebe get "Kayıt eklendi" once, when the recording is READY and released and the celse has begun. The
+      announce is built, for links and Bunny uploads; the trigger from a broadcast is the need before.
+    evidence:
+      - state: recorded
+      - source: apps/tedrisat/src/course/recording-release.poller.ts:103
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - test: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
+    note: >-
+      recording-write.e2e.spec.ts RECORDING_ADDED: tells the enrolled talebe once when a pasted link is saved, and not again when
+      it is edited or replaced (:1148)
+
+  - id: which-notification-the-talebe-get
+    need: >-
+      Which notification: the existing RECORDING_ADDED ("Kayıt eklendi", drawn), or the new type MDRS-240 asks for because
+      SESSION_ADDED reads "ders kaydı eklendi" (D7).
+    evidence:
+      - state: recorded
+    missing: no Linear issue
+
+  - id: a-failed-archive-is-told
+    need: >-
+      When YouTube fails to process the video (failed or terminated) the staff are told in the celse's row, and the hoca adds the
+      recording by hand. A FAILED recording is listed to no one, so the row says there is none.
+    evidence:
+      - state: archiving
+      - state: archiveFailed
+      - node: noRecording
+      - node: archiveFailedAlert
+      - node: addRecording
+    missing: MDRS-240
+
+  - id: the-recording-visibility-follows-the-course
+    need: >-
+      The recording's visibility follows the course's setting: "Kayıtlı talebe" unless the course chose a public broadcast and no
+      policy forbids it.
+    evidence:
+      - state: recorded
+    missing: MDRS-240
+
+  - id: a-hocas-recording-is-kept
+    need: >-
+      When the hoca already added a recording to the celse (a pasted link, a Bunny upload, or "Yayını kayıt olarak ekle"), the
+      worker attaches nothing and says so; and whether the one-click is hidden on a celse whose broadcast Medaris follows (D8).
+    evidence:
+      - state: ended
+      - state: recordingKept
+      - node: readyBadge
+    missing: no Linear issue
+
+  - id: the-manual-link-beside-a-broadcast
+    need: >-
+      What "Canlı yayın ekle" does on a celse that has a broadcast: drawn as not offered, the broadcast's link being the celse's
+      stream link (D6).
+    evidence:
+      - state: waiting
+      - node: attendanceStream
+    missing: no Linear issue
+
+  - id: the-manual-stream-link-stays-as-the-fallback
+    need: >-
+      A course that does not use YouTube, or a hoca who broadcasts from her own channel, still pastes the stream's YouTube link
+      per celse (MDRS-228, done); the link is normalised to https://www.youtube.com/live/<id> and the talebe see the player while
+      the celse is live.
+    evidence:
+      - node: attendanceStream
+      - source: apps/tedrisat/src/course/live-stream.controller.ts:91
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:489
+      - test: apps/tedrisat/test/e2e/live-stream.e2e.spec.ts
+    note: |-
+      live-stream.e2e.spec.ts PUT /lessons/:id/live-stream: stores a YouTube Studio link as the /live/ link and audits it (:267)
+      ===================== what already exists and stays =====================
+
+  - id: the-hoca-can-still-add-a-recording-by-hand
+    need: >-
+      A hoca adds, edits or replaces a celse's recording by hand, by pasting a link or uploading to Bunny, whatever the broadcast
+      did (nazar.recordings.add).
+    evidence:
+      - state: archiveFailed
+      - state: recordingKept
+      - node: addRecording
+      - node: editRecording
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - source: apps/nazar/features/recordings/components/recordings-table.tsx:358
+      - test: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
+    note: >-
+      recording-write.e2e.spec.ts POST /lessons/:id/recordings: stores a pasted link READY, reads its provider off the host, and
+      audits it (:398)
+
+  - id: live-chat-feed-in-medaris-ui
+    need: >-
+      Optional (phase 4): Medaris's own read-only live chat feed through the Data API, with YouTube's attribution and "Yazmak için
+      YouTube’da aç", one poller per live session, in place of the embedded chat. Posting is not part of it; deleted messages are
+      not reported, and the data is kept 30 days at most. The embedded chat is built (MDRS-229, done) and is the talebe's today.
+    missing: MDRS-241; findings read-only
+    note: ===================== beyond phases 0 to 3 =====================
+
+  - id: live-lesson-in-tedris-with-timestamp-and-chat
+    need: >-
+      The talebe watch the live lesson inside tedris with its elapsed time and the chat, and notes taken live open at the same
+      second in the replay (P-24, the research of MDRS-147, whose decisions on the timestamp and on YouTube's chat are still
+      open).
+    evidence:
+      - state: live
+    missing: MDRS-147
+
+  - id: publish-to-the-medaris-channel
+    need: >-
+      A recording that is not a broadcast can be uploaded to the Medaris channel through the API with its refresh token (P-26,
+      MDRS-204); the owner decided on 2026-10-03 that medreses upload their own videos and Medaris embeds the link, so this is
+      deferred.
+    missing: MDRS-204

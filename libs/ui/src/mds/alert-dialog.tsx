@@ -20,6 +20,8 @@ export interface AlertDialogProps {
   confirmDisabled?: boolean;
   /** the confirm button's busy state while the call runs */
   confirmLoading?: boolean;
+  /** Vazgeç, the close button and Esc are off: closing would not stop the call */
+  dismissDisabled?: boolean;
   closeLabel?: string;
   trigger?: ReactNode;
   className?: string;
@@ -44,6 +46,7 @@ export function AlertDialog({
   confirmVariant = "primary",
   confirmDisabled = false,
   confirmLoading,
+  dismissDisabled = false,
   closeLabel = "Kapat",
   trigger,
   className,
@@ -53,7 +56,10 @@ export function AlertDialog({
     <BaseAlertDialog.Root
       open={open}
       defaultOpen={defaultOpen}
-      onOpenChange={(next) => onOpenChange?.(next)}
+      onOpenChange={(next, details) => {
+        if (!next && dismissDisabled) return details.cancel();
+        onOpenChange?.(next);
+      }}
     >
       {trigger}
       <BaseAlertDialog.Portal>
@@ -82,6 +88,7 @@ export function AlertDialog({
                   <BaseAlertDialog.Close
                     className="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost mds-dialog__close"
                     aria-label={closeLabel}
+                    disabled={dismissDisabled}
                   />
                 </div>
               </div>
@@ -95,6 +102,7 @@ export function AlertDialog({
                 <BaseAlertDialog.Close
                   ref={cancel}
                   className="mds-btn mds-btn--regular mds-btn--ghost"
+                  disabled={dismissDisabled}
                 >
                   {cancelLabel}
                 </BaseAlertDialog.Close>

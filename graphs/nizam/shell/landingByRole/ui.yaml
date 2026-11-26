@@ -1,0 +1,113 @@
+# The screens of nizam.shell.landingByRole: nizam-web's "/" for a visitor (app/(home)/page.tsx), /yetki-yok (features/assignments/
+# components/no-role-page.tsx), /nazar-yonlendirme (nazar-redirect-page.tsx) and the plain line "/" draws when the roles cannot
+# be read. The three pages of a signed-in person sit in the shell (components/shell/shell-frame.tsx) in its variant "none": a
+# sidebar with the brand, the theme toggle and the person row, and no menu. The shell is drawn here only as far as that; its
+# menus are nizam.shell.menuPerPersona's.
+#
+# Words: every key that is not `composed.*` is copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as `nizam.*`) or,
+# for `common.*`, from common.json, the key being the path inside that file. The `composed.*` keys are NOT in any i18n file: they
+# are texts the code builds, written with their placeholders so a replay can match them (a placeholder with no sample matches any
+# text):
+#   composed.Shell.logo                      the Logo's accessible name, "Medaris — Nizam": the kit writes it from `app` (libs/ui/src/mds/logo.tsx:55)
+#   composed.Shell.userName                  the person's name in the sidebar's row, as the session gives it (shell-frame.tsx:163)
+#   composed.NoRole.email                    the session's e-mail, in a code element after "Giriş yaptığınız hesap:" (no-role-page.tsx:53)
+#   composed.NazarRedirectPage.rowTitle      the name of a medrese or course, as the API gives it (nazar-redirect-page.tsx:88)
+#   composed.NazarRedirectPage.captionCourse / captionDraft / captionMadrasah
+#                                            the caption of a row, joined in code with " · " from the role, the köşk and "{count} talebe"
+#                                            (nazar-redirect-page.tsx:89-107); a draft has no count, a medrese row has the role alone
+# This flow only reads: no writing action, so `changes` is left out. Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nizam.shell.landingByRole
+flow: nizam.shell.landingByRole
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Nuri Örnek
+  email: nuri.ornek@example.com
+  title: Örnek ders
+  role: Hoca
+  kosk: Örnek köşk
+  count: "12"
+
+nodes:
+  # ---- "/" for a visitor: the whole screen, no shell ----
+  welcomeMain: { type: page, component: Page, role: main, name: { labelledBy: welcomeTitle }, in: [visitorWelcome], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState without `shell` is the page's <main>; the page sets no focus (rule focus-not-set)
+  welcomeLogo: { type: text, component: Text, role: img, name: { key: composed.Shell.logo }, in: [visitorWelcome], source: "apps/nizam/app/(home)/page.tsx:28" } # the large Logo, a span named "Medaris — Nizam"
+  welcomeTitle: { type: text, component: Heading, role: heading, text: { key: common.welcome }, in: [visitorWelcome], source: "apps/nizam/app/(home)/page.tsx:36" } # h1
+  signInLink: { type: action, component: LinkButton, role: link, text: { key: Auth.signIn }, in: [visitorWelcome], emits: SIGN_IN, source: "apps/nizam/app/(home)/page.tsx:37" } # a primary Button with an href: an <a href="/auth/signin">
+
+  # ---- the shell a signed-in person has here: the sidebar with no menu (the variant "none") ----
+  sidebar: { type: page, component: Page, role: complementary, in: [noRolePage, noRoleUnread, nazarList, nazarUnread, rootUnread], source: libs/ui/src/mds/app-shell.tsx:81 } # an <aside> with no name; it holds no <nav> because the person has no menu (app-shell.tsx:97-101; e2e shell#1 a5)
+  brand: { type: action, component: LinkButton, role: link, name: { key: composed.Shell.logo }, in: [noRolePage, noRoleUnread, nazarList, nazarUnread, rootUnread], source: apps/nizam/components/shell/shell-frame.tsx:182 } # a plain <a href="/"> around the Logo (F-P0-8, nizam.shell.menuPerPersona's)
+  themeToggle: { type: action, component: Button, role: button, intent: secondary, name: { key: Shell.themeDark }, in: [noRolePage, noRoleUnread, nazarList, nazarUnread, rootUnread], source: apps/nizam/components/shell/shell-frame.tsx:174 } # drawn as the light page has it; its flip is common.shell.theme. It is rendered twice, in the sidebar and in the phone's app bar, one of them hidden by CSS (F-UI-P0-3)
+  userName: { type: text, component: Text, text: { key: composed.Shell.userName, params: { name: person.name } }, in: [noRolePage, noRoleUnread, nazarList, nazarUnread, rootUnread], source: apps/nizam/components/shell/shell-frame.tsx:163 }
+  # the role line is one of two kinds of text: "Talebe" when the person holds no role or when nothing is known of them (LBR-1), else the widest of their medrese or course roles in the shell's spelling (LBR-2)
+  roleStudent: { type: text, component: Text, text: { key: Shell.roles.student }, in: [noRolePage, noRoleUnread, nazarUnread, rootUnread], source: apps/nizam/lib/shell-nav.ts:344 }
+  roleHeld: { type: text, component: Text, text: { oneOf: [Shell.roles.MEDRESE_BASMUDERRIS, Shell.roles.MEDRESE_NAZIR, Shell.roles.MUDERRIS, Shell.roles.DERS_NAZIR] }, in: [nazarList], source: apps/nizam/lib/shell-nav.ts:344 }
+
+  # ---- /yetki-yok: a person who holds no role ----
+  noRoleMain: { type: page, component: Page, role: main, in: [noRolePage], initialFocus: noRoleTitle, source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">, with no name; FocusHeading puts the focus on its h1 when the page mounts (e2e shell#1 a4)
+  noRoleSection: { type: page, component: Page, role: region, name: { labelledBy: noRoleTitle }, in: [noRolePage], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState with `shell` is a <section aria-labelledby>
+  noRoleTitle: { type: text, component: Heading, role: heading, text: { key: NoRole.title }, in: [noRolePage], source: apps/nizam/features/assignments/components/no-role-page.tsx:48 } # h1; the tab title is the same words (generateMetadata, yetki-yok/page.tsx:13)
+  noRoleBody: { type: text, component: Text, text: { key: NoRole.body }, in: [noRolePage], source: apps/nizam/features/assignments/components/no-role-page.tsx:64 }
+  accountLine: { type: text, component: Text, text: { key: NoRole.account }, in: [noRolePage], source: apps/nizam/features/assignments/components/no-role-page.tsx:53 } # the first words of one paragraph; the e-mail follows in a code element
+  accountEmail: { type: text, component: Text, text: { key: composed.NoRole.email, params: { email: person.email } }, in: [noRolePage], source: apps/nizam/features/assignments/components/no-role-page.tsx:53 }
+  backToTedris: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NoRole.back }, in: [noRolePage], emits: BACK_TO_TEDRIS, source: apps/nizam/features/assignments/components/no-role-page.tsx:57 } # href is TEDRIS_URL; same tab
+
+  # ---- /yetki-yok when the roles could not be read ----
+  noRoleUnreadMain: { type: page, component: Page, role: main, in: [noRoleUnread], source: libs/ui/src/mds/app-shell.tsx:41 } # nothing moves the focus and there is no h1 (F-P0-6)
+  noRoleAlert: { type: alert, component: Alert, role: alert, text: { key: NoRole.errorTitle }, in: [noRoleUnread], source: apps/nizam/features/assignments/components/no-role-page.tsx:32 } # an error Alert: role=alert, with the title in a paragraph
+  noRoleAlertBody: { type: text, component: Text, text: { key: NoRole.errorBody }, in: [noRoleUnread], source: apps/nizam/features/assignments/components/no-role-page.tsx:33 }
+  noRoleRetry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NoRole.retry }, in: [noRoleUnread], emits: RETRY, source: apps/nizam/features/assignments/components/no-role-page.tsx:34 } # an outline link to /yetki-yok itself: it loads the page again
+
+  # ---- /nazar-yonlendirme ----
+  nazarMain: { type: page, component: Page, role: main, in: [nazarList, nazarUnread], source: libs/ui/src/mds/app-shell.tsx:41 } # no FocusHeading here: nothing moves the focus (rule focus-not-set)
+  nazarTitle: { type: text, component: Heading, role: heading, text: { key: NazarRedirectPage.title }, in: [nazarList, nazarUnread], source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:44 } # h1
+  nazarIntro: { type: text, component: Text, text: { key: NazarRedirectPage.intro }, in: [nazarList, nazarUnread], source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:45 }
+  tasksSection: { type: page, component: Page, role: region, name: { labelledBy: tasksTitle }, in: [nazarList], source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:68 }
+  tasksTitle: { type: text, component: Heading, role: heading, text: { key: NazarRedirectPage.tasks }, in: [nazarList], source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:72 } # h2
+  taskList: { type: list, component: List, role: list, in: [nazarList], source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:75 } # a <ul> with no name
+  taskRow: { type: list, component: ListItem, role: listitem, in: [nazarList], repeat: tasks.rows, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:77 } # li[data-testid=task-row]; a medrese's avatar or a course's cover pattern is decorative and not drawn
+  rowTitle: { type: text, component: Text, text: { key: composed.NazarRedirectPage.rowTitle, params: { title: task.title } }, in: [nazarList], repeat: tasks.rows, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:88 } # a <bdi>
+  rowCaptionCourse: { type: text, component: Text, text: { key: composed.NazarRedirectPage.captionCourse, params: { role: task.role, kosk: task.kosk, count: task.students } }, in: [nazarList], when: "tasks == 'courses'", repeat: tasks.rows, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:89 } # "Hoca · <köşk> · <n> talebe"
+  rowCaptionDraft: { type: text, component: Text, text: { key: composed.NazarRedirectPage.captionDraft, params: { role: task.role, kosk: task.kosk } }, in: [nazarList], when: "tasks == 'draft'", repeat: tasks.rows, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:89 } # no count for a draft
+  rowCaptionMadrasah: { type: text, component: Text, text: { key: composed.NazarRedirectPage.captionMadrasah, params: { role: task.role } }, in: [nazarList], when: "tasks == 'madrasah'", repeat: tasks.rows, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:89 } # the role alone, in the list's spelling (LBR-2)
+  rowDraftBadge: { type: text, component: Text, text: { key: NazarRedirectPage.draft }, in: [nazarList], when: "tasks == 'draft'", repeat: tasks.rows, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:109 } # an outline Badge
+  goToNazar: { type: action, component: LinkButton, role: link, text: { key: NazarRedirectPage.goToNazar }, in: [nazarList, nazarUnread], emits: GO_TO_NAZAR, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:119 } # a primary link to NAZAR_URL (e2e assignments#2), with an arrow icon; same tab
+
+  # ---- /nazar-yonlendirme when the roles could not be read ----
+  unreadToast: { type: status, component: Status, text: { key: NazarRedirectPage.loadFailedTitle }, in: [nazarUnread], source: apps/nizam/features/assignments/components/load-failed-toast.tsx:18 } # a sonner error toast with a description, sticky; no role (the engine finds it by [data-sonner-toast])
+  unreadToastText: { type: text, component: Text, text: { key: NazarRedirectPage.loadFailed }, in: [nazarUnread], source: apps/nizam/features/assignments/components/load-failed-toast.tsx:18 }
+  nazarAlert: { type: alert, component: Alert, role: alert, text: { key: NazarRedirectPage.loadFailedTitle }, in: [nazarUnread], source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:54 } # the same words as the toast (F-P0-7)
+  nazarAlertBody: { type: text, component: Text, text: { key: NazarRedirectPage.loadFailed }, in: [nazarUnread], source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:59 }
+  nazarRetry: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NazarRedirectPage.retry }, in: [nazarUnread], emits: RETRY, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:60 } # a link to /nazar-yonlendirme itself
+
+  # ---- "/" when the roles could not be read ----
+  rootUnreadMain: { type: page, component: Page, role: main, in: [rootUnread], source: libs/ui/src/mds/app-shell.tsx:41 }
+  rootUnreadLine: { type: text, component: Text, text: { key: common.welcome }, in: [rootUnread], source: "apps/nizam/app/(home)/page.tsx:90" } # a bare <div>: not a heading, and nothing else on the page (F-P0-9)
+
+edges:
+  - { labelledBy: [welcomeMain, welcomeTitle] }
+  - { labelledBy: [noRoleSection, noRoleTitle] }
+  - { labelledBy: [tasksSection, tasksTitle] }
+  - { triggers: [signInLink, handed_over.sign_in] }
+  - { triggers: [backToTedris, handed_over.tedris] }
+  - { triggers: [goToNazar, handed_over.nazar] }
+  - { triggers: [noRoleRetry, readingAssignments] }
+  - { triggers: [nazarRetry, readingAssignments] }
+
+rules:
+  - { id: F-P0-9, rule: "When the roles cannot be read, \"/\" keeps the address and draws a bare <div> with \"Hoş geldiniz\" inside the shell: no heading, no error, no retry, and no menu, for a person who may be a nazım (app/(home)/page.tsx:42-50, 90). /yetki-yok and /nazar-yonlendirme both say the read failed and offer a retry. Fix: draw the same load-failed state as /yetki-yok. Decision D1 of the flow. Not walked: the stack cannot make the read fail; the unit specs prove the other two pages." }
+  - { id: F-P0-6, rule: "The load-failed state of /yetki-yok has no <h1> and no FocusHeading, while the normal state has both (no-role-page.tsx:29-40, 44): the alert is announced but the page has no heading and the focus is not moved. Fix: add an <h1> above the alert." }
+  - { id: F-P0-7, rule: "The load-failed state of /nazar-yonlendirme raises a sticky error toast and draws an Alert with the same title and sentence (nazar-redirect-page.tsx:48-62, load-failed-toast.tsx:17-18): two announcements of one thing. The component's comment says design nizam/04 asks for the toast, so the owner decides which one stays." }
+  - { id: F-UI-P0-2, rule: "SystemState draws its `children` in a <p> (libs/ui/src/mds/system-state.tsx:46), so block content would be invalid HTML. Here it holds: /yetki-yok passes one sentence of text, and the welcome page passes nothing, which leaves an empty <p> in the markup (seen with curl). Fix: render `children` in a <div> when it is not a string, and not at all when there is none." }
+  - { id: F-P0-3, rule: "The signed-out welcome page has no generateMetadata, so the tab and the history say \"Nizam\" (seen with curl: <title>Nizam</title>); the root layout's title is hard-coded Turkish (app/layout.tsx:16, F-P0-17). /yetki-yok and /nazar-yonlendirme do set their own titles. Fix: export generateMetadata with the page's title." }
+  - { id: LBR-1, rule: "New finding. The sidebar's person row says \"Talebe\" under the name of every person whose roles could not be read, a nazım or a hoca included: the shell reads the roles again in a mode that returns null, shellVariant(null) is \"none\" and roleLabelKey falls back to \"student\" (nizam-shell.tsx:63-65, 109; shell-nav.ts:344-368). The same fallback is right for a person who holds nothing and untrue for one nobody has read. Fix: leave the role line out while the roles are unknown. Same family as F-P0-9; shown in noRoleUnread, nazarUnread and rootUnread. Not walked." }
+  - { id: LBR-2, rule: "New finding. The same role is spelled two ways on one screen: the sidebar's person row says \"Medrese nâzırı\" and \"Ders nâzırı\" (nizam.json Shell.roles) and the list beside it says \"Medrese nazırı\" and \"Ders nazırı\" (NazarRedirectPage.roles); Tedris and Nazar write \"nazırı\", and nizam.json mixes both forms in other namespaces. Fix: one spelling in nizam.json (decision D2 of the flow)." }
+  - { id: focus-not-set, rule: "Only /yetki-yok moves the focus when it opens (FocusHeading puts it on the h1, e2e shell#1 a4). The welcome page, /nazar-yonlendirme and every load-failed state set no focus (no autoFocus and no focus() in them), so their page nodes have no `initialFocus` and the graph says nothing of the focus. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: sidebar-has-no-menu, rule: "e2e shell#1 a5 and a6: for a person with no menu variant the sidebar is the brand, the theme toggle and the person row, and holds no <nav> (the Sidebar draws one only when it has children, app-shell.tsx:97-101). Drawn by the nodes shown here and by the absence of any menu node; an absence is not a node, so a replay with --absent checks it only against nodes some other state shows." }
+  - { id: label-in-name, rule: "The visible text of each link is its whole accessible name: \"Giriş yap\", \"Tedris’e dön\", \"Nazar’a git\", \"Tekrar dene\" (WCAG 2.5.3). Holds. The brand link is named by the logo's image, which has no visible text." }
+  - { id: one-h1-per-page, rule: "Each page has one h1 in the shell's <main>, apart from the load-failed state of /yetki-yok, which has none (F-P0-6), and the load-failed state of \"/\", which has none either (F-P0-9). Holds elsewhere." }

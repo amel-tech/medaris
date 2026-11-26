@@ -1,0 +1,129 @@
+# The locators, events and effects of nizam.platform.auditLog on the local stack, shared by binding.yaml (the başnazım and a köşk nazımı who is refused) and
+# binding.medaris.yaml (a Medaris nazımı who holds platform.audit_read). The scenarios are in those two files; a scenario that adds no transition needs a
+# file of its own to be walked at all (CONVENTIONS), which is why the Medaris nazımı has one.
+#
+# What the replay can and cannot see here (an engine limit, reported):
+#   - "Dışa aktar" is `<a download>`: the click starts a browser download and the page stays. The engine has no action that waits for, reads or checks a
+#     download (its actions are goto, reload, click, fill, key, waitUrl, waitText, waitResponse and run), so neither the file's name, its content, its
+#     byte-order mark nor its failure can be asserted from the page. What the binding checks instead is what the click leaves outside the browser, as the
+#     `effects` of webExportAuditLog below: the `audit.export` row tedrisat writes before it sends the file (so the click reached the route and tedrisat),
+#     and the CSV of the same filter read through the API (header, row count, the row the setup wrote). The CSV the browser saved is NOT read: not verified.
+#   - The rows are data and the log is shared, so the replay runs WITHOUT --absent: a locator that finds a row of one kind would be "visible" in a state
+#     that does not draw that kind, which --absent would call a fault. What is drawn is still checked, on every row (a repeat node is checked on every item).
+#   - The log's size is never asserted. The one row the walk can point at is its own: setup wrote two POLICY_CHANGE rows and the walk finds them by their record
+#     numbers ({made.number}).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.platform.auditLog
+
+events:
+  # the person box has no node that sends an event: the binding types in it, and the address follows 400 ms later
+  TYPE_PERSON:
+    - fill: { role: searchbox, name: Kişi, value: '{person}' }
+    - waitUrl: '{nizam}/denetim-kaydi?*actor=*'
+  TYPE_NOBODY:
+    - fill: { role: searchbox, name: Kişi, value: '{nobody}' }
+    - waitUrl: '{nizam}/denetim-kaydi?*actor=*'
+  TYPE_LONG:
+    - fill: { role: searchbox, name: Kişi, value: '{longText}' }
+    - waitUrl: '{nizam}/denetim-kaydi?*actor=*'
+  # erasing the text leaves the address without ?actor=, which a URL pattern cannot wait for: wait for the answer of the read
+  CLEAR_PERSON:
+    - fill: { role: searchbox, name: Kişi, value: '' }
+    - waitResponse: { url: '{nizam}/denetim-kaydi?*', status: 200 }
+  # the selects are Base UI selects: press the combobox, then the option
+  CHOOSE_KIND:
+    - click: { role: combobox, name: Ne yaptı }
+    - click: { role: option, name: Politika değişikliği }
+    - waitUrl: '{nizam}/denetim-kaydi?*type=POLICY_CHANGE*'
+  ANY_KIND:
+    - click: { role: combobox, name: Ne yaptı }
+    - click: { role: option, name: Tümü }
+    - waitResponse: { url: '{nizam}/denetim-kaydi?*', status: 200 }
+  CHOOSE_SCOPE:
+    - click: { role: combobox, name: Kapsam }
+    - click: { role: option, name: Platform }
+    - waitUrl: '{nizam}/denetim-kaydi?*scope=PLATFORM*'
+  ANY_SCOPE:
+    - click: { role: combobox, name: Kapsam }
+    - click: { role: option, name: Bütün kapsamlar }
+    - waitResponse: { url: '{nizam}/denetim-kaydi?*', status: 200 }
+  CHOOSE_RECENT:
+    - click: { role: combobox, name: Tarih }
+    - click: { role: option, name: Son 7 gün }
+    - waitUrl: '{nizam}/denetim-kaydi?*range=7d*'
+  CHOOSE_CUSTOM:
+    - click: { role: combobox, name: Tarih }
+    - click: { role: option, name: Aralık seç }
+    - waitUrl: '{nizam}/denetim-kaydi?*range=custom*'
+  # yesterday and tomorrow, in Europe/Istanbul: the setup wrote them with the rows
+  SET_DAYS:
+    - fill: { label: Başlangıç, value: '{made.from}' }
+    - waitUrl: '{nizam}/denetim-kaydi?*from=*'
+    - fill: { label: Bitiş, value: '{made.to}' }
+    - waitUrl: '{nizam}/denetim-kaydi?*to=*'
+  ANY_TIME:
+    - click: { role: combobox, name: Tarih }
+    - click: { role: option, name: Bütün zamanlar }
+    - waitResponse: { url: '{nizam}/denetim-kaydi?*', status: 200 }
+  # LOAD_OLDER, RETRY and EXPORT are pressed on their nodes; OLDER failing (olderRead: failed) is not bound (see binding.yaml)
+  NAVIGATE: [{ goto: '{nizam}/' }]
+
+states:
+  # a hold on the server action "Daha eskileri göster" makes (a POST to the page's own address), so the busy button and its status can be seen
+  loadingOlder: { call: '{nizam}/denetim-kaydi**' }
+  # the exits that no node draws are checked by their address
+  handed_over.no_access: { url: '{nizam}/denetim-kaydi' }
+  left: { url: '{nizam}/' }
+
+# Where role and name cannot find a node. The shell's <main> is on every page the walk leaves for, so the page node is found by the sentence only this page
+# says. The table is Table responsive="stack": its cells carry data-label (the column's words) and the record number a data-testid.
+nodes:
+  auditPage: { role: main, hasText: '/Kayıtlar silinemez ve değiştirilemez/' }
+  noticeAlert: { role: status, hasText: Bu kaydı yalnız siz görürsünüz }
+  noticeBody: { text: '/Köşk nâzımları, medrese ve ders kadroları/' }
+
+  # the three selects show their choice as their own text; a node is the combobox that holds that text
+  kindAll: { role: combobox, name: Ne yaptı, hasText: Tümü }
+  kindPolicy: { role: combobox, name: Ne yaptı, hasText: Politika değişikliği }
+  scopeAll: { role: combobox, name: Kapsam, hasText: Bütün kapsamlar }
+  scopePlatform: { role: combobox, name: Kapsam, hasText: Platform }
+  rangeAll: { role: combobox, name: Tarih, hasText: Bütün zamanlar }
+  rangeRecent: { role: combobox, name: Tarih, hasText: '/Son (24 saat|7 gün|30 gün)/' }
+  rangeCustom: { role: combobox, name: Tarih, hasText: Aralık seç }
+  # type=date has no ARIA role: found by its label
+  fromField: { label: Başlangıç }
+  toField: { label: Bitiş }
+
+  failedAlert: { role: alert, hasText: Kayıt okunamadı }
+  failedText: { text: '/Denetim kaydı şu anda alınamıyor/' }
+
+  # the table and its cells
+  auditTable: { role: table, name: Denetim kaydı }
+  emptyLine: { role: cell, hasText: Bu süzgeçlere uyan kayıt yok. }
+  rowRecord: { testId: record-number }
+  rowWhen: { css: '[data-testid=audit-log] tbody td[data-label="Kayıt"] .mds-caption' }
+  rowActor: { css: '[data-testid=audit-log] tbody td[data-label="Kim"] bdi' }
+  rowActorPerson: { css: '[data-testid=audit-log] tbody td[data-label="Kim"] bdi' }
+  rowKind: { css: '[data-testid=audit-log] tbody td[data-label="Ne yaptı"] span.font-semibold' }
+  rowKindPolicy: { css: '[data-testid=audit-log] tbody td[data-label="Ne yaptı"] span.font-semibold' }
+  rowScopeName: { css: '[data-testid=audit-log] tbody td[data-label="Kapsam"] bdi' }
+  rowScopeKind: { css: '[data-testid=audit-log] tbody td[data-label="Kapsam"] .mds-caption' }
+  # the row the setup wrote: its record number, exactly
+  myRecord: { testId: record-number, hasText: '/^#{made.number}$/' }
+
+  # under the table
+  olderBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor }
+  olderToastTitle: { css: '[data-sonner-toast]', hasText: Eski kayıtlar okunamadı }
+  olderToastBody: { css: '[data-sonner-toast]', hasText: '/Daha eski kayıtlar şu anda alınamıyor/' }
+  retentionLine: { testId: audit-retention }
+
+# What the export leaves outside the browser (the file itself cannot be read from here, see the header): tedrisat wrote an audit.export row of the person
+# who pressed the link (the filter and the row count are in it), and the API gives the same filter as a CSV with its header and the walk's row.
+effects:
+  webExportAuditLog:
+    - run: [node, ../nizam/platform/auditLog/audit-rows.mjs, export-row, --who, '{exporter}', --wait, '20']
+      expect: 'export-row rows='
+    - run: [node, ../nizam/platform/auditLog/audit-rows.mjs, csv, --who, '{exporter}']
+      expect: 'csv ok'

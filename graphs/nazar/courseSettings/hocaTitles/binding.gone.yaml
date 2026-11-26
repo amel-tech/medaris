@@ -1,0 +1,42 @@
+# nazar.courseSettings.hocaTitles, the refusal COURSE_MUDERRIS_NOT_FOUND: the course's hoca opens the page with two hocas, chooses a title for
+# the second, and before pressing Kaydet applicantH is taken off the course's list (helpers/unseat-hoca.mjs, the way back from seat-hoca: the
+# PUT of the whole list as the başnazım). The page was read with two hocas, so Kaydet sends a write for the second, which the API refuses with
+# 404: a toast "Unvan kaydedilemedi" / "Bu kişi artık dersin hocası değil; liste yeniden okundu." stays, the page is read again, the list now has
+# one hoca, so the card is mounted anew with one select. When the first hoca's title was changed too, it was written before the refusal (HOCA-2).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courseSettings/hocaTitles \
+#     --bind graphs/nazar/courseSettings/hocaTitles/binding.gone.yaml --cover transitions --out <dir>
+#
+# NOT RUN (no replay in the writing phase); the binding loads. The hoca is taken off in a `before` of the state `dirty` ("done when the walk
+# reaches the state, before it is checked"): the page has been read with two hocas and nothing re-reads it before Kaydet. `before` is a property
+# of this file, which is why the walk has a file of its own; unseat-hoca says `already` the second time the walk reaches `dirty`, and that is
+# fine. `call` is left off (a Next server action answers 200 on the page's own address, so the replay would compare 404 with 200).
+# Not verified: that tedrisat's refusal for a hoca who was on the list when the page was read is COURSE_MUDERRIS_NOT_FOUND and not another code
+# (the repository returns false when no course_muderris row has that account, course.repository.ts:1540, and the service throws it).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.courseSettings.hocaTitles
+
+scenarios:
+  gone:
+    given: { reader: editor, team: pair, answer: notHoca }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hocaTitles, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hocaTitles"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantH]
+        expect: seat-hoca
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hocaTitles]
+        expect: removed
+    vars:
+      title: Doç. Dr.
+
+states:
+  dirty:
+    before:
+      - run: [node, helpers/unseat-hoca.mjs, '{made.course}', applicantH]
+        expect: unseat-hoca
+  left: { url: '{nazar}/hesap' }

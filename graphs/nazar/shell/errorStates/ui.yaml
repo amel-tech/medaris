@@ -1,0 +1,78 @@
+# The screens of nazar.shell.errorStates: the roles face (PortalUnavailable, a SystemState that is the page's <main>), the box a page
+# draws for its own failed read (LoadFailed with `shell`, a <section> inside the shell's <main>, with İtirazlar standing for
+# every page), the root 404 page (app/not-found.tsx), the root error page (app/error.tsx) and the root error document
+# (app/global-error.tsx). All of them are the kit's SystemState (libs/ui/src/mds/system-state.tsx): <main> or <section> labelled by
+# its own <h1>, one <p> and the action. The shell is drawn only as three landmarks (the sidebar, its menu and the shell's <main>), so
+# that "inside the shell" and "outside the shell" are something a replay can check; the sidebar's content is
+# nazar.shell.scopeAndMenu's.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/nazar.json (the app reads it as `nazar.<key>`), except
+# `common.globalError.*`, which is libs/i18n/src/locales/tr/common.json (app/global-error.tsx:25 reads it without next-intl). No key is
+# composed in code. Nothing here changes data, so there is no `changes` note.
+schema: delurio-graph/0
+kind: ui
+id: nazar.shell.errorStates
+flow: nazar.shell.errorStates
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples: {}
+
+# No face sets a focus: nothing in app/not-found.tsx, error.tsx, global-error.tsx or load-failed.tsx autofocuses or calls focus(),
+# so there is no `initialFocus` on a page and no `focus` here (rule focus-not-set).
+nodes:
+  # ---- "Görevleriniz okunamadı" (rolesUnreadable): the whole page, no shell ----
+  rolesPage: { type: page, component: Page, role: main, name: { labelledBy: rolesTitle }, in: [rolesUnreadable], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState without `shell` is the page's <main aria-labelledby>; there is no sidebar, so nothing else is a landmark
+  rolesTitle: { type: text, component: Heading, role: heading, text: { key: Shell.loadFailedTitle }, in: [rolesUnreadable], source: libs/ui/src/mds/system-state.tsx:43 } # h1
+  rolesText: { type: text, component: Text, text: { key: Shell.loadFailed }, in: [rolesUnreadable], source: libs/ui/src/mds/system-state.tsx:46 }
+  rolesRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [rolesUnreadable], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 } # busy while the retry runs (loading={pending}): aria-busy and a hidden <output> "Yükleniyor" from the Button's own default, never disabled
+
+  # ---- a page's own failed read (readFailed): the shell stays, two <h1> ----
+  shellSidebar: { type: page, component: Page, role: complementary, in: [readFailed], source: libs/ui/src/mds/app-shell.tsx:81 } # the <aside> with no name; hidden below 768 px
+  shellMenu: { type: page, component: Page, role: navigation, name: { key: Shell.navLabel }, in: [readFailed], source: libs/ui/src/mds/app-shell.tsx:98 } # the sidebar's menu: what a 404 and the other faces do not have (F-L-15)
+  shellMain: { type: page, component: Page, role: main, in: [readFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">: no name (the shell's own), no initialFocus (rule focus-not-set)
+  readPageTitle: { type: text, component: Heading, role: heading, text: { key: Appeals.title }, in: [readFailed], source: apps/nazar/features/appeals/components/appeals-page.tsx:27 } # h1: the page's own heading, drawn before its body is read
+  readSection: { type: page, component: Page, role: region, name: { labelledBy: readTitle }, in: [readFailed], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState with `shell` is a <section aria-labelledby>
+  readTitle: { type: text, component: Heading, role: heading, text: { key: Appeals.loadFailedTitle }, in: [readFailed], source: libs/ui/src/mds/system-state.tsx:43 } # h1 again: LoadFailed does not pass headingLevel, so this is the page's second <h1> (F-L-16)
+  readText: { type: text, component: Text, text: { key: Appeals.loadFailed }, in: [readFailed], source: libs/ui/src/mds/system-state.tsx:46 }
+  readRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [readFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 } # the same LoadFailed button, with the words of Shell.retry (page-problem.tsx:35)
+
+  # ---- "Sayfa bulunamadı" (notFound): the root file, no shell ----
+  notFoundPage: { type: page, component: Page, role: main, name: { labelledBy: notFoundTitle }, in: [notFound], source: libs/ui/src/mds/system-state.tsx:33 }
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: NotFound.title }, in: [notFound], source: libs/ui/src/mds/system-state.tsx:43 } # h1
+  notFoundText: { type: text, component: Text, text: { key: NotFound.text }, in: [notFound], source: apps/nazar/app/not-found.tsx:23 }
+  homeLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: NotFound.back }, text: { key: NotFound.back }, in: [notFound], emits: GO_HOME, source: apps/nazar/app/not-found.tsx:18 } # href "/"
+
+  # ---- "Sayfa açılamadı" (errorShown): the root error file, no shell ----
+  errorPage: { type: page, component: Page, role: main, name: { labelledBy: errorTitle }, in: [errorShown], source: libs/ui/src/mds/system-state.tsx:33 }
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: Shell.errorTitle }, in: [errorShown], source: apps/nazar/app/error.tsx:29 } # h1
+  errorText: { type: text, component: Text, text: { key: Shell.errorText }, in: [errorShown], source: apps/nazar/app/error.tsx:36 } # never says what failed: the error goes to console.error only (app/error.tsx:23)
+  errorRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [errorShown], emits: RETRY, source: apps/nazar/app/error.tsx:31 } # no `loading`: no busy mark (ERR-1)
+
+  # ---- "Bir şeyler ters gitti" (shellErrorShown): the root error document ----
+  docPage: { type: page, component: Page, role: main, name: { labelledBy: docTitle }, in: [shellErrorShown], source: libs/ui/src/mds/system-state.tsx:33 } # a <main> in a document of its own, with no shell and no providers
+  docTitle: { type: text, component: Heading, role: heading, text: { key: common.globalError.title }, in: [shellErrorShown], source: apps/nazar/app/global-error.tsx:42 } # h1
+  docText: { type: text, component: Text, text: { key: common.globalError.text }, in: [shellErrorShown], source: apps/nazar/app/global-error.tsx:49 }
+  docRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: common.globalError.retry }, in: [shellErrorShown], emits: RETRY, source: apps/nazar/app/global-error.tsx:44 } # no `loading`: no busy mark (ERR-1)
+
+edges:
+  - { labelledBy: [rolesPage, rolesTitle] }
+  - { labelledBy: [readSection, readTitle] }
+  - { labelledBy: [notFoundPage, notFoundTitle] }
+  - { labelledBy: [errorPage, errorTitle] }
+  - { labelledBy: [docPage, docTitle] }
+
+rules:
+  - { id: F-L-13, rule: "Both error faces call `retry()`, the prop Next hands an error component. Checked in the installed Next 16.4.2 (apps/nazar/node_modules/next/dist/client/components/error-boundary.d.ts:3-7, error-boundary.js:39-47,111-115): the boundary passes { error, reset, retry }, and the root global-error is rendered by the same boundary, so \"Yeniden dene\" works on both. There is no `unstable_retry` in this version. Not a finding; a Next upgrade is what could change it (test/global-error.spec.tsx holds the call)." }
+  - { id: F-L-15, rule: "A 404 thrown by a page is drawn outside the shell, exactly as one thrown by the layout or by an unknown route. The app has one not-found file, at the root (app/not-found.tsx; no app/medrese or app/ders one), so every `notFound()` is caught by the root's boundary, which replaces everything below the root layout; the page then has one <main> (SystemState without `shell`) and no sidebar, so there is no second <main>. Read in Next 16.4.2 (create-component-tree.js: a not-found boundary is made where a segment has its own file) and seen in the served HTML on 15 Nov 2026 as the başmüderris: /medrese/<own>/yok streams no shell markup at all (no <nav aria-label=\"Ana menü\">, no second <aside>), where /medrese/<own>/itirazlar streams both. The final page was not seen in a browser; the replay's --absent checks `shellMenu` and `shellSidebar` absent here. The inventory's question is answered and nothing is broken: the single markup is what keeps ids from being told apart (decision D1)." }
+  - { id: F-L-16, rule: "A failed page read draws LoadFailed with `shell`, whose SystemState defaults to headingLevel 1 (libs/ui/src/mds/system-state.tsx:24; load-failed.tsx:28-43 does not pass one), under the page's own <h1>: two <h1> on every medrese and course page in this state (İtirazlar: appeals-page.tsx:27 and the box). Read from the code, not seen (nothing in the stack makes a page read fail). Fix: LoadFailed passes headingLevel={2} when `shell`." }
+  - { id: F-E-15, rule: "No face of this flow has role=\"alert\" and none takes focus: the roles face, the box, the 404 and the two error faces replace what was on the screen and leave the focus on the body (SystemState has neither; the retry button keeps the focus once pressed). Whether Next's route announcer says anything for them is not verified (the 404, the error page and the roles face set no title of their own). Fix: role=\"alert\" on the error faces, or focus the <h1>." }
+  - { id: F-E-23, rule: "None of the faces sets a title: the tab says \"Medaris Nazar\" for the 404 of an unknown route and of /auth/<unknown> (seen in the served HTML, 15 Nov 2026), the roles face at the root address and the error page (read from the code); only /erisim-yok names its unreadable-roles state (ERR-5). WCAG 2.4.2. Fix: a generateMetadata from NotFound.title, Shell.errorTitle and Shell.loadFailedTitle." }
+  - { id: ERR-1, rule: "\"Yeniden dene\" of the root error page and the root error document gives no busy mark and no announcement: error.tsx:31 and global-error.tsx:44 pass no `loading` to the Button, so, unlike the roles face and the box (load-failed.tsx:35, aria-busy and a hidden \"Yükleniyor\"), a pressed retry looks and sounds like nothing until the new page arrives, and when it fails again the same face is drawn with nothing to say it was tried. Proposed id; not in the inventory. Fix: wrap Next's retry in a transition and pass `loading`, as LoadFailed does." }
+  - { id: ERR-2, rule: "The tab title of a 404 that a layout throws is the title of the page that was asked for: as the başmüderris, /medrese/<foreign> is titled \"Pano · Medaris Nazar\" and /ders/<foreign> \"Genel bakış · Medaris Nazar\" (seen in the served HTML, 15 Nov 2026), so generateMetadata of the page, which does not look at the scope, had already given its title when the layout called notFound() (the title is what was seen; the order is inferred). An unknown section of the person's own scope is \"Medaris Nazar\" (the [bolum] page's generateMetadata returns {}), and an unknown route too. The words on the page and the title of the tab disagree (WCAG 2.4.2) for the foreign scope, and the same title is given whether or not the id exists, so nothing is leaked. Proposed id; not in the inventory." }
+  - { id: ERR-3, rule: "A scope or section that is not the person's answers HTTP 200, not 404: seen in `next dev` as the başmüderris, /medrese/<foreign>, /ders/<foreign>, /medrese/<own>/yok and /ders/<own>/dersler all answer 200 with <meta name=\"robots\" content=\"noindex\">, the root loading skeleton in the HTML and the 404 digest (NEXT_HTTP_ERROR_FALLBACK) in the stream, while an unknown route and /auth/<unknown> answer 404 with the page. Presumably the root loading.tsx is the Suspense boundary the layout's notFound() is thrown inside, after the first byte has gone (the mechanism is inferred, not verified). The e2e asserts the status only for /auth/yok (auth-pages#4 a1); access#6 asserts the heading. Not verified in a production build. Proposed id; not in the inventory (the same thing tedris.shell.systemPages names SYS-2)." }
+  - { id: ERR-4, rule: "The roles face is a dead end: the page is a <main> with one heading, one sentence and \"Yeniden dene\", no sidebar and no link, so a person whose roles cannot be read cannot sign out, go to Tedris or open another page from it, only retry or type an address. The no-access page, for the opposite case, offers \"Çıkış yap\" and \"Tedris’e dön\" (MDRS-248: a person on the wrong account must not be stuck). Proposed id; not in the inventory (decision D2). Fix: the same two links on LoadFailed when it is not `shell`." }
+  - { id: ERR-5, rule: "Only /erisim-yok names its tab after the unreadable-roles state (generateMetadata, app/erisim-yok/page.tsx:8-17, \"Görevleriniz okunamadı\"; test/access.spec.tsx:227). The same face at / keeps \"Medaris Nazar\", and under the portal's layout keeps whatever the page's generateMetadata gave it (\"Pano\", \"İtirazlar\", ...), which names a page the person is not shown. Read from the code, not seen. Proposed id; not in the inventory. Fix: the layout names the tab when it draws PortalUnavailable." }
+  - { id: same-404-words, rule: "NotFound gives the same words for a route no page owns, a scope that is not the person's, an unknown section and a read that answered 404 (app/not-found.tsx:5-9: \"so the page never tells which ids exist\"). The words and the markup hold; the status (ERR-3) and, for a foreign scope, the tab title (ERR-2) are what differ." }
+  - { id: focus-not-set, rule: "None of the faces has an initialFocus: no autoFocus or focus() in app/not-found.tsx, error.tsx, global-error.tsx or load-failed.tsx, so the graph says nothing of the focus when they open. Recorded so the silence is not read as an omission (F-E-15)." }

@@ -98,6 +98,12 @@ export interface UpdateCourseDto {
      */
     isClosed?: boolean;
     /**
+     * Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only (404 with no token); every enrollment waits for approval. Not hidden: a hidden course is not-found even by its link.
+     * @type {boolean}
+     * @memberof UpdateCourseDto
+     */
+    isUnlisted?: boolean;
+    /**
      * The word printed on the cover.
      * @type {string}
      * @memberof UpdateCourseDto
@@ -162,6 +168,7 @@ export function UpdateCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'grantsCertificate': json['grantsCertificate'] == null ? undefined : json['grantsCertificate'],
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
         'isClosed': json['isClosed'] == null ? undefined : json['isClosed'],
+        'isUnlisted': json['isUnlisted'] == null ? undefined : json['isUnlisted'],
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
     };
@@ -191,6 +198,7 @@ export function UpdateCourseDtoToJSONTyped(value?: UpdateCourseDto | null, ignor
         'grantsCertificate': value['grantsCertificate'],
         'requiresApproval': value['requiresApproval'],
         'isClosed': value['isClosed'],
+        'isUnlisted': value['isUnlisted'],
         'coverLabel': value['coverLabel'],
         'inPerson': value['inPerson'],
     };

@@ -1,0 +1,121 @@
+# What must exist for a talebe's "Sınavlarım": written needs-first on 21 November 2026 from the owner's rules, then met by MDRS-299
+# (#418); each met need names its code or test. Three are still missing or partly met: the notice when an exam is set, every other way
+# into an exam celse, and a walk with the keyboard and a screen reader.
+schema: delurio-graph/0
+kind: needs
+id: tedris.exams.mine
+status: proposed
+needs:
+  - id: in-the-menu
+    need: tedris's menu has "Sınavlarım", on every page and on a phone, and it opens the talebe's exams.
+    evidence:
+      - state: listed
+      - node: menuExams
+      - source: apps/tedris/components/phone-menu/desktop-bar.tsx
+      - source: apps/tedris/components/phone-menu/member-phone-menu.tsx
+    note: "Owner: \"hem tedris hem nazar'da 'sınavlarım' menüsü olacak\". The entry belongs to tedris's navigation graph once the page exists."
+
+  - id: open-coming-and-past
+    need: >-
+      The page lists every exam of the talebe's courses, written, oral and online alike, in three groups, each with a heading: open
+      now, coming, and past. Within a group, the soonest comes first, and for the past ones the latest comes first.
+    note: "Owner, asked which exams are listed: \"Hepsi\"; an online exam is the third format of the exam celse (\"üçüncü\")."
+    evidence:
+      - state: listed
+      - node: openTitle
+      - node: comingTitle
+      - node: pastTitle
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "groups open, coming and past, and leads each where it belongs"
+
+  - id: only-their-courses-and-never-a-draft
+    need: >-
+      Only the exams of courses in which the talebe holds a seat are listed, and the past ones of a course they completed. A course
+      they left or lost takes its exams with it, as its other content goes. A draft online exam is never listed, and nothing of it
+      reaches the talebe.
+    evidence:
+      - state: opening
+      - state: listed
+      - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
+        name: "lists every exam of the talebe's courses, of every format, and no draft"
+    note: "Owner, asked about completed and left courses: \"Tamamlanan kalır, ayrılan gider\"."
+
+  - id: what-each-exam-says
+    need: >-
+      Each exam names its course, its title and its format; an online one how long it lasts and how many questions it has, a written
+      or oral one its place. A coming one says the day and time it opens, and an open online one until when it can be started, both in
+      the talebe's own time zone.
+    evidence:
+      - state: listed
+      - node: openFacts
+      - node: openUntil
+      - node: comingWhen
+      - node: comingPlace
+      - source: apps/tedris/features/online-exams/components/my-exams-page.tsx:147
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "draws the groups with each exam's standing, and a score only once released"
+
+  - id: enter-from-the-list
+    need: An open exam is entered from its row through its briefing ("Sınava gir"); one in progress says so and offers "Devam et".
+    evidence:
+      - state: exam_entered
+      - node: enterButton
+      - node: continueButton
+      - source: apps/tedris/features/online-exams/my-exams-model.ts
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "groups open, coming and past, and leads each where it belongs"
+    note: >-
+      Owner, 22 Nov 2026: "tedris'te sınavlar menüsü olsun, mesela yaklaşan ve devam eden sınav varsa tıklayınca direk sınav ekranına
+      gitsin talebe ders ve celse sayfalarını atlayıp kolayca". A coming, open or running online exam links straight to its exam page.
+
+  - id: a-past-exam-opens-the-talebe-s-own-screen
+    need: >-
+      A past exam says its score once the course team has released it, or "Sonuç henüz açıklanmadı". A past online exam opens the
+      talebe's own screen of it; a written or oral one opens its course's Notlarım.
+    evidence:
+      - state: result_opened
+      - node: pastState
+      - node: resultLink
+      - node: gradesLink
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "groups open, coming and past, and leads each where it belongs"
+    note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
+
+  - id: none-yet-says-so
+    need: With no exam, the page says "Henüz sınavın yok." and that the exams of their courses will be listed here.
+    evidence:
+      - state: empty
+      - node: emptyText
+      - source: apps/tedris/features/online-exams/components/my-exams-page.tsx:74
+      - test: apps/tedris/test/my-exams.spec.ts
+        name: "says when the list is empty, and when it could not be read"
+
+  - id: told-when-an-exam-is-set
+    need: >-
+      The talebe is told, in their notifications and by e-mail as the account's settings allow, when an exam of their course is
+      scheduled (and it goes into their calendar), and is reminded before it opens.
+    evidence:
+      - state: listed
+      - source: apps/tedrisat/src/course/course.service.ts:1424
+      - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
+        name: "plans the celse at the start, with its exam row, and locks the exam"
+    note: "Owner, 22 Nov: \"evet, takvime de düşsün\". Publishing sends EXAM_SCHEDULED and queues the calendar invitation through createExamSession; the 24-hour reminder is LessonExam.remindedAt. No notification is sent when it opens."
+
+  - id: reached-from-the-course-too
+    need: >-
+      An online exam is also reached where exam celses are today: its course's curriculum and celse page, Programım and the calendar,
+      and the home page on the day it opens.
+    evidence:
+      - source: apps/tedris/features/courses/components/session-page.tsx:380
+    missing: "MDRS-299: the exam celse's page offers \"Sınava gir\" (#416); the curriculum, Programım, the calendar and the home page were not checked for it"
+    note: An online exam is an exam celse (owner, 21 Nov 2026), so it is where exam celses are. It is about the state listed, which is built.
+
+  - id: readable-by-keyboard-and-screen-reader
+    need: >-
+      Each group is a heading and each exam a link or a button named by its course and its title, and its state (open, coming, in
+      progress, past, released) is said in words, not by colour alone.
+    evidence:
+      - node: openState
+      - node: pastState
+    missing: "MDRS-299: built with headings and named links (each row's link names its course and title), but not walked with the keyboard or a screen reader"
+    note: It is about the state listed, which is built; a coming exam says its standing by its time line ("… tarihinde açılır").

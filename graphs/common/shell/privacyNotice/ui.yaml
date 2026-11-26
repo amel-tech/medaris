@@ -1,0 +1,78 @@
+# The screens of common.shell.privacyNotice: a page of tedris-web, of nizam-web inside its shell and of nazar-web, as far as
+# the footer and its one link go. Only the page's `main`, the footer and the link are drawn; every page's own content belongs
+# to the flow of that page.
+#
+# Words. The one message, `common.legal.privacyNotice`, is copied by script from libs/i18n/src/locales/tr/common.json (the
+# apps read it as `common.legal` from the shared catalogue, so its key keeps the `common.` of the file). No text is built in
+# code, so there is no `composed.*` key, no sample, and the flow writes nothing, so no `changes` key.
+#
+# The link is drawn once for two apps because the two components are the same (apps/tedris/components/legal-footer/index.tsx
+# and apps/nizam/components/legal-footer/index.tsx: the same lines but for one class name on line 14); its `source` is the
+# tedris copy, and the nizam copy's lines are the same numbers.
+schema: delurio-graph/0
+kind: ui
+id: common.shell.privacyNotice
+flow: common.shell.privacyNotice
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples: {}
+
+nodes:
+  # ---- the page the footer sits under: its `main`, with no name and no initial focus (rule focus-not-set) ----
+  page: { type: page, component: Page, role: main, in: [footerBelow, footerInMain, noFooter], source: libs/ui/src/mds/app-shell.tsx:41 } # nizam's shell and nazar's draw `<main id="main">` here; a tedris page brings its own `<main>` (apps/tedris/components/tab-view/index.tsx:12-22 lists which), and nizam's welcome page draws one too
+
+  # ---- the footer: a `contentinfo` landmark where it is under the page; inside nizam's `<main>` it is none (F-P0-5) ----
+  footer: { type: page, component: Page, role: contentinfo, in: [footerBelow], source: apps/tedris/components/legal-footer/index.tsx:13 } # `<footer>` with no name; absent as a landmark in footerInMain and noFooter, which the replay checks with --absent
+  noticeLink: { type: action, component: LinkButton, role: link, text: { key: common.legal.privacyNotice }, in: [footerBelow, footerInMain], emits: OPEN_NOTICE, source: apps/tedris/components/legal-footer/index.tsx:15 } # <a href="<LANDING_URL>/aydinlatma-metni" target="_blank" rel="noopener noreferrer">; its name is its text, with nothing that says it opens a new tab (SHL-12, CLS-14, PN-1)
+
+rules:
+  - id: SHL-12
+    rule: >-
+      tedris-web's footer link opens the notice in a new tab (`target="_blank"`) and its accessible name is only
+      "Aydınlatma Metni": nothing, visible or hidden, says that a new tab opens and that this one stays, so a screen-reader
+      user and anyone on a phone meets a tab they did not expect (apps/tedris/components/legal-footer/index.tsx:15-22; the
+      inventory has the same finding as CLS-14 for the celse pages, where it counts the link among the things a keyboard
+      user tabs past). Every other new-tab link of tedris's discover part says it with "(yeni sekmede açılır)" (DSC-15 is the
+      one that does not). The graph draws the link as it is: `name` is its text. Fix: add a visually hidden "(yeni sekmede
+      açılır)" from a new catalog key to both copies of the link, in all three catalogs.
+  - id: CLS-14
+    rule: >-
+      The same missing note, as the celse part's inventory records it (apps/tedris/components/legal-footer/index.tsx:11-18):
+      the footer link opens a new tab with no word saying so. Recorded under SHL-12; one fix closes both.
+  - id: PN-1
+    rule: >-
+      New. nizam-web's footer link is the same component as tedris-web's and has the same defect: `target="_blank"`, and a
+      name with no word of the new tab (apps/nizam/components/legal-footer/index.tsx:15-22). Seen in the served page of the
+      stack's nizam ("/", signed out): `<a href="http://localhost:4003/aydinlatma-metni" target="_blank"
+      rel="noopener noreferrer">Aydınlatma Metni</a>`. The inventory records the missing note for tedris only. Fix: as SHL-12;
+      and the two copies are one component in two folders, so make it one (libs/ui) and the fix is made once.
+  - id: F-P0-5
+    rule: >-
+      nizam-web's shell draws the footer inside `<main id="main">`: `app/layout.tsx:54` passes `<LegalFooter />` to the shell as
+      `footer`, and `ShellFrame` renders `{children}{footer}` as the children of `AppShell`, whose `<main>` wraps them
+      (apps/nizam/components/shell/shell-frame.tsx:229-230, libs/ui/src/mds/app-shell.tsx:41-47). A `<footer>` inside `<main>`
+      has no landmark role, so a signed-in person's page has no `contentinfo`, and the link comes after the whole page's
+      content for a keyboard user. The graph draws it as the code has it: `footer` (role contentinfo) is shown in footerBelow
+      only, so the replay of footerInMain with --absent checks that no contentinfo is there. A signed-out visitor and a
+      person on /auth/* get the footer after the page (nizam-shell.tsx:52-58, shell-frame.tsx:80-86), which is a landmark.
+      Fix: give AppShell a slot after `<main>` (the inventory's F-X-13 is the same finding, from the page side).
+  - id: F-X-13
+    rule: >-
+      The same finding, as nizam's inventory records it from the page side (apps/nizam/components/legal-footer/index.tsx:13
+      inside AppShell's `<main>`): no `contentinfo` landmark. Recorded under F-P0-5.
+  - id: PN-2
+    rule: >-
+      New. nazar-web has no footer and no link to the privacy notice: its root layout renders `ClientProviders` and the page
+      and nothing else (apps/nazar/app/layout.tsx:53-57), its shell has no footer slot, and a search of apps/nazar finds no
+      `LegalFooter`, no `privacyNoticeUrl` and no "Aydınlatma" (the inventory says it plainly: "No search, no help link, no
+      footer", nazar.md:305). tedris-web and nizam-web carry the link on "every page" (the comment on both components, MDRS-102);
+      a hoca, a nazır or a başmüderris who works only in nazar, and whose data the notice is about, is not shown it in the
+      app. The graph draws nazar's page as the code has it (state noFooter, the link absent). Fix: nazar's shell takes the same
+      footer as nizam's, outside `<main>` (decision D1). The two copies of the component (PN-1) are why a third app has none.
+  - id: focus-not-set
+    rule: >-
+      The graph says nothing of the focus: neither the footer nor the layouts and the shell of nizam move it (no `autoFocus` and no `.focus()` in them; a page's own
+      focus is that page's flow), and pressing the link opens another tab, so this tab's focus stays on the link (the browser's own; not
+      verified in a browser). Recorded so the silence is a fact and not an omission.

@@ -1,0 +1,117 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.learn.questions
+status: proposed
+summary: >-
+  What must exist for a talebe who asks the course team a question about a celse: the flow's product list, from its story and from
+  planned.md, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing or unwalked, for the orchestrator's gaps merge:
+# missing:  ask-from-the-celse-page (MDRS-267), player-position-on-a-question (MDRS-264)
+# unwalked: questions-paged (code, no e2e and no replay), question-lands-on-the-team-list (the second person's page is
+# nazar.questions.answer, written later), refused-asks-and-failed-reads (the stack cannot make tedrisat refuse)
+# Nothing here carries a kontenjan or a gender rule: a question has neither.
+
+needs:
+  - id: ask-read-edit-delete
+    need: >-
+      An enrolled talebe asks the course team a question about a celse, from the place they watch it or from the course, sees it
+      in their own list with whether it has been answered, rewrites it while nobody has answered it, and deletes it at any time.
+      Nobody else reads it but the hoca and those who answer.
+    evidence:
+      - state: opened
+      - state: listed
+      - state: asking
+      - state: editing
+      - state: saving
+      - state: confirming
+      - state: deleting
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:133
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:160
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:239
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:259
+      - source: apps/tedris/features/courses/components/course-questions.tsx:42
+      - source: apps/tedris/features/courses/components/lesson-questions.tsx:26
+      - test: apps/tedris/e2e/lesson-questions.e2e.ts
+        name: "asks on a session from Sorularım, edits the question and deletes it while it waits"
+      - test: apps/tedris/e2e/lesson-questions.e2e.ts
+        name: "on a recording's watch page: asks in Soru sor with no session to pick, reads it there and on Sorularım; beside a stream on air the live chat stands there instead (MDRS-285)"
+
+  - id: read-the-answer
+    need: >-
+      When the course team answers, the talebe sees on their question that it is answered, by whom, and the answer; they can no
+      longer rewrite it, and may still delete it (the answer goes with it, and they are told so).
+    evidence:
+      - state: listed
+      - state: confirming
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217
+      - source: apps/tedris/features/courses/question-model.ts:55
+      - test: apps/tedris/e2e/lesson-questions.e2e.ts
+        name: "reads the müderris's answer, and a question that has one can be deleted but not edited"
+    note: >-
+      #4 gives the answer through the API; the graph draws it as the second person's step (TEAM_ANSWERS, the hoca in nazar), and
+      its delete confirmation is walked there to the end, where the e2e cancels it (E2E-LQ-01).
+
+  - id: question-lands-on-the-team-list
+    need: >-
+      A question that was sent reaches the people who answer it, in nazar, waiting questions first; the hoca is not sent a
+      notification.
+    evidence:
+      - state: sent
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:192
+      - source: apps/nazar/features/questions/components/questions-page.tsx:28
+    note: unwalked here; the page is nazar.questions.answer's (started by this flow with `waiting`), written later.
+
+  - id: stale-card-tells-the-truth
+    need: >-
+      A card whose question was answered meanwhile shows the answer, not only the refusal "Cevaplanmış bir soru düzenlenemez.",
+      and keeps what the talebe had written; a delete line on it says that an answer goes too.
+    evidence:
+      - state: lateEdit
+      - state: confirming
+      - source: apps/tedris/features/courses/components/course-questions.tsx:217
+    note: >-
+      Partly built: the refusal is drawn, the answer is not read (findings QUESTIONS-1 and QUESTIONS-2). Defects, not planned
+      features, so no Linear key. Unwalked: a second person answers during the walk (the `--to lateEdit` walk).
+
+  - id: refused-asks-and-failed-reads
+    need: >-
+      A talebe whose question could not be read, sent, saved or deleted is told so in words and can try again, and loses nothing
+      they typed.
+    evidence:
+      - state: loadFailed
+      - state: listed
+      - state: editing
+      - state: confirming
+      - source: apps/tedris/features/courses/components/course-questions.tsx:119
+      - source: apps/tedris/features/courses/components/course-questions.tsx:424
+    note: unwalked; the stack cannot make tedrisat refuse these calls. The typed text is lost on a reload (WRT-13).
+
+  - id: questions-paged
+    need: >-
+      A talebe with many questions reads them a page at a time, newest first, and a failed page says so and can be asked for
+      again.
+    evidence:
+      - source: apps/tedris/features/courses/components/course-questions.tsx:143
+    note: >-
+      unwalked and not drawn; the list's second page needs more than twenty questions, and the watch page cuts at a thousand
+      without a word.
+
+  - id: ask-from-the-celse-page
+    need: A talebe asks about a celse from the celse's own page too, not only from the watch page and the course tab (P-09).
+    missing: MDRS-267
+    note: |-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      planned.md P-09; today the celse's detail page has no ask box.
+
+  - id: player-position-on-a-question
+    need: A question asked beside a recording can carry the position the player was at, and a press on it moves the player (P-10).
+    missing: MDRS-264
+    note: |-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      planned.md P-10; today a question carries no time, only the day it was asked.

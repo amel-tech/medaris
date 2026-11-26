@@ -1,0 +1,42 @@
+# nazar.decks.openAndFill, the colleague's walk: DERS_NAZIR holds deck.manage_course alone in a course the walk makes, and fills a deck that the course's
+# hoca opened. The deck-level routes accept the nazır (the list of the cards, adding cards); the card routes answer 404 to any edit and delete of a card of
+# a deck whose author they are not (OPENFILL-1, the domain's course-deck-staff-card-routes-404). Derived from the code (flashcard.service.ts:86-101,
+# deck-sharing.ts), not run: the walk is where it is first seen.
+#   node apps/engine/src/cli.ts replay graphs/nazar/decks/openAndFill --bind graphs/nazar/decks/openAndFill/binding.others.yaml --cover transitions --out <dir>
+# NOT RUN in the writing phase. Its own file because it adds transitions (FAIL.missing of `savingCard` and `removing`, and the card list of `deckList`) and
+# because `call` is left off on those two states: the server action answers 200 on the page's own address, so a walk through FAIL.missing would compare 200
+# with the 404 of CARD_NOT_FOUND and report a mismatch that is no fault of the page. The busy state of those two is held in binding.yaml, on the hoca's walk.
+#
+# What it makes and takes away: the course (helpers/course.mjs, tag deck-fill, the hoca MUDERRIS), the hoca's deck "Deneme destesi deck-fill" (decks-data.mjs
+# make: published, no card), and the post of DERS_NAZIR with deck.manage_course alone (helpers/course-nazir-grants.mjs). `teardown` deletes the deck, then the
+# course and the post with it. The walk adds three cards to the deck as the nazır (the API accepts that) and is refused the edit and the delete of one.
+schema: delurio-graph/0
+kind: binding
+extends: ./binding.common.yaml
+flow: nazar.decks.openAndFill
+
+scenarios:
+  others:
+    given: { course: others }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { deckTitle: Deneme destesi deck-fill, cardFront: قَرَأَ, cardBack: 'Okudu, okur.', revisedBack: 'Okudu, okuyor.' }
+    setup:
+      - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, make, deck-fill, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course":'
+      - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, make, --title, Deneme destesi deck-fill]
+        expect: 'deck-data made'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, deck.manage_course]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, deck-fill]
+        expect: removed
+
+states:
+  addingCard: { call: '{nazar}/ders/{made.course}/deste/*' }
+  addingBatch: { call: '{nazar}/ders/{made.course}/deste/*' }

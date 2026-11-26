@@ -1,0 +1,149 @@
+# What the bindings of nizam.kosks.editAndHide share: the sign-in that waits for the person's landing, the events no node sends, the
+# places each exit opens, where role and name cannot find a node, and what a step leaves outside the screen. It carries no scenario,
+# so it is not walked by itself:
+#   binding.yaml          the nazım of a köşk of the walk's own: world free (the main story) and world locked
+#   binding.chief.yaml    the başnazım at the same lock: world chiefOverrides. It adds no transition of its own (the transitions are the
+#                         same as the other two take), so --cover transitions on binding.yaml never walks it; it has a file of its own
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/features/kosks, libs/ui/src/mds); nothing was looked for in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.kosks.editAndHide
+
+# the sidebar, and its "Köşk ayarları", show from 768 px
+browser: { width: 1440, height: 900 }
+
+data:
+  # what walk-data.mjs make writes; read after `setup`, so a missing file is fine until a scenario uses it
+  made: { json: ../.local/made/editandhide.json }
+
+# A person who becomes a köşk's nazım in `setup` is sent by '/' to that köşk's home, so the sign-in waits for it: a page opened while
+# '/' is still sending the person on can be replaced by that redirect (the same as nizam.shell.noAccessAndNotFound). {home} is the
+# scenario's own: '/kosks/*/ana-sayfa' for the nazım, '/' for the başnazım, who stays.
+signIn:
+  - goto: '{nizam}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{nizam}{home}'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. "Ad" and "Kısa ad" both contain "ad", and a
+  # string is matched whole, so each is found by its own name.
+  FILL_IN:
+    - fill: { role: textbox, name: Ad, value: '{newName}' }
+    - fill: { role: textbox, name: Etiketler, value: '{newTags}' }
+    - click: { role: radio, name: Bordo }
+    - fill: { role: textbox, name: Açıklama, value: '{newDescription}' }
+    - click: { role: checkbox, name: Listelerde gösterme }
+    - click: { role: checkbox, name: Kayıt her zaman onaylı }
+    - click: { role: checkbox, name: Ders kayıtları herkese açılamaz }
+  UNTICK:
+    - click: { role: checkbox, name: Ders kayıtları herkese açılamaz }
+  CLEAR_NAME:
+    - fill: { role: textbox, name: Ad, value: '' }
+  SHORT_NAME:
+    - fill: { role: textbox, name: Ad, value: A }
+  MANY_TAGS:
+    - fill: { role: textbox, name: Etiketler, value: 'a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11' }
+  # a name and tags the form allows, in place of the wrong ones
+  CORRECT:
+    - fill: { role: textbox, name: Ad, value: '{newName}' }
+    - fill: { role: textbox, name: Etiketler, value: '{newTags}' }
+  NAVIGATE:
+    - goto: '{nizam}/hesap'
+
+states:
+  # The hide is a Next server action: a POST to the page's own address, held while the busy dialog is checked. It answers 200 whatever
+  # it did, so only DONE can be walked with a call (a FAIL would be compared with its refusal's status). `saving` has no `call` for
+  # the same reason: the locked walk goes through FAIL.locked, and a server action says 200 for a 409. Its busy screen (the fields
+  # off, 'Kaydet' busy) is therefore not held and not checked; the walk goes on to the next screen.
+  hiding: { call: '{nizam}/kosks/*/ayarlar' }
+  # the list the page goes to; an exit with nodes is checked by them, and by its address too
+  hidden: { url: '{nizam}/kosks**' }
+  left: { url: '{nizam}/hesap' }
+
+# What a walk finds and role and name cannot: words that change with the köşk's name, a bare <main>, a link whose name carries a number,
+# and a toast that has no role.
+nodes:
+  # the shell's one <main>; the page a walk leaves for has the same sidebar and <main id="main">, so the page is looked for by what only
+  # it holds
+  settingsPage: { role: main, hasText: Köşk bilgileri }
+  # "{ad} sayfasında görünen bilgileri, ...": the name before it changes with a save
+  settingsIntro: { text: '/sayfasında görünen bilgileri, köşkün görünürlüğünü ve bütün derslerinde geçerli politikaları buradan değiştirirsiniz\.$/' }
+  # the tabs' own words are followed by the number of nazımlar and of hosting rights
+  tabNazims: { role: link, name: '/^Köşk nazımları/' }
+  tabHosting: { role: link, name: '/^Barındırma hakları/' }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # the fields by their labels; a radio's words are its label's, beside it, not inside it
+  nameField: { role: textbox, name: Ad }
+  handleField: { role: textbox, name: Kısa ad }
+  tagsField: { role: textbox, name: Etiketler }
+  descriptionField: { role: textbox, name: Açıklama }
+  coverLaciverd: { role: radio, name: Lâciverd }
+  coverBordo: { role: radio, name: Bordo }
+  coverZumrut: { role: radio, name: Zümrüt }
+  coverMurekkep: { role: radio, name: Mürekkep }
+  unlistedCheckbox: { role: checkbox, name: Listelerde gösterme }
+  approvalCheckbox: { role: checkbox, name: Kayıt her zaman onaylı }
+  recordingsCheckbox: { role: checkbox, name: Ders kayıtları herkese açılamaz }
+  # the card, the button and its heading share one text
+  dangerHeading: { role: heading, name: Köşkü gizle }
+  hideButton: { role: button, name: Köşkü gizle }
+  # the toast after a save names the köşk by its new name
+  savedBody: { text: '/ için değişiklikler kaydedildi\.$/' }
+  # the dialog's words about the köşk: its name above the title and in the sentence, as the form was last saved
+  hideEyebrow: { css: 'p.mds-eyebrow', hasText: '/^Ayar Deneme Köşkü/' }
+  hideBody: { text: '/ talebelerden, hocalardan, medreselerden ve ziyaretçilerden gizlenecek; köşk ve bütün dersleri her listeden çıkar\.$/' }
+  # the page behind the dialog is inert, but the page's own "Vazgeç" has the same name: the dialog's is looked for inside it
+  hideTitle: { role: heading, name: Köşkü gizle, within: { role: alertdialog } }
+  hideCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  hideClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  hideConfirm: { role: button, name: Gizle, within: { role: alertdialog } }
+  # the list the page lands on: its <main> by the heading only the list has, the köşk's row by its name (the seeded köşks have others)
+  listPage: { role: main, hasText: Bütün köşkler }
+  hiddenBody: { text: '/ artık hiçbir listede görünmüyor\.$/' }
+  listRowName: { role: link, name: '/^Ayar Deneme Köşkü/' }
+  listRowStatus: { text: Gizli, within: { css: tr, hasText: '/Ayar Deneme Köşkü/' } }
+  listRowSince: { text: '/ beri$/', within: { css: tr, hasText: '/Ayar Deneme Köşkü/' } }
+  listRowRestore: { role: button, name: '/^Geri al: Ayar Deneme Köşkü/' }
+
+# What a step leaves outside the screen, read through the API as the account that owns the köşk.
+effects:
+  # after an accepted save: what the köşk holds, which the screen does not show (the policies and the cover are boxes and a radio), and
+  # whether the open list that anybody reads still has it (e2e kosks#8: 'Listelerde gösterme' takes the köşk out of it)
+  updateKosk:
+    - run:
+        - node
+        - ../nizam/kosks/editAndHide/walk-data.mjs
+        - check
+        - editandhide
+        - '{owner}'
+        - 'name={savedName}'
+        - 'tags={savedTags}'
+        - 'description={savedDescription}'
+        - 'coverHue={savedCover}'
+        - 'isPrivate={savedPrivate}'
+        - 'alwaysRequireApproval={savedApproval}'
+        - 'recordingsNeverPublic={savedRecordings}'
+      expect: 'kosk matches 7 fields'
+    - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, listed, editandhide]
+      expect: 'kosk listed {savedListed}'
+  # after the 409 that the page tells as "Bir şeyler ters gitti": the köşk still has the policy on (the generic toast is also what
+  # failed says, which no scenario walks)
+  toastGeneric:
+    - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, check, editandhide, '{owner}', 'recordingsNeverPublic={unchangedRecordings}']
+      expect: 'kosk matches 1 fields'
+  # after the köşk is hidden: the directory, read as the başnazım, says HIDDEN, and one audit row `kosk.hide` names the köşk (e2e kosks#9).
+  # The audit table is read with SQL because the one API that lists it (GET /nizam/audit-log) filters by kind and person, not by köşk.
+  hideKosk:
+    - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, status, editandhide]
+      expect: 'kosk status HIDDEN'
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*)::int as n from audit_log where action = 'kosk.hide' and (entity_id = '{made.kosk}' or details->>'koskId' = '{made.kosk}')"
+      expect: '"n":1'

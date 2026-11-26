@@ -1,0 +1,99 @@
+# The screens of tedris.shell.frame: tedris-web's bar (apps/tedris/components/phone-menu/*, libs/ui/src/mds/app-bar.tsx) wide,
+# on a phone with the sheet closed and open, and the older header and tab row (components/header, components/tab-view) on the
+# page of a thrown error. The page below the bar is not drawn: no node here is a `<main>`.
+#
+# Words: every `PhoneMenu.*`, `Header.*`, `TabView.*`, `UserNotifications.*`, `SystemPages.*` and `Auth.*` key is copied from
+# libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`), the key being the path inside that file. Three
+# keys are NOT in any i18n file and are written here with their placeholders:
+#   composed.Header.brand             the word "Medaris" in the older header, a literal of header.tsx:22
+#   composed.Header.userMenu          the older user menu's button: the avatar's two initials and then the name
+#                                     (user-header-menu.tsx:44-47); its accessible name is its content
+#   composed.PhoneMenu.personName     the name in the sheet's person row (member-phone-menu.tsx:103), shown as it is
+# Samples are the seeded talebe's own name (STACK.md) and the one unread notification the seed gave her.
+schema: delurio-graph/0
+kind: ui
+id: tedris.shell.frame
+flow: tedris.shell.frame
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Nazlı Talebe
+  initials: NT
+  count: "1"
+
+nodes:
+  # ---- the wide bar: <header data-system-chrome>, hidden below 768 px by `max-md:hidden` ----
+  wideBanner: { type: page, component: Page, role: banner, in: [wideBar], source: apps/tedris/components/phone-menu/desktop-bar.tsx:57 } # no name and no initialFocus: nothing moves the focus when the page opens (rule focus-not-set)
+  wideNav: { type: page, component: Page, role: navigation, name: { key: PhoneMenu.navLabel }, in: [wideBar], source: apps/tedris/components/phone-menu/desktop-bar.tsx:68 }
+  logoMember: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.homeLabel }, in: [wideBar], when: isMember, source: apps/tedris/components/phone-menu/desktop-bar.tsx:61 } # href /home; current on Ana sayfa, which is the only page where it is
+  logoVisitor: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.homeLabel }, in: [wideBar], when: isVisitor, source: apps/tedris/components/phone-menu/desktop-bar.tsx:61 } # href /discover, under a name that says "ana sayfa" (anonymous#21)
+  signInBar: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.signIn }, in: [wideBar, phoneBar], when: isVisitor, emits: SIGN_IN, source: apps/tedris/components/phone-menu/desktop-bar.tsx:103 } # wide: a ghost button with an href; phone: the icon link of the bar, named by aria-label (phone-menu.tsx:44-51)
+  registerWide: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.register }, in: [wideBar], when: isVisitor, emits: REGISTER, source: apps/tedris/components/phone-menu/desktop-bar.tsx:106 }
+  account: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.account }, in: [wideBar], when: isMember, emits: OPEN_ACCOUNT, source: apps/tedris/components/phone-menu/desktop-bar.tsx:93 } # a decorative avatar and a visually hidden text; the page /account marks nothing (FRAME-2)
+
+  # ---- the five places, the same nodes in the wide bar's navigation and in the sheet's ----
+  navHome: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.home }, in: [wideBar, phoneSheet], when: isMember, emits: PICK_HOME, source: apps/tedris/components/phone-menu/desktop-bar.tsx:69 }
+  navDiscover: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.discover }, in: [wideBar, phoneSheet], emits: PICK_DISCOVER, source: apps/tedris/components/phone-menu/desktop-bar.tsx:70 } # the visitor's only item
+  navCourses: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.courses }, in: [wideBar, phoneSheet], when: isMember, emits: PICK_COURSES, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73 }
+  navSchedule: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.schedule }, in: [wideBar, phoneSheet], when: isMember, emits: PICK_SCHEDULE, source: apps/tedris/components/phone-menu/desktop-bar.tsx:74 }
+  navDecks: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.decks }, in: [wideBar, phoneSheet], when: isMember, emits: PICK_DECKS, source: apps/tedris/components/phone-menu/desktop-bar.tsx:75 }
+  # the item of the page, the same link as one of the five with `aria-current="page"`: the format has no key for it, so it is a node of its own
+  # and the binding finds it by the attribute. Which of the five is current follows the address (member-phone-menu.tsx:21-31); a visitor's is
+  # Keşfet always (SHL-10); on a page of none of the five nothing is marked
+  currentItem: { type: action, component: LinkButton, role: link, text: { oneOf: [PhoneMenu.home, PhoneMenu.discover, PhoneMenu.courses, PhoneMenu.schedule, PhoneMenu.decks] }, in: [wideBar, phoneSheet], when: placed, source: libs/ui/src/mds/nav-item.tsx:56 }
+
+  # ---- the bell, in both bars: its name is the same for a person with nothing unread and with some (SHL-04) ----
+  bell: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.notifications }, in: [wideBar, phoneBar], when: isMember, emits: OPEN_NOTIFICATIONS, source: apps/tedris/components/phone-menu/desktop-bar.tsx:83 } # the count is in the older header only, which is hidden here
+
+  # ---- the phone's app bar: <header class="mds-appbar">, a banner ----
+  appBar: { type: page, component: Page, role: banner, in: [phoneBar], source: libs/ui/src/mds/app-bar.tsx:63 }
+  menuButton: { type: action, component: Button, role: button, name: { key: PhoneMenu.menu }, in: [phoneBar], emits: OPEN_MENU, source: libs/ui/src/mds/app-bar.tsx:64 } # icon only, named by aria-label; the sheet's trigger, and the node the focus returns to
+  barTitle: { type: text, component: Text, text: { oneOf: [PhoneMenu.home, PhoneMenu.discover, PhoneMenu.courses, PhoneMenu.schedule, PhoneMenu.decks] }, in: [phoneBar], when: placed, source: libs/ui/src/mds/app-bar.tsx:71 } # a <p>, not a heading (SHL-14); on a page of none of the five it is the page's own name (Hesabım, Bildirimler, a course's title), which is drawn by that page's flow
+
+  # ---- the sheet: a Base UI dialog; the page behind it is inert, so nothing of the bar is listed here ----
+  sheet: { type: page, component: Page, role: dialog, name: { key: PhoneMenu.navLabel }, in: [phoneSheet], initialFocus: sheetClose, source: libs/ui/src/mds/app-bar.tsx:78 } # aria-label, the same words as the navigation inside it
+  sheetClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: PhoneMenu.close }, in: [phoneSheet], emits: CLOSE, source: libs/ui/src/mds/app-bar.tsx:82 } # the first control of the sheet, which the dialog focuses (schedule#13)
+  sheetNav: { type: page, component: Page, role: navigation, name: { key: PhoneMenu.navLabel }, in: [phoneSheet], source: libs/ui/src/mds/app-bar.tsx:92 }
+  accountSheet: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.accountLabel, params: { name: person.name } }, in: [phoneSheet], when: isMember, emits: OPEN_ACCOUNT, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:96 } # its name has the name and not the visible role line below it (SHL-09)
+  accountName: { type: text, component: Text, text: { key: composed.PhoneMenu.personName, params: { name: person.name } }, in: [phoneSheet], when: isMember, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:103 }
+  accountRole: { type: text, component: Text, text: { key: PhoneMenu.roleTalebe }, in: [phoneSheet], when: isMember, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:106 } # the same word for every account: a hoca, a nazım and a başnazım are told they are "Talebe" (SHL-09, ACC-22, MDRS-235; e2e schedule#13 a7 pins it)
+  signInSheet: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.signIn }, in: [phoneSheet], when: isVisitor, emits: SIGN_IN, source: apps/tedris/components/phone-menu/phone-menu.tsx:55 }
+  registerSheet: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.register }, in: [phoneSheet], when: isVisitor, emits: REGISTER, source: apps/tedris/components/phone-menu/phone-menu.tsx:58 }
+
+  # ---- the older header and tab row, on the page of a thrown error; hidden by PhoneChrome's style everywhere else (anonymous#26) ----
+  legacyBanner: { type: page, component: Page, role: banner, in: [errorPage], source: apps/tedris/components/header/header.tsx:16 }
+  legacyBrand: { type: text, component: Text, text: { key: composed.Header.brand }, in: [errorPage], source: apps/tedris/components/header/header.tsx:22 }
+  legacySearch: { type: field, component: TextField, role: textbox, text: { key: Header.searchPlaceholder }, value: { literal: "" }, in: [errorPage], source: apps/tedris/components/header/header.tsx:26 } # wired to nothing: it has no handler and no form, and typing in it does nothing (SHL-06)
+  legacyBellCounted: { type: action, component: LinkButton, role: link, name: { key: UserNotifications.labelUnread, params: { count: unread.count } }, in: [errorPage], when: "isMember and unread == 'some'", emits: OPEN_NOTIFICATIONS, source: apps/tedris/components/header/user-notification-menu.tsx:17 } # the only bell in the app that says how many are unread
+  legacyBell: { type: action, component: LinkButton, role: link, name: { key: UserNotifications.label }, in: [errorPage], when: "isMember and unread == 'none'", emits: OPEN_NOTIFICATIONS, source: apps/tedris/components/header/user-notification-menu.tsx:17 }
+  legacyUserMenu: { type: action, component: Button, role: button, name: { key: composed.Header.userMenu, params: { initials: person.initials, name: person.name } }, in: [errorPage], when: isMember, source: apps/tedris/components/header/user-header-menu.tsx:42 } # opens a dropdown that is not drawn (scope.outOfView)
+  legacySignIn: { type: action, component: Button, role: button, text: { key: Auth.signIn }, in: [errorPage], when: isVisitor, source: apps/tedris/features/keycloak/login.tsx:21 } # a button that calls signIn(), not a link
+  legacyRegister: { type: action, component: Button, role: button, text: { key: Auth.register }, in: [errorPage], when: isVisitor, source: apps/tedris/features/keycloak/login.tsx:26 }
+  legacyTabHome: { type: action, component: LinkButton, role: link, text: { key: TabView.home }, in: [errorPage], when: isMember, emits: TAB_HOME, source: apps/tedris/components/tab-view/index.tsx:43 } # "Ev"
+  legacyTabLearning: { type: action, component: LinkButton, role: link, text: { key: TabView.learning }, in: [errorPage], emits: TAB_LEARNING, source: apps/tedris/components/tab-view/index.tsx:55 } # "Öğrenme", to /discover, for a visitor too
+  legacyTabDecks: { type: action, component: LinkButton, role: link, text: { key: TabView.decks }, in: [errorPage], when: isMember, emits: TAB_DECKS, source: apps/tedris/components/tab-view/index.tsx:70 }
+
+  # ---- the error box (tedris.shell.systemPages draws it in full): a section, not a main, since the boundary is inside the shell ----
+  errorSection: { type: page, component: Page, role: region, name: { labelledBy: errorTitle }, in: [errorPage], source: libs/ui/src/mds/system-state.tsx:33 }
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.errorTitle }, in: [errorPage], source: libs/ui/src/mds/system-state.tsx:43 } # h1
+  errorText: { type: text, component: Text, text: { key: SystemPages.errorText }, in: [errorPage], source: apps/tedris/features/errors/system-page.tsx:106 }
+  errorRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: SystemPages.errorAction }, in: [errorPage], emits: RETRY, source: apps/tedris/features/errors/system-page.tsx:106 }
+
+edges:
+  - { labelledBy: [errorSection, errorTitle] }
+  - { returnsFocus: [sheet, menuButton] } # Esc and "Kapat" give the focus back to the trigger, as Base UI does; a followed link to another page leaves the app bar behind, so the focus is on the body there and no node of this graph is shown (a link to the same page does return it)
+  - { triggers: [menuButton, phoneSheet] }
+
+rules:
+  - { id: SHL-04, rule: "The bell of both bars is named \"Bildirimler\" whatever is unread: PhoneChrome never reads the count (phone-chrome.tsx:20-48), desktop-bar.tsx:83-89 and member-phone-menu.tsx:86-92 pass the static message PhoneMenu.notifications. The name that MDRS-167 asks for, \"Bildirimler, 3 okunmamış\", exists only in the older header's bell (components/header/user-notification-menu.tsx:11-25), which PhoneChrome hides with display:none, and that header still calls GET /notifications/unread-count on every signed-in render (read in the code; the request was not watched on the network). Measured on the stack: the seeded talebe has 1 unread; the bar's bell says \"Bildirimler\" wide and phone; the older header, shown when a page throws, says \"Bildirimler, 1 okunmamış\". Fix: read the count once in PhoneChrome, give both bars bellLabel(unread), and delete the older header. Same as ACC-01." }
+  - { id: SHL-06, rule: "app/error.tsx is the only error boundary and sits above every segment layout, so a page that throws takes its layout and PhoneChrome with it, and the style that hides [data-legacy-header] and [data-legacy-tabs] goes too (phone-chrome.tsx:36-40): the older header (a search box wired to nothing, a user menu with three disabled items, for a visitor two buttons) and the older tab row (\"Ev\", \"Öğrenme\", \"Desteler\") show above the error box, at every width. Measured on the stack, as the talebe and as a visitor, by giving a course a time zone no calendar knows (the inventory had it from the code only). Fix: mount PhoneChrome inside ErrorState or add an error.tsx per segment, and delete the older header." }
+  - { id: FRAME-1, rule: "On the page of a thrown error under a path that owns its main (every path TabView.ownsItsMain lists: /courses/<id>, /discover, /home, /schedule, ...) the page has no <main> landmark at all: SystemState draws a <section> when it is inside the shell (system-state.tsx:104), and TabView leaves the children bare for those paths (tab-view/index.tsx:83-85) instead of wrapping them in <main data-legacy-main>. Measured: getByRole('main') finds 0 on /courses/<id> with a bad time zone, as the talebe and as a visitor. A screen-reader user has no landmark to jump to. New finding, proposed id. Fix: draw the error state as <main> (shell is meant for pages that sit inside a <main>) or wrap it in one." }
+  - { id: FRAME-2, rule: "On Hesabım and Bildirimler the bar marks nothing as current: sectionOf() has no entry for them (member-phone-menu.tsx:21-31), and neither the bell nor the Hesabım link takes aria-current, though each leads to the page the person is on. Measured wide: /account and /notifications give no [aria-current]. Low severity; new finding, proposed id. Fix: give the bell and the Hesabım link aria-current=\"page\" on their own pages." }
+  - { id: SHL-09, rule: "The sheet's person row says \"Talebe\" under every signed-in person, a hoca, a nazım and a başnazım too (member-phone-menu.tsx:106, PhoneMenu.roleTalebe): the session does not carry the roles, and the older user menu dropped the same line in MDRS-216 (user-header-menu.tsx:45-47). The row's link is named \"Hesabım: {name}\" and its visible text is the name and \"Talebe\", so the visible role line is not in the name (WCAG 2.5.3). The e2e schedule#13 (a7, e2e/schedule.e2e.ts:447) pins the word, so removing the line removes that assertion with it (inventory SC-03). Same as ACC-22 and MDRS-235. Fix: drop the line or take it from GET /me." }
+  - { id: SHL-10, rule: "A visitor's bar and sheet mark Keşfet as current on every page: the wide bar forces section=discover for a visitor (desktop-bar.tsx:42-47) and the sheet draws its one item with `active` hard-coded (phone-menu.tsx:64). Measured wide on a course page: Keşfet is current, beside the course's own breadcrumb. Fix: derive `active` from sectionOf(pathname) for a visitor too." }
+  - { id: SHL-11, rule: "There is no skip link: before the first control of a page's own content a keyboard user passes the bar's tab stops (DSC-22 says four to eight, SHL-11 up to eight). Measured wide as the talebe on /home: nine stops before \"Celse sayfası\": the wordmark, the five places, the theme toggle, the bell and Hesabım. Fix: a first-in-DOM skip link to the page's <main>; each page has its own <main>, so give them one id. Same as DSC-22." }
+  - { id: SHL-14, rule: "The phone bar's page name is a <p class=mds-appbar__title> (app-bar.tsx:71), not a heading, so the bar gives the page no h1 below 768 px: the page brings its own h1 (the kit's design, as the inventory says). A graph that asserts a heading asserts the one inside the page, not this paragraph. Drawn as `type: text` with no role." }
+  - { id: focus-not-set, rule: "No page of the frame sets an initial focus: no autoFocus and no focus() in components/phone-menu, so the bar nodes have no `initialFocus` and the graph says nothing of the focus when a page opens (measured: document.activeElement is the body after a load and after a followed link). The only focus the frame moves is the sheet's, to \"Kapat\" on opening, and back to \"Menü\" on Esc, on \"Kapat\" and on a link to the same page. Recorded so the silence is not read as an omission; not a finding of the inventory." }
+  - { id: label-in-name, rule: "A node's visible text is contained in its accessible name (WCAG 2.5.3): the bar's links and buttons are named by their text, except the sheet's person row (SHL-09) and the wide Hesabım link, whose visible part is the initials in a decorative avatar and whose name is a hidden text." }

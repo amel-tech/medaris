@@ -1,0 +1,79 @@
+# The screens of tedris.learn.homeworkMemorize: the card "Ödev" of the celse page (/courses/<c>/lessons/<l>) when the homework is recited
+# (apps/tedris/features/courses/components/session-homework.tsx, `MemorizeHomework` :173-340). Only the card is drawn; the rest of the page
+# is tedris.celse.attend's. The flow only reads (getMyEvaluation, and getMySubmission for the list of earlier work), so there is no `changes`.
+#
+# Words: every `Homework.*` key is copied letter for letter from libs/i18n/src/locales/tr/tedris-learn.json (the app reads it as
+# `tedrisLearn.Homework`), the key being the path inside that file. The `composed.*` keys are NOT in any i18n file: they are the texts the
+# app takes from its data and shows as they are, written here with their placeholders so a replay can match them (a placeholder with no
+# sample in the binding matches any text):
+#   composed.Homework.description       the homework's description as the hoca typed it                       (session-homework.tsx:801-808)
+#   composed.Homework.markNote          the hoca's note on the mark, after the label "Hocanın notu:"          (session-homework.tsx:278)
+#   composed.Homework.earlierNoteLabel  the label of the talebe's earlier note: `noteLabel` and a colon        (session-homework.tsx:323)
+#   composed.Homework.earlierNote       the talebe's earlier note                                             (session-homework.tsx:324)
+#   composed.Homework.reviewNote        the review's note                                                     (session-homework.tsx:730)
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.learn.homeworkMemorize
+flow: tedris.learn.homeworkMemorize
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  description: İlk fasıl ezberden okunacak.
+  note: Üçüncü satırı bir daha oku.
+  earlierNote: Ödevi önce dosyayla teslim edecektim.
+  reviewNote: Notun yerinde, devam et.
+  name: Örnek hoca
+  when: 12 Kasım 21:05
+
+# The page sets no focus on load and nothing in the card moves one, so there is no `initialFocus` and no `focus` here.
+nodes:
+
+  # --- the page and the card: a region named by its h2 (session-homework.tsx:239-251)
+  celsePage: { type: page, component: Page, role: main, in: [waiting, marked, loadFailed], source: apps/tedris/features/courses/components/session-page.tsx:337 } # the page's one <main>; it has no name, and nothing moves the focus into it or into the card (focus-not-set)
+  homeworkRegion: { type: page, component: Page, role: region, name: { labelledBy: homeworkTitle }, in: [waiting, marked, loadFailed], source: apps/tedris/features/courses/components/session-homework.tsx:239 } # a <section aria-labelledby>
+  homeworkTitle: { type: text, component: Heading, role: heading, text: { key: Homework.sectionTitle }, in: [waiting, marked, loadFailed], source: apps/tedris/features/courses/components/session-homework.tsx:245 } # h2, with a note icon
+
+  # --- the mark, a badge in the heading's row, drawn once the read has answered: four words, one per mark (MEMO-2: nothing names it)
+  badgePending: { type: text, component: Text, text: { key: Homework.memorizePending }, in: [waiting], source: apps/tedris/features/courses/components/session-homework.tsx:253 } # secondary badge
+  badgeFull: { type: text, component: Text, text: { key: Homework.memorizeFull }, in: [marked], when: isFull, source: apps/tedris/features/courses/components/session-homework.tsx:253 } # success badge
+  badgeIncomplete: { type: text, component: Text, text: { key: Homework.memorizeIncomplete }, in: [marked], when: isIncomplete, source: apps/tedris/features/courses/components/session-homework.tsx:253 } # warning badge
+  badgeAbsent: { type: text, component: Text, text: { key: Homework.memorizeAbsent }, in: [marked], when: isAbsent, source: apps/tedris/features/courses/components/session-homework.tsx:253 } # error badge: the talebe "Vermedi"
+
+  # --- what the hoca set (AssignmentBody): the description; the hoca's files are tedris.files.download's
+  description: { type: text, component: Text, text: { key: composed.Homework.description }, in: [waiting, marked, loadFailed], source: apps/tedris/features/courses/components/session-homework.tsx:801 } # a paragraph, direction taken from its own text; not drawn for a homework with no description (flow.yaml scope.outOfView)
+
+  # --- the block that says to recite it (data-testid memorize-homework): no field, no button
+  memorizeHeading: { type: text, component: Heading, role: heading, text: { key: Homework.memorizeTitle }, in: [waiting, marked, loadFailed], source: apps/tedris/features/courses/components/session-homework.tsx:265 } # h3, with a headphones icon
+  memorizeBody: { type: text, component: Text, text: { key: Homework.memorizeBody }, in: [waiting, marked, loadFailed], source: apps/tedris/features/courses/components/session-homework.tsx:269 } # a caption: this homework is not handed in as a file; the hoca listens and marks
+  markNoteLabel: { type: text, component: Text, text: { key: Homework.memorizeNote }, in: [marked], when: noted, source: apps/tedris/features/courses/components/session-homework.tsx:277 } # the label of the hoca's note, in the same paragraph as the note
+  markNote: { type: text, component: Text, text: { key: composed.Homework.markNote }, in: [marked], when: noted, source: apps/tedris/features/courses/components/session-homework.tsx:278 } # <bdi dir=auto>, line breaks kept
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Homework.memorizeLoadFailed }, in: [loadFailed], source: apps/tedris/features/courses/components/session-homework.tsx:270 } # a paragraph with role alert; no retry beside it (WRT-06)
+
+  # --- what the talebe handed in before the switch (data-testid memorize-earlier), read by a second effect. Drawn for a note or files; here a note
+  earlierHeading: { type: text, component: Heading, role: heading, text: { key: Homework.filesLabel }, in: [waiting, marked, loadFailed], when: hasEarlier, source: apps/tedris/features/courses/components/session-homework.tsx:288 } # h3 "Teslim ettiğin dosyalar", over a note alone too (MEMO-3)
+  earlierNoteLabel: { type: text, component: Text, text: { key: composed.Homework.earlierNoteLabel }, in: [waiting, marked, loadFailed], when: hasEarlier, source: apps/tedris/features/courses/components/session-homework.tsx:323 }
+  earlierNote: { type: text, component: Text, text: { key: composed.Homework.earlierNote }, in: [waiting, marked, loadFailed], when: hasEarlier, source: apps/tedris/features/courses/components/session-homework.tsx:324 } # read-only: no field, no "Notu kaydet"
+
+  # --- the review the course team sent on that hand-in (ReviewBody, tedris.learn.homeworkReview draws the rest)
+  reviewHeading: { type: text, component: Heading, role: heading, text: { key: Homework.reviewTitle }, in: [waiting, marked, loadFailed], when: wasReviewed, source: apps/tedris/features/courses/components/session-homework.tsx:711 } # h3
+  reviewedBadge: { type: text, component: Text, text: { key: Homework.reviewed }, in: [waiting, marked, loadFailed], when: wasReviewed, source: apps/tedris/features/courses/components/session-homework.tsx:713 } # success badge
+  reviewBy: { type: text, component: Text, text: { key: Homework.reviewBy }, in: [waiting, marked, loadFailed], when: wasReviewed, source: apps/tedris/features/courses/components/session-homework.tsx:716 } # the reviewer's name and the time, in the viewer's zone
+  reviewNote: { type: text, component: Text, text: { key: composed.Homework.reviewNote }, in: [waiting, marked, loadFailed], when: wasReviewed, source: apps/tedris/features/courses/components/session-homework.tsx:730 }
+
+edges:
+  - { labelledBy: [homeworkRegion, homeworkTitle] }
+
+rules:
+  - { id: focus-not-set, rule: "The card sets no focus: opening the page leaves it at the document's start, and session-homework.tsx has no autoFocus and no .focus() call in MemorizeHomework (:173-340, grep verified). The graph draws no initialFocus and no focus." }
+  - { id: read-only, rule: "A recited homework has no control of its own: no field, no picker, no note form, no button, and the card sends nothing (the only calls are the two reads). The talebe's side of the e2e of the file card (Dosya ekle, Notu kaydet) does not apply; the API refuses a file anyway (409 SUBMISSION_FILES_NOT_TAKEN, lesson-submission.service.ts:184), which nazar's evaluation.e2e.ts#3 pins." }
+  - { id: WRT-06, rule: "session-homework.tsx:270-274: when the mark cannot be read the card says \"Ezber durumun şu an okunamadı.\" in an alert and offers no way to try again; the notes, questions and Ödevim panels each have a \"Yeniden dene\". The only way back is to reload the whole page. Fix: the same outline button beside the alert (decision D2). Not walked: nothing on the local stack makes the read fail." }
+  - { id: WRT-08, rule: "features/courses/file-model.ts:178-212, touched here only as the other half of the story: a hand-in page left open while the hoca switches the homework to \"Ezber\" answers a file upload with 409 SUBMISSION_FILES_NOT_TAKEN, which the file card maps by status to `limit` (\"En çok 10 dosya ekleyebilirsin. Yenisi için birini kaldır.\"), a wrong sentence. This card has no upload, so it never says it; tedris.learn.homeworkHandIn draws it. Fix: map the code to its own message or to `failed`." }
+  - { id: MEMO-1, rule: "new, provisional id: session-homework.tsx:189-211 reads the mark in an effect that depends on the lesson alone, so it runs once when the card appears, and tedrisat sends no notification when a mark is saved (evaluation.repository.ts:216-312 writes the row and an audit row only; notification-types.ts:13-31 has SUBMISSION_REVIEWED and EXAM_RESULTS_RELEASED and nothing for a mark). A talebe who waits on \"Bekliyor\" is never told, and a card left open stays on \"Bekliyor\" after the hoca has marked, until the page is reloaded. Fix: a notification of the mark that leads to the celse, and a read when the tab is shown again (decision D1). Read from the code and the domain; the replay's HOCA_MARKS step draws it." }
+  - { id: MEMO-2, rule: "new, provisional id: session-homework.tsx:252-256 draws the mark as a Badge with the word alone, in the heading's row, beside the h2 \"Ödev\". A screen reader reads \"Ödev\" and then \"Tam\" (or \"Eksik\", \"Vermedi\") with nothing saying whose mark it is or what it is a mark of; the file card's badge (\"Teslim edildi\") says what it is by its own words, this one does not. Fix: a visually hidden prefix such as \"Hocanın işareti:\", or the badge named by the block's heading. Read from the code, not checked with a screen reader." }
+  - { id: MEMO-3, rule: "new, provisional id: session-homework.tsx:283-291 draws the list of earlier work when the talebe handed in files OR a note, and gives it the heading \"Teslim ettiğin dosyalar\" (files you handed in) either way, so a talebe who saved only a note reads that heading over \"Notun: ...\" with no file under it. Fix: a heading that says \"Teslim ettiğin\" alone, or draw the heading only with files. Read from the code and the unit spec (homework-card.spec.ts:825), walked with the binding earlier." }
+  - { id: evaluation-probe-leaks-homework-kind, rule: "the domain's finding, here from the side of the page: GET /lessons/:id/evaluation answers 200 {status null} to any signed-in caller of a visible, open course when the celse's homework is recited, and 404 MEMORIZATION_NOT_FOUND when it is not (evaluation.repository.ts:185; evaluation.service.ts:233-246), so a stranger can tell which celses are memorisations while exam.service.ts:103 treats \"which sessions are exams or carry homework\" as content. The page itself reads it only for a seat holder (session-page.tsx:130-155), so the card does not leak it; the API does. Read from the code, no request was made." }
+  - { id: description-optional, rule: "AssignmentBody draws the description paragraph only when the hoca wrote one (session-homework.tsx:801); a recited homework with none shows the heading and the block and nothing between them. The graph draws the description as the walk's homework has one." }
+  - { id: earlier-files, rule: "The list of earlier work also holds the files the talebe handed in before the switch, each a download link with a trash and its question (the FileRow of the file card, session-homework.tsx:298-319); a file cannot be stored on the local stack (503), so no walk makes one. The graph draws the note and the review, which a walk can make, and leaves the rows to tedris.learn.homeworkHandIn." }

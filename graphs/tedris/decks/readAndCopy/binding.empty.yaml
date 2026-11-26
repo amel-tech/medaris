@@ -1,0 +1,31 @@
+# tedris.decks.readAndCopy, a deck with no card: the page says "Bu destede henüz kart yok." and draws no table, no copy button and no "Daha fazla göster".
+# The kit's empty state (deck-reader-view.tsx:125-128); no e2e check has it. Written in the owner's no-replay phase; the file loads, nothing was walked.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/readAndCopy --bind graphs/tedris/decks/readAndCopy/binding.empty.yaml --cover transitions --out <dir>
+# A file of its own because it adds no transition to binding.yaml's (the collection steps are the same; the copy dialog is not reachable).
+#
+# The data is the course deck of binding.shared.yaml with no card: the walk makes the course `Deneme dersi readAndCopy`, seats `applicantC` in it and makes
+# its deck with `--cards 0` (the course team's own, the one kind of deck that exists with no card and is still readable: a public deck is only ever
+# published with cards in the walks, though the API would publish an empty one). Both are taken away in the other order by `teardown`. The reader has no
+# own deck: there is nothing to copy into, and the dialog is never opened, so `targets` is none.
+schema: delurio-graph/0
+kind: binding
+extends: binding.base.yaml
+flow: tedris.decks.readAndCopy
+
+scenarios:
+  emptyDeck:
+    given: { deck: shared, cards: none, held: not, targets: none, refusal: none }
+    as: applicantC
+    open: '{tedris}/decks/{rc.deck}'
+    setup:
+      - run: [node, helpers/course.mjs, make, readAndCopy, --lessons, '3', --hoca, MUDERRIS, --talebe, APPLICANT_C]
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, make, shared, --cards, '0', --own, none, --reader, APPLICANT_C]
+        expect: 'made shared deck'
+    teardown:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, remove]
+      - run: [node, helpers/course.mjs, remove, readAndCopy]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+states:
+  collecting: { call: '{tedris}/decks/{rc.deck}' }
+  uncollecting: { call: '{tedris}/decks/{rc.deck}' }

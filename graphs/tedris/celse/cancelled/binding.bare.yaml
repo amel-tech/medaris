@@ -1,0 +1,26 @@
+# tedris.celse.cancelled, a celse cancelled with neither a note nor a make-up: the card says the hoca will set a new time and that it will show in
+# Programım, and draws no note and no link. Same data, account and way in as binding.yaml (see it and locators.binding.yaml);
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/cancelled --bind graphs/tedris/celse/cancelled/binding.bare.yaml --absent --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.cancelled
+
+scenarios:
+  noNoteNoMakeUp:
+    given: { lesson: session, makeUp: none, note: none }
+    as: applicantF
+    open: '{tedris}/schedule'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'schedule->celse' }
+    vars: { course: '{cancelled.course}', celse: '{cancelled.bare}', celseTitle: '{cancelled.bareTitle}' }
+    setup:
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, ../tedris/celse/cancelled/cancelled-data.mjs, make]
+        expect: 'cancelled-data make'
+    teardown:
+      - run: [node, ../tedris/celse/cancelled/cancelled-data.mjs, remove]
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*) as n from courses where title = 'İptal edilen celse denemesi'"]
+        expect: '"n":0'

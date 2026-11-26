@@ -1,0 +1,18 @@
+# nizam.shell.noAccessAndNotFound for the başnazım's second menu entry with no page, "YouTube bağlantısı" (the nav graph's entry
+# frame:shell->youtube, /ayarlar/youtube; F-P0-4, F-X-11). It adds no transition to binding.yaml's menuEntry (the same face) and so has its
+# own file. The page is planned (nizam.youtube.liveBroadcasts, MDRS-195).
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/noAccessAndNotFound --bind graphs/nizam/shell/noAccessAndNotFound/binding.youtube.yaml \
+#     --cover transitions --absent --out <dir>   (its scenario is not the flow's main story, so --main would not find it)
+# NOT RUN: written without a replay. It makes and removes nothing.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.noAccessAndNotFound
+
+scenarios:
+  menuEntryYoutube:
+    given: { arrival: menuEntry, chief: named }
+    as: systemAdmin
+    open: '{nizam}/'
+    vars: { home: / }
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->youtube' }

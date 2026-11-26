@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APPLICATION_FIELDS,
@@ -7,7 +7,7 @@ import {
   PHONE_PATTERN,
   validateApplication,
 } from "~/features/kosk-application/model";
-import { cleanup, click, render } from "./dom";
+import { cleanup, click, render, settle } from "./dom";
 
 const mocks = vi.hoisted(() => ({ submit: vi.fn(), notify: vi.fn() }));
 
@@ -125,5 +125,92 @@ describe("Köşk açma başvurusu (design tedris/37)", () => {
     expect(link?.getAttribute("href")).toBe(
       "https://landing-dev.medaris.app/aydinlatma-metni"
     );
+  });
+
+  it("holds the field list while the application is sent: a field chosen then would not be the one sent", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.submit.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    const type = async (name: string, value: string) => {
+      const el = host.querySelector(`[name="${name}"]`) as
+        | HTMLInputElement
+        | HTMLTextAreaElement;
+      const proto =
+        el instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(el, value);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    await type("name", valid.name);
+    await type("summary", valid.summary);
+    await type("reason", valid.reason);
+    const fieldList = host.querySelector(
+      "#application-field"
+    ) as HTMLButtonElement;
+    await click(fieldList);
+    await settle(50);
+    // The list's rows follow APPLICATION_FIELDS: the second is RHETORIC.
+    await click(document.querySelectorAll(".mds-option")[1] as HTMLElement);
+    await settle(50);
+    await click(host.querySelector('button[type="submit"]') as HTMLElement);
+    expect(mocks.submit).toHaveBeenCalledWith(
+      expect.objectContaining({ field: "RHETORIC" })
+    );
+    expect(fieldList.disabled).toBe(true);
+
+    await act(async () => answer({ success: true, data: {} }));
+    expect(host.querySelector('[data-testid="application-sent"]')).not.toBe(
+      null
+    );
+  });
+
+  it("holds the text fields and 'Vazgeç' while the application is sent: a change would not be sent, and leaving would not stop it", async () => {
+    let answer: (value: unknown) => void = () => {};
+    mocks.submit.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const host = await mount();
+    const box = (name: string) =>
+      host.querySelector(`[name="${name}"]`) as
+        | HTMLInputElement
+        | HTMLTextAreaElement;
+    const type = async (name: string, value: string) => {
+      const el = box(name);
+      const proto =
+        el instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(el, value);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    await type("name", valid.name);
+    await type("summary", valid.summary);
+    await type("reason", valid.reason);
+    await click(host.querySelector("#application-field") as HTMLElement);
+    await settle(50);
+    await click(document.querySelector(".mds-option") as HTMLElement);
+    await settle(50);
+    const cancel = () =>
+      [...host.querySelectorAll("a")].find((a) =>
+        a.textContent?.includes("Vazgeç")
+      ) as HTMLAnchorElement;
+    expect(cancel().getAttribute("href")).toBe("/discover");
+
+    await click(host.querySelector('button[type="submit"]') as HTMLElement);
+    expect(mocks.submit).toHaveBeenCalledTimes(1);
+    for (const name of ["name", "summary", "reason", "email", "phone"]) {
+      expect(box(name).readOnly).toBe(true);
+    }
+    expect(cancel().hasAttribute("href")).toBe(false);
+    expect(cancel().getAttribute("aria-disabled")).toBe("true");
+
+    await act(async () => answer({ success: false, error: "no" }));
+    for (const name of ["name", "summary", "reason", "email", "phone"]) {
+      expect(box(name).readOnly).toBe(false);
+    }
+    expect(cancel().getAttribute("href")).toBe("/discover");
   });
 });

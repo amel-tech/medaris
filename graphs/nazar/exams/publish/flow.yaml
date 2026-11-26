@@ -1,0 +1,375 @@
+# The course team publishes an online exam in nazar-web, now or at a day and time, and takes it back to a draft until it opens.
+# Written from the code (captured), MDRS-299 (#415, #431): the "Yayınla" section under the questions of the exam's page and, once
+# published, the page's read-only view (apps/nazar/features/online-exams/components/exam-publish.tsx, drawn by exam-workspace.tsx).
+# Its actions are publishOnlineExam and unpublishOnlineExam of domain/online-exams.yaml. Closing an open exam early is on its results
+# page, nazar.exams.results.
+#
+# Publishing makes the exam celse ("Celsesiz taslak", the owner, 22 Nov 2026): at the start, lasting the length plus the late window,
+# with its LessonExam of format MULTIPLE_CHOICE; the course's or the medrese's zeroth question is copied into the exam.
+#
+# The owner's words this flow carries:
+#   - 21 Nov: "sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak"; "şimdilik 'en erken şu saatte en geç
+#     şu saatte sınava başlanmalı' olsun, süre kısalmasın"; the celse's time is the earliest start ("Celse saati = en erken").
+#   - The late window (D1, answered): "'sınava en geç başlama saati' de defaultta 10 dakika sonra olacak. şu anki medresemiz 'sadece
+#     gecikme için bunu kullanacağız, mazereti olan bize gelir duruma göre bakarız' dedi" (22 Nov, relayed) and "belki 10 dk değil 20 dk
+#     seçecek hoca, bunun da mümkün olması gerekmez mi sence" (22 Nov): the form asks for the minutes, 10 by default, counted from the
+#     real opening, the press itself for "Şimdi yayınla" (#431).
+#   - The length is required: "o olmadan sınav yayına alınamasın" (22 Nov, NO_DURATION).
+#   - Publishing tells the course's talebe it is scheduled (EXAM_SCHEDULED) and puts it in their calendar through the celse's
+#     invitation, as every exam celse does: "evet, takvime de düşsün" (22 Nov).
+#
+# Choices made in the code that are not his: "Taslağa al" deletes the celse and is offered until the exam opens; "İleri bir tarihte"
+# is chosen first and starts at the next whole hour; one confirmation before publishing; publishing waits for the editor's writes
+# queued before it. Not built: moving a scheduled exam in place, or changing it while scheduled (it is taken back to a draft first);
+# a page that is drawn again when the exam opens; a notification when it opens.
+schema: delurio-graph/0
+kind: flow
+id: nazar.exams.publish
+status: captured
+domain: medaris.api
+ui: nazar.exams.publish
+title: Publish or schedule an online exam
+summary: >-
+  Under the editor's questions, the section "Yayınla". While something keeps the exam from being published (no length, no question,
+  a question with no text, fewer than two options, no correct one or no topic, points that do not total 100, no zeroth question)
+  the section lists each and offers no button. A complete exam asks "Ne zaman açılsın?": "İleri bir tarihte yayınla", with a date
+  and a time from the next whole hour, or "Şimdi yayınla"; and "Geç kalanlar kaç dakika sonrasına kadar başlayabilir", 10 by
+  default, with the time it comes to. One question says what the talebe will see, then the exam is published and the page shows
+  it read-only: scheduled ("Zamanlandı", with "Taslağa al" until it opens), open ("Yayında") or over ("Bitti"), with its results a
+  link away. Talebe start it until the latest start, each with the full length.
+scope:
+  shows: publishing, scheduling and taking back one exam in nazar-web, and the exam page once it is published
+  world: open
+  outOfView:
+    - "writing the exam and fixing what keeps it from being published: nazar.exams.edit, the editor above the section"
+    - "who started and finished, their scores, and closing an open exam early: nazar.exams.results"
+    - "the notifications themselves and the 24-hour reminder: the existing remindDueExams, and the talebe's own page (tedris.exams.mine)"
+    - "an ended session (every call then sends the person to sign in: realm.auth.signIn)"
+context:
+  status:
+    values: [draft, scheduled, open, closed]
+    initial: any
+    say:
+      draft: the exam is a draft
+      scheduled: the exam is set to open at a day and time
+      open: the exam can be started, or attempts are in progress
+      closed: every attempt has ended
+  may:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the person holds exam.prepare on the course
+      no: the person does not, so the exam's page is refused
+  complete:
+    values: [yes, no]
+    initial: any
+    say:
+      yes: the exam has its length and a question, every question is complete, the points total 100 and the zeroth question is written
+      no: something keeps the exam from being published
+  mode:
+    values: [later, now]
+    initial: later
+    say:
+      later: "\"İleri bir tarihte yayınla\" is chosen, with its date and time"
+      now: "\"Şimdi yayınla\" is chosen"
+  dateTyped:
+    values: ["no", "yes"]
+    initial: "no"
+    say:
+      "no": the date and the time are the next whole hour the form starts with
+      "yes": the person has typed a date or a time
+  when:
+    values: [future, past, unset]
+    initial: any
+    say:
+      future: the day and time chosen are ahead
+      past: the day and time chosen have passed
+      unset: the date or the time field is empty
+  formOpen:
+    values: ["no", "yes"]
+    initial: any
+    say:
+      "no": no question's form is open in the editor above
+      "yes": a question's form is open in the editor above, so the section's button is off
+  lateMinutes:
+    values: [fit, unfit]
+    initial: any
+    say:
+      fit: the late window typed is a whole number of minutes from 1 to 10080
+      unfit: the late window is empty, 0, or above 10080
+  notice:
+    values: ["none", pickTime, startPassed, lateInvalid, timePassed, readAgain, refused, invalid, failed]
+    initial: "none"
+    say:
+      "none": nothing is said
+      pickTime: the date field says to choose a date and a time
+      startPassed: the date field says the time has passed
+      lateInvalid: the minutes field says it takes 1 to 10080
+      timePassed: a toast says the time has passed or the latest start comes before the earliest
+      readAgain: a toast says the exam changed or is not ready and the page was read again
+      refused: a toast says the person may not do it
+      invalid: a toast refuses what was sent as invalid, in the words of a points refusal (EXM-EDIT-1)
+      failed: a toast says it could not be done
+guards:
+  isDraft: "status == 'draft'"
+  isScheduled: "status == 'scheduled'"
+  isOpen: "status == 'open'"
+  isNow: "mode == 'now'"
+  toasting: "notice in ['timePassed', 'readAgain', 'refused', 'invalid', 'failed']"
+effects:
+  clearNotice: { set: { notice: "none" } }
+  pickNow: { set: { mode: now, notice: "none" } }
+  dateTyped: { set: { dateTyped: "yes" } }
+  pickLater: { set: { mode: later, notice: "none" } }
+  nowScheduled: { set: { status: scheduled, notice: "none" } }
+  nowOpen: { set: { status: open, notice: "none" } }
+  pickTime: { set: { notice: pickTime } }
+  startPassed: { set: { notice: startPassed } }
+  lateInvalid: { set: { notice: lateInvalid } }
+  timePassed: { set: { notice: timePassed } }
+  readAgain: { havoc: [status, complete], set: { notice: readAgain } }
+  refused: { set: { notice: refused } }
+  invalid: { set: { notice: invalid } }
+  failed: { set: { notice: failed } }
+failures:
+  reading:
+    from: getOnlineExamDraft
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [EXAM_NOT_FOUND]
+    other: [network, timeout, 5xx]
+  publishingNow:
+    from: publishOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    timePassed: [EXAM_TIME_PASSED]
+    readAgain: [EXAM_NOT_READY, EXAM_LOCKED, EXAM_STALE]
+    invalid: [VALIDATION_ERROR]
+    other: [EXAM_NOT_FOUND, network, timeout, 5xx]
+  scheduling:
+    from: publishOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    timePassed: [EXAM_TIME_PASSED]
+    readAgain: [EXAM_NOT_READY, EXAM_LOCKED, EXAM_STALE]
+    invalid: [VALIDATION_ERROR]
+    other: [EXAM_NOT_FOUND, network, timeout, 5xx]
+  unpublishing:
+    from: unpublishOnlineExam
+    forbidden: [AUTHZ_FORBIDDEN]
+    readAgain: [EXAM_LOCKED, EXAM_STALE, EXAM_NOT_PUBLISHED]
+    other: [EXAM_NOT_FOUND, network, timeout, 5xx]
+
+# The main story: a complete draft is published now, with the late window of 10 minutes.
+main:
+  given: { may: yes, status: draft, complete: yes, lateMinutes: fit, formOpen: "no", when: future }
+  events: [DONE, PICK_NOW, PUBLISH, CONFIRM, DONE]
+initial: reading
+states:
+  reading:
+    title: The exam is read
+    source: apps/nazar/features/online-exams/components/exam-page.tsx:31
+    description: >-
+      The server page reads getOnlineExamDraft, GET /online-exams/{examId}, and the person's codes on the course: where the exam
+      stands, its length, its questions with what each lacks, what only the server knows keeps it from being published (the points
+      total, the zeroth question), and its dates once published. Only a person who holds exam.prepare on the course is answered
+      (pageGate).
+    invoke: { action: getOnlineExamDraft }
+    on:
+      DONE: { guard: "may == 'yes'", target: loaded }
+      FAIL.forbidden: { guard: "may == 'no'", target: forbidden }
+      FAIL.gone: { target: notFound, source: "apps/nazar/lib/tedrisat-read.ts:46" }
+      FAIL.other: loadFailed
+  loaded:
+    title: The page is drawn as the exam stands
+    source: apps/nazar/features/online-exams/components/exam-workspace.tsx:34
+    description: A step with no screen of its own. A draft is the editor with this section under it; a published exam is shown read-only.
+    always:
+      - { guard: isDraft, target: checking, say: "a draft: the editor, and the section under it" }
+      - { guard: isScheduled, target: scheduled, say: "a scheduled exam" }
+      - { guard: isOpen, target: open, say: "an open exam" }
+      - { target: closed, say: "an exam that has closed" }
+  checking:
+    title: The exam is checked
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:177
+    description: >-
+      The page checks the exam itself as it now stands, from the editor (exam-editor.tsx:618): the length, at least one question, and
+      each question's text, two options, a correct one and a topic; the points total and the zeroth question as the read gave them. It
+      checks again as the team writes. The API checks it again when it is published.
+    always:
+      - { guard: "complete == 'no'", target: notReady, say: "something keeps it from being published" }
+      - { target: choose, say: "the exam is complete" }
+  notReady:
+    title: The exam cannot be published yet
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:178
+    description: >-
+      A warning "Sınav henüz yayınlanamaz", "Yayınlamadan önce şunları tamamlayın:" and a line for each problem, in the API's order:
+      no length, no question, a question with no text, fewer than two options, no correct one or no topic (each by its number), points
+      that do not total 100 (with the total), no zeroth question (and where it is written). The lines are not links, and there is no
+      button: the team fixes it in the editor above, and the section follows.
+    by: human
+    on:
+      FIX: { target: editor_opened, say: "they fix it in the editor above" }
+      CLOSE_TOAST: { guard: toasting, target: notReady, effect: [clearNotice], say: "they close the toast" }
+      NAVIGATE: left
+  choose:
+    title: Publish now or at a day and time
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:184
+    description: >-
+      "Ne zaman açılsın?" with "İleri bir tarihte yayınla" (chosen first) and "Şimdi yayınla". The first shows "En erken başlama", a
+      date and a time from the next whole hour, "Bu, sınav celsesinin tarihi ve saati olur."; both show "Geç kalanlar kaç dakika
+      sonrasına kadar başlayabilir" (10), the time it comes to under it (following the clock for Şimdi yayınla), and the time zone. The
+      button reads "Zamanla" or "Yayınla"; it is off while a question's form is open in the editor ("Açık soruyu kaydedin ya da
+      vazgeçin; sonra yayınlayın."). A date or a time left empty, a time that has passed, or minutes outside 1 to 10080 are said at
+      their field once the button has been pressed, and nothing is asked.
+    by: human
+    on:
+      PICK_NOW: { target: choose, effect: [pickNow], say: "they choose Şimdi yayınla" }
+      PICK_LATER: { target: choose, effect: [pickLater], say: "they choose İleri bir tarihte yayınla" }
+      TYPE_TIME: { guard: "mode == 'later'", target: choose, effect: [dateTyped], say: "they type a date or a time" }
+      PUBLISH:
+        - { guard: "formOpen == 'no' and mode == 'later' and dateTyped == 'yes' and when == 'unset'", target: choose, effect: [pickTime], say: "they press Zamanla with no date or no time" }
+        - { guard: "formOpen == 'no' and mode == 'later' and dateTyped == 'yes' and when == 'past'", target: choose, effect: [startPassed], say: "they press Zamanla with a time that has passed" }
+        - { guard: "formOpen == 'no' and lateMinutes == 'unfit'", target: choose, effect: [lateInvalid], say: "they press it with minutes outside 1 to 10080" }
+        - { guard: "formOpen == 'no'", target: confirmPublish, effect: [clearNotice], say: "they press Zamanla or Yayınla (off while a question's form is open)", source: "apps/nazar/features/online-exams/components/exam-publish.tsx:260" }
+      CLOSE_TOAST: { guard: toasting, target: choose, effect: [clearNotice], say: "they close the toast" }
+      NAVIGATE: left
+  confirmPublish:
+    title: Sınavı yayınla
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:266
+    description: >-
+      An alert dialog says what the talebe will see, the length and the question count, and that the course's talebe are told; its
+      button reads as the section's did.
+    by: human
+    on:
+      CONFIRM:
+        - { guard: isNow, target: publishingNow, say: "they confirm Yayınla" }
+        - { target: scheduling, say: "they confirm Zamanla" }
+      CANCEL: { target: choose, say: "they press Vazgeç" }
+  publishingNow:
+    title: Publish it now
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:646
+    description: >-
+      The button is busy. Once every write the editor queued before it has run, publishOnlineExam, POST /online-exams/{examId}/publish,
+      names the version they left, with no earliest start (the server's now) and the late window in minutes, counted from that now.
+      The exam celse is made at that time. Its answer is the exam as it now stands, and the page turns to it without reading it again.
+    invoke: { action: publishOnlineExam }
+    on:
+      DONE: { target: open, effect: [nowOpen], say: "the exam is open; the talebe are told", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:652" }
+      FAIL.timePassed: { target: choose, effect: [timePassed], say: "the latest start is not after now" }
+      FAIL.readAgain: { target: reading, effect: [readAgain], say: "the exam changed or is not ready: the toast says so and the page is read again", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:249" }
+      FAIL.forbidden: { target: choose, effect: [refused], say: "the person may not publish it: a toast" }
+      FAIL.invalid: { target: choose, effect: [invalid] }
+      FAIL.other: { target: choose, effect: [failed] }
+  scheduling:
+    title: Schedule it
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:646
+    description: >-
+      As publishing now, with the earliest start chosen. The exam celse is made at that day and time, and its 24-hour reminder runs as
+      for every exam celse.
+    invoke: { action: publishOnlineExam }
+    on:
+      DONE: { target: scheduled, effect: [nowScheduled], say: "the exam is scheduled; the talebe are told when it opens" }
+      FAIL.timePassed: { target: choose, effect: [timePassed], say: "the time chosen has passed meanwhile" }
+      FAIL.readAgain: { target: reading, effect: [readAgain] }
+      FAIL.forbidden: { target: choose, effect: [refused] }
+      FAIL.invalid: { target: choose, effect: [invalid] }
+      FAIL.other: { target: choose, effect: [failed] }
+  scheduled:
+    title: Zamanlandı
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:366
+    description: >-
+      The page shows the exam read-only: under "Yayınla" and the badge "Zamanlandı", when it opens and until when it can be started,
+      that the talebe were told and will be reminded 24 hours before, that a published exam does not change and is taken back to a draft
+      to change it, the button "Taslağa al", and every question with its options and the correct ones. Its results are a link in the
+      page's head. The page is not drawn again when the exam opens.
+    by: human
+    on:
+      TO_DRAFT: { target: toDraftAsk, effect: [clearNotice], say: "they press Taslağa al" }
+      RESULTS: { target: results_opened, say: "they open Sonuçlar", source: "apps/nazar/features/online-exams/components/exam-page.tsx:59" }
+      CLOSE_TOAST: { guard: toasting, target: scheduled, effect: [clearNotice], say: "they close the toast" }
+      NAVIGATE: left
+  toDraftAsk:
+    title: Sınavı taslağa al
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:390
+    description: >-
+      An alert dialog says the exam celse leaves the programme and the talebe get a calendar cancellation, and that the questions stay
+      as they are to be published again.
+    by: human
+    on:
+      CONFIRM: { target: unpublishing, say: "they confirm Taslağa al" }
+      CANCEL: { target: scheduled, say: "they press Vazgeç" }
+  unpublishing:
+    title: Take it back to a draft
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:325
+    description: >-
+      The button is busy. unpublishOnlineExam, POST /online-exams/{examId}/unpublish, with the version read: refused once the exam has
+      opened (EXAM_LOCKED), whatever the page showed. The celse it was published with is deleted, and the talebe get the calendar's
+      CANCEL. Its answer is the exam, a draft again, and the page gives the editor back without reading it again.
+    invoke: { action: unpublishOnlineExam }
+    on:
+      DONE: { target: draft_again, say: "it is a draft again", source: "apps/nazar/features/online-exams/components/exam-publish.tsx:336" }
+      FAIL.readAgain: { target: reading, effect: [readAgain], say: "it opened, or changed, meanwhile: the toast says so and the page is read again", source: "apps/nazar/features/online-exams/components/exam-publish.tsx:333" }
+      FAIL.forbidden: { target: scheduled, effect: [refused] }
+      FAIL.other: { target: scheduled, effect: [failed] }
+  open:
+    title: Yayında
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:372
+    description: >-
+      Under "Yayınla" and the badge "Yayında", "En geç başlama: <time>. Her talebe sürenin tamamını alır.", and every question with its
+      options and the correct ones; nothing can be changed or taken back, and the page counts no one. Talebe of the course start the
+      exam until its latest start, each with the full length; the attempts in progress go on after it. Who is in it, and closing it
+      early, are on the results page, a link in the page's head.
+    by: human
+    goal: true
+    on:
+      RESULTS: { target: results_opened, say: "they open Sonuçlar" }
+      CLOSE_TOAST: { guard: toasting, target: open, effect: [clearNotice], say: "they close the toast" }
+      NAVIGATE: left
+  closed:
+    title: Bitti
+    source: apps/nazar/features/online-exams/components/exam-publish.tsx:373
+    description: Under "Yayınla" and the badge "Bitti", "Sınav bitti." and every question; the results are a link in the page's head.
+    by: human
+    on:
+      RESULTS: { target: results_opened, say: "they open Sonuçlar" }
+      CLOSE_TOAST: { guard: toasting, target: closed, effect: [clearNotice], say: "they close the toast" }
+      NAVIGATE: left
+  forbidden:
+    title: Not allowed
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+    description: Under the h1 "Sınavlar", the neutral alert "Bu sayfaya izniniz yok"; the API refuses every write of such a person.
+    by: human
+    on:
+      NAVIGATE: left
+  loadFailed:
+    title: The exam could not be read
+    source: apps/nazar/features/shell/components/page-problem.tsx:31
+    description: The page says so and offers "Yeniden dene", which asks the server again (router.refresh).
+    by: human
+    on:
+      RETRY: { target: reading, say: "they press Yeniden dene" }
+      NAVIGATE: left
+  notFound:
+    title: The exam is not found
+    description: "A 404 (the celse is not an online exam, or it was archived) is Next's not-found page (lib/tedrisat-read.ts:46)."
+    type: final
+    leavesPage: true
+  draft_again:
+    title: The exam is a draft again
+    description: No talebe sees it any more; the page shows the editor (nazar.exams.edit), and it can be changed and published again.
+    type: final
+  editor_opened:
+    title: The editor
+    description: nazar.exams.edit, above the section.
+    type: final
+  results_opened:
+    title: The results are opened
+    description: nazar.exams.results.
+    type: final
+  left:
+    title: The person left the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: taken-back-only-before-it-opens
+    never: "state == 'unpublishing' and status == 'open'"
+    say: "An exam that has opened is never offered to be taken back to a draft: only a scheduled one is"

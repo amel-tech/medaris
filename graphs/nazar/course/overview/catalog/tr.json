@@ -1,0 +1,19 @@
+{
+  "Account.scopeBadge.draft": "Taslak",
+  "Account.scopeBadge.published": "Yayında",
+  "CourseOverview.boxes.applications": "Bekleyen başvuru",
+  "CourseOverview.boxes.homework": "Değerlendirme bekleyen ödev",
+  "CourseOverview.boxes.nextSession": "Sıradaki celse",
+  "CourseOverview.boxes.withoutAccess": "Katılım yolu eksik celse",
+  "CourseOverview.empty": "Bekleyen işiniz yok.",
+  "CourseOverview.listLabel": "Bekleyen işler",
+  "CourseOverview.loadFailed": "Dersin bilgileri şu anda okunamadı. Biraz sonra yeniden deneyin.",
+  "CourseOverview.loadFailedTitle": "Ders yüklenemedi",
+  "CourseOverview.openInTedris": "Tedris’te aç",
+  "Nav.ders.overview": "Genel bakış",
+  "Shell.retry": "Yeniden dene",
+  "composed.CourseOverview.count": "{count}",
+  "composed.CourseOverview.courseTitle": "{title}",
+  "composed.CourseOverview.nextSessionTime": "{time}",
+  "composed.CourseOverview.openInTedrisName": "Tedris’te aç (yeni sekmede açılır)"
+}

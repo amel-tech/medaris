@@ -1,0 +1,54 @@
+# nizam.moderation.banStudent where the course is gone: the nazım presses "Yasakla" on the talebe's row, and the course is deleted while the ban
+# is on its way, so the server answers 404 COURSE_NOT_FOUND, which the window words as the generic "İşlem tamamlanamadı." (it has no line of its
+# own for that code, present.ts:102-118) and stays open with what was typed.
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent --bind graphs/nizam/moderation/banStudent/binding.courseGone.yaml --cover transitions --out <dir>
+# NOT RUN, and the least sure of the bindings: the deletion is the `before` of the state `submitting`, which the replay runs while the server
+# action is held (replay.ts: `before`, then the check, then the release of the held call), so the POST reaches the API after the course is gone.
+# It is a file of its own because that `before` would run in every walk of a file that holds the other scenarios.
+#
+# `setup` makes the course and enrols applicantC as binding.yaml does. The deletion takes the seat, the course and the notices that point at
+# it, and removes the made file, so `{made.course}` is no longer there afterwards; nothing after the press reads it. `teardown` cleans again,
+# which finds nothing (a second `remove` says `none`, and no ban was written).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.banStudent
+
+scenarios:
+  courseGone:
+    given: { scope: course, answer: failed, session: ahead }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/students'
+    setup:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+      - run: [node, helpers/course.mjs, make, banst, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, banst]
+        expect: course remove banst
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantC, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+    vars:
+      who: applicantC
+      whoKey: APPLICANT_C
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      courseTitle: Deneme dersi banst
+      reason: Ders silinmeden önce yazıldı
+      reasonSaved: Ders silinmeden önce yazıldı
+
+states:
+  # the course is deleted while the call waits: the page keeps what it drew, and the API no longer knows the course
+  submitting:
+    call: '{nizam}/kosks/*/courses/*/students**'
+    before:
+      - run: [node, helpers/course.mjs, remove, banst]
+        expect: course remove banst

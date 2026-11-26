@@ -1,0 +1,31 @@
+# nazar.decks.import, the main story with a CSV: the same given as `sends` of binding.yaml, so it is a file of its own (a walk takes the first scenario of
+# a file whose `given` fits, and `--cover transitions` walks the shortest path to each transition). The file is clean.csv, two VOCABULARY cards, and the
+# walk takes the shortest way to the toast, which leaves the first deck selected: the cards go to "Aktarma denemesi A" and the other deck is
+# untouched (`addedToFirst`; the main story of binding.yaml picks the second deck and reads `addedToSecond`). No card is a HADEETH here.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/decks/import --bind graphs/nazar/decks/import/binding.csv.yaml \
+#     --cover transitions --out <dir>
+# NOT RUN in the writing phase. It stops at CHOOSE_FILE like every walk of this flow (binding.common.yaml says why).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.decks.import
+
+scenarios:
+  sendsCsv:
+    given: { entry: list, template: served, file: clean }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersDeck' }
+    vars: { upload: '{files.clean}', cardsAfter: '2', hadeeth: '0' }
+    setup:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, make, import, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi import"'
+      - run: [node, ../nazar/decks/import/import-data.mjs, up, decks]
+        expect: 'import-data up decks'
+    teardown:
+      - run: [node, ../nazar/decks/import/import-data.mjs, down]
+        expect: 'import-data down'
+      - run: [node, helpers/course.mjs, remove, import]
+        expect: 'course remove import'

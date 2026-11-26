@@ -1,0 +1,85 @@
+# What the walks of nizam.applications.decide share: the page's events, its addresses, and where its nodes are found where role and name
+# cannot find them. Nothing here changes data; each binding file (binding.yaml, binding.meanwhile.yaml, binding.forbidden.yaml) files its
+# own applications with ./applications.mjs and removes them (see that file's header).
+# NOT RUN: the graph was written without a replay (the first walks are a later phase). Every locator below comes from the code and the
+# catalog, none was seen in a browser; the files load (`replay <dir> --bind <file> --emit-spec` writes a spec and walks nothing).
+#
+# Not bound anywhere, and why:
+#   - `read: refused` is bound (binding.yaml, `refused`), but `read: failed`, `unreadable`, `retrying`, `detailUnreadable` and the
+#     transitions out of them are not: nothing on the stack makes tedrisat's read of the list or of one application fail on request.
+#   - `answer: gone` and `answer: failed` (and `forbidden` of the approval): no route removes an application, a refusal of the köşk's id
+#     cannot be made after the köşk was just opened, and the köşk form's own refusals are nizam.kosks.open's. `answer: forbidden` of the
+#     reject dialog is bound (binding.forbidden.yaml); `answer: decided` of both decisions is bound (binding.meanwhile.yaml).
+#   - the cached tab (a second visit to Karara bağlanan with no decision between), the 100-row limit (APPDEC-6) and a reader whose applicant
+#     holds roles: no data of the stack, or no step of the graph, reaches them.
+#   - `NAVIGATE` is walked by address, to a page that is not this one.
+# `approving` and `rejecting` carry no `call`: every server action of the page, the köşk form's own save included, is a POST to this
+# page's address, so a held call would catch the wrong one, and a walk through FAIL.<class> would report "HTTP 200" for the status it
+# compares (an engine limit: a server action answers 200 whatever the API said).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.applications.decide
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in (the dialog's textarea)
+  FILL_REASON:
+    - fill: { role: textbox, name: Ret gerekçesi, value: '{reason}' }
+  # the focus is in the empty field: Tab leaves it, and the field was touched
+  LEAVE_FIELD:
+    - key: Tab
+  # the köşk form of nizam.kosks.open, filled by the page; the walk also gives it a short name, the one thing the form leaves empty, so
+  # that ./applications.mjs can find the köşk again and remove it
+  KOSK_MADE:
+    - fill: { role: textbox, name: Kısa ad, value: '{koskHandle}' }
+    - click: { role: button, name: Köşk aç }
+  FORM_CLOSED:
+    - click: { role: button, name: Vazgeç }
+  NAVIGATE:
+    - goto: '{nizam}/bildirimler'
+
+states:
+  # the answered tab's first read is a server action: a POST to the page's own address, held while the skeleton rows are checked
+  loadingTab: { call: '{nizam}/talepler/kosk-basvurulari**' }
+  no_access: { url: '{nizam}/talepler/kosk-basvurulari', text: Bu bölüm için izniniz yok }
+  left: { url: '{nizam}/bildirimler' }
+
+# Where role and name cannot find a node. The page's <main> is also matched on the page a walk leaves for, so it is found by the page's
+# own test id. The rows and the values of the detail change with the application that is selected, so they are found by their place and
+# not by their text; the rows are found by the names this flow's applications have (./applications.mjs: Örnek … Köşkü), never another
+# person's. A repeated node is pressed on its first item, so `row` is the one the main story presses second: the refusal's.
+nodes:
+  page: { css: 'main:has([data-testid=kosk-applications])' }
+  # the tab's name carries its count: "Bekleyen 2"
+  tabWaiting: { role: tab, name: '/^Bekleyen/' }
+  tabDecided: { role: tab, name: '/^Karara bağlanan/' }
+  waitingCount: { css: .mds-tab__count, within: { role: tab, name: '/^Bekleyen/' } }
+  decidedCount: { css: .mds-tab__count, within: { role: tab, name: '/^Karara bağlanan/' } }
+  # a row is a button in an <li>: the name is the row's text in order, the last line is the date (and, answered, the outcome)
+  row: { role: button, name: '/^Örnek Mantık Köşkü /', within: { css: '[data-testid=application-list]' } }
+  rowDecided: { role: button, name: '/^Örnek (Kelâm|Mantık|Tefsir|Siyer|Belâgat|Fıkıh) Köşkü .* · (Kabul edildi|Reddedildi)$/', within: { css: '[data-testid=application-list]' } }
+  # the panel of the selected application, found by its test id; React streams a hidden copy in before it swaps the page, so only the visible one
+  detailRegion: { css: '[data-testid=application-detail]:visible' }
+  detailTitle: { css: '[data-testid=application-detail]:visible #application-title' }
+  fieldValue: { css: '[data-testid=application-detail]:visible > dl > div:nth-child(1) > dd' }
+  sentAtValue: { css: '[data-testid=application-detail]:visible > dl > div:nth-child(2) > dd' }
+  sameFieldValue: { css: '[data-testid=same-field]:visible' }
+  summaryValue: { css: '[data-testid=application-detail]:visible > div:nth-of-type(1) > p' }
+  reasonValue: { css: '[data-testid=application-detail]:visible > div:nth-of-type(2) > p' }
+  applicantRegion: { css: '[data-testid=application-detail]:visible section[aria-labelledby=applicant-title]' }
+  applicantNameValue: { css: '[data-testid=application-detail]:visible section[aria-labelledby=applicant-title] dl > div:nth-child(1) > dd' }
+  emailValue: { css: '[data-testid=application-detail]:visible section[aria-labelledby=applicant-title] dl > div:nth-child(3) > dd' }
+  phoneValue: { css: '[data-testid=applicant-phone]:visible', hasText: '/^\+/' }
+  phoneMissing: { css: '[data-testid=applicant-phone]:visible', hasText: Verilmedi }
+  rejectedReasonAlert: { css: '[data-testid=application-detail]:visible .mds-alert' }
+  # the dialog's eyebrow is the selected application's name
+  rejectEyebrow: { css: '.mds-dialog .mds-eyebrow' }
+  # sonner's toasts: a title and a description in one list item
+  toastApproved: { css: '[data-sonner-toast]', hasText: Başvuru kabul edildi }
+  toastRejected: { css: '[data-sonner-toast]', hasText: Başvuru reddedildi }
+  toastAnswered: { css: '[data-sonner-toast]', hasText: Bu başvuru az önce karara bağlanmış. }
+  toastGone: { css: '[data-sonner-toast]', hasText: Bu başvuru artık yok. }
+  toastForbidden: { css: '[data-sonner-toast]', hasText: Bu işlem için izniniz yok. }
+  toastFailed: { css: '[data-sonner-toast]', hasText: İşlem tamamlanamadı. }
+  toastLoadFailed: { css: '[data-sonner-toast]', hasText: Başvurular okunamadı }
+  toastKoskOpened: { css: '[data-sonner-toast]', hasText: Köşk açıldı }

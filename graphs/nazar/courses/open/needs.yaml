@@ -1,0 +1,253 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.courses.open
+status: proposed
+summary: >-
+  What must exist for the başmüderris of a medrese to open a course of the medrese: the flow's product list. Each need is what the
+  product must do, from the flow's story and the findings of the page, not from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Gaps of this file, for that merge:
+# missing:   every-answer-is-announced, a-partial-grant-is-told-the-truth, leaving-keeps-the-form, naming-oneself-is-explained,
+# removing-a-hoca-is-said, lookup-only-on-request, the-last-kosk-leaving-keeps-the-work (each `missing: none`, the findings
+# F-A-4..F-A-8, F-A-16, OPEN-1..OPEN-6 of ui.yaml are their evidence)
+# unwalked:  give-a-hoca-an-unvan (code, no e2e: open-course.e2e.ts never picks an unvan; the replay scenario `opens` presses the select
+# but no `effects` check says what was sent, and nothing has been run yet),
+# open-from-the-pano-or-by-address, in part (the Dersler button is walked by open-course#1; the Pano's button, the address
+# and the refusal and 404 words have no e2e, and `noKosk`, `forbidden` and `missing` open the address in the binding, not yet run)
+
+needs:
+  - id: open-a-draft-in-a-hosting-kosk
+    need: >-
+      The başmüderris opens a course of her medrese in a köşk that hosts it, naming it and at least one hoca, in one step. The
+      course is a draft: it stays out of sight of talebe until its hocas publish it, and Dersler lists it as "Taslak" at once,
+      with the köşk it is in. Who made it and when is on record.
+    evidence:
+      - state: form
+      - state: opening
+      - node: opening
+      - state: opened
+      - node: openedToast
+      - node: newRowStatus
+      - node: newRowToday
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:103
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — köşk, name and a müderris's e-mail open a draft of the medrese, which is in Dersler as 'Taslak' (criterion 4)"
+      - test: apps/nazar/test/open-course.spec.tsx
+    note: Also drawn as the assertion a-draft-has-a-name, the assertion a-draft-has-a-hoca, the assertion a-draft-has-a-kosk.
+
+  - id: only-hosting-kosks-can-be-chosen
+    need: >-
+      Only a köşk that gives the medrese a hosting right (and is not hidden) can be chosen, the first is chosen already, and each
+      choice says how many courses the medrese has there. Where no köşk gives the right the page says so and who can give it, and
+      draws no form.
+    evidence:
+      - state: form
+      - state: noKosk
+      - node: koskGroup
+      - node: koskKubbealti
+      - node: koskSuleymaniye
+      - node: koskHasCourses
+      - node: koskHelp
+      - node: noKoskAlert
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:82
+      - source: apps/nazar/features/courses/components/open-course-page.tsx:60
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — only the köşks that host the medrese can be chosen, the first is chosen, and the way back is Dersler (criterion 1)"
+
+  - id: say-what-is-wrong-and-go-there
+    need: >-
+      A press that cannot be sent writes, under each field, what is wrong (a missing or short or long name, no hoca), moves the
+      focus to the first one, and sends nothing; the errors go the moment they are fixed. The button is never dead.
+    evidence:
+      - state: formAtName
+      - state: formAtSearch
+      - state: refused
+      - node: nameRequired
+      - node: nameShort
+      - node: nameLong
+      - node: teamNone
+      - node: submit
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:103
+      - source: apps/nazar/features/courses/courses.ts:318
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — 'Dersi aç' without a name and a müderris says what is missing under the fields and opens nothing (criterion 2)"
+
+  - id: every-answer-is-announced
+    need: >-
+      Every answer the form gives is announced to a person who cannot see it and tied to the field it is about: the errors under
+      the name, the köşk and the hoca list, the outcomes of a hoca search (not found, directory down, already listed), and the
+      refusal of a page that is not theirs. The köşk group and the hoca list say they are required.
+    missing: no Linear issue; F-A-4, F-A-5, F-A-6, F-A-7, F-A-16; F-A-1 (the retry state has a second h1) is the same family
+    note: >-
+      Drawn on the nodes nameRequired, teamNone, koskRequired, hocaNotFound, hocaDown, hocaListed, forbiddenAlert, noKoskAlert,
+      koskGroup and teamLegend, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: find-hocas-by-exact-email
+    need: >-
+      Each hoca is found by the exact e-mail address of an account in the realm, even one that never opened the app; a person
+      already listed is not added twice; an address with no account and a directory that does not answer are said in words; up to
+      20 hocas.
+    evidence:
+      - state: looking
+      - state: lookingAnother
+      - node: hocaField
+      - node: hocaNotFound
+      - node: hocaDown
+      - node: hocaListed
+      - node: searching
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:112
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — köşk, name and a müderris's e-mail open a draft of the medrese, which is in Dersler as 'Taslak' (criterion 4)"
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — with several müderrisler the imam is chosen, and the one chosen is the imam (criterion 3)"
+      - test: apps/nazar/test/open-course.spec.tsx
+        name: "will not open the course while a hoca is being looked up, and sends them once they are listed"
+    note: >-
+      "Dersi aç" is off while a hoca is looked up (open-course-form.tsx:278), so the course is never opened without the hoca the
+      person just asked for.
+
+  - id: lookup-only-on-request
+    need: >-
+      A person's address is searched in the realm only when the person asks (Enter or a button), never because they tabbed through
+      the field, since every search is written to the audit log; the result is announced and the focus stays in the field.
+    missing: no Linear issue; OPEN-4, OPEN-5 (the same shape as F-W3-14 and F-W2-3 of nizam)
+    note: >-
+      Drawn on the state looking and on the node hocaField, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: choose-the-imam
+    need: >-
+      A lone hoca is the imam; with several the first is the imam until the person picks another, and the row of the imam says so.
+      The list the API gets always names exactly one imam among its hocas.
+    evidence:
+      - node: imamGroup
+      - node: imamRadioA
+      - node: imamRadioB
+      - node: imamBadge
+      - node: hocaARow
+      - node: hocaBRow
+      - node: removeA
+      - node: removeB
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+      - source: apps/nazar/features/courses/team.ts:57
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — köşk, name and a müderris's e-mail open a draft of the medrese, which is in Dersler as 'Taslak' (criterion 4)"
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — with several müderrisler the imam is chosen, and the one chosen is the imam (criterion 3)"
+      - test: apps/nazar/test/team.spec.ts
+
+  - id: removing-a-hoca-is-said
+    need: >-
+      Taking a hoca off the list is said (who was taken off), keeps the focus on a control of the form, and a status that said
+      "added" does not go on saying it.
+    missing: no Linear issue; OPEN-3 (same shape as F-W3-open-3 of nizam)
+    note: >-
+      Drawn on the nodes removeA, removeB, addedA and addedB, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: give-a-hoca-an-unvan
+    need: >-
+      Each hoca can carry an unvan in this course from the day it is opened ("Prof. Dr.", "Doç. Dr.", ... or none, the default),
+      written before their name wherever the course shows them; it is kept in this course only.
+    evidence:
+      - node: unvanA
+      - node: unvanB
+      - state: form
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+      - source: apps/nazar/features/courses/components/muderris-picker.tsx:213
+
+  - id: policies-fix-the-boxes
+    need: >-
+      A medrese policy ("Kapalı ders zorunlu", "Kayıt her zaman onaylı") fixes its box on and off limits in the form, says whose
+      policy it is and where to change it, and the API applies the policy whatever the form sends; with no policy the person
+      decides the two boxes.
+    evidence:
+      - node: closedBox
+      - node: approvalBox
+      - node: lockClosed
+      - node: lockApproval
+      - node: lockLink
+      - state: readingPolicies
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:626
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:253
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — where the medrese always approves, 'Kayıt onayı gereksin' is on and off limits, and the course is opened that way (criterion 5)"
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — where the medrese requires closed courses, 'Kapalı ders' is locked on"
+    note: Also drawn as the assertion a-locked-box-cannot-be-toggled.
+
+  - id: a-withdrawn-kosk-is-explained
+    need: >-
+      A köşk that took its right back after the page was drawn refuses the course, and the person is told why in words, the page
+      reads the köşks again, and what they typed is kept so that they choose another köşk and press again; if it was the only
+      köşk, they are told there is none and nothing they typed is thrown away.
+    evidence:
+      - state: opening
+      - node: opening
+      - state: form
+      - node: toastHostingRight
+      - node: koskRequired
+      - state: noKosk
+      - node: koskKubbealti
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+      - source: apps/nazar/features/courses/components/open-course-form.tsx:138
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — a köşk that took its right back after the page opened refuses the course, and says why"
+
+  - id: the-last-kosk-leaving-keeps-the-work
+    need: >-
+      When the köşk that leaves was the only one, the toast does not tell the person to choose another, and the name, the hocas
+      and the unvans they typed are not lost with the form.
+    missing: no Linear issue; OPEN-6
+    note: >-
+      Drawn on the states opening and noKosk and on the nodes opening and toastHostingRight, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-partial-grant-is-told-the-truth
+    need: >-
+      A nazır who may open courses but not read the settings is told they cannot see the policies (not that the read failed), and
+      a nazır who may only hide courses or change hocas is not led by an enabled button to a page that refuses them.
+    missing: no Linear issue; F-A-8, decision D1; no e2e covers a nazır with a partial grant
+    note: >-
+      Drawn on the states forbidden and readingPolicies and on the nodes forbiddenAlert and policiesUnknown, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: leaving-keeps-the-form
+    need: >-
+      Leaving the form (Vazgeç, the breadcrumb, the link to the policy settings) does not throw away what was typed without
+      asking, or the settings open where the form stays.
+    missing: no Linear issue; OPEN-1, decision D2
+    note: >-
+      Drawn on the states courses_listed and settings_opened and on the nodes cancel, breadcrumbCourses and lockLink, which the
+      code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: naming-oneself-is-explained
+    need: >-
+      A nazır who adds themselves as a hoca without holding every course code is told that is not allowed, not that something went
+      wrong and to try later.
+    missing: no Linear issue; OPEN-2
+    note: >-
+      Drawn on the state opening and on the nodes opening and toastGeneric, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: open-from-the-pano-or-by-address
+    need: >-
+      "Medrese dersi aç" opens the form from Dersler and from the Pano, and its address opens it for anyone who may open courses;
+      a person who may not, or whose medrese this is not, gets the refusal or the 404 in words.
+    evidence:
+      - state: reading
+      - state: forbidden
+      - state: not_found
+      - state: noKosk
+      - source: apps/nazar/features/courses/components/courses-page.tsx:118
+      - source: apps/nazar/features/pano/components/pano-page.tsx:109
+      - source: "apps/nazar/app/medrese/[medreseId]/dersler/yeni/page.tsx:11"
+      - test: apps/nazar/e2e/open-course.e2e.ts
+        name: "nazir/08 — only the köşks that host the medrese can be chosen, the first is chosen, and the way back is Dersler (criterion 1)"

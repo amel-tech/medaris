@@ -1,0 +1,117 @@
+# tedris.discover.browse on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web on :4000 and tedrisat on :3001.
+#   node apps/engine/src/cli.ts replay graphs/tedris/discover/browse --bind graphs/tedris/discover/browse/binding.yaml --out <dir>
+#     [--to loadFailed] [--to application_opened]
+#
+# Three scenarios, one for each of the three walks (the main story and two `--to`):
+#   visitorInACrowd  the main story. A visitor, with no sign-in, on /discover, in a world where the köşks fill two pages. The seed has
+#                    two köşks, so `setup` makes twelve more (fillers.mjs, here: "Deneme Köşkü 01" to "12", short names
+#                    kesfet-deneme-01 .. 12, the word "medrese" in each description, a first nazım the spare talebe applicantB). That
+#                    gives 14 köşks and one medrese, two pages (12 and 2), and a word, "medrese", that 13 of the 14 köşks and the
+#                    medrese share: so the pager is walked, with and without a word. `teardown` removes the twelve as the başnazım
+#                    (DELETE /kosks/:id takes a köşk with its role assignments in one transaction); `setup` removes any left by a
+#                    walk that died, so it can run twice. Nothing else is created or changed. The words the walk types are found in
+#                    the seed's own text: "Kubbealtı" (Kubbealtı Köşkü), "medrese" (the description of Süleymaniye Köşkü, the
+#                    medrese's name and the fillers), "zzzz" (nothing), and the medrese chosen is the seed's, {seed.titles.madrasah}.
+#   memberApplies    `--to application_opened`. A member (the account `other`: a talebe with no role and no enrolment) comes in through the
+#                    top bar's "Keşfet" (the navigation graph's entry frame:app->discover) in the seed's own world, two köşks: the
+#                    follow buttons and the card "Köşk açma başvurusu" are on the page, and the walk presses the link. It writes
+#                    nothing; the follow buttons are not pressed (tedris.discover.followKosk's).
+#   outage           `--to loadFailed`. The read fails for a reason the stack can produce on request: an address whose page number is
+#                    one the API cannot take (?page=99999999999999999999 makes GET /kosks answer 500, BROWSE-1), which is the same
+#                    failure the page draws for an outage. Nothing is created.
+#
+# Not walked, and why: the other `read` and `quiet` values need a second medrese with no course (SQL into tedrisat's database, and
+# the seed's medrese list changes for everyone while it lasts) and a read that fails in the middle; `stock: bare` needs an empty
+# platform; the phone layout; TYPE_MADRASAH_NAME, OPEN_MADRASAH, OPEN_COURSE, SIGN_IN and REGISTER are bound or pressable but no run
+# takes them (three runs only). Pressing the follow button is another flow's.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.discover.browse
+
+scenarios:
+  # The main story: no account, so no `as`, and the base's sign-in is not run.
+  visitorInACrowd:
+    given: { viewer: visitor, read: ok, stock: large, quiet: none }
+    open: '{tedris}/discover'
+    setup:
+      - run: [node, ../tedris/discover/browse/fillers.mjs, up]
+        expect: 'fillers made 12'
+    teardown:
+      - run: [node, ../tedris/discover/browse/fillers.mjs, down]
+        expect: 'fillers removed 12'
+
+  memberApplies:
+    given: { viewer: member, read: ok, stock: small, quiet: none }
+    as: other
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->discover' }
+
+  outage:
+    given: { viewer: visitor, read: kosksFailed, stock: small, quiet: none }
+    open: '{tedris}/discover?page=99999999999999999999'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in, and waits for the count line the
+  # page ends with (the page reads again 400 ms after the last key, and writes the address with router.replace)
+  TYPE_KOSK_NAME:
+    - fill: { role: searchbox, name: Köşk ya da medrese ara, value: Kubbealtı }
+    - waitText: '1 köşk ve 0 medrese'
+  TYPE_MADRASAH_NAME:
+    - fill: { role: searchbox, name: Köşk ya da medrese ara, value: Siyer }
+    - waitText: '0 köşk ve 1 medrese'
+  TYPE_SHARED_WORD:
+    - fill: { role: searchbox, name: Köşk ya da medrese ara, value: medrese }
+    - waitText: '13 köşk ve 1 medrese'
+  TYPE_UNKNOWN_WORD:
+    - fill: { role: searchbox, name: Köşk ya da medrese ara, value: zzzz }
+    - waitText: 'Bu aramaya uyan köşk ya da medrese yok.'
+  # the box is emptied: the whole crowd is back
+  CLEAR_SEARCH:
+    - fill: { role: searchbox, name: Köşk ya da medrese ara, value: '' }
+    - waitText: '14 köşk ve 1 medrese'
+  # the select is a button that opens a listbox: open it, take the seed's medrese
+  CHOOSE_MADRASAH:
+    - click: { role: combobox, name: Medrese }
+    - click: { role: option, name: '{seed.titles.madrasah}' }
+    - waitText: '1 köşk ve 1 medrese'
+  # an address typed or followed from an old link: a page past the last
+  OPEN_PAST_END:
+    - goto: '{tedris}/discover?page=99'
+  NAVIGATE:
+    - goto: 'about:blank'
+
+states:
+  # the count line the empty state ends with (discover#7)
+  emptyResult: { text: '0 köşk ve 0 medrese' }
+  loadFailed: { url: '{tedris}/discover**' }
+  kosk_opened: { url: '{tedris}/kosks/{seed.kosk2}' }
+  madrasah_opened: { url: '{tedris}/madrasahs/{seed.madrasah}' }
+  course_opened: { url: '{tedris}/courses/**' }
+  application_opened: { url: '{tedris}/kosk-applications/new' }
+  # the invitation's links end on the app's own pages, which send the browser on to Keycloak at once
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**' }
+  handed_over.register: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**prompt=create**' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot find a node. The cards are data (a köşk, a medrese, a course), so a node is found by the cards' own
+# hooks (the section the heading labels, the kit's classes) and, where the graph says which words it may hold (`oneOf`), by a
+# pattern of them: the engine finds a `oneOf` node by its first word only. A bare `main` is also the page a walk leaves for.
+nodes:
+  page: { role: main, hasText: '/medreseler derslerini bu köşklerde açar/' }
+  koskCardTitle: { css: 'section[aria-labelledby=discover-kosks] h3.mds-card__title' }
+  koskLink: { css: 'section[aria-labelledby=discover-kosks] h3.mds-card__title > a' }
+  koskDescription: { css: 'section[aria-labelledby=discover-kosks] p.mds-card__body' }
+  koskCourseCount: { css: 'section[aria-labelledby=discover-kosks] .mds-card__footer span', hasText: '/^\d+ ders$/' }
+  followButton: { css: 'section[aria-labelledby=discover-kosks] .mds-card__footer button[aria-pressed]', hasText: '/^Takip (et|ediliyor)$/' }
+  pagerPosition: { css: 'nav[aria-label=Sayfalar] span[aria-current=page]', hasText: '/^\d+ \/ \d+$/' }
+  madrasahCardTitle: { css: 'section[aria-labelledby=discover-madrasahs] h3.mds-card__title' }
+  madrasahLink: { css: 'section[aria-labelledby=discover-madrasahs] h3.mds-card__title > a' }
+  madrasahHead: { css: 'section[aria-labelledby=discover-madrasahs] p.mds-card__body', hasText: '/^Başmüderris /' }
+  madrasahCourse: { css: 'section[aria-labelledby=discover-madrasahs] ul a' }
+  madrasahCourseCount: { css: 'section[aria-labelledby=discover-madrasahs] .mds-card__footer span', hasText: '/^\d+ ders$/' }
+  madrasahNoCourses: { css: 'section[aria-labelledby=discover-madrasahs] p.mds-card__body', hasText: 'Bu medrese henüz ders açmadı.' }
+  # two role=alert elements are on the page: Next's route announcer (empty) and the kit's alert
+  loadFailedBox: { css: '.mds-alert[role=alert]' }
+  # the invitation is one paragraph whose tags became two links; the other `.mds-body-sm` paragraph is the member's
+  inviteText: { css: 'p.mds-body-sm', hasText: '/Bir derse başvurmak için giriş yap ya da kayıt ol\./' }

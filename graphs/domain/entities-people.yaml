@@ -1,0 +1,46 @@
+# The people tables of tedrisat (domain.md section 7, A). Every user column of every entity holds the Keycloak `sub` as a
+# plain uuid and is never a foreign key (invariant data-user-columns-hold-a-sub): a user column is marked
+# `note: "Keycloak sub"`, and a User row is written lazily, so it may not exist yet.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  User: # one row per person who ever called tedrisat with a valid token: a mirror of Keycloak's identity plus the person's own settings. A directory of people, never an authorization input (users-row-is-a-directory)
+    source: apps/tedrisat/src/database/schema/user.schema.ts:21
+    required: [id, emailVerified, lessonInvitationEmails, createdAt, lastSeenAt]
+    fields:
+      id: { type: string, format: uuid, note: "no default: it is the Keycloak sub" }
+      email: { type: [string, "null"], format: email, sensitivity: personal, note: "index on lower(email), not unique on purpose: Keycloak can hand one address to two accounts (user.schema.ts:50)" }
+      emailVerified: { type: boolean, default: false }
+      givenName: { type: [string, "null"], sensitivity: personal }
+      familyName: { type: [string, "null"], sensitivity: personal }
+      timeZone: { type: [string, "null"], sensitivity: personal, note: "an IANA zone; written only by PATCH /me" }
+      locale: { type: [string, "null"], sensitivity: personal, note: "BCP 47; the token's value on the first insert only, afterwards the person's own PATCH /me setting" }
+      lessonInvitationEmails: { type: boolean, default: true, sensitivity: internal, note: "false opts the person out of calendar invitation mail and of the exam reminder mail" }
+      createdAt: { type: string, format: date-time }
+      lastSeenAt: { type: string, format: date-time, note: "refreshed only when a claim changed or the row is older than LAST_SEEN_REFRESH_HOURS (3)" }
+    lifecycle:
+      - "none -> present: the first request with a valid token whose sub is a uuid (UserSyncInterceptor upserts id, email, emailVerified, names and locale after the guards); a request a guard refuses writes no row, and a sub that is not a uuid is skipped"
+      - "present -> present: a later request upserts email, emailVerified, names and lastSeenAt when a claim changed or the row is older than 3 hours; locale is not taken from the token again; PATCH /me sets timeZone, locale and lessonInvitationEmails"
+
+  UserProfile: # what a person typed about themselves on Hesap: künye, gender, city, about, and four switches for the public profile
+    source: apps/tedrisat/src/database/schema/user-profile.schema.ts:26
+    key: [userId]
+    required: [userId, showFullName, showCity, showAbout, showCourses, createdAt, updatedAt]
+    fields:
+      userId: { type: string, format: uuid, note: "Keycloak sub; the id of the person's User row" }
+      givenName: { type: [string, "null"], sensitivity: personal }
+      familyName: { type: [string, "null"], sensitivity: personal }
+      kunye: { type: [string, "null"], unique: case-insensitive, sensitivity: personal, note: "the ilmî künye, always public; unique index on lower(kunye) where it is not null, so two künyes cannot differ only by case and null never collides (user-profile.schema.ts:50)" }
+      gender: { type: [string, "null"], enum: [FEMALE, MALE, null], sensitivity: personal, note: "always public; no DB check, validated by @IsIn(PROFILE_GENDERS); when the token carries gender it is the account's and a change through the API is refused with GENDER_MANAGED_BY_ACCOUNT" }
+      city: { type: [string, "null"], sensitivity: personal }
+      about: { type: [string, "null"], sensitivity: personal }
+      showFullName: { type: boolean, default: false }
+      showCity: { type: boolean, default: false }
+      showAbout: { type: boolean, default: false }
+      showCourses: { type: boolean, default: false }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> present: the first profile save on Hesap (an upsert), or the first sync of a token that carries a gender claim"
+      - "present -> present: a later save; the token's gender claim overwrites a different stored gender and writes the audit action user.gender_change"

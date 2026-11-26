@@ -1,0 +1,24 @@
+# tedris.celse.attend, the standing `exam` (an exam celse with a place, four days ahead: the exam block, held face to face). Same data, exits and locators as binding.yaml (see locators.binding.yaml).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/attend --bind graphs/tedris/celse/attend/binding.exam.yaml --to ahead --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.attend
+
+samples:
+  title: Sınav celsesi
+  previous: Yüz yüze celse
+  next: Örnek sonraki celse
+
+scenarios:
+  exam:
+    given: { access: open, standing: ahead, means: none, place: inPerson, agenda: none, resources: none, exam: held, neighbours: previous }
+    as: applicantE
+    open: '{tedris}/courses/{att.course}/lessons/{att.exam}'
+    vars: { steps: 3 }
+    setup:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, up]
+        expect: 'attend-data up'
+    teardown:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, down]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

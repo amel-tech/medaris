@@ -1,0 +1,174 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.offsite.requestCourse
+status: proposed
+summary: "What must exist for the başmüderris of a medrese to ask a köşk to open a course outside it: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For graphs/needs.gaps.yaml, flow nazar.offsite.requestCourse:
+# missing  (no code): see-what-became-of-a-request (OFFSITE-1), a-failed-call-is-told (F-A-10), a-vanished-koshk-is-deselected
+# (OFFSITE-2), every-wrong-field-is-announced (F-L-12)
+# unwalked (code, no e2e check and no replay that has passed): the-request-reaches-the-koshk-nazim, a-refused-send-says-why,
+# the-empty-and-failed-reads-are-said. No replay has run yet (the graphs were written without one): the scenarios `sends`,
+# `refused` and `koskGone` are bound (binding.yaml, binding.koskGone.yaml) and are named below as comments, not as
+# `walked`, until a walk has passed them; every e2e check named here was read, not run (the nazar suite is not run in CI).
+
+needs:
+  - id: ask-a-koshk-to-open-an-offsite-course
+    need: >-
+      The başmüderris asks any köşk that is listed to open a course that will not belong to her medrese, giving the name she
+      suggests and her reason; the request is recorded for that köşk's nazım, and no course is made.
+    evidence:
+      - state: form
+      - state: sending
+      - state: recorded
+      - state: sent
+      - node: toastSent
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:220
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:59
+      - test: apps/nazar/e2e/offsite.e2e.ts
+        name: "nazir/09 — köşk, name and reason are recorded as a pending request of the medrese, no course is made, and the way back is Dersler (criteria 1, 4)"
+      - test: apps/nazar/test/offsite.spec.tsx
+        name: "holds the köşk while the request is sent, so a refusal shows the köşk that was sent"
+    note: "replay: sends (bound, not walked yet)"
+
+  - id: the-form-says-what-is-missing
+    need: >-
+      A send with the name or the reason blank sends nothing, says under each blank field what is missing, and puts the focus on
+      the first wrong text field.
+    evidence:
+      - state: refusedTitle
+      - state: refusedReason
+      - node: nameError
+      - node: reasonError
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:56
+      - source: apps/nazar/features/offsite/offsite.ts:19
+      - test: apps/nazar/e2e/offsite.e2e.ts
+        name: "nazir/09 — a form with a field missing sends nothing and says which, under the field (criterion 2)"
+      - test: apps/nazar/test/offsite.spec.tsx
+    note: |-
+      Also drawn as the assertion the-first-error-takes-the-focus.
+      replay: sends (bound, not walked yet)
+
+  - id: the-form-says-what-follows
+    need: >-
+      Before she sends, the page says what happens next: the request goes to the chosen köşk's nazım and Medaris management sees
+      it, the köşk's nazım opens the course and picks its hocas if they accept, and the course will not belong to the medrese; the
+      first line follows the köşk she chooses.
+    evidence:
+      - node: afterRegion
+      - node: afterNamedFirst
+      - node: afterNamedOther
+      - node: afterTwo
+      - node: afterThree
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:102
+      - test: apps/nazar/e2e/offsite.e2e.ts
+        name: "nazir/09 — Dersler leads to the form, which has the canvas's fields and says what happens after"
+      - test: apps/nazar/e2e/offsite.e2e.ts
+        name: "nazir/09 — köşk, name and reason are recorded as a pending request of the medrese, no course is made, and the way back is Dersler (criteria 1, 4)"
+    note: "replay: sends (bound, not walked yet)"
+
+  - id: the-way-in-and-the-way-back
+    need: >-
+      Dersler leads to the form, and "Vazgeç", the breadcrumb and "Derslere dön" lead back to Dersler without writing anything.
+    evidence:
+      - node: trail
+      - node: trailCourses
+      - node: cancel
+      - node: noKoskBack
+      - state: courses_opened
+      - source: apps/nazar/features/courses/components/courses-page.tsx:114
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:193
+      - test: apps/nazar/e2e/offsite.e2e.ts
+        name: "nazir/09 — Dersler leads to the form, which has the canvas's fields and says what happens after"
+    note: "replay: sends enters through the nav; the exits are walked by --cover transitions (bound, not walked yet)"
+
+  - id: the-request-reaches-the-koshk-nazim
+    need: >-
+      A request that was sent is in the köşk nazım's list of course requests, waiting, with the name, the reason, the medrese and
+      the sender, and nobody else's köşk shows it.
+    evidence:
+      - state: recorded
+      - source: apps/tedrisat/src/course-request/course-request.controller.ts:86
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:410
+    note: >-
+      replay: sends, effect requestOffsiteCourse reads the row and the nazım's list (bound, not walked yet); e2e platform-admin#8
+      reads a seeded row, not one this page sent
+
+  - id: a-refused-send-says-why
+    need: >-
+      When the API refuses the send (the köşk is gone, the data is wrong, the permission was taken back, anything else), the
+      person keeps what she typed and is told in her own words which of these it was; where the köşk is gone the list is read
+      again.
+    evidence:
+      - node: toastKoskGone
+      - node: toastInvalid
+      - node: toastForbidden
+      - node: toastOther
+      - node: toastClose
+      - source: apps/nazar/features/offsite/offsite.ts:67
+      - source: apps/nazar/features/offsite/components/offsite-form.tsx:93
+      - test: apps/nazar/test/offsite.spec.tsx
+    note: "replay: koskGone (binding.koskGone.yaml, bound, not walked yet); invalid, forbidden and other cannot be driven locally"
+
+  - id: the-refusal-is-said
+    need: A medrese nazır who was not granted the permission is told "Bu sayfaya izniniz yok" and is given no form.
+    evidence:
+      - state: refused
+      - node: forbiddenAlert
+      - source: apps/nazar/features/offsite/components/offsite-page.tsx:46
+      - test: apps/nazar/e2e/offsite.e2e.ts
+        name: "nazir/09 — a medrese nazır is refused: a notice and no form"
+      - test: apps/nazar/test/offsite.spec.tsx
+    note: "carried by nazar.access.medreseNazirRefused; replay: refused (bound, not walked yet)"
+
+  - id: the-empty-and-failed-reads-are-said
+    need: >-
+      Where no köşk is listed the page says nobody can be asked yet and offers the way back; where a read failed it says so and
+      offers a retry, and it names the read that failed.
+    evidence:
+      - state: noKosk
+      - node: noKoskAlert
+      - state: unreadable
+      - node: failedRegion
+      - node: retry
+      - source: apps/nazar/features/offsite/components/offsite-page.tsx:61
+      - test: apps/nazar/test/offsite.spec.tsx
+    note: "not bound: the local stack always lists köşks and cannot be made to fail a read on request"
+
+  - id: see-what-became-of-a-request
+    need: >-
+      After sending, the başmüderris can see the requests of her medrese, each with its köşk, its state (waiting, accepted,
+      rejected) and, when rejected, the köşk's reason; or she is told when the köşk decides (OFFSITE-1, decision D1). Today the
+      page reads the list and draws none of it, and no notification is sent.
+    missing: no Linear issue; OFFSITE-1
+    note: >-
+      Drawn on the state sent, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-failed-call-is-told
+    need: When the send cannot reach the server at all, the button stops being busy and the person is told to try again (F-A-10).
+    missing: no Linear issue; F-A-10
+    note: >-
+      Drawn on the state sending and on the node toastOther, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-vanished-koshk-is-deselected
+    need: >-
+      When the chosen köşk is no longer listed, the form drops it from its choice, shows a name or the placeholder, and does not
+      send the gone id again (OFFSITE-2).
+    missing: no Linear issue; OFFSITE-2
+    note: >-
+      Drawn on the nodes afterUnnamed and toastKoskGone, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: every-wrong-field-is-announced
+    need: >-
+      After a refused send every wrong field is announced, not only the first one the focus lands on, and an error that appears
+      while she types is announced too (F-L-12).
+    missing: no Linear issue; F-L-12
+    note: >-
+      Drawn on the nodes nameError and reasonError, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

@@ -1,0 +1,123 @@
+# realm.auth.signIn on the local stack: tedris-web :4000, nizam-web :4001, nazar-web :4002, landing :4003, Keycloak :8080 (realm
+# medaris, the Medaris theme). The flow is the sign-in itself, so no scenario signs in first (`signIn: false`): the walk opens
+# a page as a visitor, types the account's address and password into Keycloak's real form and presses its button. `as` only
+# says whose address and password {address} and {password} are. The one exception is tedrisAlreadySignedIn, which uses the
+# base's `signIn` to hold a session first (and so settles that action of local.base.binding.yaml).
+#   node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/realm/auth/signIn --bind graphs/realm/auth/signIn/binding.yaml --out <dir>
+# The flow has no `local.realm.binding.yaml`: it extends tedris's file, which lists every app (the first only matters to a
+# navigation replay). Not walked: the three required-action accounts (handed_over.*: realm.auth.profileUpdate and the pages
+# of the pending accounts belong to another batch), error_box.* (realm.auth.signInFailures), `left`.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.signIn
+
+# tedrisWrongPassword's person: the seed talebe's address with a password that is not theirs, so the first press is refused
+# and the second types the real one (`realPassword`). It is an account of its own because a scenario var named `password`
+# would stand for the talebe's own wherever {password} is filled, and the engine refuses such a var.
+accounts:
+  talebeWrongPassword:
+    address: '{secret.E2E_TALEBE_EMAIL}'
+    password: not-the-password-at-all
+    entry: '{tedris}'
+
+# `vars`: appUrl is the app the person signs in to, asked the page the walk opens (callbackUrl), askedEncoded the same as the
+# gate writes it in the address, landedAt where the round trip ends when no page was asked for.
+scenarios:
+  tedrisProtectedPage: # the main story: a visitor opens Derslerim
+    given: { app: tedris, entry: protectedPage, session: none, credentials: right, account: ready }
+    as: talebe
+    signIn: false
+    open: '{tedris}/my-courses'
+    vars: { appUrl: '{tedris}', asked: /my-courses, askedEncoded: '%2Fmy-courses' }
+  tedrisWrongPassword: # one wrong password, then the right one (a Keycloak failure count of one: the lock is at ten)
+    given: { app: tedris, entry: protectedPage, session: none, credentials: wrong, account: ready }
+    as: talebeWrongPassword
+    signIn: false
+    open: '{tedris}/my-courses'
+    vars:
+      appUrl: '{tedris}'
+      asked: /my-courses
+      askedEncoded: '%2Fmy-courses'
+      realPassword: '{secret.E2E_TALEBE_PASSWORD}'
+  tedrisSignInPage: # the sign-in address with no page named: the round trip ends on /, which is /home for a talebe
+    given: { app: tedris, entry: signInPage, session: none, credentials: right, account: ready }
+    as: talebe
+    signIn: false
+    open: '{tedris}/auth/signin'
+    vars: { appUrl: '{tedris}', landedAt: '{tedris}/home' }
+  tedrisSignInLink: # a Giriş yap link that carries the page the visitor was on (anonymous#8: Keşfet)
+    given: { app: tedris, entry: signInLink, session: none, credentials: right, account: ready }
+    as: talebe
+    signIn: false
+    open: '{tedris}/auth/signin?callbackUrl=%2Fdiscover'
+    vars: { appUrl: '{tedris}', asked: /discover }
+  tedrisFromLanding: # the public site's Giriş yap: landing answers 307 to tedris's /auth/signin
+    given: { app: tedris, entry: landing, session: none, credentials: right, account: ready }
+    as: talebe
+    signIn: false
+    open: '{landing}/tedris/auth/signin'
+    vars: { appUrl: '{tedris}', landedAt: '{tedris}/home' }
+  nizamProtectedPage:
+    given: { app: nizam, entry: protectedPage, session: none, credentials: right, account: ready }
+    as: systemAdmin
+    signIn: false
+    open: '{nizam}/hesap'
+    vars: { appUrl: '{nizam}', asked: /hesap, askedEncoded: '%2Fhesap' }
+  nazarProtectedPage:
+    given: { app: nazar, entry: protectedPage, session: none, credentials: right, account: ready }
+    as: muderris
+    signIn: false
+    open: '{nazar}/hesap'
+    vars: { appUrl: '{nazar}', asked: /hesap, askedEncoded: '%2Fhesap' }
+  tedrisAlreadySignedIn: # a session is held (the base's signIn), then the sign-in address of a page: straight on, no form
+    given: { app: tedris, entry: signInLink, session: usable, credentials: right, account: ready }
+    as: talebe
+    open: '{tedris}/auth/signin?callbackUrl=%2Fdiscover'
+    vars: { appUrl: '{tedris}', asked: /discover }
+
+# The gate's 307 is not a page a browser stops on: it is checked on the wire, with the request the e2e of nazar makes
+# (auth-pages#1: status 307, Location /auth/signin, callbackUrl the page asked for). The app writes Location as a path.
+effects:
+  gateCarriesPage:
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{appUrl}{asked}']
+      expect: 'HTTP/1.1 307'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{appUrl}{asked}']
+      expect: 'location: /auth/signin?callbackUrl={askedEncoded}'
+
+states:
+  # the app's calls, checked by their answers (a 303 and a 200 are not errors)
+  appSignInPage: { call: '{appUrl}/api/auth/session' }
+  startingRoundTrip: { call: '{appUrl}/api/auth/signin**' }
+  finishingRoundTrip: { call: '{appUrl}/api/auth/callback/keycloak**' }
+  # Keycloak's form
+  loginPage: { url: '{keycloak}/realms/medaris/**' }
+  loginPageError: { url: '{keycloak}/realms/medaris/**' }
+  # where the round trip ends. The three after this line were added after the last replay and have not been walked: the
+  # replay called these exits "not bound" for want of an address (cover-0b0eb..., cover-1a6e9...).
+  handed_over.forgot_password: { url: '{keycloak}/realms/medaris/login-actions/reset-credentials**' }
+  handed_over.register: { url: '{keycloak}/realms/medaris/login-actions/registration**' }
+  left: { url: 'about:blank' }
+  landed_on_asked_page: { url: '{appUrl}{asked}' }
+  landed_on_role_landing: { url: '{landedAt}' }
+
+# NAVIGATE (added after the last replay, not walked): closing the page, as the nav replay and the engine's own bindings do it.
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+# The ids are the ones the base's signIn uses. A press of the button types the address and the password first; after a wrong
+# password the second press types the real one again (`realPassword`, a var of that scenario only).
+#
+# The busy state (`submitting`) cannot be looked at: the form's post is a navigation. The replay holds a call by routing it,
+# and while a navigation request is held every read of the page (an attribute, a text) stalls until it is let go (probe,
+# 30 s timeouts), and a click on the button waits for the navigation to commit, so it never returns either. So `submitting`
+# has no `call`: the replay passes through it (it invokes something and the page it draws is gone at once) and checks the
+# states after it as the page arrives. Do not add a `call` to it.
+nodes:
+  signIn:
+    before:
+      - fill: { css: '#username', value: '{address}' }
+      - fill: { css: '#password', value: '{password}' }
+  signInAgain:
+    before:
+      - fill: { css: '#password', value: '{realPassword}' }

@@ -1,0 +1,344 @@
+# Dismissing a ders nazırı, from "Ders nazırları" in nazar-web (/ders/<id>/nazirlar), read from the code of PR #394 on 15 Nov 2026
+# (apps/nazar/features/course-nazirs/{course-nazirs.ts,actions.ts,components/end-course-nazir.tsx,course-nazirs-table.tsx} and the API's
+# DELETE /courses/:id/nazirs/:postId in apps/tedrisat/src/course/nazir). Nothing here was walked in a browser: every behaviour is "from the
+# code" until the walk phase.
+#
+# What the page does today:
+#   - Each row of a post the viewer may end has "Görevden al: <name>" (the API's `mayEnd`: a giver ends any post, an appointer only the ones
+#     they appointed). Pressing it opens a dialog, "Görevden al", with the focus on "Vazgeç": the person and the course, "Görev ve bütün
+#     izinleri aynı anda biter.", "Görevden alma denetim kaydına yazılır.", Vazgeç and the one action. Nothing is asked about what the person
+#     handed on (that is the medrese's Devral/Düşür question, nazar.nazirs.dismiss): the API refuses while someone the person appointed still
+#     holds a post, and the page already knows, from the same list, and switches the row's button off with the sentence "Önce bu kişinin
+#     atadığı {n} ders nazırını görevden alın." (CNDIS-2).
+#   - A success says "Görevden alındı" and closes the dialog. The post and every permission the person holds in the course end together, the
+#     rows are kept as history, and the list is read again without the row. The button that opened the dialog is gone (F-D2c-8). The person is
+#     not told: tedrisat writes the audit row and no notice. They find out on their next request, and with no other seat they meet
+#     "Bu portala erişiminiz yok" (nazar.access.noAccess).
+#   - Two refusals a page of today can still hear come from a stale list. DISMISS_SEAT_HANDED_ON: the hoca read the page, the person appointed
+#     someone meanwhile, and the button was on; the error toast stays, the dialog closes and the list is read again, now with the button off
+#     (course-nazirs#13 a20-a22). COURSE_NAZIR_NOT_FOUND: someone else dismissed the person meanwhile; the dialog closes and the list is read
+#     again without the row, with an error toast although the post is gone, which is what the hoca wanted (CNDIS-4).
+# Two people are in the story. The hoca (or any giver) dismisses; the dismissed person is a spare account of the walk, who opens nazar
+# afterwards in their own browser. A ders nazırı who holds course_nazir.assign by a grant dismisses their own appointees the same way
+# (course-nazirs#13 a24-a26): `post: ownAppointee`.
+#
+# Findings this flow carries (ui.yaml `rules` has the same ids): F-D2c-8 (focus after the row leaves), F-D2c-13 (the busy button says
+# "Yükleniyor" from the kit, outside the catalog), and four new ones: CNDIS-1 (a confirmation drawn as a `dialog`, not an `alertdialog`),
+# CNDIS-2 (the blocked row's button is natively disabled: nobody reaches the sentence that says why, which names no one), CNDIS-3 (while the
+# call is on, Vazgeç, the close icon and Esc do nothing and nothing says why), CNDIS-4 (a dismissal that finds the person already gone is
+# an error toast).
+schema: delurio-graph/0
+kind: flow
+id: nazar.courseNazirs.dismiss
+status: captured
+domain: medaris.api
+ui: nazar.courseNazirs.dismiss
+title: Dismiss a ders nazırı
+summary: >-
+  The hoca opens "Ders nazırları" of her course and presses "Görevden al: {name}" on a person's row. A dialog opens with the focus on
+  "Vazgeç"; she can leave it, or press "Görevden al". The post and all the person's permissions in the course end together, a toast says
+  "Görevden alındı", the dialog closes and the list is read again without the row. The person is not told; opening Nazar they find no scope
+  and are sent to "Bu portala erişiminiz yok". A person who appointed others cannot be dismissed first: the row's button is off and says to
+  dismiss their appointees before; a page read before the appointment still offers the button, and the API refuses with the same sentence,
+  after which the page shows the button off. A ders nazırı who holds only course_nazir.assign dismisses the people they appointed, never
+  their own post.
+
+scope:
+  shows: >-
+    the table of one course's ders nazırları as far as the "Görevden al" buttons go, the row whose button is off and the sentence under it,
+    the dialog (asking, busy), the toasts that follow, the table without the row, and the hand-over of the dismissed person to the
+    no-access page
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "appointing a ders nazırı and editing a post's permissions, the other buttons of the same page: nazar.courseNazirs.appoint, nazar.courseNazirs.permissions (the row's 'İzinleri düzenle' and the header's 'Ders nazırı ata' start them)"
+    - "a reader the page turns away (no course_nazir.assign: the forbidden alert in place of the table, the list not read), and the menu entry that every course persona is offered anyway (F-D2c-2): nazar.access.dersNazirPages. The state `forbidden` is drawn, no walk of this flow reaches it"
+    - "a list that cannot be read (the retry state 'Ders nazırları yüklenemedi' with two h1, F-D2c-1) and a course that is not there (the 404 page): nazar.shell.errorStates. Here the second is the exit not_found"
+    - "the same dismissal by the başmüderris of a medrese or the başnazım, who open the same page by address, and a köşk's nazım in a medrese's course, who is let in by the guard and refused every write (PERMISSION_NOT_GIVABLE): same page, same API"
+    - "the köşk's İzinler page, which dismisses the ders nazırları of its medrese-free courses on its own route: nizam.grants.appoint"
+    - "dismissing a medrese nazır, where the dialog asks Devral or Düşür for every person they gave something to: nazar.nazirs.dismiss. A ders nazırı gives no permission, so the only thing handed on is a post, which the API asks to be ended first"
+    - "a post that lapses on its end date: nothing dismisses it, the API stops counting it, and a lapsed post is revoked by the next appointment (createCourseNazir)"
+    - "what the dismissed person does with a Nazar tab that is already open: the next request draws what they hold then; not verified"
+    - "the refusals the dialog words and a walk cannot cause locally (AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, NAZIR_NOT_APPOINTED_BY_YOU, any other failure): drawn as `refused`, `notYours` and `failed`, unwalked"
+
+context:
+  post:
+    values: [plain, handsOn, handsOnUnseen, vanishes, ownAppointee]
+    initial: any
+    say:
+      plain: "the hoca dismisses a person who appointed nobody"
+      handsOn: "the person appointed someone who still holds a post, and the page lists it: the person's button is off"
+      handsOnUnseen: "the person appointed someone after the hoca read the page: the button is on, and the API will refuse it"
+      vanishes: "someone else dismissed the person after the hoca read the page (another window, or another giver): the button is on, and the post is gone"
+      ownAppointee: "the viewer holds course_nazir.assign by a grant, not by a role, and dismisses someone they appointed themselves"
+  asked:
+    values: [person, appointee]
+    initial: person
+    say:
+      person: "the dialog was opened from the row of the person the story is about"
+      appointee: "the dialog was opened from the row of someone the person appointed, whose button is on while the person's is off"
+  behind:
+    values: [nobody, unseen, listed, dismissed, vanished]
+    initial: nobody
+    say:
+      nobody: "the person appointed nobody who still holds a post, and the page is as the world is"
+      unseen: "the person has appointed someone since the page was read: the API knows, the page does not"
+      listed: "the page lists a post the person appointed, and the person's button is off"
+      dismissed: "the person's appointee was dismissed in this visit, so the person's button is on again"
+      vanished: "the person's post was dismissed elsewhere since the page was read: the page still lists it"
+  last:
+    values: [nothing, dismissed, handedOn, gone, refused, notYours, failed]
+    initial: nothing
+    say:
+      nothing: "no dismissal has been tried since the last button, or its toast is gone"
+      dismissed: "a dismissal just succeeded"
+      handedOn: "the API refused: someone the person appointed still holds a post (DISMISS_SEAT_HANDED_ON)"
+      gone: "the post was not there any more (COURSE_NAZIR_NOT_FOUND)"
+      refused: "the API refused for lack of standing (AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE)"
+      notYours: "an appointer tried a post someone else made (NAZIR_NOT_APPOINTED_BY_YOU)"
+      failed: "the API refused for another reason, or failed"
+
+guards:
+  appointeeAsked: "asked == 'appointee'"
+  staleAsk: "asked == 'person' and behind == 'unseen'"
+  goneAsk: "asked == 'person' and behind == 'vanished'"
+  freedAgain: "behind == 'dismissed'"
+
+effects:
+  askPerson: { set: { asked: person, last: nothing } }
+  askAppointee: { set: { asked: appointee, last: nothing } }
+  appointedMeanwhile: { set: { behind: unseen } }
+  vanishedMeanwhile: { set: { behind: vanished } }
+  seeAppointee: { set: { behind: listed } }
+  appointeeLeft: { set: { behind: dismissed } }
+  dismissedPerson: { set: { last: dismissed } }
+  dismissedAppointee: { set: { last: dismissed } }
+  handedOn: { set: { last: handedOn } }
+  gone: { set: { last: gone } }
+  refused: { set: { last: refused } }
+  notYours: { set: { last: notYours } }
+  failed: { set: { last: failed } }
+
+failures:
+  reading:
+    from: listCourseNazirs
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+  dismissing:
+    from: revokeCourseNazir
+    handedOn: [DISMISS_SEAT_HANDED_ON]
+    gone: [COURSE_NAZIR_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE]
+    notYours: [NAZIR_NOT_APPOINTED_BY_YOU]
+    other: [HTTP_400, COURSE_NOT_FOUND]
+
+# The story the page tells first: the hoca dismisses a ders nazırı whom nobody hangs from, and the person then opens Nazar and has no scope.
+main:
+  given: { post: plain }
+  events: [DONE, ASK, CONFIRM, DONE, PERSON_OPENS_PORTAL]
+
+initial: reading
+
+states:
+  reading:
+    title: The list of ders nazırları is read
+    description: >-
+      The page reads who holds the post and what the caller may do on each row (GET /courses/:id/nazirs, after GET /courses/:id/my-permissions has
+      said the caller holds course_nazir.assign) on the server, behind a loading fallback of three bars (loading.tsx). Nothing is on the screen of
+      this step. A caller who holds none of the page's codes gets the forbidden alert and the list is not read (state forbidden); a 404 is the 404 page;
+      any other failure draws 'Ders nazırları yüklenemedi' with a retry (nazar.shell.errorStates, not drawn here). Where the list already shows
+      an appointee of the person (`post: handsOn`), the person's button is off from the start (state blocked).
+    invoke: { action: listCourseNazirs }
+    on:
+      DONE:
+        - { guard: "post == 'handsOn'", target: blocked, effect: [seeAppointee], say: "a post appointed by the person is on the list", source: apps/nazar/features/course-nazirs/course-nazirs.ts:144 }
+        - { target: listed }
+      FAIL.forbidden: forbidden
+      FAIL.missing: not_found
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:45
+
+  forbidden:
+    title: The page refuses the caller
+    description: >-
+      The header keeps its h1 and loses the intro and the "Ders nazırı ata" button, and an alert says "Bu sayfaya izniniz yok" in place of the
+      table (PageProblem, status forbidden). The ders nazırı without course_nazir.assign is the one who meets it, through a menu entry that is drawn
+      for every course persona (F-D2c-2). Its story is nazar.access.dersNazirPages; no walk of this flow reaches it.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:77
+
+  listed:
+    title: The table lists the person, with a "Görevden al" button on their row
+    description: >-
+      The page: h1 "Ders nazırları", the intro with the course's title (and, for a caller who only appoints, "Ders nazırı atayabilirsiniz…"), "Ders
+      nazırı ata", and the table: one row for each post, with the person, "{n} izin" and the sentences, the end ("Süresiz" or a date), who appointed
+      and when, and the row's buttons. "İzinleri düzenle: {name}" is drawn where the API's `mayEdit` is true (not for an appointer) and "Görevden al:
+      {name}" where `mayEnd` is. The button is on while nobody on the list was appointed by the person. Focus: none on load (focus-not-set). A toast
+      of the last attempt may stand over the page. The page is read, not live: when someone elsewhere appoints under this person (ELSEWHERE_APPOINTS) or dismisses them
+      (ELSEWHERE_DISMISSES) the page does not know, and it still offers the button. Findings read here: F-D2c-8 and CNDIS-1, -2, -3, -4 (see the dialog and the row).
+    by: human
+    on:
+      ASK: { target: asking, effect: [askPerson], say: "they press 'Görevden al: name' on the person's row", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:132 }
+      ELSEWHERE_APPOINTS:
+        guard: "post == 'handsOnUnseen' and behind == 'nobody'"
+        target: listed
+        effect: [appointedMeanwhile]
+        say: "the person appoints someone (as a ders nazırı holding course_nazir.assign), and this page, read before, does not show it"
+        source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:157
+      ELSEWHERE_DISMISSES:
+        guard: "post == 'vanishes' and behind == 'nobody'"
+        target: listed
+        effect: [vanishedMeanwhile]
+        say: "someone else dismisses the person, and this page, read before, still lists the post"
+        source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:450
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123
+
+  blocked:
+    title: The person's button is off, and says to dismiss their appointees first
+    description: >-
+      The person's row has "Görevden al: {name}" natively `disabled`, with `aria-describedby` on a sentence beside it: "Önce bu kişinin atadığı {n}
+      ders nazırını görevden alın." The appointee's row, further down, has its own button on. A natively disabled button is not in the tab order, so a
+      keyboard user never reaches the sentence by tabbing, and the sentence names no one: the hoca finds the appointee in the "Atayan" column
+      (CNDIS-2). The way on is to dismiss the appointee first, with the same dialog. Where the page shows this after a refusal, an error toast
+      stands over it: "Görevden alınamadı", "Bu ders nazırının atadığı ders nazırları var; önce onları görevden alın.", until it is closed.
+    by: human
+    on:
+      ASK_APPOINTEE: { target: asking, effect: [askAppointee], say: "they press 'Görevden al: name' on the appointee's row", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:132 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131
+
+  freed:
+    title: The appointee has gone, and the person's button is on
+    description: >-
+      The list was read again after the appointee left: the person's row has "Görevden al: {name}" on, and no sentence. The same page as `listed`,
+      kept apart because the focus is not where `listed` puts it: the button that opened the dialog was the appointee's, which went with its row
+      (F-D2c-8), so nothing says where the focus is. A toast, "Görevden alındı" and the appointee's name, stands over the page.
+    by: human
+    on:
+      ASK: { target: asking, effect: [askPerson], say: "they press 'Görevden al: name' on the person's row", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:132 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123
+
+  asking:
+    title: Görevden al asks once
+    description: >-
+      A modal dialog (`Dialog form`, size sm), named "Görevden al": above the title the course's title (a value, not a catalog message), the sentence
+      "{name}, {course} dersindeki ders nazırlığından alınacak.", "Görev ve bütün izinleri aynı anda biter.", and at the foot "Görevden alma denetim
+      kaydına yazılır.", "Vazgeç" and "Görevden al", with a close icon in the header. The focus starts on "Vazgeç" (initialFocus); the scrim does
+      not close it. Vazgeç, the close icon and Esc close it and write nothing, and hand the focus back to the button that opened it (Base UI; not
+      verified). It is a `dialog`, not an `alertdialog`, although the kit says a confirmation that waits for an answer is the second (CNDIS-1). The
+      dialog is also where a refusal that leaves it open lands again, with an error toast over it: the same dialog, as it was.
+    by: human
+    on:
+      CONFIRM: { target: dismissing, say: "they press Görevden al in the dialog" }
+      CANCEL:
+        - { guard: appointeeAsked, target: blocked, say: "they press Vazgeç, or Esc: back to the list with the person's button still off" }
+        - { guard: freedAgain, target: freed, say: "they press Vazgeç, or Esc" }
+        - { target: listed, say: "they press Vazgeç, or Esc" }
+      CLOSE:
+        - { guard: appointeeAsked, target: blocked, say: "they press the close icon" }
+        - { guard: freedAgain, target: freed, say: "they press the close icon" }
+        - { target: listed, say: "they press the close icon" }
+    source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:79
+
+  dismissing:
+    title: The dismissal is on its way
+    description: >-
+      endCourseNazir calls DELETE /courses/:id/nazirs/:postId (no body; answers 204). The dialog stays open and "Görevden al" is busy (aria-disabled,
+      a spinner, "Yükleniyor" for a reader of the screen from the kit's own default, F-D2c-13). Closing is ignored while it waits: Vazgeç, the close
+      icon and Esc do nothing and the buttons do not look off (CNDIS-3). In one transaction the API revokes the post and every permission the person
+      holds in the course (rows kept as history) and writes the audit row course_nazir.revoke, and refuses, with nothing written, when someone the
+      person appointed still holds a post. A success closes the dialog and reads the list again. DISMISS_SEAT_HANDED_ON and COURSE_NAZIR_NOT_FOUND also
+      close it and read the list again; every other refusal leaves it open with an error toast.
+    invoke: { action: revokeCourseNazir }
+    on:
+      DONE:
+        - { guard: appointeeAsked, target: settled, effect: [dismissedAppointee], say: "the appointee is dismissed" }
+        - { guard: "not staleAsk and not goneAsk", target: settled, effect: [dismissedPerson], say: "the person is dismissed: 204", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:53 }
+      FAIL.handedOn: { guard: staleAsk, target: settled, effect: [handedOn], say: "409 DISMISS_SEAT_HANDED_ON: the dialog closes and the list is read again", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:71 }
+      FAIL.gone: { guard: goneAsk, target: settled, effect: [gone], say: "404 COURSE_NAZIR_NOT_FOUND: the dialog closes and the list is read again, with an error toast (CNDIS-4)", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:71 }
+      FAIL.forbidden: { target: asking, effect: [refused], say: "403: the dialog stays, with 'Bunu yapma izniniz yok.'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
+      FAIL.notYours: { target: asking, effect: [notYours], say: "403 NAZIR_NOT_APPOINTED_BY_YOU: the dialog stays", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
+      FAIL.other: { target: asking, effect: [failed], say: "any other answer: the dialog stays, with 'Bir şeyler ters gitti…'", source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:66 }
+      CANCEL: { target: dismissing, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:82, say: "Vazgeç or Esc: nothing happens, the dismissal goes on (CNDIS-3)" }
+      CLOSE: { target: dismissing, source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:82, say: "the close icon: nothing happens, the dismissal goes on (CNDIS-3)" }
+    source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:51
+
+  settled:
+    title: The list is read again
+    description: >-
+      The dialog has closed (onClose) and the server components are read again (router.refresh), so the table says what the API holds now. A
+      refused stale dismissal shows the person's button off, with the sentence; a dismissed appointee leaves the person's button on; a dismissed or
+      vanished person leaves the table without their row.
+    always:
+      - { guard: "last == 'handedOn'", target: blocked, effect: [seeAppointee], say: "the list now has the appointee, and the person's button is off", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131 }
+      - { guard: appointeeAsked, target: freed, effect: [appointeeLeft], say: "the appointee's row is gone; the person's button is on", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:35 }
+      - { target: removed, say: "the person's row is gone", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:35 }
+    source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:53
+
+  removed:
+    title: The table has no row for the person
+    description: >-
+      The table without the person's row (and, where nobody else holds a post, "Bu derste henüz ders nazırı yok."). A toast stands over the page for
+      six seconds: "Görevden alındı" and "{name} artık {course} dersinin ders nazırı değil." A person the dismissal found already gone gets an error
+      toast instead, "Görevden alınamadı" and "Bu ders nazırı artık yok; liste yenilendi.", which stays until it is closed although the outcome is the one
+      the hoca wanted (CNDIS-4). The button that opened the dialog went with the row, so Base UI's return focus has no target and the focus falls to the
+      document: nothing in the page chooses where it goes (F-D2c-8; not verified in a browser). The person is not told. They open Nazar later, in their
+      own browser, and with no other seat meet "Bu portala erişiminiz yok".
+    by: human
+    goal: true
+    on:
+      PERSON_OPENS_PORTAL:
+        guard: "last == 'dismissed'"
+        target: handed_over.no_access
+        starts: { flow: nazar.access.noAccess, given: { who: "'noRole'", entry: "'root'", read: "'ok'" } }
+        say: "the dismissed person, who holds no other seat, opens Nazar: '/' finds no scope and sends them to /erisim-yok (course-nazirs#11 a7)"
+        source: apps/nazar/features/shell/scope.ts:206
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:35
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the list read is Next's not-found page (lib/tedrisat-read.ts)."
+    type: final
+    leavesPage: true
+
+  handed_over.no_access:
+    title: The dismissed person is on the no-access page
+    description: >-
+      nazar.access.noAccess draws it: "Bu portala erişiminiz yok", their e-mail, "Tedris’e dön" and "Çıkış yap". It holds only for a person with no other
+      seat (a talebe, the spare accounts of the walk); someone who also teaches or is a nazır elsewhere is sent to that scope instead.
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: button-off-while-an-appointee-stands
+    never: "state == 'asking' and asked == 'person' and behind == 'listed'"
+    say: "The dialog is never opened from the person's own row while the page lists someone they appointed: the button is off."
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131
+  - id: a-blocked-row-has-an-appointee
+    never: "state == 'blocked' and behind != 'listed'"
+    say: The sentence and the disabled button are drawn only while the list shows a post the person appointed.
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:137
+  - id: a-post-leaves-only-when-nothing-hangs-on-it
+    never: "state == 'removed' and last == 'dismissed' and behind in ['unseen', 'listed']"
+    say: A person is dismissed only when nobody they appointed still holds a post; the API refuses otherwise and writes nothing.
+    source: apps/tedrisat/src/assignment/admin/orphaned-grants.ts:321
+  - id: only-a-stale-page-hears-the-refusal
+    never: "last == 'handedOn' and post != 'handsOnUnseen'"
+    say: The page offers the button only where the list shows nobody under the person, so the API's refusal is heard only from a page read before an appointment.
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131
+  - id: only-a-stale-page-hears-that-the-post-is-gone
+    never: "last == 'gone' and post != 'vanishes'"
+    say: "The page lists only posts the API holds, so 'the post is not there' is heard only from a page read before someone else's dismissal."
+    source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:146
+  - id: the-portal-is-opened-only-after-a-dismissal
+    never: "state == 'handed_over.no_access' and last != 'dismissed'"
+    say: The hand-over to the no-access page is taken only after a successful dismissal.
+    source: apps/nazar/features/shell/scope.ts:206

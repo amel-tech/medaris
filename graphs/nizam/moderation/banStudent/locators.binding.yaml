@@ -1,0 +1,163 @@
+# What every binding of nizam.moderation.banStudent shares: the locators of the nodes that role and name cannot find, the events no node
+# sends alone, the addresses of the states and the checks of what a ban leaves outside the screen. It carries no scenario, so it is not
+# walked by itself:
+#   binding.yaml              the two stories that write: `course` (bans#1, #2, #3, #4) and `kosk` (bans#5)
+#   binding.noSession.yaml    the course has no celse still to come, so the window has no warning
+#   binding.invalidTarget.yaml  the person is the course's own hoca: BAN_TARGET_INVALID, nothing is written
+#   binding.already.yaml      the person is barred behind the page's back, so the window's own ban finds the standing one
+#   binding.courseGone.yaml   the course is deleted while the ban is on its way (COURSE_NOT_FOUND, told as the generic line)
+# Each of the last four is a file of its own because its scenario adds no transition of its own to `--cover transitions` (or, for
+# courseGone, because its `before` would run in every walk of a file that holds the others).
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/features/bans, features/applications, libs/ui/src/mds) and is unverified until a walk.
+#
+# The people. A scenario makes one course of its own in the seed's second köşk (Kubbealtı Köşkü, `{seed.kosk2}`, which KOSK_NAZIM manages
+# and no seeded flow reads) with helpers/course.mjs, and enrols a spare talebe in it, whom the page names by the name tedrisat holds
+# (STACK.md): applicantC "Esma Başvuran" (a woman). binding.invalidTarget.yaml uses applicantG "Dilek Başvuran" as the course's hoca and
+# its one talebe. Nobody else's account is barred: bans.mjs refuses any account that is not a spare talebe, and no seeded course, ban,
+# grant or setting is changed. The course's one celse is tomorrow at 21:00 (course.mjs), so the window warns about its meeting link.
+#
+# The notices. A ban in a köşk writes a notice for the köşk's other nazımları and EVERY Medaris nazımı, so a walk leaves one in the seeded
+# Medaris nazımı's Bildirimler: `bans.mjs forget banst` takes it away in `setup` and `teardown`, because nizam.notifications.triage refuses a
+# Medaris nazımı who holds a ban notice that is not its own. The talebe's own notice (COURSE_ACCESS_REMOVED) points at the course, which
+# `helpers/course.mjs remove` clears. What the walk cannot undo: the audit rows (ban.create, ban.lift, course.roster_read).
+#
+# Variables a scenario gives (they are `vars`, filled in everywhere below; none is named `address` or `password`, which are the signed-in
+# account's own):
+#   who, whoKey, whoSub   the spare talebe the walk bars: the account name, its key in accounts.env, its Keycloak sub
+#   personName            the name the realm gives them ("Esma Başvuran"): how the page words them
+#   personAddress         their e-mail, which the row and the window show
+#   courseTitle           the title of the course the walk made
+#   reason, reasonSaved   what is typed (with the white space a person leaves) and what the server keeps (trimmed)
+#   expectedBan           the line `bans.mjs show` prints once the ban stands
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.moderation.banStudent
+
+data:
+  made: { json: ../.local/made/banst.json } # written by helpers/course.mjs make banst
+
+# The words a screen is drawn with. A value the binding does not give matches any text: `when` (the celse's day and hour, which moves with
+# the clock), `time` ("Bugün 21:04") and `detail` (the scope cell's second line) are left out on purpose.
+samples:
+  name: '{personName}'
+  email: '{personAddress}'
+  course: '{courseTitle}'
+  kosk: '{seed.titles.kosk2}'
+  reason: '{reasonSaved}'
+  actor: Cemal Köşk Nazımı
+  role: Köşk nazımı
+  count: '1'
+
+events:
+  # the reason is a textarea with no node that sends an event: the binding fills the one textbox of the open window (with the white space a
+  # person leaves around it, which the server trims)
+  TYPE_REASON:
+    - fill: { role: textbox, name: Yasaklama gerekçesi, value: '{reason}', within: { role: dialog, name: Talebeyi yasakla } }
+  CLEAR_REASON:
+    - fill: { role: textbox, name: Yasaklama gerekçesi, value: '', within: { role: dialog, name: Talebeyi yasakla } }
+  # white space is not a reason (bans#2 fills "   "); leaving the field is what shows "Bir gerekçe yazın."
+  LEAVE_EMPTY:
+    - fill: { role: textbox, name: Yasaklama gerekçesi, value: '   ', within: { role: dialog, name: Talebeyi yasakla } }
+    - key: Tab
+  # Vazgeç and the close icon both send CANCEL, so the walk says which it presses
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog, name: Talebeyi yasakla } }
+  PRESS_ESCAPE:
+    - key: Escape
+  # PRESS_SCRIM is not bound. bans#3 clicks the page at (5, 5) with the mouse (page.mouse.click(5, 5)); an action of a binding is a click
+  # on a locator, with no position: the centre of the scrim is covered by the window, so a locator click either lands in the window or
+  # waits until it times out. The walk reports the transition as not driven. Ask: a `click` with a position.
+  # the köşk's list of courses, where the nazım goes when the walk leaves
+  NAVIGATE:
+    - goto: '{nizam}/kosks/{seed.kosk2}/dersler'
+
+states:
+  # the server action is a POST to the page's own address, held while the busy window is checked; a Next server action answers 200
+  # whatever it decides, so the HTTP status of a FAIL walk is not compared
+  submitting: { call: '{nizam}/kosks/*/courses/*/students**' }
+  # an exit with no nodes: its address is all the replay can check. `*` is one path segment.
+  left: { url: '{nizam}/kosks/*/dersler' }
+  listed: { url: '{nizam}/kosks/*/yasaklamalar' }
+
+nodes:
+  # ---- the Talebeler page: the shell's one <main>, found by what only this page holds inside it ----
+  studentsPage: { role: main, hasText: '/başvurularını karara bağlayın/' }
+  # the tabs' names end with their count ("Başvurular 0", "Kayıtlı 1"), so they are found by their beginning
+  tabApplications: { role: tab, name: '/^Başvurular/' }
+  tabEnrolled: { role: tab, name: '/^Kayıtlı/' }
+  # the row's header cell holds the name and, once barred, the badge: found by the name it holds
+  rowPerson: { role: rowheader, hasText: '{personName}' }
+  rowBanned: { css: '.mds-badge', hasText: 'Yasaklı · Bu ders' }
+  rowBannedKosk: { css: '.mds-badge', hasText: 'Yasaklı · Köşk' }
+  menuBans: { role: link, name: Yasaklamalar, within: { css: aside } } # the sidebar's entry; the page's own title is a heading
+
+  # ---- the window: the same words are the name of the window, of the submit and of the row's opener, so each is scoped ----
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: '{courseTitle}', within: { role: dialog, name: Talebeyi yasakla } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: Talebeyi yasakla } } # every toast has a "Kapat" too
+  personName: { text: '{personName}', within: { testId: ban-target } }
+  personEmail: { text: '{personAddress}', within: { testId: ban-target } }
+  requiredNote: { text: '/zorunlu alan/', within: { role: dialog, name: Talebeyi yasakla } } # "* zorunlu alan": the star is part of the paragraph's text
+  # a radio's words are its label's, beside it, not inside it: found by role and name
+  radioCourse: { role: radio, name: Yalnızca bu ders }
+  radioKosk: { role: radio, name: Köşkten de yasakla }
+  # not bound: no person can see the köşk option off and its note (BANST-1), and the same radio is the one above
+  radioKoskOff: { skip: "nobody can be a person who opens this page without being the köşk's nazım or the başnazım (BANST-1)" }
+  koskOnlyNazim: { skip: "nobody can be a person who opens this page without being the köşk's nazım or the başnazım (BANST-1)" }
+  courseDesc: { text: '/dersinin celselerine, ders kayıtlarına ve içeriğine erişemez\./', within: { role: dialog, name: Talebeyi yasakla } }
+  koskDesc: { text: '/bütün derslerine erişemez ve başvuramaz\./', within: { role: dialog, name: Talebeyi yasakla } }
+  reasonField: { role: textbox, name: Yasaklama gerekçesi, within: { role: dialog, name: Talebeyi yasakla } }
+  # the warning is a status Alert whose title and body are two paragraphs in one box: unanchored, and the date is not compared
+  rotateTitle: { css: '.mds-alert', hasText: Sıradaki celsenin toplantı bağlantısını yenileyin, within: { role: dialog, name: Talebeyi yasakla } }
+  rotateBody: { css: '.mds-alert', hasText: '/celsesinin toplantı bağlantısını biliyor olabilir\./', within: { role: dialog, name: Talebeyi yasakla } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: Talebeyi yasakla } }
+  submit: { role: button, name: '/^Yasakla$/', within: { role: dialog, name: Talebeyi yasakla } } # the row's openers are "Yasakla: {name}"
+  busy: { role: status, hasText: Yükleniyor, within: { role: dialog, name: Talebeyi yasakla } }
+
+  # ---- the toasts: a region "Bildirimler", each toast a dialog; the words tell the toasts of one title apart ----
+  toastSaved: { role: dialog, name: Yasak kaydedildi, hasText: '/dersine erişemez\./' }
+  toastSavedKosk: { role: dialog, name: Yasak kaydedildi, hasText: '/içindeki hiçbir derse erişemez\./' }
+  toastNotAllowed: { role: alertdialog, name: Yasak konamadı, hasText: Bu yasağı koymak için yetkiniz yok. }
+  toastInvalidTarget: { role: alertdialog, name: Yasak konamadı, hasText: Bu kişi yasaklanamaz. }
+  toastFailed: { role: alertdialog, name: Yasak konamadı, hasText: İşlem tamamlanamadı. }
+
+  # ---- Yasaklamalar of the köşk: the cells by their place in the row, in the table of the Etkin tab ----
+  listPage: { role: main, hasText: '/Bir yasağı yalnız onu koyan kademe/' }
+  tabActive: { role: tab, name: '/^Etkin/' }
+  tabLifted: { role: tab, name: '/^Kaldırılan/' }
+  tabActiveCount: { css: '.mds-tab__count', nth: 0 } # the first span is the Etkin tab's
+  banPerson: { role: rowheader, hasText: '{personName}', within: { role: table, name: '/içindeki etkin yasaklar$/' } }
+  banEmail: { css: 'tbody th bdi[dir=ltr]', hasText: '{personAddress}' }
+  banNew: { css: 'tbody .mds-badge', hasText: '/^Yeni$/' }
+  banScopeCourse: { css: 'tbody td:nth-child(2)', hasText: '/^Ders/' }
+  banScopeKosk: { css: 'tbody td:nth-child(2)', hasText: '/^Köşk/' }
+  banScopeDetail: { css: 'tbody td:nth-child(2) bdi' }
+  banExtendedFrom: { css: 'tbody td:nth-child(2) bdi', hasText: '/dersinden genişletildi/' }
+  banReason: { css: 'tbody td:nth-child(3) bdi', hasText: '{reasonSaved}' }
+  banBannedBy: { css: 'tbody td:nth-child(4) bdi' }
+  banRole: { css: 'tbody td:nth-child(4) .mds-caption', hasText: '/\(siz\)$/' }
+  banWhen: { css: 'tbody td:nth-child(5) span' }
+
+# What a write leaves outside the screen: the ban, read through the API as the köşk's nazım, and the notices, read from the database (no route
+# reads another person's notifications). The people and the words come from the scenario's `vars`.
+effects:
+  createBan:
+    # bans#4 and #5: one open ban, with the scope, the course (or, for the whole köşk, the course it was widened from), the role and the reason
+    - run: [node, ../nizam/moderation/banStudent/bans.mjs, show, --user, '{who}', --kosk, '{seed.kosk2}']
+      expect: '{expectedBan}'
+    # the Medaris nazımı is told (notifications#7: "Yeni ders yasağı") and the one who barred is not
+    - run: [node, ../nizam/moderation/banStudent/bans.mjs, notice, banst, --to, MEDARIS_NAZIM]
+      expect: 'notice banst MEDARIS_NAZIM total=1 unread=1'
+    - run: [node, ../nizam/moderation/banStudent/bans.mjs, notice, banst, --to, KOSK_NAZIM]
+      expect: 'notice banst KOSK_NAZIM total=0'
+    # the talebe is told their access was removed (COURSE_ACCESS_REMOVED), never why: ban.service.ts:392
+    - run: [node, helpers/sql.mjs, "select type from notifications where user_id = '{whoSub}' and target_id = '{made.course}' and type = 'COURSE_ACCESS_REMOVED'"]
+      expect: '"type":"COURSE_ACCESS_REMOVED"'
+  # a refused ban writes nothing
+  invalidTargetToast:
+    - run: [node, ../nizam/moderation/banStudent/bans.mjs, show, --user, '{who}', --kosk, '{seed.kosk2}']
+      expect: 'ban {whoKey} none'
+  failedToast:
+    - run: [node, ../nizam/moderation/banStudent/bans.mjs, show, --user, '{who}', --kosk, '{seed.kosk2}']
+      expect: 'ban {whoKey} none'

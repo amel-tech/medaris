@@ -1,0 +1,17 @@
+# nazar.access.noAccess for a Medaris nazımı: the seeded MEDARIS_NAZIM, who holds the platform role and no medrese or course seat. The
+# platform role makes no seat in nazar, so she meets the verdict, and the user row says "Medaris nazımı" (seen in the smoke run's
+# nazar-MEDARIS_NAZIM.png). The page offers her Tedris and sign-out and no way to Nizam (decision D2).
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/noAccess --bind graphs/nazar/access/noAccess/binding.platform.yaml --to verdict \
+#     --absent --out <dir>
+# NOT RUN: written without a replay. Nothing is made or removed.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.access.noAccess
+
+scenarios:
+  medarisNazim:
+    given: { who: platform, entry: here, read: ok }
+    as: medarisNazim
+    open: '{nazar}/erisim-yok'
+    vars: { acct: MEDARIS_NAZIM, held: '"role":"MEDARIS_NAZIM"', chief: 'false' }

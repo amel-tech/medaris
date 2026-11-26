@@ -26,6 +26,8 @@ export const CODES = {
   settingApprovalOff: "setting.approval_off",
   settingCourseOpen: "setting.course_open",
   submissionRead: "submission.read",
+  /** "Sınavlar": preparing the course's online exams (MDRS-299) */
+  examPrepare: "exam.prepare",
   /** "Ortak uygulama kodları" (partner enrollments): the köşk nazımı's and the başnazım's. */
   partnerCodes: "course.partner_codes",
   /** "Ders destesi": writing and managing the course's decks and their cards */
@@ -46,6 +48,9 @@ export const PAGE_CODES = {
   curriculum: [CODES.courseEdit, CODES.sessionManage, CODES.weekHide],
   recordings: [CODES.recordingManage, CODES.recordingUpload],
   homework: [CODES.submissionRead],
+  exams: [CODES.examPrepare],
+  /** "Değerlendirme" (MDRS-248): the marks are written under `session.manage` */
+  evaluation: [CODES.sessionManage],
   decks: [CODES.deckManageCourse],
   settings: [
     CODES.courseEdit,

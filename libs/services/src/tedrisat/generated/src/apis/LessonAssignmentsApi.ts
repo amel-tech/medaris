@@ -273,7 +273,7 @@ export class LessonAssignmentsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description (`lesson_assignment.update`; a save that changes nothing writes nothing). The audit row carries the description\'s length, not its text. `session.manage`, the permission that edits the session\'s resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course\'s version is not bumped: the homework is not part of `PUT /courses/:id`.
+     * Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description or how it is handed in (`kind`), as `lesson_assignment.update` (a save that changes nothing writes nothing). The audit row carries the description\'s length, not its text. `session.manage`, the permission that edits the session\'s resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course\'s version is not bumped: the homework is not part of `PUT /courses/:id`.
      * Set a session\'s homework, or change its description
      */
     async saveLessonAssignmentRaw(requestParameters: SaveLessonAssignmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonAssignmentResponse>> {
@@ -318,7 +318,7 @@ export class LessonAssignmentsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description (`lesson_assignment.update`; a save that changes nothing writes nothing). The audit row carries the description\'s length, not its text. `session.manage`, the permission that edits the session\'s resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course\'s version is not bumped: the homework is not part of `PUT /courses/:id`.
+     * Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description or how it is handed in (`kind`), as `lesson_assignment.update` (a save that changes nothing writes nothing). The audit row carries the description\'s length, not its text. `session.manage`, the permission that edits the session\'s resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course\'s version is not bumped: the homework is not part of `PUT /courses/:id`.
      * Set a session\'s homework, or change its description
      */
     async saveLessonAssignment(requestParameters: SaveLessonAssignmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonAssignmentResponse> {

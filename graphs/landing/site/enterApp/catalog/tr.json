@@ -1,0 +1,15 @@
+{
+  "Header.signIn": "Giriş yap",
+  "Header.register": "Kayıt ol",
+  "Hero.title": "Kitap, hoca, halka.",
+  "Hero.register": "Talebe olarak kaydolun",
+  "Hero.explore": "Dersleri keşfedin",
+  "Hero.note": "Derslerin tanıtımı ve programı herkese açıktır; hesap açmadan bakabilirsiniz.",
+  "Door.title": "Bir kitabı baştan sona, hocasından okuyun.",
+  "Door.register": "Kaydolun",
+  "Door.explore": "Dersleri keşfedin",
+  "Closing.title": "Halkaya katılın.",
+  "Closing.register": "Talebe olarak kaydolun",
+  "Closing.signIn": "Giriş yap",
+  "planned.Header.roadmap": "Yol haritası"
+}

@@ -1,0 +1,33 @@
+# nazar.nazirs.dismiss answered Düşür: the one person listed is dropped, so the medrese nazır B whom the nazır seated is gone too (dismiss#3 a8 and a9
+# in spirit: a Düşür takes the rows back; the e2e's permission rows, Ayşe's and Fatma's own, are ones no API can make, see flow.yaml's scope). A file of
+# its own: it adds no transition to binding.yaml's `one`, only the other answer, and a walk takes the first scenario for a transition. The shared parts
+# are in binding.common.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/nazirs/dismiss --bind graphs/nazar/nazirs/dismiss/binding.drop.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.nazirs.dismiss
+
+# the only row is B's, and the answer is Düşür (binding.common.yaml's ANSWER presses Devral)
+events:
+  ANSWER: [{ click: { role: button, name: Düşür, nth: 0, within: { role: dialog, name: '/görevden alınıyor$/' } } }]
+
+scenarios:
+  one:
+    given: { nazir: giverOne }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs menu' }
+    vars:
+      rows: '1'
+      course: none
+      expectB: 'nazir APPLICANT_B none'
+      expectPost: 'ders APPLICANT_G none'
+      expectAudit: '"outcome":"0/1"'
+    setup:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, up, --madrasah, '{seed.madrasah}', --nazir, applicantA, --case, giverOne, --medrese, applicantB]
+        expect: 'ready: APPLICANT_A'
+    teardown:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, down, --madrasah, '{seed.madrasah}', --nazir, applicantA, --medrese, applicantB]
+        expect: 'restored: APPLICANT_A'

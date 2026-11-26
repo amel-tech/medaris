@@ -1,0 +1,120 @@
+# The screens of tedris.exams.result: a talebe's own screen of one past online exam in tedris-web (/my-exams/<lessonId>, the server page
+# app/my-exams/[lessonId]/page.tsx and features/online-exams/components/my-exam-result.tsx), one page with sections, drawn on the server
+# and made of links. The layout of /my-exams (app/my-exams/layout.tsx) mounts the phone's chrome, which is tedris.shell.frame's.
+#
+# Words: every `MyExams.*` key is copied from libs/i18n/src/locales/tr/tedris-learn.json (the app reads it as
+# `tedrisLearn.MyExams.<key>`); the key is the path inside the file. The `composed.MyExams.*` keys are NOT in any i18n file: they
+# are values the API gives, shown alone:
+#   composed.MyExams.course     the exam's course, a caption with dir=auto                                       (my-exam-result.tsx:98-100)
+#   composed.MyExams.title      the exam's title, the h1                                                          (my-exam-result.tsx:101-103)
+#   composed.MyExams.question   a question's text                                                                 (my-exam-result.tsx:302-304)
+#   composed.MyExams.option     an option's text                                                                  (my-exam-result.tsx:313)
+# `at` is Intl's medium date and short time in the talebe's zone (:40-44); a score and the points are scoreText (my-exams-model.ts:72).
+schema: delurio-graph/0
+kind: ui
+id: tedris.exams.result
+flow: tedris.exams.result
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  course: Fıkıh Usulü
+  title: Ara sınav
+  at: 24 Kas 2026 21:12
+  score: "86,5"
+  right: "41"
+  wrong: "6"
+  blank: "3"
+  taken: "12"
+  rank: "3"
+  tiedWith: "1"
+  number: "3"
+  name: Kıyas
+  topic: 3. Kıyas
+  percent: "62"
+  exams: "3"
+  question: Kıyasın rükünleri kaç tanedir?
+  option: Dört
+  got: "2"
+  points: "2"
+
+nodes:
+  # --- the page and its breadcrumb -----------------------------------------------------------------------------------------------------
+  resultPage: { type: page, component: Page, role: main, in: [notFound, loadFailed, inProgress, awaitingRelease, resultShown], script: optional, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:47 } # no initial focus is set
+  crumbs: { type: page, component: Page, role: navigation, name: { key: MyExams.breadcrumbLabel }, in: [notFound, loadFailed, inProgress, awaitingRelease, resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:48 } # one link and no current item
+  crumbRoot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyExams.pageTitle }, in: [notFound, loadFailed, inProgress, awaitingRelease, resultShown], emits: BACK_TO_LIST, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:49 } # to Sınavlarım
+
+  # --- no such exam, a read that failed --------------------------------------------------------------------------------------------------
+  notFoundAlert: { type: alert, component: Alert, role: status, name: { key: MyExams.resultNotFoundTitle }, text: { key: MyExams.resultNotFound }, in: [notFound], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:61 } # a neutral Alert is a status
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: MyExams.resultFailedTitle }, text: { key: MyExams.resultFailed }, in: [loadFailed], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:61 }
+  retryButton: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyExams.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:74 } # href="": the page's own address
+
+  # --- the heading -----------------------------------------------------------------------------------------------------------------------
+  resultCourse: { type: text, component: Text, text: { key: composed.MyExams.course, params: { course: course } }, in: [inProgress, awaitingRelease, resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:98 }
+  resultTitle: { type: text, component: Heading, role: heading, text: { key: composed.MyExams.title, params: { title: title } }, in: [inProgress, awaitingRelease, resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:101 } # h1
+
+  # --- an attempt that has not ended -------------------------------------------------------------------------------------------------
+  inProgressAlert: { type: alert, component: Alert, role: status, name: { key: MyExams.inProgressTitle }, text: { key: MyExams.inProgress }, in: [inProgress], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:111 }
+  continueLink: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: MyExams.continue }, in: [inProgress], emits: CONTINUE, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:114 } # to the exam's own page
+
+  # --- before the release ----------------------------------------------------------------------------------------------------------------
+  awaitingRegion: { type: page, component: Page, role: region, name: { labelledBy: awaitingText }, in: [awaitingRelease], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:134 }
+  handedIn: { type: text, component: Text, text: { oneOf: [MyExams.handedIn, MyExams.handedInByTime, MyExams.handedInByTeam] }, in: [awaitingRelease, resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:139 } # by the talebe, by the time, or closed early by the team
+  awaitingText: { type: text, component: Heading, role: heading, text: { key: MyExams.notReleased }, in: [awaitingRelease], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:166 } # h2
+  awaitingHint: { type: text, component: Text, text: { key: MyExams.notReleasedHint }, in: [awaitingRelease], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:168 } # no score, no count, no answer
+
+  # --- the result --------------------------------------------------------------------------------------------------------------------
+  scoreRegion: { type: page, component: Page, role: region, name: { labelledBy: scoreText }, in: [resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:134 }
+  scoreText: { type: text, component: Heading, role: heading, text: { key: MyExams.scoreOutOf, params: { score: score } }, in: [resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:142 } # h2
+  countsText: { type: text, component: Text, text: { key: MyExams.counts, params: { right: right, wrong: wrong, blank: blank } }, in: [resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:146 } # a skipped question left unanswered is blank
+  standingText: { type: text, component: Text, text: { oneOf: [MyExams.standing, MyExams.standingTied] }, in: [resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:153 } # with a tie, how many share the score
+
+  # --- Konulara göre, a section of the page --------------------------------------------------------------------------------------------
+  topicsRegion: { type: page, component: Page, role: region, name: { labelledBy: topicsTitle }, in: [resultShown], when: "topics == 'some'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:174 }
+  topicsTitle: { type: text, component: Heading, role: heading, text: { key: MyExams.byTopic }, in: [resultShown], when: "topics == 'some'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:178 } # h2
+  topicsList: { type: list, component: List, role: list, in: [resultShown], when: "topics == 'some'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:181 } # the weakest topic first; no name of its own
+  topicName: { type: text, component: Text, text: { key: MyExams.topicName, params: { number: row.number, name: row.name } }, in: [resultShown], when: "topics == 'some'", repeat: result.topics, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:189 }
+  topicBar: { type: status, component: Status, role: progressbar, name: { key: MyExams.topicBarLabel, params: { topic: row.topic, percent: row.percent } }, in: [resultShown], when: "topics == 'some'", repeat: result.topics, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:192 } # a <progress> named with the same figure; it only repeats the line under it
+  topicLine: { type: text, component: Text, text: { key: MyExams.topicLine, params: { percent: row.percent, right: row.right, wrong: row.wrong, blank: row.blank } }, in: [resultShown], when: "topics == 'some'", repeat: result.topics, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:201 }
+  topicStanding: { type: text, component: Text, text: { oneOf: [MyExams.topicStanding, MyExams.topicStandingTied] }, in: [resultShown], when: "topics == 'some'", repeat: result.topics, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:209 }
+
+  # --- Dersin konularında durumum, a section of the page -----------------------------------------------------------------------------
+  courseRegion: { type: page, component: Page, role: region, name: { labelledBy: courseTitle }, in: [resultShown], when: "courseTopics == 'some'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:229 }
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: MyExams.courseTopics }, in: [resultShown], when: "courseTopics == 'some'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:233 } # h2
+  courseIntro: { type: text, component: Text, text: { key: MyExams.courseTopicsIntro }, in: [resultShown], when: "courseTopics == 'some'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:236 }
+  courseList: { type: list, component: List, role: list, in: [resultShown], when: "courseTopics == 'some'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:239 }
+  courseTopicName: { type: text, component: Text, text: { key: MyExams.topicName, params: { number: row.number, name: row.name } }, in: [resultShown], when: "courseTopics == 'some'", repeat: result.courseTopics, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:242 } # one line with the next, "3. Kıyas · Yüzde 62 · 3 sınavdan"
+  courseTopicLine: { type: text, component: Text, text: { key: MyExams.courseTopicLine, params: { percent: row.percent, exams: row.exams } }, in: [resultShown], when: "courseTopics == 'some'", repeat: result.courseTopics, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:244 } # no bar here
+
+  # --- Cevaplarım, a section of the page -----------------------------------------------------------------------------------------------
+  answersRegion: { type: page, component: Page, role: region, name: { labelledBy: answersTitle }, in: [resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:255 }
+  answersTitle: { type: text, component: Heading, role: heading, text: { key: MyExams.myAnswers }, in: [resultShown], source: apps/tedris/features/online-exams/components/my-exam-result.tsx:259 } # h2
+  answersLater: { type: text, component: Text, text: { key: MyExams.answersLater }, in: [resultShown], when: "closed == 'no'", source: apps/tedris/features/online-exams/components/my-exam-result.tsx:263 } # until the exam has closed for everyone
+  answersList: { type: list, component: List, role: list, in: [resultShown], when: answersOpen, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:265 } # in the talebe's own order
+  questionNumber: { type: text, component: Text, text: { key: MyExams.questionNumber, params: { number: row.number } }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:291 } # a <strong>, not a heading (rule EXM-RES-2)
+  questionOutcome: { type: text, component: Text, text: { oneOf: [MyExams.outcomeRight, MyExams.outcomeWrong, MyExams.outcomeBlank] }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:292 } # a Badge: green, red or grey, and its word
+  pointsGot: { type: text, component: Text, text: { key: MyExams.pointsGot, params: { got: row.got, points: row.points } }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:296 }
+  questionText: { type: text, component: Text, text: { key: composed.MyExams.question, params: { question: row.question } }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:302 } # dir=auto
+  optionText: { type: text, component: Text, text: { key: composed.MyExams.option, params: { option: row.option } }, in: [resultShown], when: answersOpen, repeat: result.questions.options, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:313 }
+  givenAnswer: { type: text, component: Text, text: { key: MyExams.chosen }, in: [resultShown], when: answersOpen, repeat: result.questions.options.chosen, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:314 } # a Badge beside each option the talebe chose
+  correctAnswer: { type: text, component: Text, text: { key: MyExams.correctOption }, in: [resultShown], when: answersOpen, repeat: result.questions.options.correct, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:316 } # a Badge beside each correct option
+  noAnswer: { type: text, component: Text, text: { key: MyExams.noAnswer }, in: [resultShown], when: answersOpen, repeat: result.questions.blank, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:322 }
+
+edges:
+  - { labelledBy: [awaitingRegion, awaitingText] }
+  - { labelledBy: [scoreRegion, scoreText] }
+  - { labelledBy: [topicsRegion, topicsTitle] }
+  - { labelledBy: [courseRegion, courseTitle] }
+  - { labelledBy: [answersRegion, answersTitle] }
+  - { triggers: [crumbRoot, list_opened] }
+  - { triggers: [retryButton, opening] }
+  - { triggers: [continueLink, exam_opened] }
+
+rules:
+  - { id: EXM-RES-1, rule: "A released result without a score (score null) is drawn with the heading 'Sonuç henüz açıklanmadı' and its hint while the sections by topic, across the course and of the answers are drawn under it, as they are gated on released alone (my-exam-result.tsx:140, :173, :228, :254). Fix: gate all on the same condition, or say the score could not be read. Read from the code, not seen; when the API sends a released result with no score was not checked." }
+  - { id: EXM-RES-2, rule: "In Cevaplarım each question's number is a <strong> (my-exam-result.tsx:291), not a heading, so a screen-reader user cannot move from question to question by heading as the sections above allow. Fix: an h3. Read from the code, not seen." }
+  - { id: EXM-RES-focus, rule: "The page sets no initial focus (no autoFocus and no focus() in my-exam-result.tsx), so the page node has no `initialFocus`; the browser's focus after a load was not seen." }
+  - { id: own-attempt-only, rule: "The page shows the talebe's own attempt and of the others only counts: how many took the exam, the talebe's place among them and how many share it, for the exam and for each topic (the owner, 22 Nov). No other talebe's name or score is sent (getMyExamResult sends only taken, rank and tiedWith)." }
+  - { id: correct-only-when-closed, rule: "The correct options are drawn only once the results are released and the exam has closed for everyone; before, the API does not send them (invariant online-exam-correct-options-stay-hidden). Since 24 Nov 2026 the release of an online exam's results ends it for everyone (the owner's decision; invariant online-exam-release-ends-it), so a talebe reads their answers with the correct ones as soon as the results are out. Cevaplarım says 'Cevapların ve doğruları, sınav herkes için bitince burada açılır.' only on an exam released before that change while it is still open: one attempt left in progress kept such an exam open until the team closed it early, which is what a hoca reported." }
+  - { id: words-and-numbers, rule: "A standing is said as a percentage and as counts, in text; the topic's bar is a <progress> named with the same figure and only repeats it. The answers' outcome is a coloured Badge that carries its word. No standing is told by colour alone." }

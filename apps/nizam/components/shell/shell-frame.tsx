@@ -4,7 +4,6 @@ import { AppBar } from "@medaris/ui/mds/app-bar";
 import { AppShell, Sidebar } from "@medaris/ui/mds/app-shell";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Icon, type IconName } from "@medaris/ui/mds/icon";
-import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { NavSection } from "@medaris/ui/mds/nav-section";
@@ -12,9 +11,7 @@ import { ScopePicker } from "@medaris/ui/mds/scope-picker";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
 import { Fragment, type ReactNode } from "react";
-import { locales } from "~/lib/i18n/routing";
 import {
   activeEntryId,
   coursePathAlias,
@@ -54,7 +51,6 @@ export interface ShellModel {
     bell: string;
     kosk: string;
     themeDark: string;
-    languageMenu: string;
     themeLight: string;
   };
 }
@@ -81,7 +77,6 @@ export function ShellFrame({
   children: ReactNode;
 }) {
   const here = usePathname() || "/";
-  const locale = useLocale();
   if (isBarePath(here)) {
     return (
       <>
@@ -174,15 +169,8 @@ export function ShellFrame({
     </a>
   );
 
-  // The language menu sits beside the theme switch, in the sidebar's tools
-  // and in the app bar (MDRS-275).
   const themeToggle = (
     <span className="flex items-center">
-      <LocaleMenu
-        locale={locale}
-        locales={locales}
-        label={model.labels.languageMenu}
-      />
       <ThemeToggle
         darkLabel={model.labels.themeDark}
         lightLabel={model.labels.themeLight}

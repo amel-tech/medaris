@@ -1,0 +1,81 @@
+# nazar.curriculum.resources on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, the
+# müderris of the stack signed in through Keycloak's real form, on Müfredat of a course of the walk's own.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/curriculum/resources \
+#     --bind graphs/nazar/curriculum/resources/binding.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>       (every transition the scenarios below can drive)
+#   the two ders nazırı's own files: binding.noSessions.yaml, binding.readOnly.yaml (see walk.common.binding.yaml for why)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation is from
+# the code and unverified. The bindings load (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and walked nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, resource or setting is touched:
+# resources-data.mjs make opens "Deneme dersi resources" in the second köşk (published, two weeks of two celses, MUDERRIS as its hoca);
+# the ids are read from graphs/.local/made/resources.json as {made.*}, and the teardown deletes it with everything under it. The words
+# a walk types are its own (`vars`). What the walk cannot undo: the audit rows of a save (`course.replace`-style rows of tedrisat's log,
+# no route removes them and nothing depends on them).
+#
+#   adds         (the main story) the course has no resource. ADD_COURSE_LINK, Kaydet too early (the field errors), FILL_COURSE, Kaydet:
+#                the link is stored. The first celse's details are opened and the same is done for its list, twice, and the two rows are
+#                put the other way round. `--cover transitions` also walks, from this start, "Kaynağı çıkar" on a stored link and on a
+#                celse's row, every "Vazgeç" that takes a change back, the upload panel of each list (it opens, "Yükle" with no file
+#                says "Bir dosya seçin.", "Vazgeç" closes it), "Celse ekle" and its off "Dosya yükle", and the two toggles of a celse.
+#   removesFile  the course holds one stored file (by SQL: no upload works here). Its link and badge are read, "Kaynağı çıkar" asks,
+#                "Vazgeç" and the close icon leave the file in the list, "Çıkar" takes it out, "Vazgeç" in the save bar puts it back, and
+#                "Kaydet" deletes it (the effect counts the course's resources and the deletion queue).
+# Not bound, and why: see walk.common.binding.yaml (the file input; a save the server refuses; a conflict; a session that ends).
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: nazar.curriculum.resources
+
+scenarios:
+  adds:
+    given: { rights: full, answer: saved, store: storage, file: fine }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      linkName: Hâşiye listesi
+      linkUrl: https://kaynak.example.test/hasiye
+      lessonLinkName: Birinci bâb özeti
+      lessonLinkUrl: https://kaynak.example.test/bab-1
+      lessonLinkName2: İkinci bâb özeti
+      lessonLinkUrl2: https://kaynak.example.test/bab-2
+      queued: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, make, full]
+        expect: 'resources-data make full'
+    teardown:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, remove]
+        expect: 'resources-data remove'
+
+  removesFile:
+    given: { rights: withFile, answer: saved, store: storage, file: fine }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      linkName: Hâşiye listesi
+      linkUrl: https://kaynak.example.test/hasiye
+      lessonLinkName: Birinci bâb özeti
+      lessonLinkUrl: https://kaynak.example.test/bab-1
+      lessonLinkName2: İkinci bâb özeti
+      lessonLinkUrl2: https://kaynak.example.test/bab-2
+      queued: '1'
+    setup:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, make, withFile]
+        expect: 'resources-data make withFile'
+    teardown:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, remove]
+        expect: 'resources-data remove'
+
+states:
+  listed: { url: '{nazar}/ders/*/mufredat' }
+  # the save is a Next server action: a POST to the page's own address, held while the busy button is checked
+  saving: { call: '{nazar}/ders/*/mufredat' }
+  # the upload is a fetch to the web route: it would hold the request to compare its status (503 on this stack); unreachable until a
+  # file input can be set (see walk.common.binding.yaml)
+  # uploadingCourse: { call: '{nazar}/api/files/courses/*/resources' }
+  # uploadingLesson: { call: '{nazar}/api/files/lessons/*/resources' }
+  not_found: { url: '{nazar}/ders/*/mufredat' }
+  left: { url: '{nazar}/ders/*' }

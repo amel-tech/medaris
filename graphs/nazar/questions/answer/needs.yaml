@@ -1,0 +1,134 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.questions.answer
+status: proposed
+summary: >-
+  What must exist for the people who answer a course's questions in nazar: the flow's product list, from its story and from the
+  findings of its page, never from what the page does today. Nothing in planned.md belongs to this page (P-09 and P-10 are the
+  talebe's side, in tedris.learn.questions).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing or unwalked, for the orchestrator's gaps merge:
+# missing:  asker-is-told (none: decision D1), answer-keeps-a-colleagues-answer (none: ANSWER-2, decision D2), answer-is-announced
+# (none: F-D1-08)
+# unwalked: change-an-answer (code, no e2e), empty-course (code, no e2e), page-through-questions (code, no e2e; its refusal cannot be
+# made on the stack), failed-read-retry (code, no e2e; the stack cannot make tedrisat fail the read)
+# Written but not replayed yet (the owner moved every replay to the walk phase): no need names a replay scenario.
+# Nothing here carries a kontenjan or a gender rule: a question has neither.
+
+needs:
+  - id: waiting-first
+    need: >-
+      The people who may answer a course's questions read them with the ones still waiting first, oldest first, each marked in
+      words as waiting or answered and with the celse it was asked on and who asked it, so that nothing waits unseen behind
+      answered ones.
+    evidence:
+      - state: listed
+      - state: shown
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:192
+      - source: apps/nazar/features/questions/components/questions-page.tsx:27
+      - source: apps/nazar/features/questions/components/questions-list.tsx:148
+      - test: apps/nazar/e2e/questions.e2e.ts
+        name: "the müderris reads the waiting question first, answers it, and the answer is the talebe's to read"
+    note: >-
+      questions#1 a1 to a8 (the heading, the sidebar's current entry, two cards, the waiting one first with "Bekliyor" and its
+      celse line, the answered one with its answer).
+
+  - id: answer-a-question
+    need: >-
+      An answerer writes an answer under a waiting question. An empty answer is refused in words and sends nothing. Once stored,
+      the card shows the answer, who gave it and when, and the talebe who asked reads it in their own list.
+    evidence:
+      - state: listed
+      - state: sending
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217
+      - source: apps/nazar/features/questions/components/questions-list.tsx:127
+      - test: apps/nazar/e2e/questions.e2e.ts
+        name: "the müderris reads the waiting question first, answers it, and the answer is the talebe's to read"
+    note: >-
+      questions#1 a9 to a13 (the empty answer refused, the answer sent, "Cevaplandı" and "Cevabı değiştir", the row with the
+      answerer's sub, the talebe's list holds it) and a14 (no "Bekliyor" after a reload, which is the RELOAD step walked under
+      --absent).
+
+  - id: change-an-answer
+    need: An answerer changes an answer already given, or leaves it as it was; the new answer replaces the old one.
+    evidence:
+      - state: listed
+      - state: sending
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217
+      - source: apps/nazar/features/questions/components/questions-list.tsx:194
+    note: >-
+      unwalked: no e2e (questions#1 stops at "Cevabı değiştir" being visible). The binding is written for it and not replayed.
+
+  - id: empty-course
+    need: A course nobody has asked anything in says so, in words, where the list would be.
+    evidence:
+      - state: empty
+      - source: apps/nazar/features/questions/components/questions-list.tsx:72
+    note: "unwalked: no e2e. The binding makes a course with no question for it."
+
+  - id: page-through-questions
+    need: >-
+      A course with many questions is read a page at a time, and a page that cannot be read is said so and can be asked for again,
+      with the cards already read kept.
+    evidence:
+      - state: listed
+      - state: loadingMore
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:192
+      - source: apps/nazar/features/questions/components/questions-list.tsx:46
+    note: >-
+      unwalked: no e2e. The binding makes 21 answered questions for the second page; the failed page cannot be made on the stack.
+
+  - id: only-answerers-read
+    need: >-
+      Only the people who may answer a course's questions can read them; anyone else is told they may not, and nothing of the
+      questions, not even the words of one, reaches their page.
+    evidence:
+      - state: forbidden
+      - source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:192
+      - source: apps/nazar/features/shell/components/page-problem.tsx:23
+      - test: apps/nazar/e2e/questions.e2e.ts
+        name: "a ders nazırı without question.answer is refused the page, and the API refuses the list (403) and the answer (404)"
+    note: >-
+      questions#2 and #3 belong to nazar.access.dersNazirPages (written later); this flow draws the refusal once, as `forbidden`,
+      and its binding walks it as a ders nazırı with no grant. The menu offering the page to her all the same is F-D1-29.
+
+  - id: failed-read-retry
+    need: A list that cannot be read says so, without saying the person has no access, and offers another try.
+    evidence:
+      - state: loadFailed
+      - source: apps/nazar/features/shell/components/load-failed.tsx:27
+    note: "unwalked: the stack cannot make tedrisat fail this read. It draws a second h1 (F-D1-01)."
+
+  - id: asker-is-told
+    need: >-
+      The talebe who asked is told when their question is answered, and the answer is on their page without a reload; today the
+      API sends no notification and tedris draws the answer only when its list is read again (decision D1).
+    missing: no Linear issue; decision D1
+    note: |-
+      Drawn on the state sending, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      no Linear issue found for it; a product decision first.
+
+  - id: answer-keeps-a-colleagues-answer
+    need: >-
+      An answer a colleague gave while this page was open is shown, and a new answer does not replace it unseen: the page asks
+      first, or the API refuses a stale one (decision D2, ANSWER-2).
+    missing: no Linear issue; ANSWER-2, decision D2
+    note: |-
+      Drawn on the states listed and sending, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      a defect, not a planned feature, so no Linear key. Today the PUT replaces the earlier answer with no version check and no
+      history.
+
+  - id: answer-is-announced
+    need: >-
+      After an answer is saved the person is told it was, and the focus is on the answer or on its "Cevabı değiştir"; when a
+      change begins the focus is in the text area (F-D1-08).
+    missing: no Linear issue; F-D1-08
+    note: |-
+      Drawn on the states listed and sending, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      a defect of the page, not a planned feature, so no Linear key.

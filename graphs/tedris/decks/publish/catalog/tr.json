@@ -1,0 +1,20 @@
+{
+  "Decks.makePrivate": "Özele çek",
+  "Decks.publishFailedTitle": "Yayın isteği gönderilemedi",
+  "Decks.requestPublish": "Yayın iste",
+  "Decks.requestedTitle": "Yayın isteği gönderildi",
+  "Decks.statusPENDING": "Yayın isteği bekliyor",
+  "Decks.statusPRIVATE": "Özel",
+  "Decks.statusPUBLISHED": "Yayında",
+  "Decks.statusREJECTED": "Yayın isteği reddedildi",
+  "Decks.tryAgain": "Bir sorun oluştu. Yeniden dene.",
+  "Decks.whoPENDING": "Yayın isteğini {at} gönderdin. Medaris yönetimi inceleyip yayımlayana dek deste özel kalır.",
+  "Decks.whoPRIVATE": "Bu deste özel; yalnız sen görürsün. Herkese açmak için yayın iste: Medaris yönetimi inceler, uygun bulursa yayımlar.",
+  "Decks.whoPUBLISHED": "Bu deste herkese açık: Medaris yönetimi inceleyip yayımladı. İstediğin an özele çekebilirsin.",
+  "Decks.whoTitle": "Kimler görebilir",
+  "Decks.withdrawFailedTitle": "İstek geri çekilemedi",
+  "Decks.withdrawRequest": "İsteği geri çek",
+  "Decks.withdrawnTitle": "Deste özel oldu",
+  "composed.Button.loading": "Yükleniyor",
+  "composed.Publish.title": "{title}"
+}

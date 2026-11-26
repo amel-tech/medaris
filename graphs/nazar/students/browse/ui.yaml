@@ -1,0 +1,120 @@
+# The screens of nazar.students.browse: Talebeler of a medrese (/medrese/<id>/talebeler) with its filters, table and pager, the two
+# filter lists, the refusal and the failed read. Read from apps/nazar/features/students and libs/ui/src/mds; every word is copied
+# from libs/i18n/src/locales/tr/nazar.json by a script (it fails on a missing key and compares each value). Two messages are not in
+# that file and are built in code, as composed.*: a course title in a cell and in the Ders list (students-table.tsx:139, students.ts:89), and the day a course
+# was marked finished (students.ts:172, shortDay). The page changes nothing, so there is no `changes` note.
+# Where a node says "repeat", the page draws it once per row (or per course); the replay finds the rows through the binding.
+schema: delurio-graph/0
+kind: ui
+id: nazar.students.browse
+flow: nazar.students.browse
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  nameGenitive: Hadis ve Siyer Medresesi’nin
+  count: "28"
+  name: Deneme Talebe 01 browse
+  page: "1"
+  pages: "3"
+  total: "28"
+  from: "1"
+  to: "10"
+  title: Deneme dersi browseB
+  day: 13 Kas
+
+# The page keeps no focus of its own on load (nothing in features/students sets it) and none after a filter (the table stays
+# mounted and the focus stays where it was) or a page (the pager is a plain link: the document is loaded anew), so there is no
+# `initialFocus` on the page and no `focus` here: the graph says nothing of what the code does not say.
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------
+  studentsPage: { type: page, component: Page, role: main, in: [firstPage, middlePage, lastPage, onePage, empty, nobody, narrowing, forbidden, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  studentsTitle: { type: text, component: Heading, role: heading, text: { key: Students.title }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody, narrowing, forbidden, loadFailed], source: apps/nazar/features/students/components/students-page.tsx:74 } # h1; the <title> says "Talebeler · Medaris Nazar", also for a refused reader (F-B-13)
+  subtitle: { type: text, component: Text, text: { key: Students.subtitle, params: { nameGenitive: medrese.nameGenitive } }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody, narrowing, forbidden, loadFailed], source: apps/nazar/features/students/components/students-page.tsx:75 } # the Turkish genitive of the medrese's name (genitive(), courses.ts:140); Students.subtitleUnnamed when the scope has no name
+
+  # --- the filters ----------------------------------------------------------------------------------------------------------
+  filtersGroup: { type: text, component: Text, role: group, name: { key: Students.filters.label }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody, narrowing], source: apps/nazar/features/students/components/students-table.tsx:188 } # a <fieldset> whose hidden <legend> names it
+  searchBox: { type: field, component: TextField, role: searchbox, text: { key: Students.filters.search }, value: { literal: "" }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody, narrowing], source: apps/nazar/features/students/components/students-table.tsx:200 } # type=search, label hidden, the same words as its placeholder; no maxLength (STUDENTS-4); after 350 ms of no key the address gains ?ara=
+  courseFilter: { type: field, component: TextField, role: combobox, text: { key: Students.filters.course.label }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody, narrowing], duringStep: true, emits: OPEN_COURSE, source: apps/nazar/features/students/components/students-table.tsx:210 } # the kit's Select, a button with role combobox and aria-label "Ders"; its visible words are the course chosen, which the graph does not check
+  statusFilter: { type: field, component: TextField, role: combobox, text: { key: Students.filters.status.label }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody, narrowing], duringStep: true, emits: OPEN_STATUS, source: apps/nazar/features/students/components/students-table.tsx:222 } # aria-label "Durum"
+  counter: { type: text, component: Text, text: { key: Students.counter, params: { count: students.total } }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:235 } # the API's total over every page, a plain <p> (F-B-4); "0 talebe" when nobody is listed
+
+  # --- the table --------------------------------------------------------------------------------------------------------------
+  studentsTable: { type: list, component: List, role: table, name: { key: Students.caption }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:239 } # Table responsive=stack: explicit table roles, named by its hidden caption
+  colStudent: { type: text, component: Text, role: columnheader, text: { key: Students.columns.student }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:91 }
+  colEmail: { type: text, component: Text, role: columnheader, text: { key: Students.columns.email }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:103 }
+  colOngoing: { type: text, component: Text, role: columnheader, text: { key: Students.columns.ongoing }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:116 }
+  colCompleted: { type: text, component: Text, role: columnheader, text: { key: Students.columns.completed }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:131 }
+  colFirst: { type: text, component: Text, role: columnheader, text: { key: Students.columns.first }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:151 } # carries aria-sort="descending" though it is no sort control (students-table.tsx:263)
+  colActions: { type: text, component: Text, role: columnheader, text: { key: Students.columns.actions }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:161 } # the words are visually hidden
+  rowsFull: { type: text, component: Text, role: rowheader, repeat: students.rows, in: [firstPage, middlePage], source: apps/nazar/features/students/components/students-table.tsx:91 } # the talebe's name, a <th scope=row>: ten rows (e2e students#1 a3, a9)
+  rowsLast: { type: text, component: Text, role: rowheader, repeat: students.rows, in: [lastPage], source: apps/nazar/features/students/components/students-table.tsx:91 } # the rest of the list: eight of twenty-eight (e2e students#1 a12)
+  rowsOne: { type: text, component: Text, role: rowheader, repeat: students.rows, in: [onePage], source: apps/nazar/features/students/components/students-table.tsx:91 }
+  rowNewest: { type: text, component: Text, role: rowheader, in: [firstPage], source: apps/nazar/features/students/students.ts:164 } # the newest first enrolment heads the list (e2e students#1 a4); the binding says whose name
+  rowEleventh: { type: text, component: Text, role: rowheader, in: [middlePage], source: apps/nazar/features/students/students.ts:164 } # the page after the first starts at the eleventh (e2e students#1 a10)
+  rowFinisher: { type: text, component: Text, role: rowheader, in: [onePage], when: "narrowing == 'state'", source: apps/nazar/features/students/students.ts:164 } # the one who finished a course is the only row (e2e students#3 a5)
+  rowFound: { type: text, component: Text, role: rowheader, in: [onePage], when: "narrowing == 'search'", source: apps/nazar/features/students/students.ts:164 } # the one the word names (e2e students#3 a9)
+  finishedOngoing: { type: text, component: Text, text: { key: composed.Students.courseTitle, params: { title: finisher.ongoing } }, in: [firstPage], source: apps/nazar/features/students/components/students-table.tsx:123 } # in "Devam ettiği dersler" of the newest row: the course they still attend (e2e students#2 a1)
+  finishedCourse: { type: text, component: Text, text: { key: composed.Students.courseTitle, params: { title: finisher.course } }, in: [firstPage], source: apps/nazar/features/students/components/students-table.tsx:139 } # in "Tamamladığı dersler" of the newest row: the title of the course they finished (e2e students#2 a1, a2)
+  finishedDay: { type: text, component: Text, text: { key: composed.Students.day, params: { day: finisher.day } }, in: [firstPage], source: apps/nazar/features/students/components/students-table.tsx:141 } # the day the course team marked it, a <span class=mds-caption> ("13 Kas")
+  noneCompleted: { type: text, component: Text, text: { key: Students.none }, repeat: students.rows, in: [firstPage, middlePage, lastPage], source: apps/nazar/features/students/components/students-table.tsx:147 } # "Yok" for a talebe who finished nothing (e2e students#2 a4); the newest row does not say it (a3)
+  ban: { type: action, component: Button, role: button, intent: secondary, name: { key: Students.banLabel, params: { name: student.name } }, text: { key: Students.ban }, repeat: students.rows, in: [firstPage, middlePage, lastPage, onePage], emits: BAN, source: apps/nazar/features/students/components/students-table.tsx:169 } # on every row, for every reader of the table (STUDENTS-2)
+  tableNote: { type: text, component: Text, text: { key: Students.note }, in: [firstPage, middlePage, lastPage, onePage, empty, nobody], source: apps/nazar/features/students/components/students-table.tsx:267 } # e2e students#2 a5
+
+  # --- the pager --------------------------------------------------------------------------------------------------------------
+  pagerNav: { type: text, component: Text, role: navigation, name: { key: Students.pager.label }, in: [firstPage, middlePage, lastPage, onePage], source: apps/nazar/features/students/components/students-table.tsx:269 } # not drawn while nobody is listed (students-page.tsx:108-112)
+  previous: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Students.pager.previous }, in: [firstPage, middlePage, lastPage, onePage], disabledIn: [firstPage, onePage], emits: PREVIOUS, source: apps/nazar/features/students/components/students-table.tsx:273 } # off: an <a> with no href, role=link and aria-disabled (button.tsx:78-79); a plain link otherwise (STUDENTS-1)
+  next: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Students.pager.next }, in: [firstPage, middlePage, lastPage, onePage], disabledIn: [lastPage, onePage], emits: NEXT, source: apps/nazar/features/students/components/students-table.tsx:285 }
+  pagerRange: { type: text, component: Text, text: { key: Students.pager.range, params: { page: pager.page, pages: pager.pages, total: pager.total, from: pager.from, to: pager.to } }, in: [firstPage, middlePage, lastPage, onePage], source: apps/nazar/features/students/components/students-table.tsx:282 } # "Sayfa 1 / 3 · 28 talebeden 1–10"; a plain <span>, no live region (F-B-4)
+
+  # --- nobody to list ---------------------------------------------------------------------------------------------------------
+  emptyLine: { type: text, component: Text, text: { key: Students.empty }, in: [empty], source: apps/nazar/features/students/components/students-table.tsx:260 }
+  nobodyLine: { type: text, component: Text, text: { key: Students.emptyFiltered }, in: [nobody], source: apps/nazar/features/students/components/students-table.tsx:247 } # e2e students#3 a10
+  clearFilters: { type: action, component: Button, role: button, intent: secondary, text: { key: Students.clearFilters }, in: [nobody], emits: CLEAR, source: apps/nazar/features/students/components/students-table.tsx:248 } # a link-variant button; the only control that clears every filter at once
+
+  # --- the two lists, open (the kit's Select popup, Base UI; modal by default, so only the list is drawn: not verified in a browser) ---
+  statusList: { type: list, component: List, role: listbox, in: [choosingStatus], source: libs/ui/src/mds/select.tsx:80 } # no name of its own
+  statusAll: { type: field, component: ListItem, role: option, text: { key: Students.filters.status.all }, checked: "narrowing == 'none'", in: [choosingStatus], emits: PICK_ALL_STATUS, source: apps/nazar/features/students/students.ts:93 }
+  statusOngoing: { type: field, component: ListItem, role: option, text: { key: Students.filters.status.ENROLLED }, checked: false, in: [choosingStatus], source: apps/nazar/features/students/students.ts:94 } # drawn, not pressed in this graph
+  statusCompleted: { type: field, component: ListItem, role: option, text: { key: Students.filters.status.COMPLETED }, checked: "narrowing == 'state'", in: [choosingStatus], emits: PICK_COMPLETED, source: apps/nazar/features/students/students.ts:94 }
+  courseList: { type: list, component: List, role: listbox, in: [choosingCourse], source: libs/ui/src/mds/select.tsx:80 } # no name of its own
+  courseAll: { type: field, component: ListItem, role: option, text: { key: Students.filters.course.all }, checked: "narrowing != 'course'", in: [choosingCourse], emits: PICK_ALL_COURSES, source: apps/nazar/features/students/students.ts:88 }
+  courseEach: { type: field, component: ListItem, role: option, text: { key: composed.Students.courseTitle, params: { title: course.title } }, checked: "narrowing == 'course'", repeat: medrese.courses, in: [choosingCourse], emits: PICK_COURSE, source: apps/nazar/features/students/students.ts:89 } # one option for each course of the medrese, by title; the binding presses one named course
+
+  # --- the API refuses the list -------------------------------------------------------------------------------------------------
+  forbiddenTitle: { type: text, component: Text, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a <p> in the alert, not a heading (F-B-13)
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, with no name of its own; no link, no way out
+
+  # --- the read failed ------------------------------------------------------------------------------------------------------------
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # SystemState shell draws a <section aria-labelledby>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Students.loadFailedTitle }, in: [loadFailed], source: apps/nazar/features/students/components/students-page.tsx:88 } # an h1, the page's second (F-B-1)
+  failedText: { type: text, component: Text, text: { key: Students.loadFailed }, in: [loadFailed], source: apps/nazar/features/students/components/students-page.tsx:89 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+
+edges:
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { triggers: [courseFilter, choosingCourse] }
+  - { triggers: [statusFilter, choosingStatus] }
+  - { triggers: [next, reading] }
+  - { triggers: [previous, reading] }
+  - { triggers: [clearFilters, narrowing] }
+  - { triggers: [retry, reading] }
+  - { triggers: [ban, handed_over.ban] }
+
+rules:
+  - { id: F-B-4, rule: "A change of the list is not announced. The counter (students-table.tsx:235-237) and the range (:282-284) are a plain <p> and a plain <span>; the wrapper's aria-busy (:186) is not spoken; choosing a filter, typing, or paging leaves a screen-reader user with the old words until they read the page again. Fix: make the counter and the range one role=status element, or one hidden live region that says '{n} talebe'." }
+  - { id: F-B-1, rule: "A read that fails draws the retry state with its own h1 (LoadFailed -> SystemState shell, headingLevel 1) under the page's own h1 'Talebeler', so heading navigation lists two page titles. Fix: LoadFailed passes headingLevel 2 when shell is true (load-failed.tsx:28-31)." }
+  - { id: F-B-13, rule: "A refused reader meets the page's title and line, then a neutral Alert, which is a role=status, whose title 'Bu sayfaya izniniz yok' is a <p>, not a heading, with no link out; the <title> still says 'Talebeler'. Fix: draw the refusal as a heading with a way back to the medrese's first allowed page (page-problem.tsx:23-29)." }
+  - { id: students-read-unaudited, rule: "GET /madrasahs/:id/students returns the names and e-mail addresses of the whole medrese's talebe and writes no audit row, while a course roster read writes course.roster_read (domain invariant madrasah-students-read-is-audited, holds: false). Fix: write the row (decision D1)." }
+  - { id: focus-not-set, rule: "No `initialFocus` and no `focus` is drawn: nothing in features/students sets focus on load, and after a filter the focus stays where it was (the client component stays mounted; router.replace in a transition, students-table.tsx:63-67). After a page change the document is loaded anew, so the focus is the document's start. Where it lands after a Select list closes is Base UI's (the trigger, not verified in a browser)." }
+  - { id: STUDENTS-1, rule: "New. The pager is two plain links (<a href>, button.tsx:136-): each page change loads the whole document anew, where the filters (router.replace) keep the page mounted. The focus falls back to the start of the document, the sidebar is read again, and nothing says that the page changed except the range text, which is no live region (F-B-4). Read from the code, not verified in a browser. Fix: next/link, or a client navigation like the filters, with the focus moved to the table caption." }
+  - { id: STUDENTS-2, rule: "New. 'Yasakla' is drawn on every row for every reader of the table (students-table.tsx:169-178 has no permission check). The list is gated by madrasah.students_view and the ban by madrasah.ban (or platform.ban_scoped), two codes: a nazır given only the first meets a button that opens a dialog and is refused at submit (nazar.bans.ban). Read from the code, not walked: the stack seeds no such nazır. Fix: decision D2." }
+  - { id: STUDENTS-3, rule: "New. The course filter reads GET /madrasahs/:id/courses, which asks for madrasah.course_open, madrasah.course_hide or madrasah.muderris_manage, none of which students_view implies. A nazır given only madrasah.students_view gets 403 on that side read and the list says nothing: the filter holds only 'Bütün dersler' (students-page.tsx:102-105), a combobox with one option. Read from the code, not walked." }
+  - { id: STUDENTS-4, rule: "New, NOT VERIFIED. The box has no maxLength, the page cuts the word to 100 characters (students.ts:46, the API cuts it too), and the effect that asks again stops only when the box's trimmed text equals filters.q (students-table.tsx:69-77). A word of 101 characters or more never equals the cut one, so by the code the page asks the server again every 350 ms for as long as the box holds it. Not run: it needs a browser and a long word. Fix: cut the word in the box too (maxLength 100) or compare the cut words." }
+  - { id: STUDENTS-5, rule: "New, NOT VERIFIED here (by analogy with BROWSE-1 of Keşfet, which was seen on the köşk list). pageOf accepts any whole number (archive.ts:53-56), so ?sayfa=99999999999999999999 reaches the API as an offset of 1e21, which Postgres refuses; readOnce turns the 500 into the failed state, and 'Yeniden dene' (router.refresh) fails again for ever. A ?sayfa= past the last but small is answered with a redirect to the last page (students-page.tsx:55-67). Fix: clamp the page in the read (students.ts:70-76)." }
+  - { id: filters-replace-history, rule: "A filter or a word changes the address with router.replace, so it leaves no history entry: the browser's Back button leaves the page and does not undo a filter. The pager's links are ordinary links and do leave entries. Product wording, not an accessibility defect." }
+  - { id: aria-sort-is-informational, rule: "The 'İlk kayıt' header carries aria-sort=descending (students-table.tsx:263) though no column is sortable; it says the order the API gives (newest first) and nothing can change it. Not a defect." }
+  - { id: disabled-link-held-as-it-is, rule: "A pager link that leads nowhere is an <a> with no href, role=link and aria-disabled=true (button.tsx:78-79, :126); a keyboard does not reach it. The graph holds it as the e2e does (students#1 a6, a13)." }
+  - { id: label-in-name, rule: "A row's visible text 'Yasakla' is contained in its accessible name 'Yasakla: {name}' (WCAG 2.5.3). Holds." }
+  - { id: filters-in-the-address, rule: "The search word, the course, the state and the page are the address (?ara=, ?ders=, ?durum=, ?sayfa=), so a result is a link; a value nobody knows reads as 'all' and never reaches the API as a 400 (students.ts:39-54)." }

@@ -1,0 +1,224 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.home.medarisNazimCut
+status: proposed
+summary: >-
+  What must exist for a Medaris nazımı who reads Ana sayfa with only some of the platform's permissions: the product list of
+  nizam.home.medarisNazimCut, written from the flow's story and its open decisions, never from what the page does today. No replay
+  has been run (the owner's word: replays happen once, after every graph is written), so `walked` names the e2e checks that carry
+  a need and no replay scenario; the replays bound in binding*.yaml are named in the comments.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Gaps of this file, for that merge:
+# missing:   an-open-page-stops-offering-what-was-taken, the-home-greets-the-person, every-counted-request-has-a-way-in,
+# permanent-ban-requests-exist-before-they-are-offered (MDRS-194), the-footnote-names-who-gave,
+# the-menu-and-the-permissions-agree
+# unwalked:  a-nazim-with-no-permission-is-told-so (no e2e; replay `bare` is bound), a-failed-grants-read-is-said (code and unit spec;
+# nothing here can make GET /me/grants fail)
+
+needs:
+  - id: home-cut-to-permissions
+    need: >-
+      A Medaris nazımı reads a home that shows only the queues her permissions open, and each section she does not hold is not in
+      the page at all, not hidden: no card, no link, no number for it.
+    evidence:
+      - state: homeShown
+      - node: applicationsCard
+      - node: decksCard
+      - node: permanentBansCard
+      - node: passiveCard
+      - node: bansCard
+      - node: openKosk
+      - node: passiveAlert
+      - node: statCourse
+      - node: statStudents
+      - source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.controller.ts:35
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
+      - source: apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:22
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+    note: dashboard.e2e.ts dashboard#8 (a1, a5, a7)
+
+  - id: menu-cut-to-permissions
+    need: >-
+      Her menu offers Ana sayfa and Bildirimler and, besides, only the entries a permission of hers opens; a group with no entry
+      left is not drawn, and the başnazım's own entries (Medaris nazımları, İzin grupları, Denetim kaydı, Platform ayarları,
+      YouTube bağlantısı) are never there.
+    evidence:
+      - node: menu
+      - node: groupGeneral
+      - node: groupPlatform
+      - node: groupRequests
+      - node: groupAudit
+      - node: menuApplications
+      - node: menuDecks
+      - node: menuBans
+      - node: menuNazims
+      - node: menuGrants
+      - node: menuAuditLog
+      - node: menuYoutube
+      - node: menuPlatformSettings
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:72
+      - source: apps/nizam/lib/shell-nav.ts:313
+      - source: apps/nizam/components/shell/nizam-shell.tsx:87
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+    note: dashboard.e2e.ts dashboard#8 (a3, a4)
+
+  - id: numbers-and-greeting-count-her-queues
+    need: >-
+      The greeting says how many requests wait for her decision, counting only the queues she may decide, and says that none waits
+      when none does; the platform numbers are the köşk and medrese counts, and the course and student numbers are the başnazım's.
+    evidence:
+      - node: greetingPending
+      - node: greetingNone
+      - node: stats
+      - node: statKosk
+      - node: statMadrasah
+      - source: apps/nizam/features/dashboard/present.ts:29
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:298
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+    note: |-
+      Also drawn as the assertion nothing-waits-without-a-permission.
+      dashboard.e2e.ts dashboard#8 (a2, a16)
+
+  - id: grants-are-read-in-words
+    need: >-
+      She reads what the başnazım gave her under "İzinleriniz": each permission or ready group in the words of the permission
+      catalogue, who gave it and on which day, and until when (or that it has no end).
+    evidence:
+      - node: grantsCard
+      - node: grantsTitle
+      - node: grantApplications
+      - node: grantDecks
+      - node: grantBansAccount
+      - node: grantsNote
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:62
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:373
+      - source: apps/nizam/features/dashboard/present.ts:232
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+    note: dashboard.e2e.ts dashboard#8 (a8, a9, a10, a11)
+
+  - id: no-open-kosk-for-a-nazim
+    need: >-
+      "Köşk aç" is the başnazım's alone: a Medaris nazımı is never offered it on her home, and the page does not follow the API,
+      which lets a nazım who holds platform.kosk_create open a köşk (the decision is F-X-12's: the menu, the page and tedrisat
+      must agree).
+    evidence:
+      - node: openKosk
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:307
+      - source: apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:28
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — Köşk aç is never drawn to a nazım, only to the başnazım (criterion 6)"
+    note: dashboard.e2e.ts dashboard#8 (a6), dashboard#9
+
+  - id: a-page-not-hers-says-so-and-takes-her-home
+    need: >-
+      A page her permissions do not open says so in words that name who to ask, shows the e-mail she signed in as, keeps her menu,
+      and has a way back to her home.
+    evidence:
+      - state: noAccess
+      - node: noAccessTitle
+      - node: noAccessBody
+      - node: noAccessAccount
+      - node: noAccessBack
+      - source: apps/nizam/components/errors/no-access.tsx:27
+      - source: apps/nizam/app/izin-gruplari/page.tsx:40
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+    note: dashboard.e2e.ts dashboard#8 (a12)
+
+  - id: a-taken-permission-is-gone-after-a-reload
+    need: >-
+      When the başnazım takes a permission away from a Medaris nazımı, her next read of the home has no card, no menu entry, no
+      grant and no share of the number for it, and the group caption goes with its last entry.
+    evidence:
+      - state: homeStale
+      - state: homeCut
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:114
+      - source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.service.ts:49
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+    note: |-
+      Also drawn as the effect taken, the assertion revoke-needs-the-permission, the assertion the-cut-page-has-no-deck-count.
+      dashboard.e2e.ts dashboard#8 (a13, a14, a15, a16)
+
+  - id: a-nazim-with-no-permission-is-told-so
+    need: >-
+      A Medaris nazımı whom the başnazım has given no permission (or whose last one was taken away) reads a home of two numbers, a
+      menu of two entries and "Size verilmiş bir izin yok.", and is told that nothing waits for her.
+    evidence:
+      - state: homeShown
+      - node: grantsEmpty
+      - node: greetingNone
+      - node: menuHome
+      - node: menuNotifications
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:396
+    note: "walked: []: no e2e; replay `bare` (binding.bare.yaml) is bound and not run"
+
+  - id: a-failed-grants-read-is-said
+    need: When her grants cannot be read the page says so under "İzinleriniz" and keeps the rest, and she can try again.
+    evidence:
+      - node: grantsFailed
+      - node: grantsFailedText
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:392
+    note: "walked: []: the box has no retry button (the inventory's observation), and nothing here can make the read fail"
+
+  - id: an-open-page-stops-offering-what-was-taken
+    need: >-
+      A page that a Medaris nazımı left open when the başnazım took a permission away does not go on offering it: she learns of
+      the loss before she acts on it, or the refusal she meets says why.
+    missing: nothing pushes the change to an open page; no Linear issue
+    note: >-
+      Drawn on the state homeStale, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-home-greets-the-person
+    need: The greeting uses the form that belongs to the person it greets, so a woman who is a Medaris nazımı is not read "Bey".
+    missing: MCUT-1, decision D1; the inventory's open question to the owner; no Linear issue
+    note: >-
+      Drawn on the nodes greetingPending and greetingNone, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: every-counted-request-has-a-way-in
+    need: >-
+      Every request the greeting counts for a Medaris nazımı has a card or a menu entry that leads her to it, so the number never
+      counts something she can reach only by typing an address (appeals, for platform.appeal_decide).
+    missing: MCUT-2, decision D2 (and F-X-12); no Linear issue
+    note: >-
+      Drawn on the nodes greetingPending and menuAppeals, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: permanent-ban-requests-exist-before-they-are-offered
+    need: >-
+      The home card and the menu entry for permanent-ban requests are offered only when the requests exist and can be decided, and
+      the entry leads to a page.
+    missing: "MDRS-194; F-W1-15, F-P0-4, F-X-11: the card says nothing waits and the entry opens \"Sayfa bulunamadı\""
+    note: >-
+      Drawn on the state permanent_bans_opened and on the nodes permanentBansCard, permanentBansEmpty and menuPermanentBans, which
+      the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
+
+  - id: the-footnote-names-who-gave
+    need: >-
+      The line under "İzinleriniz" names who gave the permissions in a sentence that reads right whether or not the giver has a
+      name.
+    missing: MCUT-3; no Linear issue
+    note: >-
+      Drawn on the node grantsNote, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-menu-and-the-permissions-agree
+    need: >-
+      Every permission that gives a Medaris nazımı a page or a card has a menu entry that leads to it, and every menu entry leads
+      to a page that exists.
+    missing: F-X-12 (and F-P0-4 for the entry with no page); no Linear issue, the owner decides the intended menu
+    note: >-
+      Drawn on the nodes menuInactive, menuAppeals, passiveCard, passiveAll and menuPermanentBans, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

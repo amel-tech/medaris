@@ -1,0 +1,95 @@
+# The screens of tedris.learn.homeworkReview: the panel "Ödev" of the celse page (/courses/<c>/lessons/<l>) as far as the review of the
+# talebe's homework needs it: the panel's heading and its state badge, the title "Ödevim", the note form (which is how the homework is
+# changed after a review), the block "Hocanın değerlendirmesi" and its returned files, and the toast a refused download leaves. What
+# the rest of the celse page draws, and the hoca's assignment and the hand-in's files above the form, are other flows' (flow.yaml
+# scope.outOfView).
+# The words are copied letter for letter from libs/i18n/src/locales/tr/tedris-learn.json (`Homework.*`, `FileDownload.*`, root removed)
+# and common.json (`common.toast.close`) by <scratchpad>/hwreview/catalog.mjs. Five texts are built in code and are in no i18n file, so
+# they are `composed.Review.*` (the page puts the data of the review into a node, session-homework.tsx:728-766):
+#   composed.Review.note      "{note}"                   the review's note as written by the hoca (line breaks kept)
+#   composed.Review.fileName  "{fileName}"               a returned file's name, the visible text of its link
+#   composed.Review.fileLink  "{fileName} (indirilir)"   the link's accessible name: the name and the hidden " (indirilir)" (Homework.download)
+#   composed.Review.fileType  "{fileType}"               the type chip of a returned file (fileTypeChip: PDF, PNG ...)
+#   composed.Review.fileSize  "{fileSize}"               the size (formatFileSize: "1,5 MB")
+# `Changes.note` is the one message of this catalog that is not the app's: the app has none that says what reading a review, and then
+# changing the homework, does to the review; one short, factual Turkish sentence is authored here.
+schema: delurio-graph/0
+kind: ui
+id: tedris.learn.homeworkReview
+flow: tedris.learn.homeworkReview
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek Hoca
+  when: 15 Kasım 21:43
+  note: Çekimlerin doğru; ikinci tablodaki iki satırı düzelttim, ekteki dosyaya bak.
+  fileName: duzeltilmis-odev.pdf
+  fileType: PDF
+  fileSize: 1,5 MB
+changes: { key: Changes.note }
+
+# Nothing on the page moves the focus on load, after a save, or when a toast is closed (no .focus() or autoFocus in session-homework.tsx
+# or file-error-notice.tsx), so there is no `initialFocus` and no `focus` here.
+nodes:
+
+  # --- the page and the panel: a region named by its h2 (session-homework.tsx:465-478)
+  celsePage: { type: page, component: Page, role: main, in: [waiting, reviewShown, drafting, saving, readFailed], source: apps/tedris/features/courses/components/session-page.tsx:337 } # the page's one <main>; it has no name, and nothing moves the focus into it or into the panel (focus-not-set)
+  homeworkRegion: { type: page, component: Page, role: region, name: { labelledBy: homeworkTitle }, in: [waiting, reviewShown, drafting, saving, readFailed], source: apps/tedris/features/courses/components/session-homework.tsx:465 } # a <section aria-labelledby>
+  homeworkTitle: { type: text, component: Heading, role: heading, text: { key: Homework.sectionTitle }, in: [waiting, reviewShown, drafting, saving, readFailed], source: apps/tedris/features/courses/components/session-homework.tsx:471 } # h2, with a note icon
+  handedInBadge: { type: text, component: Text, text: { key: Homework.handedIn }, in: [waiting, reviewShown, drafting, saving], source: apps/tedris/features/courses/components/session-homework.tsx:480 } # a success badge beside the title: the homework holds a note or a file (a review only exists on such a homework). Not drawn while the read has not finished or has failed
+  myHomeworkTitle: { type: text, component: Heading, role: heading, text: { key: Homework.title }, in: [waiting, reviewShown, drafting, saving, readFailed], source: apps/tedris/features/courses/components/session-homework.tsx:514 } # h3 "Ödevim", above the hand-in
+  audience: { type: text, component: Text, text: { key: Homework.audience }, in: [waiting, reviewShown, drafting, saving, readFailed], source: apps/tedris/features/courses/components/session-homework.tsx:521 } # the caption beside it: who reads the homework
+
+  # --- reading, and a read that failed
+  loadingStatus: { type: status, component: Status, role: status, text: { key: Homework.loading }, in: [reading], source: apps/tedris/features/courses/components/session-homework.tsx:525 } # an <output> mounted already holding its text; the walk passes this state without stopping
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Homework.loadFailed }, in: [readFailed], source: apps/tedris/features/courses/components/session-homework.tsx:527 } # a block with role alert holding the sentence and the button
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Homework.retry }, in: [readFailed], emits: RETRY, source: apps/tedris/features/courses/components/session-homework.tsx:530 }
+
+  # --- the note form: how the talebe changes the homework after a review (the hand-in's other controls are tedris.learn.homeworkHandIn's)
+  noteField: { type: field, component: TextField, role: textbox, text: { key: Homework.noteLabel }, in: [waiting, reviewShown, drafting, saving], source: apps/tedris/features/courses/components/session-homework.tsx:1059 } # a text area with a visible label "Notun", holding the saved note; 4000 characters at most. It is held in no `value`: the walk types into it
+  noteHelp: { type: text, component: Text, text: { key: Homework.noteHelp }, in: [waiting, reviewShown, drafting, saving], source: apps/tedris/features/courses/components/session-homework.tsx:1055 } # the field's help line; from 3600 characters it becomes the count
+  saveNote: { type: action, component: Button, role: button, intent: secondary, text: { key: Homework.noteSave }, in: [waiting, reviewShown, drafting, saving], disabledIn: [waiting, reviewShown, saving], emits: SAVE, source: apps/tedris/features/courses/components/session-homework.tsx:1071 } # type=submit, an outline button, natively disabled until the text differs from the saved note (the form is not disabled-until-valid but disabled-until-dirty); busy while the note is sent (aria-disabled, aria-busy)
+  savingStatus: { type: status, component: Status, role: status, text: { key: Homework.noteSaving }, in: [saving], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the busy button
+  savedStatus: { type: status, component: Status, role: status, text: { key: Homework.noteSaved }, in: [reviewShown], when: "said == 'saved'", source: apps/tedris/features/courses/components/session-homework.tsx:1082 } # an <output> inserted already holding its text, beside the button, until the text changes (HWREVIEW-2)
+
+  # --- the review block (ReviewBody, session-homework.tsx:679-780): a <div> after a rule, not a landmark
+  reviewTitle: { type: text, component: Heading, role: heading, text: { key: Homework.reviewTitle }, in: [reviewShown, drafting, saving], source: apps/tedris/features/courses/components/session-homework.tsx:709 } # h3, with a check icon
+  reviewedBadge: { type: text, component: Text, text: { key: Homework.reviewed }, in: [reviewShown, drafting, saving], source: apps/tedris/features/courses/components/session-homework.tsx:713 } # a success badge beside the heading
+  reviewBy: { type: text, component: Text, text: { key: Homework.reviewBy, params: { name: name, when: when } }, in: [reviewShown, drafting, saving], source: apps/tedris/features/courses/components/session-homework.tsx:715 } # a caption "<name> · <day month hh:mm>", the time in the viewer's zone and with no year (HWREVIEW-4); the name is "Hoca" when tedrisat has none
+  changedNotice: { type: alert, component: Alert, role: status, text: { key: Homework.reviewChangedTitle }, in: [reviewShown, drafting, saving], when: changed, source: apps/tedris/features/courses/components/session-homework.tsx:722 } # an info Alert is a status, not an alert (libs/ui/src/mds/alert.tsx:23); inserted already holding its text after the talebe's own save (HWREVIEW-2). Its title is a paragraph inside it, not its name
+  changedNoticeBody: { type: text, component: Text, text: { key: Homework.reviewChangedBody }, in: [reviewShown, drafting, saving], when: changed, source: apps/tedris/features/courses/components/session-homework.tsx:723 }
+  reviewNote: { type: text, component: Text, text: { key: composed.Review.note, params: { note: note } }, in: [reviewShown, drafting, saving], when: hasNote, source: apps/tedris/features/courses/components/session-homework.tsx:728 } # a paragraph data-testid="review-note", dir="auto", line breaks kept; not drawn when the note is blank
+  reviewFilesTitle: { type: text, component: Heading, role: heading, text: { key: Homework.reviewFiles }, in: [reviewShown, drafting, saving], when: hasFiles, source: apps/tedris/features/courses/components/session-homework.tsx:737 } # h4 (an eyebrow); the list under it has the same words as its label
+  reviewFilesList: { type: list, component: List, role: list, name: { key: Homework.reviewFiles }, in: [reviewShown, drafting, saving], when: hasFiles, source: apps/tedris/features/courses/components/session-homework.tsx:738 } # a <ul aria-label>, data-testid="review-files", at most five files
+  reviewFile: { type: action, component: LinkButton, role: link, text: { key: composed.Review.fileName, params: { fileName: fileName } }, name: { key: composed.Review.fileLink, params: { fileName: fileName } }, in: [reviewShown, drafting, saving], when: hasFiles, emits: OPEN_FILE, duringStep: true, source: apps/tedris/features/courses/components/session-homework.tsx:759 } # a plain <a href> to /api/files/lessons/<l>/submission/review-files/<f> (no download attribute, no target); only for ids that are uuids, else the name is plain text. The visible text is the file's name, the name adds the hidden " (indirilir)" (label-in-name holds)
+  reviewFileType: { type: text, component: Text, text: { key: composed.Review.fileType, params: { fileType: fileType } }, in: [reviewShown, drafting, saving], when: hasFiles, source: apps/tedris/features/courses/components/session-homework.tsx:769 } # a secondary badge; none for a type the chips do not know
+  reviewFileSize: { type: text, component: Text, text: { key: composed.Review.fileSize, params: { fileSize: fileSize } }, in: [reviewShown, drafting, saving], when: hasFiles, source: apps/tedris/features/courses/components/session-homework.tsx:770 }
+
+  # --- the toast a refused download leaves (FileErrorNotice, file-error-notice.tsx:26-37): Sonner, no role, an error stays until it is closed
+  toastTitle: { type: status, component: Status, text: { key: FileDownload.title }, in: [reviewShown, drafting, saving], when: toasting, source: apps/tedris/features/courses/components/file-error-notice.tsx:33 } # the toast's title; a toast raised with a description has no role (CLS-16)
+  toastForbidden: { type: status, component: Status, text: { key: FileDownload.forbidden }, in: [reviewShown, drafting, saving], when: "toast == 'forbidden'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  toastNotFound: { type: status, component: Status, text: { key: FileDownload.notFound }, in: [reviewShown, drafting, saving], when: "toast == 'notFound'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  toastUnavailable: { type: status, component: Status, text: { key: FileDownload.unavailable }, in: [reviewShown, drafting, saving], when: "toast == 'unavailable'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  toastFailed: { type: status, component: Status, text: { key: FileDownload.failed }, in: [reviewShown, drafting, saving], when: "toast == 'failed'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [reviewShown, drafting, saving], when: toasting, emits: CLOSE_TOAST, duringStep: true, source: libs/ui/src/components/sonner.tsx:75 } # a close button on each toast, "Kapat" in every language; live while the note is sent
+
+edges:
+  - { labelledBy: [homeworkRegion, homeworkTitle] }
+  - { triggers: [saveNote, saving] }
+  - { triggers: [reviewFile, downloading] }
+  - { triggers: [retry, reading] }
+  - { triggers: [toastClose, reviewShown] }
+
+rules:
+  - { id: focus-not-set, rule: "Nothing moves the focus on this page: opening it, a refused download (the page loads again), a saved note and a closed toast all leave it where the browser puts it (the document's start, or the button that was pressed). No code in session-homework.tsx or file-error-notice.tsx calls .focus() or sets autoFocus (grep verified). The graph draws no initialFocus and no focus." }
+  - { id: WRT-10, rule: "libs/services/src/file-proxy/file-proxy.ts:351-370, file-error-notice.tsx:23-41, libs/ui/src/components/sonner.tsx:55-80: a refused download of a returned file is a 303 to this very page with ?fileError=: the whole celse page loads again (focus and scroll reset, a note being typed is lost) and the reason is a Sonner toast whose region is named by an English default (\"Notifications alt+T\"; containerAriaLabel is not passed). Fix: pass containerAriaLabel from the catalog, and ask for the file with a fetch that keeps the page and answers in place. The toast text is the catalog's; the graph draws the page loading anew (downloading -> reading) and the toast after it." }
+  - { id: WRT-13, rule: "session-homework.tsx:1003-1009, 1037-1063: no draft is kept anywhere: the note form's text is state of the component, so a reload, the page load that a refused download causes (WRT-10), the sign-in round trip of an ended session or leaving the page loses it with no warning. The graph draws RELOAD from drafting. Fix: keep the draft per celse in sessionStorage, or warn on leave." }
+  - { id: CLS-16, rule: "file-error-notice.tsx:33 against calendar-menu.tsx:88: two toast systems on one celse page: Sonner's for the file errors drawn here, the kit's \"Bildirimler\" host for the calendar's error. They mark up live regions differently and which one a screen reader hears was not verified. Not drawn here (the calendar is tedris.learning.addToCalendar's)." }
+  - { id: HWREVIEW-1, rule: "new, provisional id, read from the code and not walked: a review that was sent with no note and one file can be emptied by the course team. tedrisat's removeReviewFile (lesson-submission.service.ts:378-392, repository :654-696) refuses nothing and notifies nobody, and the repository refuses an empty review only when it is sent (:718-724). The talebe's block (session-homework.tsx:658, 679-780) then holds the heading, the badge and the by-line and nothing under them. Nazar lets the team do it: review-dialog.tsx:176-182, 300-304 (a remove button per file, the call goes at once). Fix: refuse the removal of the last file of a sent review that has no note (409), or say \"Bu değerlendirmede ek dosya yok\" in the block. The graph draws hasNote and hasFiles as the two parts of one review; it draws no review with neither." }
+  - { id: HWREVIEW-2, rule: "new, provisional id, read from the code and not measured with a screen reader: after \"Notu kaydet\" succeeds, three things appear at once and none is put in a live region that was in the page before: the info Alert \"Ödevin değerlendirmeden sonra değişti\" (session-homework.tsx:722, role=status, inserted already holding its text), the <output> \"Not kaydedildi.\" (:1081, the same shape as CRS-16's loading line), and the button, which has the focus, turns natively disabled because the text no longer differs from the saved one (:1074). A person who cannot see the page is not told that the review now answers the earlier version, and the focus rests on a disabled control. Fix: keep one polite status region mounted and fill it with both sentences; keep the button enabled but aria-disabled." }
+  - { id: HWREVIEW-3, rule: "new, provisional id: the panel reads the homework once, in a useEffect when it mounts (session-homework.tsx:369-390) and never again by itself. A review the course team sends while the talebe has the page open (tedrisat notifies them, SUBMISSION_REVIEWED, lesson-submission.service.ts:414-426) is not on the page until it is loaded again, and a review sent again with a new note likewise. The graph draws REVIEW_SENT in `waiting` and RELOAD after it. Fix: read again when the tab gets the focus back, or give the notification a link that reloads." }
+  - { id: HWREVIEW-4, rule: "new, provisional id: the by-line formats the time as day, month and hour only (Intl.DateTimeFormat with day, month long, hour, minute: session-homework.tsx:694-701), in the viewer's zone and with no year, so a review from last year reads like one from this week. The \"Son değişiklik\" line above it is formatted the same way (:447-454). Fix: add the year when it is not this year." }
+  - { id: label-in-name, rule: "The visible text of a returned file's link is the file's name and its accessible name is the name plus the visually hidden \" (indirilir)\", which contains it (WCAG 2.5.3). The close button of the toast is named \"Kapat\" and shows an icon. Holds." }
+  - { id: review-hidden-until-sent, rule: "tedrisat gives a talebe the review only once reviewedAt is set (lesson-submission.service.ts:71-77) and its files only then (service.ts:312-315: a file of an unsent review is 404), so a review being written is invisible to its talebe. The graph asserts it (nothing-of-a-review-before-it-is-sent). Holds." }

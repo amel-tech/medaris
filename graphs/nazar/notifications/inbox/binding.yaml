@@ -1,0 +1,166 @@
+# nazar.notifications.inbox on the local stack: Bildirimler of nazar-web (:4002), read by the medrese nazırı of "Hadis ve Siyer
+# Medresesi", who arrives by the menu's entry "Bildirimler" (the nazar navigation graph's entry frame:medrese->bildirimler).
+#   node apps/engine/src/cli.ts replay graphs/nazar/notifications/inbox \
+#     --bind graphs/nazar/notifications/inbox/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/notifications) and is unverified until a walk.
+#
+# What the stack gives: the accounts that have a seat in Nazar hold no notification (MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS and
+# DERS_NAZIR, each with 0 of 0: read with a select on 15 Nov 2026), and no route writes one. So each scenario's `setup` makes the
+# account's rows with ./inbox.mjs (a helper of this folder, SQL on tedrisat's database through the shared helpers' db.mjs) and its
+# `teardown` deletes every notification of the account. The account is the medrese nazırı, the persona no other Z1 flow needs a
+# clean bell for; every walk of this folder runs under the replay lock, and `up` deletes before it inserts, so a crashed walk leaves
+# only rows that the next `up` or `down` removes.
+#
+#   scenario   given                                         rows (see inbox.mjs)                                  walks
+#   triage     holds several, pages several, row button      3 unread buttons, 4 read, 24 old read links          the main story: Okunmamış, one mark, Tümü, more, mark all
+#   openLink   holds several, pages one, row link            4 unread links (one EXAM_SCHEDULED), 2 read          a link row: marked, then Tedris
+#   lastUnread holds one, pages one, row button              1 unread button, 3 read                              the last mark: nothing unread left
+#   allRead    holds allRead, pages one, row link            3 read                                               the disabled button, a read link leaves at once
+#   empty      holds nothing, pages one, row link            none                                                 "Bildirim yok", no button
+#
+# Not walkable here, and why:
+#   - the failed first read (readFailed, retrying, forbidden): tedrisat answers every read, and the stack has no way to make it refuse
+#     one; a 403 is not something this route gives;
+#   - a failed tab read or "Daha fazla göster" (tabFailed, moreFailed), a failed "Tümünü okundu say" (allToast): the page sends only
+#     valid requests, so the API has nothing to refuse; the failed answers need a dead API;
+#   - the session that is over after the first read (sent_to_sign_in): the token does not expire during a walk;
+#   - the phone's bell (bell, bellUnread): the walk's window is 1280 px wide and the bar is drawn below 768 px.
+# The one failure the stack can cause is a refused mark (404, the row is gone): refused.binding.yaml, a second file.
+# With `--absent`: the state allRead, reached from the start `triage` (more than twenty rows), still draws "Daha fazla göster", which
+# the graph leaves out (flow scope.outOfView); that one finding is the graph's, not the page's.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.notifications.inbox
+
+scenarios:
+  triage:
+    given: { read: ok, holds: several, pages: several, answer: ok, row: button }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->bildirimler menu' }
+    setup:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, up, medreseNazir, --set, triage]
+        expect: 'ready: triage total=31 unread=3'
+    teardown:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, down, medreseNazir]
+        expect: 'restored: none left'
+  openLink:
+    given: { read: ok, holds: several, pages: one, answer: ok, row: link }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->bildirimler menu' }
+    setup:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, up, medreseNazir, --set, openLink]
+        expect: 'ready: openLink total=6 unread=4'
+    teardown:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, down, medreseNazir]
+        expect: 'restored: none left'
+  lastUnread:
+    given: { read: ok, holds: one, pages: one, answer: ok, row: button }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->bildirimler menu' }
+    setup:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, up, medreseNazir, --set, last]
+        expect: 'ready: last total=4 unread=1'
+    teardown:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, down, medreseNazir]
+        expect: 'restored: none left'
+  allRead:
+    given: { read: ok, holds: allRead, pages: one, answer: ok, row: link }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->bildirimler menu' }
+    setup:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, up, medreseNazir, --set, allRead]
+        expect: 'ready: allRead total=3 unread=0'
+    teardown:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, down, medreseNazir]
+        expect: 'restored: none left'
+  empty:
+    given: { read: ok, holds: nothing, pages: one, answer: ok, row: link }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->bildirimler menu' }
+    setup:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, up, medreseNazir, --set, empty]
+        expect: 'ready: empty total=0 unread=0'
+    teardown:
+      - run: [node, ../nazar/notifications/inbox/inbox.mjs, down, medreseNazir]
+        expect: 'restored: none left'
+
+events:
+  NAVIGATE: [{ goto: '{nazar}/hesap' }]
+
+states:
+  emptyAll: { url: '{nazar}/bildirimler' }
+  listed: { url: '{nazar}/bildirimler' }
+  allRead: { url: '{nazar}/bildirimler' }
+  forbidden: { url: '{nazar}/bildirimler' }
+  readFailed: { url: '{nazar}/bildirimler' }
+  retrying: { url: '{nazar}/bildirimler' }
+  tabFailed: { url: '{nazar}/bildirimler' }
+  moreFailed: { url: '{nazar}/bildirimler' }
+  # the marks and the reads are Next server actions: a POST to the page's own address, held while the busy state is checked. A
+  # server action answers 200 on that address whatever happened, so a FAIL status cannot be compared there.
+  loadingTab: { call: '{nazar}/bildirimler' }
+  markingOne: { call: '{nazar}/bildirimler' }
+  markingLast: { call: '{nazar}/bildirimler' }
+  markingLink: { call: '{nazar}/bildirimler' }
+  markingAll: { call: '{nazar}/bildirimler' }
+  loadingMore: { call: '{nazar}/bildirimler' }
+  # the exits: a link row leaves the same tab for Tedris (Keycloak's session signs the person in there), and NAVIGATE goes to Hesap
+  tedris_opened: { url: '{tedris}/**' }
+  sent_to_sign_in: { url: '{keycloak}/realms/medaris/**' }
+  left: { url: '{nazar}/hesap' }
+
+# Where role and name cannot find a node. The rows are data (a sentence, a time, a badge), so a node is found by the row's own hooks
+# (data-testid="notification-row" on the <li>, data-unread while unread, the three elements a row can be: <a>, <button>, <div>) and,
+# for the sentence, by the words of Notifications.types.* and unknownTitle: the engine finds a `oneOf` node by its first word only, so
+# the alternatives are spelled here.
+nodes:
+  # the shell's <main>; Tedris's page, which a row leaves for, has a <main> of its own, so the title the page always draws names it
+  page: { role: main, hasText: Bildirimler }
+  # the menu entry's name carries its number and its hidden word ("Bildirimler 3 okunmamış"), so it is found by its beginning
+  menuLink: { role: link, name: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  menuCount: { text: okunmamış, within: { role: link, name: '/^Bildirimler/', within: { role: navigation, name: Ana menü } } }
+  # the bell is on the phone's bar, below 768 px
+  bell: { skip: 'drawn on the phone bar below 768 px; the walk window is 1280 px wide' }
+  bellUnread: { skip: 'drawn on the phone bar below 768 px; the walk window is 1280 px wide' }
+  # the tabs' names end with their count (a span with no space)
+  tabAll: { role: tab, name: '/^Tümü/' }
+  tabUnread: { role: tab, name: '/^Okunmamış/' }
+  # the rows
+  rowItem: { testId: notification-row }
+  rowLinkUnread: { css: '[data-testid=notification-row][data-unread] a' }
+  rowButton: { css: '[data-testid=notification-row][data-unread] button' }
+  rowLinkRead: { css: '[data-testid=notification-row]:not([data-unread]) a' }
+  rowText: { css: '[data-testid=notification-row]:not([data-unread]) > div' }
+  rowTitle:
+    css: '[data-testid=notification-row] span.mds-body-sm'
+    hasText: '/^(Ders başvurunuz (onaylandı|reddedildi)|Dersten çıkarıldınız|Ders erişiminiz kaldırıldı|Celse saati değişti|Celse iptal edildi|Yeni ders kaydı|Ders kaydı eklendi|Köşk başvurunuz (onaylandı|reddedildi)|Deste (yayınlandı|yayından kaldırıldı|öneriniz reddedildi|yayın isteği reddedildi)|Ödeviniz değerlendirildi|Yeni ders yasağı|Yeni köşk yasağı|Bildirim)$/'
+  rowTime: { css: '[data-testid=notification-row] time' }
+  rowNew: { text: Yeni, within: { testId: notification-row } }
+  # the busy parts: a block of skeletons with aria-busy and no word (F-E-7), and the hidden status of the busy buttons
+  tabBusy: { css: '[role=tabpanel] [aria-busy=true]' }
+  loadMoreBusy: { role: status, hasText: Yükleniyor }
+  firstRetryBusy: { role: status, hasText: Yükleniyor }
+  # the toasts of a refused mark: a dialog in the kit's region "Bildirimler", an alertdialog for an error
+  rowFailedToast: { css: '[role=alertdialog]', hasText: Bildirim okundu olarak işaretlenemedi }
+  rowFailedTitle: { css: '[role=alertdialog] p', hasText: Bildirim okundu olarak işaretlenemedi }
+  rowFailedClose: { role: button, name: Kapat, within: { css: '[role=alertdialog]', hasText: Bildirim okundu olarak işaretlenemedi } }
+  allFailedToast: { css: '[role=alertdialog]', hasText: Bildirimler okundu yapılamadı }
+  allFailedTitle: { css: '[role=alertdialog] p', hasText: Bildirimler okundu yapılamadı }
+  allFailedClose: { role: button, name: Kapat, within: { css: '[role=alertdialog]', hasText: Bildirimler okundu yapılamadı } }
+
+# What a mark leaves outside the screen, read as the account itself (the page is optimistic, so the screen alone cannot say that the
+# API took the mark): fewer unread rows than the set made, and none after "Tümünü okundu say".
+effects:
+  markNotificationRead:
+    - run: [node, ../nazar/notifications/inbox/inbox.mjs, unread, medreseNazir, below]
+      expect: 'unread fell'
+  markAllNotificationsRead:
+    - run: [node, ../nazar/notifications/inbox/inbox.mjs, unread, medreseNazir, zero]
+      expect: 'unread zero'

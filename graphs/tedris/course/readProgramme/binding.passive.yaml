@@ -1,0 +1,22 @@
+# tedris.course.readProgramme as an enrolled talebe of a passive scope (PROG-2, MDRS-265). The seat is ENROLLED and the course's only
+# müderris role is revoked, so the scope is passive and the API keeps the content from the seat as it does from a stranger. `passive on`
+# is SQL on tedrisat's database (role_assignments.revoked_at), because no route revokes the last müderris of a course. Same course, data
+# and locators as binding.yaml (see its header); the scenario is the only difference.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/readProgramme --bind graphs/tedris/course/readProgramme/binding.passive.yaml \
+#     --to curriculum --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.readProgramme
+
+scenarios:
+  enrolledPassive:
+    given: { read: ok, who: enrolledPassive, ahead: noLink, course: rich, tabParam: none, views: none }
+    as: applicantA
+    open: '{tedris}/courses/{prog.course}'
+    setup:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, make]
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, seat, ENROLLED]
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, passive, 'on']
+    teardown:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, remove]

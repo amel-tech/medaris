@@ -11,15 +11,16 @@ import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { deleteCard } from "../actions";
 import type { CardFact, DeckFact, WeekOption } from "../decks";
-import { CardDialog } from "./card-dialog";
+import { CardQuickAdd } from "./card-quick-add";
+import { CardTile } from "./card-tile";
 import { DeckSettings } from "./deck-settings";
 import { ImportCardsDialog } from "./import-cards-dialog";
 import { SigaGeneratorDialog } from "./siga-generator-dialog";
 
 /**
- * A deck's body: its cards with "Kart ekle", "Excel'den aktar", "Sîga üret", and each
- * card's "Düzenle" and "Sil", then the deck's settings. The front face is set
- * in Arabic and RTL.
+ * A deck's body: "Sîga üret" and "Excel'den aktar", the inline "Kart ekle"
+ * row, the cards as a compact grid with each card's "Düzenle" (in place) and
+ * "Sil", then the deck's settings. The front face is set in Arabic and RTL.
  */
 export function DeckDetailScreen({
   courseId,
@@ -37,13 +38,7 @@ export function DeckDetailScreen({
   const router = useRouter();
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();
-  const [dialog, setDialog] = useState<
-    | null
-    | { kind: "new" }
-    | { kind: "edit"; card: CardFact }
-    | { kind: "import" }
-    | { kind: "siga" }
-  >(null);
+  const [dialog, setDialog] = useState<null | "import" | "siga">(null);
   const [removing, setRemoving] = useState<CardFact | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -70,59 +65,27 @@ export function DeckDetailScreen({
             {words("Decks.cardsTitle")} · {cards.length}
           </h2>
           <div className="flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => setDialog({ kind: "siga" })}
-            >
+            <Button variant="secondary" onClick={() => setDialog("siga")}>
               {words("Decks.siga.button")}
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setDialog({ kind: "import" })}
-            >
+            <Button variant="secondary" onClick={() => setDialog("import")}>
               {words("Decks.importButton")}
-            </Button>
-            <Button onClick={() => setDialog({ kind: "new" })}>
-              {words("Decks.addCard")}
             </Button>
           </div>
         </div>
+        <CardQuickAdd deckId={deck.id} cardType={deck.cardType} />
         {failure ? <p className="mds-body-sm">{failure}</p> : null}
         {cards.length === 0 ? (
           <EmptyState>{words("Decks.cardsEmpty")}</EmptyState>
         ) : (
-          <ul className="flex flex-col divide-y divide-neutral-muted">
+          <ul className="m-0 grid list-none gap-2 p-0 [grid-template-columns:repeat(auto-fill,minmax(10rem,1fr))]">
             {cards.map((card) => (
-              <li
-                key={card.id}
-                className="flex flex-wrap items-start justify-between gap-3 py-3"
-              >
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="mds-body" lang="ar" dir="rtl">
-                    {card.contentFront}
-                  </span>
-                  <span className="mds-body-sm text-neutral-muted">
-                    {card.contentBack}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    disabled={pending}
-                    onClick={() => setDialog({ kind: "edit", card })}
-                  >
-                    {words("Decks.edit")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    disabled={pending}
-                    onClick={() => setRemoving(card)}
-                  >
-                    {words("Decks.remove")}
-                  </Button>
-                </div>
+              <li key={card.id}>
+                <CardTile
+                  card={card}
+                  busy={pending}
+                  onRemove={() => setRemoving(card)}
+                />
               </li>
             ))}
           </ul>
@@ -131,29 +94,14 @@ export function DeckDetailScreen({
 
       <DeckSettings courseId={courseId} deck={deck} weeks={weeks} />
 
-      {dialog?.kind === "new" ? (
-        <CardDialog
-          deckId={deck.id}
-          cardType={deck.cardType}
-          onClose={() => setDialog(null)}
-        />
-      ) : null}
-      {dialog?.kind === "edit" ? (
-        <CardDialog
-          deckId={deck.id}
-          cardType={deck.cardType}
-          card={dialog.card}
-          onClose={() => setDialog(null)}
-        />
-      ) : null}
-      {dialog?.kind === "siga" ? (
+      {dialog === "siga" ? (
         <SigaGeneratorDialog
           deckId={deck.id}
           cardType={deck.cardType}
           onClose={() => setDialog(null)}
         />
       ) : null}
-      {dialog?.kind === "import" ? (
+      {dialog === "import" ? (
         <ImportCardsDialog
           decks={[{ id: deck.id, title: deck.title }]}
           deckId={deck.id}

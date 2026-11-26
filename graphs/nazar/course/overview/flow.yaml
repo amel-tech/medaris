@@ -1,0 +1,268 @@
+# Genel bakış of a course in nazar-web (/ders/<id>), read by a müderris who triages what waits and follows one box. Read from
+# the code of PR #394 (apps/nazar/features/course-overview, the three reads the page makes and the Celseler page its boxes lead
+# to). It says what the code does today:
+#   - the page makes four reads: the course (GET /courses/:id, the only one whose failure breaks the page), the course's badge
+#     counts (GET /courses/:id/badge-counts, which asks course.staff_read), the reader's permissions (GET /courses/:id/my-permissions)
+#     and, only for a holder of submission.read, the course's submissions (GET /courses/:id/submissions). A count that could not be
+#     read draws no box rather than a zero, so a refusal and a failure look alike on the screen (OVERVIEW-3).
+#   - the box "Sıradaki celse" is drawn from the course read alone, for every reader of the course, and so is "Katılım yolu eksik
+#     celse" for every reader who can read the counts; both link to Celseler, which opens only for session.manage or
+#     session.live_link. A ders nazırı with neither is led to a refusal (OVERVIEW-1, the nav graph's `link-refused`).
+#   - for a person who holds no medrese the course menu's "Pano" and "Genel bakış" are the same address, and so is this page: the
+#     page does not know which of the two led to it (the menu marks the course's own entry).
+schema: delurio-graph/0
+kind: flow
+id: nazar.course.overview
+status: captured
+domain: medaris.api
+ui: nazar.course.overview
+title: Triage a course from Genel bakış
+summary: >-
+  A müderris opens the course and finds its name with its state (Yayında or Taslak), a link that opens the course's page in
+  Tedris in a new tab, and boxes for what waits: the applications to decide, the homework not yet reviewed, the celses ahead
+  that nobody can join yet, and the time of the next celse. A box is a card whose title is a link to the section where the work
+  is done (Talebeler, Ödevler, Celseler); a box with nothing behind it is not drawn, and a course with no box says "Bekleyen
+  işiniz yok." Every box is drawn from the reader's own reads, so a ders nazırı sees fewer: with no permission she sees only the
+  next celse, and that box leads her to Celseler, which says she may not open it (OVERVIEW-1). A failed read of the course
+  draws the retry face, not the boxes.
+
+scope:
+  shows: >-
+    the course's Genel bakış for a holder of a seat in it: the title and state, the link to Tedris, the four boxes and what
+    each leads to, the empty line and the face of a course that could not be read
+  world: open
+  outOfView:
+    - "the pages the boxes lead to: Talebeler (nazar.roster.decide), Ödevler (nazar.homework.review), Celseler (nazar.sessions.manage); a Celseler that refuses its reader is one more face of nazar.access.dersNazirPages"
+    - "the sidebar's own numbers on Celseler and Talebeler, which are the same two counts (nazar.shell.scopeAndMenu), and the person who holds no medrese finding both Pano and Genel bakış in the menu"
+    - "the başmüderris or nazır of the course's medrese and the başnazım, who open the course by its address (features/shell/opened-scope.ts) and read the same page; the başnazım holds every code"
+    - "the course read's 403 (course-overview-page.tsx:45), which tedrisat's getCourse never answers: every signed-in reader holds course.view"
+    - "the Tedris page that the link opens (tedris.course.readProgramme), and the link itself being left out when NAZAR__TEDRIS_URL is empty"
+    - "the loading skeleton: the page has no loading.tsx, so the root one covers it (not seen in a browser)"
+    - "a draft course (the badge says Taslak) and a course whose title is long: the same page"
+
+decisions:
+  D1:
+    question: >-
+      Should "Sıradaki celse" and "Katılım yolu eksik celse" be drawn for a reader whom Celseler refuses? Today the next-celse box
+      comes from the course read, which every reader makes, while Celseler asks session.manage or session.live_link, so a ders
+      nazırı with neither is led from the box to "Bu sayfaya izniniz yok".
+    recommend: >-
+      Draw both boxes only where the reader holds one of the two codes (the page already reads my-permissions), or draw them
+      without the link. Menu entries are already cut by code (MDRS-290); the boxes are the one place that is not.
+    affects: [listed, sessions_refused]
+  D2:
+    question: >-
+      Should the empty line tell "nothing waits" from "I could not look"? A badge-counts read that fails with a 500, or a
+      submissions read that fails, draws no box, exactly as a refusal or a zero does, and a course whose every box is missing
+      says "Bekleyen işiniz yok."
+    recommend: >-
+      Keep the quiet draw for a refusal (the reader may not act on it anyway) but say so when a read fails, with the retry the page
+      already has for the course read.
+    affects: [empty]
+
+context:
+  applications:
+    values: [waiting, none]
+    initial: any
+    say:
+      waiting: "the reader may read the course's counts (course.staff_read) and at least one application waits for a decision"
+      none: "no application waits, or the counts could not be read for this reader: either way the box is not drawn"
+  homework:
+    values: [waiting, none]
+    initial: any
+    say:
+      waiting: "the reader holds submission.read and at least one hand-in is not reviewed yet, or changed after its review"
+      none: "none waits, or the reader holds no submission.read, or the submissions read failed: the box is not drawn"
+  sessions:
+    values: [none, next, lacking]
+    initial: any
+    say:
+      none: "no live, uncancelled celse of the course is ahead, so there is no box about celses"
+      next: "a celse is ahead, so \"Sıradaki celse\" is drawn, and the reader sees no box of celses without a way in (none lacks one, or the reader may not read the counts)"
+      lacking: "a celse is ahead and the reader may read the counts, which say at least one celse ahead has no meeting link, no live stream and is not in person: \"Katılım yolu eksik celse\" is drawn too"
+  celseler:
+    values: [opens, refuses]
+    initial: any
+    say:
+      opens: "the reader holds session.manage or session.live_link, so Celseler opens for them"
+      refuses: "the reader holds neither (a ders nazırı granted no celse permission), so Celseler answers \"Bu sayfaya izniniz yok\""
+
+guards:
+  nothingWaits: "applications == 'none' and homework == 'none' and sessions == 'none'"
+  nextBox: "sessions != 'none'"
+  lackingBox: "sessions == 'lacking'"
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+    unreadable: []
+# `unreadable` stands for any answer but a 404 or a refused token: the page treats a 403 as its own refusal (never answered, see
+# `scope.outOfView`) and every other failure as "could not be read".
+
+# The story the page tells first: a müderris with applications, homework and a celse without a way in opens the page and
+# follows the first box, to the applications.
+main:
+  given: { applications: waiting, homework: waiting, sessions: lacking, celseler: opens }
+  events: [DONE, FOLLOW_APPLICATIONS]
+
+initial: opened
+
+states:
+  opened:
+    title: The course is read
+    description: >-
+      The page reads, at once on the server, the course (getCourse), the course's badge counts (getCourseBadgeCounts, which asks
+      course.staff_read) and the reader's permissions (getMyCoursePermissions); then, only for a reader who holds submission.read,
+      the course's submissions (listCourseSubmissions). Only the course read can draw the retry face. A 404 of any of the reads is
+      Next's not-found page and a 401 sends the person to sign in again (out of view); a refused or failed read of the counts, the
+      permissions or the submissions draws no box and no error. The graph draws the course read and leaves the other three to the
+      variables.
+    includes: ["the badge counts", "the reader's permissions", "the submissions, for a holder of submission.read"]
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: nothingWaits, target: empty, say: "no box is drawn" }
+        - { target: listed, say: "at least one box is drawn" }
+      FAIL.missing: not_found
+      FAIL.unreadable: loadFailed
+    source: apps/nazar/features/course-overview/components/course-overview-page.tsx:33
+
+  listed:
+    title: What waits is shown in boxes
+    by: human
+    goal: true
+    description: >-
+      The page: the course's title with its state, "Tedris’te aç" (a link that opens the course's page in a new tab, left out when
+      the app's Tedris address is not set), and a list "Bekleyen işler" of boxes, each a card whose title is a link and whose value
+      (a number, or the time of the next celse on the course's clock) is under it. The order is fixed: Bekleyen başvuru (to
+      Talebeler), Değerlendirme bekleyen ödev (to Ödevler), Katılım yolu eksik celse and Sıradaki celse (both to Celseler). The
+      boxes are drawn from what the reader's reads said, so a müderris sees all four while they hold, and a ders nazırı with no
+      permission sees at most the last. Findings read here: F-C-course-a-18 (the cards are h3 under the h1 and the link's name has
+      no number), OVERVIEW-1 (the celse boxes lead a reader to a page that refuses her), OVERVIEW-2 (the tab says "Genel bakış" for
+      every course) and OVERVIEW-3 (a read that failed draws like a zero). No code gives the page a focus.
+    on:
+      FOLLOW_APPLICATIONS:
+        guard: "applications == 'waiting'"
+        target: students_opened
+        say: "they follow Bekleyen başvuru, to Talebeler (a reader who sees the box holds course.staff_read, which Talebeler accepts)"
+        source: apps/nazar/features/course-overview/course-overview.ts:72
+      FOLLOW_HOMEWORK:
+        guard: "homework == 'waiting'"
+        target: homework_opened
+        say: "they follow Değerlendirme bekleyen ödev, to Ödevler (a reader who sees the box holds submission.read, which Ödevler asks)"
+        source: apps/nazar/features/course-overview/course-overview.ts:73
+      FOLLOW_LACKING:
+        - guard: "lackingBox and celseler == 'opens'"
+          target: sessions_opened
+          say: "they follow Katılım yolu eksik celse, to Celseler, which opens for them"
+          source: apps/nazar/features/course-overview/course-overview.ts:74
+        - guard: lackingBox
+          target: sessions_refused
+          say: "they follow Katılım yolu eksik celse and Celseler refuses them: the box is drawn for course.staff_read, the page asks session.manage or session.live_link (OVERVIEW-1)"
+          source: apps/nazar/features/sessions/components/sessions-page.tsx:54
+      FOLLOW_NEXT:
+        - guard: "nextBox and celseler == 'opens'"
+          target: sessions_opened
+          say: "they follow Sıradaki celse, to Celseler, which opens for them"
+          source: apps/nazar/features/course-overview/course-overview.ts:75
+        - guard: nextBox
+          target: sessions_refused
+          say: "they follow Sıradaki celse and Celseler refuses them: the box is drawn from the course read, which every reader makes (OVERVIEW-1)"
+          source: apps/nazar/features/sessions/components/sessions-page.tsx:54
+      OPEN_TEDRIS:
+        target: listed
+        say: "they open \"Tedris’te aç\": the course's page in Tedris opens in a new tab and this tab stays on Genel bakış"
+        source: apps/nazar/features/course-overview/components/course-overview-page.tsx:100
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+    source: apps/nazar/features/course-overview/components/course-overview-page.tsx:118
+
+  empty:
+    title: Nothing is drawn as waiting
+    by: human
+    description: >-
+      The title, its state and "Tedris’te aç" stay and a plain line, "Bekleyen işiniz yok.", takes the place of the list (a div and
+      a paragraph, no role, no live region). It is also what a reader sees when every read that would have given a box was
+      refused or failed (OVERVIEW-3, decision D2).
+    on:
+      OPEN_TEDRIS:
+        target: empty
+        say: "they open \"Tedris’te aç\": the course's page in Tedris opens in a new tab and this tab stays"
+        source: apps/nazar/features/course-overview/components/course-overview-page.tsx:100
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+    source: apps/nazar/features/course-overview/components/course-overview-page.tsx:116
+
+  loadFailed:
+    title: The course could not be read
+    by: human
+    description: >-
+      Under the page's own h1 "Genel bakış" a section says "Ders yüklenemedi" with one sentence and "Yeniden dene", which asks the
+      server again (router.refresh). The section's title is a second h1 (F-L-16). Nothing in the stack makes the course read fail,
+      so this face is read from the code and not walked.
+    on:
+      RETRY: { target: opened, say: "they press Yeniden dene, which reads the course again" }
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+    source: apps/nazar/features/course-overview/components/course-overview-page.tsx:45
+
+  not_found:
+    title: The course is not there
+    description: >-
+      A 404 of the course read is Next's not-found page, in the words of every missing page (lib/tedrisat-read.ts:43-50). The
+      layout has already refused a course that is not the reader's, so this is a course that went away between the two reads.
+    type: final
+    leavesPage: true
+
+  students_opened:
+    title: Talebeler opens
+    description: >-
+      The box "Bekleyen başvuru" is a plain link to /ders/<id>/talebeler, a whole document request. The story goes on in
+      nazar.roster.decide.
+    type: final
+    leavesPage: true
+
+  homework_opened:
+    title: Ödevler opens
+    description: >-
+      The box "Değerlendirme bekleyen ödev" is a plain link to /ders/<id>/odevler. The story goes on in nazar.homework.review.
+    type: final
+    leavesPage: true
+
+  sessions_opened:
+    title: Celseler opens
+    description: >-
+      Either celse box is a plain link to /ders/<id>/celseler, which a holder of session.manage or session.live_link reads. The
+      story goes on in nazar.sessions.manage.
+    type: final
+    leavesPage: true
+
+  sessions_refused:
+    title: Celseler refuses the reader
+    description: >-
+      The page under the course's own sidebar says "Bu sayfaya izniniz yok" in an alert (the reader holds neither
+      session.manage nor session.live_link). The box that led here was drawn all the same (OVERVIEW-1). Its words are
+      nazar.access.dersNazirPages's.
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave Genel bakış
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: empty-means-nothing-waits
+    never: "state == 'empty' and not nothingWaits"
+    say: The empty line is drawn only when no box is.
+    source: apps/nazar/features/course-overview/components/course-overview-page.tsx:115
+  - id: listed-means-something-waits
+    never: "state == 'listed' and nothingWaits"
+    say: The list of boxes is drawn only when at least one box is.
+    source: apps/nazar/features/course-overview/components/course-overview-page.tsx:115
+  - id: celseler-opens-only-with-a-code
+    never: "state == 'sessions_opened' and celseler == 'refuses'"
+    say: Celseler opens only for a reader who holds session.manage or session.live_link.
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:54
+  - id: celseler-refuses-only-without-a-code
+    never: "state == 'sessions_refused' and celseler == 'opens'"
+    say: Celseler refuses only a reader who holds neither code.
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:54

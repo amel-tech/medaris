@@ -183,7 +183,7 @@ export class LessonController {
     const webUrl = this.config.get<string | null>("tedrisWeb.url");
     if (!webUrl) throw new CalendarNotConfiguredError();
 
-    const { course, lesson, attendance } =
+    const { course, lesson, attendance, isExam } =
       await this.courseService.getScheduledLesson(id, request.user);
     // Only the fields the event uses. The lesson row also carries
     // `meetingUrl`, which must never reach a calendar file; how the session
@@ -195,6 +195,9 @@ export class LessonController {
         title: lesson.title,
         scheduledAt: lesson.scheduledAt,
         durationMinutes: lesson.durationMinutes,
+        // Whether it is an exam is content (MDRS-248): only a caller who
+        // may read it is told (`getScheduledLesson`).
+        isExam,
       },
       attendance,
       sessionPageUrl: sessionPageUrl(webUrl, course.id, lesson.id),
@@ -327,10 +330,15 @@ export class LessonController {
   @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async createBatch(
+    @Req() request: AuthorizedRequest,
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: CreateSessionBatchDto
   ): Promise<SessionBatchResponse> {
-    return this.courseService.createSessionBatch(courseId, dto);
+    return this.courseService.createSessionBatch(
+      courseId,
+      dto,
+      request.user.sub
+    );
   }
 
   @ApiOperation({
@@ -342,7 +350,7 @@ export class LessonController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
-      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or a new time or length was sent for an online exam's celse, which its exam page changes (ONLINE_EXAM_SESSION, MDRS-299).",
   })
   @Patch("lessons/:id")
   @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
@@ -376,7 +384,7 @@ export class LessonController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
-      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN).",
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN), or the session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299).",
   })
   @Post("lessons/:id/cancel")
   @HttpCode(HttpStatus.OK)
@@ -405,6 +413,10 @@ export class LessonController {
   @ApiOkResponse({ type: LessonMutationResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description:
+      "The session is an online exam's, which its exam page takes back (ONLINE_EXAM_SESSION, MDRS-299).",
+  })
   @Delete("lessons/:id")
   @Authz([PERMISSIONS.WEEK_HIDE, PERMISSIONS.SESSION_MANAGE], byLessonCourse)
   async archive(

@@ -1,0 +1,31 @@
+# nizam.courses.open, the walk of "the request was answered by someone else before the course was made": the form is opened by ?talep=<id>,
+# and just before "Dersi aç" the başnazım rejects the request, so the course is made and the answer to the request is refused (409
+# COURSE_REQUEST_NOT_PENDING): the warning toast "Talep yanıtlanamadı" goes up, the celses are made all the same, and Dersler opens with
+# the warning still on (F-W4-open-3).
+#   ... replay graphs/nizam/courses/open --bind graphs/nizam/courses/open/binding.requestLeft.yaml --cover transitions --out <dir>
+#
+# NOT RUN (see binding.yaml). It is a file of its own because of the node `before` on the button: `walk-data.mjs answer` rejects the walk's
+# request as the başnazım (a second answer finds it answered and says so), run before each press of "Dersi aç", the blank one included. The
+# data is binding.yaml's `fromRequest`: a köşk with a request, removed with it in `teardown`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.open
+
+nodes:
+  submit:
+    before:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, answer, nizam-courses-open]
+
+scenarios:
+  requestLeft:
+    given: { fromRequest: true, access: open, request: left, lookup: found, policy: free, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/new?talep={made.request}'
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open, --request]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open talep, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }

@@ -272,8 +272,18 @@ export function SessionsTable({
       id={sessionAnchor(row.id)}
       tabIndex={-1}
     >
-      <span className="font-semibold">
+      <span className="flex flex-wrap items-center gap-1 font-semibold">
         <bdi>{row.title}</bdi>
+        {row.exam ? (
+          // MDRS-248: an exam is marked here as on Tedris and Değerlendirme.
+          <Badge variant="secondary" data-testid="session-exam-badge">
+            {t(
+              row.exam === "retake"
+                ? "Evaluation.retakeBadge"
+                : "Evaluation.examBadge"
+            )}
+          </Badge>
+        ) : null}
       </span>
       <span className="mds-caption">
         {t("Sessions.week", { n: row.weekNumber })}
@@ -613,6 +623,7 @@ export function SessionsTable({
                     autoComplete="off"
                     spellCheck={false}
                     value={editing.value}
+                    disabled={busy}
                     onChange={(event) =>
                       setEditing({ ...editing, value: event.target.value })
                     }
@@ -623,6 +634,7 @@ export function SessionsTable({
                   legend={t("Sessions.inPerson.legend")}
                   name="inPerson"
                   bordered
+                  disabled={busy}
                   value={editing.value}
                   onChange={(value) =>
                     setEditing({ ...editing, value: value as InPersonChoice })
@@ -654,6 +666,7 @@ export function SessionsTable({
                     autoComplete="off"
                     spellCheck={false}
                     value={editing.value}
+                    disabled={busy}
                     onChange={(event) =>
                       setEditing({ ...editing, value: event.target.value })
                     }
@@ -670,6 +683,7 @@ export function SessionsTable({
                       type="date"
                       name="date"
                       value={editing.date}
+                      disabled={busy}
                       onChange={(event) =>
                         setEditing({ ...editing, date: event.target.value })
                       }
@@ -680,6 +694,7 @@ export function SessionsTable({
                       type="time"
                       name="time"
                       value={editing.time}
+                      disabled={busy}
                       onChange={(event) =>
                         setEditing({ ...editing, time: event.target.value })
                       }

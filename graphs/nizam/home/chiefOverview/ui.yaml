@@ -1,0 +1,147 @@
+# The screens of nizam.home.chiefOverview: nizam-web's Ana sayfa ("/", app/(home)/page.tsx) as the başnazım meets it: the Medaris home
+# (features/dashboard/components/medaris-home.tsx, home-parts.tsx), the box that says it could not be read
+# (features/kosks/components/load-failed.tsx) and the bare line the page falls back to (page.tsx:90). The shell around the page
+# (sidebar, person row, bell, skip link) is nizam.shell.menuPerPersona's and is not drawn here. Read from the code on 15 Nov 2026;
+# nothing was opened in a browser.
+#
+# Words: every `Dashboard.*` key is copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as `nizam.Dashboard`), the key
+# being the path inside the file's `nizam` root; `common.welcome` is from common.json. The `composed.*` keys are NOT in any i18n file:
+# they are texts the app builds in code from messages and data, written here with their placeholders so a replay can match them
+# (a placeholder with no sample matches any text):
+#   composed.Dashboard.number            a Stat's big number, formatted for the page's language (libs/ui/src/mds/stat.tsx:41)
+#   composed.Dashboard.name              the name of a row's köşk, deck, scope or person, shown as the API gives it (home-parts.tsx:87)
+#   composed.Dashboard.applicationCaption  "<field> · <applicant> · <moment>", joined in medaris-home.tsx:80-85; the field is spelled by
+#                                        FIELD_LABELS in features/platform-admin/present.ts:51-65 (F-W1-12), the applicant is the name or
+#                                        Dashboard.unknownPerson, the moment is "Bugün 08:45", "Dün 16:30" or "29 Eyl 14:20" (present.ts:69-87)
+#   composed.Dashboard.deckCaption       "<owner> · <N ezber kartı> · <moment>", medaris-home.tsx:123-128 (Dashboard.decks.cards)
+#   composed.Dashboard.passiveCaption    "<kind> · <why> · <since>", medaris-home.tsx:171-183: the kind is InactivePage.kinds.<TYPE>
+#                                        ("Köşk", "Medrese", "Ders") or InactivePage.kindInKosk ("Ders · Süleymaniye Köşkü"), the why is
+#                                        InactivePage.reasons.<TYPE>_<REASON>, the since is Dashboard.passive.since
+#   composed.Dashboard.banCaption        "<ban> · <placed by> · <moment>", medaris-home.tsx:205-212: Dashboard.bans.courseBan or koskBan,
+#                                        Dashboard.bans.placedBy, the moment as above
+# The three plural messages (Dashboard.counts.unlisted, counts.passive, passive.alertTitle) are ICU plurals as the app has them; the
+# binding finds their nodes by a pattern.
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nizam.home.chiefOverview
+flow: nizam.home.chiefOverview
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek Kişi
+  count: "3"
+  n: "2"
+  names: Örnek Medrese
+  field: Fıkıh
+  applicant: Örnek Kişi
+  moment: Bugün 08:45
+  owner: Örnek Kişi
+  cards: 3 ezber kartı
+  kind: Medrese
+  why: Başmüderris görevden alındı
+  since: 3 Kasım 2026 tarihinden beri
+  ban: "Ders yasağı: Örnek ders"
+  placedBy: koyan Örnek Kişi
+  action: Başmüderris ata
+  reason: Örnek gerekçe
+
+nodes:
+  # ---- the page: the shell's one <main>, and what the page draws in it ----
+  homePage: { type: page, component: Page, role: main, in: [homeWarned, homeClear, loadFailed, bareWelcome], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">, no name and no initialFocus: nothing in features/dashboard or app/(home) moves the focus when the page opens (rule focus-not-set)
+  homeTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.title }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:301 } # h1
+  greeting: { type: text, component: Text, text: { oneOf: [Dashboard.greeting, Dashboard.greetingAnon] }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:55 } # the first sentence of <p data-testid="home-greeting">; "Bey" whoever the person is (decision D1); the second form is for a başnazım whose name is not known
+  pendingLine: { type: text, component: Text, text: { key: Dashboard.pending, params: { count: pending.total } }, in: [homeWarned, homeClear], when: waiting, source: apps/nizam/features/dashboard/components/medaris-home.tsx:304 } # the same paragraph; the sum adds the köşk applications, the deck requests, the appeals and the permanent-ban requests (always 0): CHIEF-1
+  pendingNoneLine: { type: text, component: Text, text: { key: Dashboard.pendingNone }, in: [homeWarned, homeClear], when: "not waiting", source: apps/nizam/features/dashboard/components/medaris-home.tsx:304 }
+  openKosk: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Dashboard.openKosk }, in: [homeWarned, homeClear], emits: OPEN_KOSK, source: apps/nizam/features/dashboard/components/medaris-home.tsx:308 } # a plain <a href="/kosks?ac=1"> with a decorative plus; drawn for the başnazım alone (data.can.openKosk)
+
+  # ---- the warning, above the numbers ----
+  passiveAlert: { type: alert, component: Alert, role: status, text: { key: Dashboard.passive.alertTitle, params: { count: passive.count } }, in: [homeWarned], source: apps/nizam/features/dashboard/components/medaris-home.tsx:317 } # a warning tone is role=status, which is not announced when the page loads, only when it changes; the title counts every scope
+  passiveAlertBody: { type: text, component: Text, text: { key: Dashboard.passive.alertBody, params: { names: passive.names, count: passive.count } }, in: [homeWarned], source: apps/nizam/features/dashboard/components/medaris-home.tsx:321 } # names the first three scopes only (CHIEF-3)
+
+  # ---- the platform numbers: one region, four cards of a label and a number ----
+  counts: { type: page, component: Page, role: region, name: { key: Dashboard.counts.title }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:250 } # <section aria-label="Platform sayıları">
+  statKosk: { type: text, component: Text, text: { key: Dashboard.counts.kosk }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:259 }
+  statKoskValue: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: platformCounts.kosk } }, in: [homeWarned, homeClear], source: libs/ui/src/mds/stat.tsx:41 } # the label then the number, two spans: read in that order
+  statKoskUnlisted: { type: text, component: Text, text: { key: Dashboard.counts.unlisted, params: { count: platformCounts.unlistedKosk } }, in: [homeWarned, homeClear], when: "unlisted == 'some'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:261 }
+  goKosks: { type: action, component: LinkButton, role: link, text: { key: Dashboard.counts.goKosks }, in: [homeWarned, homeClear], emits: OPEN_KOSKS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:266 } # a plain <a className="mds-link" href="/kosks">; the başnazım's alone (the köşk page is the başnazım's and the nazım's with a permission)
+  statMadrasah: { type: text, component: Text, text: { key: Dashboard.counts.madrasah }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:271 }
+  statMadrasahValue: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: platformCounts.madrasah } }, in: [homeWarned, homeClear], source: libs/ui/src/mds/stat.tsx:41 }
+  statMadrasahPassive: { type: text, component: Text, text: { key: Dashboard.counts.passive, params: { count: platformCounts.inactiveMadrasah } }, in: [homeWarned], when: "passive == 'madrasah'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:274 } # "Biri pasif": the passive medreses of the whole platform
+  goMadrasahs: { type: action, component: LinkButton, role: link, text: { key: Dashboard.counts.goMadrasahs }, in: [homeWarned, homeClear], emits: OPEN_MADRASAHS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:278 }
+  statCourse: { type: text, component: Text, text: { key: Dashboard.counts.course }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:284 } # the başnazım's alone: the nazım's page leaves it out
+  statCourseValue: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: platformCounts.course } }, in: [homeWarned, homeClear], source: libs/ui/src/mds/stat.tsx:41 }
+  statCoursePassive: { type: text, component: Text, text: { key: Dashboard.counts.passive, params: { count: platformCounts.inactiveCourse } }, in: [homeWarned], when: "passive == 'course'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:287 }
+  statStudents: { type: text, component: Text, text: { key: Dashboard.counts.students }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:293 } # the başnazım's alone; no link under Ders or Kayıtlı talebe
+  statStudentsValue: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: platformCounts.enrolledStudents } }, in: [homeWarned, homeClear], source: libs/ui/src/mds/stat.tsx:41 }
+
+  # ---- card: Köşk başvuruları ----
+  applicationsCard: { type: page, component: Page, role: region, name: { labelledBy: applicationsTitle }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:24 } # <section aria-labelledby="home-applications">
+  applicationsTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.applications.title }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  applicationsAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.seeAll }, in: [homeWarned, homeClear], emits: SEE_ALL_APPLICATIONS, source: apps/nizam/features/dashboard/components/home-parts.tsx:34 } # a plain <a className="mds-link"> to /talepler/kosk-basvurulari, drawn on an empty card too; the same words open the decks and the passive scopes
+  applicationsEmpty: { type: text, component: Text, text: { key: Dashboard.applications.empty }, in: [homeWarned, homeClear], when: "not appsRows", source: apps/nizam/features/dashboard/components/medaris-home.tsx:69 }
+  applicationsList: { type: list, component: List, role: list, in: [homeWarned, homeClear], when: appsRows, source: apps/nizam/features/dashboard/components/home-parts.tsx:53 } # at most the three newest
+  applicationRow: { type: text, component: Text, role: listitem, text: { key: composed.Dashboard.name, params: { name: application.name } }, in: [homeWarned, homeClear], when: appsRows, repeat: home.latestApplications, source: apps/nizam/features/dashboard/components/home-parts.tsx:81 }
+  applicationCaption: { type: text, component: Text, text: { key: composed.Dashboard.applicationCaption, params: { field: application.field, applicant: application.applicantName, moment: application.createdAt } }, in: [homeWarned, homeClear], when: appsRows, repeat: home.latestApplications, source: apps/nizam/features/dashboard/components/medaris-home.tsx:80 } # the field is spelled from a table in code (F-W1-12)
+  applicationReview: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Dashboard.review }, name: { key: Dashboard.reviewLabel, params: { name: application.name } }, in: [homeWarned, homeClear], when: appsRows, repeat: home.latestApplications, emits: OPEN_APPLICATION, source: apps/nizam/features/dashboard/components/medaris-home.tsx:87 } # href /talepler/kosk-basvurulari?secili=<id>
+
+  # ---- card: Deste yayın istekleri ----
+  decksCard: { type: page, component: Page, role: region, name: { labelledBy: decksTitle }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:24 }
+  decksTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.decks.title }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  decksAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.seeAll }, in: [homeWarned, homeClear], emits: SEE_ALL_DECKS, source: apps/nizam/features/dashboard/components/home-parts.tsx:34 } # to /talepler/deste-yayin-istekleri
+  decksEmpty: { type: text, component: Text, text: { key: Dashboard.decks.empty }, in: [homeWarned, homeClear], when: "not decksRows", source: apps/nizam/features/dashboard/components/medaris-home.tsx:113 }
+  decksList: { type: list, component: List, role: list, in: [homeWarned, homeClear], when: decksRows, source: apps/nizam/features/dashboard/components/home-parts.tsx:53 }
+  deckRow: { type: text, component: Text, role: listitem, text: { key: composed.Dashboard.name, params: { name: deck.title } }, in: [homeWarned, homeClear], when: decksRows, repeat: home.latestDeckRequests, source: apps/nizam/features/dashboard/components/home-parts.tsx:81 }
+  deckCaption: { type: text, component: Text, text: { key: composed.Dashboard.deckCaption, params: { owner: deck.ownerName, cards: deck.cardCount, moment: deck.requestedAt } }, in: [homeWarned, homeClear], when: decksRows, repeat: home.latestDeckRequests, source: apps/nizam/features/dashboard/components/medaris-home.tsx:123 }
+  deckReview: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Dashboard.review }, name: { key: Dashboard.reviewLabel, params: { name: deck.title } }, in: [homeWarned, homeClear], when: decksRows, repeat: home.latestDeckRequests, emits: OPEN_DECK_REQUEST, source: apps/nizam/features/dashboard/components/medaris-home.tsx:131 } # href /talepler/deste-yayin-istekleri?secili=<id>
+
+  # ---- card: Pasif kapsamlar ----
+  passiveCard: { type: page, component: Page, role: region, name: { labelledBy: passiveTitle }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:24 }
+  passiveTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.passive.title }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  passiveAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.seeAll }, in: [homeWarned, homeClear], emits: SEE_ALL_PASSIVE, source: apps/nizam/features/dashboard/components/home-parts.tsx:34 } # to /pasif-kapsamlar
+  passiveEmpty: { type: text, component: Text, text: { key: Dashboard.passive.empty }, in: [homeClear], source: apps/nizam/features/dashboard/components/medaris-home.tsx:161 } # "Yöneticisiz kapsam yok.": e2e dashboard#3 reads it after the healing
+  passiveList: { type: list, component: List, role: list, in: [homeWarned], source: apps/nizam/features/dashboard/components/home-parts.tsx:53 }
+  passiveRow: { type: text, component: Text, role: listitem, text: { key: composed.Dashboard.name, params: { name: scope.name } }, in: [homeWarned], repeat: home.inactiveScopes, source: apps/nizam/features/dashboard/components/home-parts.tsx:81 }
+  passiveCaption: { type: text, component: Text, text: { key: composed.Dashboard.passiveCaption, params: { kind: scope.kind, why: scope.reason, since: scope.since } }, in: [homeWarned], repeat: home.inactiveScopes, source: apps/nizam/features/dashboard/components/medaris-home.tsx:171 }
+  passiveAssign: { type: action, component: LinkButton, role: link, intent: secondary, text: { oneOf: [Dashboard.passive.assign.KOSK, Dashboard.passive.assign.MADRASAH, Dashboard.passive.assign.COURSE] }, name: { key: Dashboard.passive.assignLabel, params: { action: scope.action, name: scope.name } }, in: [homeWarned], repeat: home.inactiveScopes, emits: ASSIGN_SCOPE, source: apps/nizam/features/dashboard/components/medaris-home.tsx:186 } # href /pasif-kapsamlar for every row (F-W1-10)
+
+  # ---- card: Yeni yasaklar ----
+  bansCard: { type: page, component: Page, role: region, name: { labelledBy: bansTitle }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:24 }
+  bansTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.bans.title }, in: [homeWarned, homeClear], source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2
+  bansEmpty: { type: text, component: Text, text: { key: Dashboard.bans.empty }, in: [homeWarned, homeClear], when: "not bansRows", source: apps/nizam/features/dashboard/components/medaris-home.tsx:217 }
+  bansList: { type: list, component: List, role: list, in: [homeWarned, homeClear], when: bansRows, source: apps/nizam/features/dashboard/components/home-parts.tsx:53 }
+  banRow: { type: text, component: Text, role: listitem, text: { key: composed.Dashboard.name, params: { name: ban.userName } }, in: [homeWarned, homeClear], when: bansRows, repeat: home.latestBans, source: apps/nizam/features/dashboard/components/home-parts.tsx:81 }
+  banCaption: { type: text, component: Text, text: { key: composed.Dashboard.banCaption, params: { ban: ban.scope, placedBy: ban.bannedByName, moment: ban.createdAt } }, in: [homeWarned, homeClear], when: bansRows, repeat: home.latestBans, source: apps/nizam/features/dashboard/components/medaris-home.tsx:205 }
+  banReason: { type: text, component: Text, text: { key: Dashboard.bans.reason, params: { reason: ban.reason } }, in: [homeWarned, homeClear], when: bansRows, repeat: home.latestBans, source: apps/nizam/features/dashboard/components/medaris-home.tsx:226 } # the reason as the person who barred wrote it
+  banReview: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Dashboard.review }, name: { key: Dashboard.reviewLabel, params: { name: ban.userName } }, in: [homeWarned, homeClear], when: bansRows, repeat: home.latestBans, emits: OPEN_BAN, source: apps/nizam/features/dashboard/components/medaris-home.tsx:228 } # href /yasaklamalar for every row (CHIEF-2)
+  bansAll: { type: action, component: LinkButton, role: link, text: { key: Dashboard.bans.goTo }, in: [homeWarned, homeClear], emits: GO_TO_BANS, source: apps/nizam/features/dashboard/components/medaris-home.tsx:243 } # a plain <a className="mds-link"> inside the card, under the list or the empty sentence
+
+  # ---- the box that takes the page's place ----
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Dashboard.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/kosks/components/load-failed.tsx:23 } # an error Alert: role=alert, announced when it appears; it has no heading above it (CHIEF-4)
+  loadFailedText: { type: text, component: Text, text: { key: Dashboard.loadFailed }, in: [loadFailed], source: apps/nizam/features/kosks/components/load-failed.tsx:24 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Dashboard.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/kosks/components/load-failed.tsx:25 } # router.refresh() in a transition; busy while it runs, with a hidden "Yükleniyor" that is hard-coded Turkish (F-UI-W1-3)
+
+  # ---- the line the page falls back to ----
+  welcomeLine: { type: text, component: Text, text: { key: common.welcome }, in: [bareWelcome], source: apps/nizam/app/(home)/page.tsx:90 } # a bare <div>: not a heading, nothing else beside it (F-W1-1)
+
+edges:
+  - { labelledBy: [applicationsCard, applicationsTitle] }
+  - { labelledBy: [decksCard, decksTitle] }
+  - { labelledBy: [passiveCard, passiveTitle] }
+  - { labelledBy: [bansCard, bansTitle] }
+
+rules:
+  - { id: focus-not-set, rule: "Ana sayfa sets no initial focus: no autoFocus and no focus() in app/(home) or features/dashboard, and it does not use the FocusHeading that the no-role page uses (features/assignments/components/no-role-page.tsx:44). So the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. After a link the browser loads a new document and the focus is at its start; 'Yeniden dene' re-renders in place and the focus stays on the button. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: F-W1-1, rule: "When the roles cannot be read (me === null) \"/\" falls through to `<div>{t(\"common.welcome\")}</div>` (app/(home)/page.tsx:90): a bare \"Hoş geldiniz\" inside the shell, with no <h1>, no error and no retry, and the shell has no menu either, for a person who may be the başnazım. The user cannot tell the roles failed to load. Fix: draw LoadFailed as at page.tsx:71, and give the fallthrough a heading. nizam.shell.landingByRole draws the same page as F-P0-9." }
+  - { id: F-W1-10, rule: "The passive scopes' row buttons promise an action (\"Köşk nazımı ata\", \"Başmüderris ata\", \"Hoca ata\") and are plain links to /pasif-kapsamlar, the same address for every row (medaris-home.tsx:185-197). A keyboard user lands on a list and must find the scope again. Fix: deep-link with the scope (?secili=, as \"İncele\" does for applications and decks) or name the button \"Pasif kapsamlara git: …\". The köşk home's row buttons are the same finding (nizam.home.koskNazimLanding)." }
+  - { id: F-W1-12, rule: "The field of a köşk application in the card's caption (\"Arapça dil ilimleri\", \"Belâgat\", \"Fıkıh\", …) is spelled by FIELD_LABELS, a table of Turkish literals in features/platform-admin/present.ts:51-65, not by the catalog (medaris-home.tsx:81); another locale would show Turkish, and a code the table lacks is shown raw (`FIELD_LABELS[code] ?? code`). Fix: move the labels to nizam.json." }
+  - { id: F-X-17, rule: "The family of F-W1-12: text outside the catalog. On this page the field labels above, the tab title (the page has no generateMetadata, so the tab says \"Nizam\", app/layout.tsx:15-18) and the busy button's \"Yükleniyor\" (libs/ui/src/mds/button.tsx:62, F-UI-W1-3), which 'Yeniden dene' shows while it runs." }
+  - { id: F-W1-15, rule: "Touches this flow only from the side: the permanent-ban card is the Medaris nazımı's (`pendingTotals.permanentBanRequests != null && !chief`, medaris-home.tsx:147-152), so the başnazım's home draws none and the card's always-empty sentence is nizam.home.medarisNazimCut's. The başnazım's menu still holds the entry that leads to a missing page (nizam.shell.menuPerPersona). The başnazım's greeting adds `permanentBanRequests`, which is the constant 0 for them (nizam-dashboard.service.ts:85)." }
+  - { id: CHIEF-1, rule: "New. The greeting's \"Karar bekleyen N talep var.\" is the sum of four queues: köşk applications, deck publish requests, appeals and permanent-ban requests (features/dashboard/present.ts:29-36). The home has a card for the first two and none for appeals (the permanent-ban requests are always 0), yet `pendingTotals.appeals` is the real count of pending appeals (nizam-dashboard.repository.ts:59-65). A başnazım whose only waiting item is an appeal reads \"1 talep var\" over four cards that say nothing waits, and no link on the page leads to the İtirazlar list (the menu does). e2e dashboard#1 assertion 4 computes the sum from applications and deck requests alone and its comment says the appeal model comes later; the model exists. Fix: add an appeals card or a link, or leave appeals out of the sum until the home shows them. Decision D2." }
+  - { id: CHIEF-2, rule: "New, the family of F-W1-10. \"İncele: {name}\" on a ban row is a plain link to /yasaklamalar for every row (medaris-home.tsx:228-237), and the page takes no ban to select (app/yasaklamalar/page.tsx reads no `secili`), while the same words on an application or a deck request open that very row (?secili=<id>). The accessible name says \"İncele: Örnek Kişi\" and the person lands on the whole list. Fix: let /yasaklamalar select a ban from the address, as the two other queues do, or name the link after what it does." }
+  - { id: CHIEF-3, rule: "New. The warning's title counts every scope with no manager (`inactiveScopeCount`, \"5 kapsamın yöneticisi yok\") but its sentence names only the scopes of the card, which the API cuts at three (`passive.slice(0, 3)`, nizam-dashboard.service.ts:101; medaris-home.tsx:323), then says \"… pasif; içerikleri kayıtlı talebelere de kapalı.\" With five scopes the sentence names three and reads as if those were the passive ones. Not seen in a browser: from the code. Fix: say \"ve N tane daha\" after the names, or name none and point at the card." }
+  - { id: CHIEF-4, rule: "New. When the home cannot be read the page draws only the error Alert (page.tsx:67-77, load-failed.tsx:23): there is no <h1> on the page, the title is a <p>, and no focus is set. LoadFailed is shared by every köşk page, so the same page has no heading wherever it is drawn. The shell around it is intact. The role=alert is announced when it appears, which a server-rendered first paint may not do. Fix: give the box a heading (\"Ana sayfa\") above the Alert, as the page has in the success branch, or move the focus to it. nizam.shell.landingByRole's inventory makes the same remark for /yetki-yok (F-P0-6)." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): \"İncele: {name}\" starts with \"İncele\", and the assign button's name starts with its text" }
+  - { id: one-h1-per-page, rule: "The home has one h1 (\"Ana sayfa\") and one h2 per card; the numbers are a region named by an aria-label with no heading. The box and the bare line have none (CHIEF-4, F-W1-1)." }

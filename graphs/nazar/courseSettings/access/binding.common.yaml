@@ -1,0 +1,107 @@
+# nazar.courseSettings.access on the local stack, the parts every file of this folder shares: the data sources, the events that no node sends, the exits,
+# the locators of the nodes that role and name cannot find, and the effects (the checks of what a step leaves in the API). It has no scenario:
+# `binding.yaml` (the walks that save and the page that opens locked) and `binding.refused.yaml` (the saves that are refused, and the stale ones)
+# extend it, because `extends` merges scenarios by key and a walk of the second file must not walk the first's again.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator, every var and every expectation below is from
+# the code, unverified until a walk.
+#
+# The data. The walk never changes a seeded course, a seeded medrese or a policy of either. `setup` makes a course of the walk's own through
+# helpers/course.mjs (tag cs-access, "Deneme dersi cs-access": published, one week of two LIVE celses from tomorrow, MUDERRIS its hoca, anyone takes a
+# seat, open, not in person, in Istanbul, no sample) with access-data.mjs, a helper of this folder; the policy walks give it a medrese of its own
+# ("Erişim Deneme Medresesi") whose başmüderris is the spare talebe APPLICANT_G and which is hosted by the seed's second köşk. `teardown` takes the course
+# (with its celses, its ders nazırı post and its notifications) and the medrese away. What it cannot undo: the audit rows of the walk (course.update,
+# course.create, madrasah.create, hosting_right.grant, madrasah.settings.update, madrasah.delete) and the invitation mails of the course's celses
+# (course.mjs clears those). Every run of these helpers by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# Where the replay meets the second Kaydet. Since #344 the page has two "Kaydet" and two "Vazgeç" (F-D2c-14): the card's own pair is found inside
+# the form, `data-testid=course-settings-form`, which is how every locator of a control of the card is scoped.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courseSettings.access
+
+data:
+  made: { json: ../.local/made/cs-access.json } # helpers/course.mjs's file for the tag: {course, title, weeks, lessons, madrasah?}
+
+# What no node sends. Every press (the three boxes, the two lists and their options, Kaydet, Vazgeç) is a node's.
+events:
+  RELOAD:
+    - reload: true
+  DISMISS:
+    - key: Escape # the open list closes
+  # leaving by the address: the hoca's landing is her Pano or her Derslerim, whichever the app chooses
+  NAVIGATE:
+    - goto: '{nazar}/'
+
+states:
+  left: { url: '{nazar}/**' }
+
+nodes:
+  # a bare <main> is also the page a walk leaves for: the heading of this page tells it apart
+  page: { role: main, hasText: Ders ayarları }
+  title: { role: heading, name: '/^Ders ayarları$/' }
+  # the sidebar's entry carries aria-current=page (e2e course-settings#1 a8): a graph cannot say it, the replay does not read it
+  menuSettings: { role: link, name: '/^Ders ayarları/', within: { css: aside } }
+  # the card: the form landmark, found by the kit's hook; everything below is looked for inside it
+  accessForm: { testId: course-settings-form }
+  accessTitle: { role: heading, name: 'Erişim, kayıt ve saat dilimi', within: { testId: course-settings-form } }
+  closedBox: { role: checkbox, name: Kapalı ders, within: { testId: course-settings-form } }
+  closedBoxLocked: { role: checkbox, name: Kapalı ders, within: { testId: course-settings-form } }
+  approvalBox: { role: checkbox, name: Kayıt onayı gereksin, within: { testId: course-settings-form } }
+  approvalBoxLocked: { role: checkbox, name: Kayıt onayı gereksin, within: { testId: course-settings-form } }
+  inPersonBox: { role: checkbox, name: Celseler yüz yüze yapılır, within: { testId: course-settings-form } }
+  # the kit's Select is a button with role combobox; its text is the option it shows
+  sampleField: { role: combobox, name: '/^Örnek ders/', within: { testId: course-settings-form } }
+  sampleReadsNone: { role: combobox, name: '/^Örnek ders/', hasText: Örnek ders yok, within: { testId: course-settings-form } }
+  sampleReadsFirst: { role: combobox, name: '/^Örnek ders/', hasText: Hafta 1 · Celse 1, within: { testId: course-settings-form } }
+  sampleReadsSecond: { role: combobox, name: '/^Örnek ders/', hasText: Hafta 1 · Celse 2, within: { testId: course-settings-form } }
+  zoneField: { role: combobox, name: '/^Saat dilimi/', within: { testId: course-settings-form } }
+  zoneReadsIstanbul: { role: combobox, name: '/^Saat dilimi/', hasText: İstanbul, within: { testId: course-settings-form } }
+  zoneReadsBerlin: { role: combobox, name: '/^Saat dilimi/', hasText: Berlin, within: { testId: course-settings-form } }
+  # the card's own pair of buttons; the busy Kaydet carries a hidden "Kaydediliyor…" after its name
+  cancel: { role: button, name: '/^Vazgeç$/', within: { testId: course-settings-form } }
+  submit: { role: button, name: '/^Kaydet/', within: { testId: course-settings-form } }
+  submitBusy: { role: status, hasText: Kaydediliyor, within: { testId: course-settings-form } }
+  # the toasts: the kit hides a toast from the accessibility tree until it is expanded (e2e course-settings.e2e.ts:75), so they are found by their classes
+  toastSaved: { css: '.mds-toast--success', hasText: Ders ayarları kaydedildi }
+  toastStale: { css: '.mds-toast--error', hasText: 'Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi' }
+  toastPolicy: { css: '.mds-toast--error', hasText: Bir politika bu değişikliği kilitliyor }
+  toastForbidden: { css: '.mds-toast--error', hasText: Bunu yapma izniniz yok. }
+  toastFailed: { css: '.mds-toast--error', hasText: İşlem tamamlanamadı }
+  # the refusal that replaces the page: a neutral Alert is a bare status
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+
+# What the page and its saves leave outside the screen, read through the API as the başnazım (e2e course-settings#2 a2, a10, #3 a7, a9, a13, #10 a4):
+# the course's closed flag, approval flag, in-person mark, zone and sample session ("Celse 1" or null) on one line. The expectation is the scenario's own.
+effects:
+  loadedPlain:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectLoaded}'
+  loadedApproval:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectLoaded}'
+  loadedLocked:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectLoaded}'
+  # the sample's write landed: the course holds the sample and nothing else of the save yet
+  sampleLanded:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectSample}'
+  # the save is done: the course holds every value that was pressed
+  savedAll:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectSaved}'
+  # a refusal: what the course holds after it (the e2e's "nothing is written"), in each of the four ways the graph leaves the refusal
+  toastRefused:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectRefused}'
+  rereadStale:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectRefused}'
+  keptDraft:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectRefused}'
+  partialReread:
+    - run: [node, ../nazar/courseSettings/access/access-data.mjs, state]
+      expect: '{expectRefused}'

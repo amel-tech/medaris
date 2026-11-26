@@ -1,0 +1,55 @@
+# nizam.decks.koskDecks, answered meanwhile: someone else settles what the page shows after the page was read, so the nazım's write is answered 409 DECK_PROPOSAL_NOT_PENDING (the
+# proposal) or 404 KOSK_DECK_NOT_FOUND (a deck that is hidden already: FAIL.gone of hiding takes both `answered` and `gone`). The row leaves, the toast "İşlem yapılamadı" with the
+# sentence of its code says why, and the dialog closes (FAIL.answered of rejecting, FAIL.gone of hiding); the form's write is refused and the form stays (FAIL.answered of submitting).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/decks/koskDecks \
+#     --bind graphs/nizam/decks/koskDecks/binding.answered.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the answer is made: no node sends it and the model has no event for it (the page is stale before the person presses), so a state's `before` has another nazım do it through the API
+# when the walk reaches the state the person decides from, as nizam.applications.decide does: `rejectFormReady` (the dialog is open with a reason written: the OLDEST waiting
+# proposal is refused, the one the page's first "Reddet" belongs to), `confirmHide` (the dialog is open: the NEWEST shown deck is hidden, the one the page's first "Gizle" belongs to) and
+# `formProposal` (the form is open: the OLDEST waiting proposal is refused, the one "Kabul et" opened). `deck-data.mjs meanwhile` picks them by the page's own order, so the model's counts
+# (one proposal fewer, one deck fewer) stay true. `--any`-like safety: a state reached again answers the next one, which only the longest paths do.
+# Two doubts, said here and not hidden: (1) `formProposal` is a page the SERVER renders when the walk follows "Kabul et", so the answer must land after that render; it waits 3 seconds
+# first, which a first dev compile of /yeni (15 to 30 s) can beat, and then the form opens empty (KDECK-1) and the walk reports a missing banner: re-run, or lengthen the wait. (2)
+# The status the replay compares on FAIL.* is the server action's own 200 (an engine limit: see locators.binding.yaml), so only the toast and the row prove the answer.
+# Data: the same as binding.yaml's `both` (./deck-data.mjs make both), and the same teardown.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.decks.koskDecks
+
+states:
+  rejectFormReady:
+    before:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, meanwhile, reject]
+        expect: 'deck-data meanwhile reject'
+  confirmHide:
+    before:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, meanwhile, hide]
+        expect: 'deck-data meanwhile hide'
+  formProposal:
+    before:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, meanwhile, reject, '3']
+        expect: 'deck-data meanwhile reject'
+
+scenarios:
+  answered:
+    given: { world: both, answer: answered }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    vars: { newName: 'Deneme destesi koskDecks sıfırdan', reason: 'Bu konu zaten bir destede var.' }
+    setup:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, make, kdecks, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi kdecks"'
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, make, both]
+        expect: 'decks=1 proposals=2'
+    teardown:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, kdecks]
+        expect: 'course remove kdecks'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from decks where kosk_id = '{seed.kosk2}') + (select count(*) from deck_proposals where kosk_id = '{seed.kosk2}') + (select count(*) from courses where title like 'Deneme dersi kdecks%') as n"]
+        expect: '"n":0'

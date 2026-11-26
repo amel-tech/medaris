@@ -1,0 +1,55 @@
+# What every binding of tedris.celse.watchStream shares: tedris-web (:4000) with a published course of the walk's own (`watchstream-data.mjs up`,
+# which writes graphs/.local/watch-stream.json, read here as {ws.*}), and where role and name cannot find a node. The walk's scenarios are in
+# binding.yaml (the main story and the looks that have a state of their own) and binding.reader.yaml, binding.held.yaml (the looks that share
+# a state with the main story, so a binding of their own).
+#
+# What the stack does and does not do for this page (measured 15 Nov 2026 with the replay's Chromium, signed in as a spare talebe):
+#   - YouTube is reachable, so the stream's frame and the chat's frame load. The player shows its poster and a play button but the walk's browser never
+#     starts a video (the spinner stays at 0:00), so YouTube's player never reports the end: PLAYER_ENDED and PLAYER_PLAYING are not bound and no
+#     replay reaches `streamEnded`. The chat's frame shows YouTube's "cannot be used in this browser" page; that page is YouTube's.
+#   - YouTube's player script rewrites the stream frame's `title` a moment after load (WATCH-1), so the frame is found by its id and its `src`.
+#   - The notes' and questions' controls are other flows': WRITE_NOTE and ASK_QUESTION are not bound.
+#   - "Yayını aç" and "YouTube'da aç" open a new tab: OPEN_STREAM and OPEN_POPOUT are not walked.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.celse.watchStream
+
+data:
+  ws: { json: ../.local/watch-stream.json }
+
+samples:
+  course: Deneme dersi watchstream
+
+events:
+  NAVIGATE:
+    - goto: '{tedris}/notifications'
+  # PLAYER_ENDED, PLAYER_PLAYING: not bound (the stack's browser cannot play a video)
+  # WRITE_NOTE, ASK_QUESTION: not bound (tedris.learn.notes, tedris.learn.questions)
+  # OPEN_POPOUT, OPEN_STREAM: a link that opens a new tab, not walked
+  # RELOAD: not bound (a reload shows the same page unless the data changed)
+
+states:
+  not_found: { url: '{tedris}/courses/*/lessons/*/izle' }
+  sent_to_details.locked: { url: '{tedris}/courses/*/lessons/*' }
+  sent_to_details.nothing: { url: '{tedris}/courses/*/lessons/*' }
+  handed_over.recording: { url: '{tedris}/courses/*/lessons/*/izle' }
+  details_opened: { url: '{tedris}/courses/*/lessons/*' }
+  course_opened: { url: '{tedris}/courses/*' }
+  left: { url: '{tedris}/notifications' }
+
+# The celse's own page has a <main> too, so the watch page's is found by the player card inside it. The frames have no role to find them by:
+# the player's by its id and its address (the host and the video are what lesson-notes#9 asserts; celse-states#1 expects youtube-nocookie.com,
+# which is stale), the chat's by its title. The badge's minutes, the release sentence and the course's name are values: matched by a pattern.
+nodes:
+  watchPage: { css: 'main:has(section[aria-labelledby=watch-video-title])' }
+  backLink: { role: link, name: '/^Derse dön: /' }
+  pageHeading: { role: heading, name: '/^Hafta \d+ · /' }
+  liveBadge: { css: 'main .mds-badge--live', hasText: '/^Canlı · \d+ dk$/' }
+  endedBadge: { css: 'main .mds-badge', hasText: Yayın bitti }
+  liveAnnouncer: { css: 'main span[aria-live=polite]', hasText: '/^Canlı$/' }
+  endedAnnouncer: { css: 'main span[aria-live=polite]', hasText: Yayın bitti }
+  releaseNote: { css: 'main [data-recording-release]', hasText: '/Ders kaydı .* açılır\./' }
+  playerSection: { css: 'section[aria-labelledby=watch-video-title]' }
+  streamFrame: { css: 'iframe#watch-frame[src^="https://www.youtube.com/embed/{ws.video}?enablejsapi=1"]' }
+  chatFrame: { css: 'iframe[title="Canlı sohbet"][src^="https://www.youtube.com/live_chat?v={ws.video}"]' }

@@ -278,6 +278,38 @@ describe("'Ders nazırı ata'", () => {
     expect(dialog()).toBeNull();
   });
 
+  it("keeps the person and the boxes while the appointment is on its way, so what is sent is what is shown", async () => {
+    let answer: (value: unknown) => void = () => {};
+    appointCourseNazir.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await pick();
+    await toggle(SESSION);
+    expect(button("Başka birini seç").disabled).toBe(false);
+
+    await click(button("Kaydet"));
+    await settle(20);
+    expect(button("Başka birini seç").disabled).toBe(true);
+    expect(locked(SESSION)).toBe(true);
+    expect(locked(RECORDING)).toBe(true);
+    await click(button("Başka birini seç"));
+    await toggle(RECORDING);
+    const chosen = document.querySelector("[data-testid=chosen-course-nazir]");
+    expect(chosen?.textContent).toContain("Abdullah Talha Erzurumluoğlu");
+    expect(checked(RECORDING)).toBe(false);
+    expect(dialog().textContent).toContain("1 izin seçili");
+
+    answer({ success: true, data: null });
+    await settle(60);
+    expect(appointCourseNazir).toHaveBeenCalledExactlyOnceWith("c-1", {
+      userId: "u-9",
+      permissions: ["session.manage"],
+    });
+    expect(dialog()).toBeNull();
+  });
+
   it("leaves a box the caller may not give off", async () => {
     await pick();
     expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(20);
@@ -454,6 +486,33 @@ describe("'İzinleri düzenle'", () => {
     );
     expect(onClose).toHaveBeenCalledOnce();
     expect(onDone).toHaveBeenCalledOnce();
+  });
+
+  it("turns the boxes off while the save is on its way, so what is sent is what is shown", async () => {
+    let answer: (value: unknown) => void = () => {};
+    changeCourseNazir.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      })
+    );
+    await open();
+    await toggle(EDIT);
+    await click(button("Kaydet"));
+    await settle(20);
+
+    expect(locked(EDIT)).toBe(true);
+    expect(locked(RECORDING)).toBe(true);
+    expect(dateField().disabled).toBe(true);
+    await toggle(RECORDING);
+    expect(checked(RECORDING)).toBe(false);
+
+    answer({ success: true, data: null });
+    await settle(60);
+    expect(changeCourseNazir).toHaveBeenCalledExactlyOnceWith("c-1", "p-1", {
+      permissions: ["course.edit", "session.manage", "course.publish"],
+      endsAt: "2026-12-31T20:59:59.000Z",
+    });
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("sends `null` when the end is emptied on purpose", async () => {

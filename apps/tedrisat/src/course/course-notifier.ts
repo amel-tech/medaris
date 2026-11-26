@@ -115,14 +115,19 @@ export class CourseNotifier {
     });
   }
 
-  /** A session cancelled before it ended; one with no time is not news. */
+  /**
+   * A session cancelled before it ended; one with no time is not news. The
+   * note the müderris wrote for talebe (MDRS-248) rides along as `reason`.
+   */
   async sessionCancelled(
     session: ILessonMutation,
     actorId?: string
   ): Promise<void> {
     if (!session.scheduledAt || hasEnded(session, new Date())) return;
+    const reason = session.cancelReason?.trim();
     await this.tellSeats("SESSION_CANCELLED", session, actorId, {
       sessionAt: session.scheduledAt.toISOString(),
+      ...(reason ? { reason } : {}),
     });
   }
 
@@ -184,6 +189,46 @@ export class CourseNotifier {
         error
       );
     }
+  }
+
+  /**
+   * A celse planned as an exam (MDRS-248, "Sınav"): its talebe are told when
+   * it is, apart from the calendar invitation every planned celse sends. One
+   * already over is not news.
+   */
+  async examScheduled(
+    session: Pick<
+      ILessonMutation,
+      "id" | "scheduledAt" | "durationMinutes" | "cancelledAt"
+    >,
+    actorId?: string
+  ): Promise<void> {
+    if (!session.scheduledAt || session.cancelledAt) return;
+    if (hasEnded(session, new Date())) return;
+    await this.tellSeats("EXAM_SCHEDULED", session, actorId, {
+      sessionAt: session.scheduledAt.toISOString(),
+    });
+  }
+
+  /** An exam a day away (MDRS-248); the reminder poll has no actor. */
+  async examReminder(lessonId: string, sessionAt: Date): Promise<void> {
+    await this.tellSeats("EXAM_REMINDER", { id: lessonId }, undefined, {
+      sessionAt: sessionAt.toISOString(),
+    });
+  }
+
+  /** "Sonuçları talebelere aç" (MDRS-248): the talebe may read their score. */
+  async examResultsReleased(
+    lessonId: string,
+    sessionAt: Date | null,
+    actorId?: string
+  ): Promise<void> {
+    await this.tellSeats(
+      "EXAM_RESULTS_RELEASED",
+      { id: lessonId },
+      actorId,
+      sessionAt ? { sessionAt: sessionAt.toISOString() } : {}
+    );
   }
 
   private async tellTalebe(

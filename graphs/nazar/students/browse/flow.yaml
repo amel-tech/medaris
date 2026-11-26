@@ -1,0 +1,401 @@
+# Talebeler of a medrese in nazar-web (/medrese/<id>/talebeler), read by its başmüderris, read from the code of PR #394
+# (apps/nazar/features/students, app/medrese/[medreseId]/talebeler, the API's GET /madrasahs/:id/students and GET
+# /madrasahs/:id/courses) on 15 Nov 2026. Nothing here was walked in a browser: every behaviour is "from the code" until the
+# walk phase; the unit test apps/nazar/test/students.spec.tsx and the e2e students#1-#3 are what ran it before. It says what the
+# code does today:
+#   - The list is the medrese's talebe: everyone with an ENROLLED or COMPLETED seat in one of its courses that is not hidden,
+#     newest first by first enrolment, ten to a page, with the counter over every page. The filters (search box, course, state)
+#     and the page live in the address (?ara=, ?ders=, ?durum=, ?sayfa=).
+#   - The three filters change the address with router.replace inside a transition, so the table stays and the wrapper is
+#     aria-busy until the new list comes; the pager is two plain links, so a page change loads the document anew (STUDENTS-1).
+#   - Findings it carries: F-B-4 (the counter and the range are no live region), F-B-1 (the failed read draws a second h1),
+#     F-B-13 (the refusal is a polite status line under a title that still says "Talebeler"), the domain's students-read-unaudited
+#     (the read leaves no audit row, as the course roster does), and five of its own, STUDENTS-1 to STUDENTS-5 (ui.yaml `rules`).
+#   - What the graph keeps small: one narrowing at a time (a state, a course or a word); the list has one, three or no page
+#     (`roster`); a list of more than three pages draws its middle page again and again, and the graph draws it once.
+#   - "Yasakla" on a row starts nazar.bans.ban; the e-mail route of the same dialog starts from Yasaklamalar (nazar.bans.review).
+schema: delurio-graph/0
+kind: flow
+id: nazar.students.browse
+status: captured
+domain: medaris.api
+ui: nazar.students.browse
+title: Read the medrese's talebe
+summary: >-
+  The başmüderris opens Talebeler from the menu. The page says whose talebe these are, and draws a search box, two filters (Ders
+  and Durum), the count over every page and a table of ten rows: the talebe's name and e-mail, the courses they attend, the
+  courses they finished with the day it was marked ("Yok" when none), the day of their first enrolment, and "Yasakla". Under the
+  table a note says that a talebe's courses outside the medrese are not listed, and a pager reads "Sayfa 1 / 3 · 28 talebeden
+  1–10" with "Önceki" and "Sonraki", the one that leads nowhere left off. Choosing a state or a course, or typing a word (the
+  page waits 350 ms for the last key), asks the server again from the first page and the counter follows; a filter that finds
+  nobody says "Bu süzgece uyan talebe yok." with "Süzgeçleri temizle". A medrese with no talebe says so. A reader the API
+  refuses (a nazır who was given nothing) meets an alert in place of the table, and a read that fails draws the retry state.
+  "Yasakla" on a row opens the ban dialog, which is nazar.bans.ban. Nothing on this page changes data, and nothing says a
+  change of the list out loud (F-B-4).
+
+scope:
+  shows: >-
+    Talebeler of one medrese for its başmüderris: the header, the filters and their two lists, the counter, the table and its
+    rows, the empty and the "nobody matches" notices, the pager, the refusal and the failed read, and the opener of the ban
+    dialog
+  world: open
+  outOfView:
+    - "a medrese nazır with no grant meets the same refusal on every page of the medrese, and is told in the same words: nazar.access.medreseNazirRefused (here it is drawn once, as `forbidden`, for the walk that opens this page as that person)"
+    - "the ban dialog and its refusals: nazar.bans.ban; the e-mail route of the same dialog starts from Yasaklamalar: nazar.bans.review"
+    - "the sidebar, the scope picker and the phone bar around the page: nazar.shell.scopeAndMenu"
+    - "two filters at once, or a filter and a word: the page keeps both in the address and asks for the intersection, which depends on the data; the graph draws one narrowing at a time"
+    - "\"Devam ediyor\" in the state filter: it is a node of the list and is not pressed (most of a large medrese attends, so its result is paged like the whole list)"
+    - "a list of more than three pages: the middle page repeats, the graph draws it once; and the address of a page past the last, which the server answers by redirecting to the last page (students-page.tsx:55-67)"
+    - "the course filter when the medrese's courses cannot be read: the list keeps only \"Bütün dersler\" and the page says nothing (students-page.tsx:102-105)"
+    - "a medrese with no name in the portal's scopes: the subtitle is Students.subtitleUnnamed (students-page.tsx:75-82)"
+    - "the başnazım opening this page by address (the code allows it, no e2e covers it: not verified)"
+    - "the phone: each row becomes a card below 768 px (Table responsive=\"stack\"); the same nodes"
+    - "the talebe's courses outside this medrese, the talebe's gender and kontenjan: the list shows neither (MDRS-284 is the seat rule)"
+
+decisions:
+  D1:
+    question: >-
+      Should reading the medrese's talebe, with their names and e-mail addresses, be audited as reading a course roster is
+      (course.roster_read)? GET /madrasahs/:id/students returns the whole medrese's talebe and writes no audit row
+      (students-read-unaudited).
+    recommend: >-
+      Yes: write one audit row for the read, with the filters it used, as the roster read does, so that whoever holds
+      madrasah.students_view is as traceable as a hoca.
+    affects: [firstPage, onePage]
+  D2:
+    question: >-
+      Should "Yasakla" be drawn only for a reader who holds the ban permission? The list's permission (madrasah.students_view)
+      and the ban's (madrasah.ban) are two codes, and the row's button is drawn for every reader of the table (STUDENTS-2).
+    recommend: >-
+      Yes: read what the person holds in the medrese (GET /me/effective-permissions) and leave the column out where the ban would
+      be refused at submit.
+    affects: [firstPage, middlePage, lastPage, onePage]
+
+context:
+  roster:
+    values: [none, small, many, refused, down]
+    initial: any
+    say:
+      none: "the medrese has no talebe: no ENROLLED or COMPLETED seat in any of its courses"
+      small: "the medrese has a few talebe, no more than ten: one page, no pager to speak of (the stack's seed has two)"
+      many: "the medrese has more talebe than fit on two pages: the model draws three pages (the stack's walk makes twenty-eight)"
+      refused: "the reader holds no madrasah.students_view in this medrese (a nazır who was given nothing): the API answers 403"
+      down: "the API does not answer, or answers with a failure that is none of the above"
+  narrowing:
+    values: [none, state, course, search, nobody]
+    initial: none
+    say:
+      none: "no filter: the address names no ?durum=, ?ders= or ?ara="
+      state: "the state filter is on \"Tamamladı\": the talebe who finished a course (one page)"
+      course: "the course filter is on one course: the talebe who hold a seat in it (one page)"
+      search: "the box holds a name that some talebe has (one page)"
+      nobody: "the box holds a word that no talebe has: the filtered-empty notice"
+  page:
+    values: [first, middle, last]
+    initial: first
+    say:
+      first: "the address names no page, or page 1"
+      middle: "a page between the first and the last, as ?sayfa=2 of three"
+      last: "the last page, as ?sayfa=3 of three"
+
+guards:
+  stateOpen: "roster == 'many' and narrowing in ['none', 'state']"
+  courseOpen: "roster == 'many' and narrowing in ['none', 'course']"
+  nameOpen: "roster == 'many' and narrowing in ['none', 'search', 'nobody']"
+  nobodyOpen: "narrowing in ['none', 'search']"
+  erasable: "narrowing in ['search', 'nobody']"
+
+effects:
+  toFirst: { set: { page: first } }
+  toMiddle: { set: { page: middle } }
+  toLast: { set: { page: last } }
+  byState: { set: { narrowing: state, page: first } }
+  byCourse: { set: { narrowing: course, page: first } }
+  bySearch: { set: { narrowing: search, page: first } }
+  byNobody: { set: { narrowing: nobody, page: first } }
+  unnarrowed: { set: { narrowing: none, page: first } }
+
+failures:
+  reading:
+    from: listMadrasahStudents
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    failed: []
+  narrowing:
+    from: listMadrasahStudents
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    failed: []
+# `failed` stands for any answer that is not a 403 and not a 404 (readOnce, lib/tedrisat-read.ts:43-50): a 5xx, or a call that
+# throws. HTTP_400 is not listed: the page cleans every filter before it asks (students.ts:39-54), so it never sends one the
+# API refuses, except a ?sayfa= too large for a database number (STUDENTS-5).
+
+# The story the page tells first, as the e2e tells it: the first page, the second, the last; then the talebe who finished a
+# course, all of them again, the one the box finds, the word nobody has, the filters cleared, and "Yasakla" on the first row.
+main:
+  given: { roster: many }
+  events: [DONE, NEXT, DONE, NEXT, DONE, PREVIOUS, DONE, PREVIOUS, DONE, OPEN_STATUS, PICK_COMPLETED, DONE, OPEN_STATUS, PICK_ALL_STATUS, DONE, TYPE_NAME, DONE, ERASE, DONE, TYPE_NOBODY, DONE, CLEAR, DONE, BAN]
+
+initial: reading
+
+states:
+  reading:
+    title: The page reads the talebe
+    description: >-
+      The page is rendered on the server: it reads GET /madrasahs/:id/students (page, limit 10, q, courseId, status) and, beside
+      it, GET /madrasahs/:id/courses for the course filter and the person's own record, and draws behind a loading.tsx of
+      skeletons, a hidden "Yükleniyor" and a title bar, a bar for the filters and five bars for rows. The same state is a first
+      visit, a reload, a pager link (a new document) and "Yeniden dene". The list is read as its başmüderris, a nazır given
+      madrasah.students_view, and the başnazım; a 403 is the refusal under the header (`forbidden`), a 404 is Next's not-found
+      page, and any other failure is the retry state. A page past the last is answered with a redirect to the last page when
+      the filters match anyone. The courses read is a side read: when it fails the course filter keeps only "Bütün dersler".
+      Nothing is on the screen of this step, so nothing is checked in it. The read writes no audit row (students-read-unaudited).
+    invoke: { action: listMadrasahStudents }
+    on:
+      DONE: { guard: "roster in ['none', 'small', 'many']", target: shown }
+      FAIL.forbidden: { guard: "roster == 'refused'", target: forbidden }
+      FAIL.failed: { guard: "roster == 'down'", target: loadFailed }
+      FAIL.missing: not_found
+    source: apps/nazar/features/students/components/students-page.tsx:45
+
+  shown:
+    title: The list settles
+    description: >-
+      What the server drew follows from the answer, the filters and the page: no talebe at all and no filter is the empty notice;
+      a word that finds nobody is the filtered-empty notice; a filtered list, and a medrese that fits one page, is one page of
+      rows; the others are the first, the middle or the last page of a long list.
+    always:
+      - { guard: "roster == 'none' and narrowing == 'none'", target: empty }
+      - { guard: "roster == 'none'", target: nobody, say: "a medrese with no talebe and a filter on: the filtered-empty notice (`narrowed`, students-table.tsx:245)" }
+      - { guard: "narrowing == 'nobody'", target: nobody }
+      - { guard: "roster == 'small' or narrowing != 'none'", target: onePage }
+      - { guard: "page == 'first'", target: firstPage }
+      - { guard: "page == 'middle'", target: middlePage }
+      - { target: lastPage }
+    source: apps/nazar/features/students/components/students-page.tsx:93
+
+  firstPage:
+    title: The first page of a long list
+    description: >-
+      Ten rows, newest first by first enrolment; the counter reads the total over every page and the range "Sayfa 1 / 3 · 28
+      talebeden 1–10". "Önceki" is a link with no address and aria-disabled; "Sonraki" leads to ?sayfa=2. A talebe's row says the
+      courses they attend, the courses they finished with the day it was marked, or "Yok", and "Yasakla: <name>". Choosing a
+      state or a course, or typing in the box, narrows the list to a single page (the graph's one narrowing at a time). The page
+      sets no focus. Findings read here: F-B-4 (the counter and the range are plain text; the wrapper's aria-busy is not spoken),
+      STUDENTS-1 (the pager's two links reload the document), STUDENTS-2 (the button is drawn for every reader of the table),
+      students-read-unaudited.
+    by: human
+    goal: true
+    on:
+      NEXT: { target: reading, effect: [toMiddle], say: "they press Sonraki: a plain link, so the document is loaded anew at ?sayfa=2", source: apps/nazar/features/students/components/students-table.tsx:285 }
+      OPEN_LAST: { target: reading, effect: [toLast], say: "they open the last page by its address (?sayfa=<n>), as the e2e does", source: apps/nazar/features/students/students.ts:56 }
+      OPEN_STATUS: { guard: stateOpen, target: choosingStatus, say: "they open the Durum list", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { guard: courseOpen, target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
+      TYPE_NAME: { guard: nameOpen, target: narrowing, effect: [bySearch], say: "they type a name some talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      TYPE_NOBODY: { guard: nobodyOpen, target: narrowing, effect: [byNobody], say: "they type a word no talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban, given: { way: "'row'" } }, say: "they press Yasakla on a row: the ban dialog opens for that talebe", source: apps/nazar/features/students/components/students-table.tsx:174 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/students/components/students-table.tsx:182
+
+  middlePage:
+    title: A page between the first and the last
+    description: >-
+      Both pager links lead somewhere: "Önceki" to the page before (the first has no ?sayfa=), "Sonraki" to the page after. The
+      range reads "Sayfa 2 / 3 · 28 talebeden 11–20". The rest is the first page's.
+    by: human
+    on:
+      NEXT: { target: reading, effect: [toLast], say: "they press Sonraki: the document is loaded anew at the next page", source: apps/nazar/features/students/components/students-table.tsx:285 }
+      PREVIOUS: { target: reading, effect: [toFirst], say: "they press Önceki: the document is loaded anew at the page before", source: apps/nazar/features/students/components/students-table.tsx:273 }
+      OPEN_STATUS: { guard: stateOpen, target: choosingStatus, say: "they open the Durum list", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { guard: courseOpen, target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
+      TYPE_NAME: { guard: nameOpen, target: narrowing, effect: [bySearch], say: "they type a name some talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      TYPE_NOBODY: { guard: nobodyOpen, target: narrowing, effect: [byNobody], say: "they type a word no talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban, given: { way: "'row'" } }, say: "they press Yasakla on a row", source: apps/nazar/features/students/components/students-table.tsx:174 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/students/students.ts:119
+
+  lastPage:
+    title: The last page of a long list
+    description: >-
+      The last rows (eight of twenty-eight): "Sonraki" is the disabled link, a link with no address and aria-disabled, which a
+      keyboard does not reach; "Önceki" leads back. The range reads "Sayfa 3 / 3 · 28 talebeden 21–28".
+    by: human
+    on:
+      PREVIOUS: { target: reading, effect: [toMiddle], say: "they press Önceki: the document is loaded anew at the page before", source: apps/nazar/features/students/components/students-table.tsx:273 }
+      OPEN_STATUS: { guard: stateOpen, target: choosingStatus, say: "they open the Durum list", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { guard: courseOpen, target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
+      TYPE_NAME: { guard: nameOpen, target: narrowing, effect: [bySearch], say: "they type a name some talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      TYPE_NOBODY: { guard: nobodyOpen, target: narrowing, effect: [byNobody], say: "they type a word no talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban, given: { way: "'row'" } }, say: "they press Yasakla on a row", source: apps/nazar/features/students/components/students-table.tsx:174 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/students/students.ts:119
+
+  onePage:
+    title: A list that fits one page
+    description: >-
+      A medrese with ten talebe or fewer, or a list narrowed to a state, a course or a name: the rows, the counter ("1 talebe"),
+      and the pager with both links off and the range "Sayfa 1 / 1 · 1 talebeden 1–1". A state or a course that is chosen shows
+      in its list, and a word in the box. The filters can be turned off again from here: choosing "Bütün durumlar" or "Bütün
+      dersler" (the list is read again from the first page) or erasing the box.
+    by: human
+    on:
+      OPEN_STATUS: { guard: stateOpen, target: choosingStatus, say: "they open the Durum list", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { guard: courseOpen, target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
+      TYPE_NAME: { guard: nameOpen, target: narrowing, effect: [bySearch], say: "they type a name some talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      TYPE_NOBODY: { guard: nobodyOpen, target: narrowing, effect: [byNobody], say: "they type a word no talebe has and wait 350 ms", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      ERASE: { guard: erasable, target: narrowing, effect: [unnarrowed], say: "they empty the box: after 350 ms the list is read again from the first page", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban, given: { way: "'row'" } }, say: "they press Yasakla on a row", source: apps/nazar/features/students/components/students-table.tsx:174 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/students/components/students-table.tsx:239
+
+  empty:
+    title: The medrese has no talebe
+    description: >-
+      The table says "Bu medresenin derslerine kayıtlı talebe henüz yok."; the counter still reads "0 talebe", the pager is not
+      drawn (students-page.tsx:108-112) and the note under the table stays. The filters are drawn; what they find in an empty
+      medrese is nobody.
+    by: human
+    on:
+      TYPE_NOBODY: { guard: nobodyOpen, target: narrowing, effect: [byNobody], say: "they type a word and wait 350 ms: nobody matches", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      OPEN_STATUS: { target: choosingStatus, say: "they open the Durum list: it is drawn and open here too", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/students/components/students-table.tsx:259
+
+  nobody:
+    title: No talebe matches the filter
+    description: >-
+      The table says "Bu süzgece uyan talebe yok." with a link-looking button, "Süzgeçleri temizle", which empties the box and
+      goes back to the plain list (the only control that clears every filter at once); the counter reads "0 talebe" and the
+      pager is not drawn. Nothing announces that the list went empty (F-B-4).
+    by: human
+    on:
+      CLEAR: { target: narrowing, effect: [unnarrowed], say: "they press Süzgeçleri temizle: the box is emptied and the plain list is read", source: apps/nazar/features/students/components/students-table.tsx:248 }
+      ERASE: { guard: erasable, target: narrowing, effect: [unnarrowed], say: "they empty the box by hand", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      TYPE_NAME: { guard: nameOpen, target: narrowing, effect: [bySearch], say: "they type a name some talebe has", source: apps/nazar/features/students/components/students-table.tsx:69 }
+      OPEN_STATUS: { target: choosingStatus, say: "they open the Durum list: it is drawn and open here too", source: apps/nazar/features/students/components/students-table.tsx:222 }
+      OPEN_COURSE: { target: choosingCourse, say: "they open the Ders list", source: apps/nazar/features/students/components/students-table.tsx:210 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/students/components/students-table.tsx:245
+
+  narrowing:
+    title: The list is read again for what was chosen or typed
+    description: >-
+      A transition: router.replace changes the address (?durum=, ?ders=, ?ara=, with no ?sayfa=) and the server reads the list
+      again, while the old table stays and the wrapper is aria-busy, which nothing speaks (F-B-4). The same read as the first
+      one, with the new filters. It cannot be held on the screen, so nothing is checked in it.
+    invoke: { action: listMadrasahStudents }
+    on:
+      DONE: shown
+      FAIL.forbidden: forbidden
+      FAIL.failed: loadFailed
+      FAIL.missing: not_found
+    source: apps/nazar/features/students/components/students-table.tsx:63
+
+  choosingStatus:
+    title: The Durum list is open
+    description: >-
+      The kit's Select, a Base UI listbox in a popup, with three options: Bütün durumlar, Devam ediyor and Tamamladı. Base UI's
+      Select is modal by default, so the page behind is taken to be inert and only the list is drawn here (not verified in a
+      browser). Choosing "Tamamladı" narrows the list to the talebe who finished a course; "Bütün durumlar" turns the filter off;
+      Esc closes the list and changes nothing. "Devam ediyor" is an option of the list and is not pressed in this graph.
+    by: human
+    on:
+      PICK_COMPLETED:
+        - { guard: "narrowing == 'none'", target: narrowing, effect: [byState], say: "they choose Tamamladı: the address gains ?durum=tamamladi and loses ?sayfa=", source: apps/nazar/features/students/components/students-table.tsx:226 }
+        - { guard: "narrowing in ['course', 'nobody']", target: narrowing, say: "Tamamladı on top of a filter that finds nobody: the list is read again with both and still finds nobody", source: apps/nazar/features/students/components/students-table.tsx:226 }
+        - { target: shown, say: "the option that is already chosen: the list closes and nothing is read", source: apps/nazar/features/students/components/students-table.tsx:226 }
+      PICK_ALL_STATUS:
+        - { guard: "narrowing == 'state'", target: narrowing, effect: [unnarrowed], say: "they choose Bütün durumlar: the address loses ?durum=", source: apps/nazar/features/students/components/students-table.tsx:226 }
+        - { target: shown, say: "the option that is already chosen: the list closes and nothing is read", source: apps/nazar/features/students/components/students-table.tsx:226 }
+      DISMISS: { target: shown, say: "Esc: the list closes and the filter is as it was", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  choosingCourse:
+    title: The Ders list is open
+    description: >-
+      The same Select with "Bütün dersler" and one option for each course of the medrese (by title), so that the list holds a
+      course the talebe may hold no seat in. Choosing a course narrows the list to the talebe who hold a seat in it (the
+      address gains ?ders=<id>); "Bütün dersler" turns it off; Esc closes it. When the courses cannot be read the list holds only
+      "Bütün dersler" and says nothing (students-page.tsx:102-105; STUDENTS-3 is the same list for a nazır who holds only
+      madrasah.students_view).
+    by: human
+    on:
+      PICK_COURSE:
+        - { guard: "narrowing == 'none'", target: narrowing, effect: [byCourse], say: "they choose a course: the address gains ?ders=<id> and loses ?sayfa=", source: apps/nazar/features/students/components/students-table.tsx:214 }
+        - { guard: "narrowing in ['state', 'nobody']", target: narrowing, say: "a course on top of a filter that finds nobody: the list is read again with both and still finds nobody", source: apps/nazar/features/students/components/students-table.tsx:214 }
+        - { target: shown, say: "the course that is already chosen: the list closes and nothing is read", source: apps/nazar/features/students/components/students-table.tsx:214 }
+      PICK_ALL_COURSES:
+        - { guard: "narrowing == 'course'", target: narrowing, effect: [unnarrowed], say: "they choose Bütün dersler: the address loses ?ders=", source: apps/nazar/features/students/components/students-table.tsx:214 }
+        - { target: shown, say: "the option that is already chosen: the list closes and nothing is read", source: apps/nazar/features/students/components/students-table.tsx:214 }
+      DISMISS: { target: shown, say: "Esc: the list closes and the filter is as it was", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  forbidden:
+    title: The API refuses the list
+    description: >-
+      The header stays (the title "Talebeler" and its line) and an alert says "Bu sayfaya izniniz yok" under it, with no table,
+      no filter, no pager and no way out of the page but the menu. A neutral Alert is a status, not an alert, and its title is a
+      paragraph, not a heading (F-B-13); the <title> of the page still says "Talebeler". The seeded medrese nazırı, who holds no
+      code, is refused; one given madrasah.students_view reads the list (and the course filter holds only "Bütün dersler" if
+      they hold none of the course codes, STUDENTS-3). The nazır's whole story is nazar.access.medreseNazirRefused.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/students/components/students-page.tsx:84
+
+  loadFailed:
+    title: The read failed
+    description: >-
+      The header stays and a section takes the table's place: its own h1 "Talebeler okunamadı" (a second h1 on the page, F-B-1),
+      "Talebeler şu an okunamadı. Birkaç saniye sonra yeniden deneyin." and "Yeniden dene", which asks the server again with
+      router.refresh() and is busy meanwhile ("Yükleniyor" for a reader of the screen, from the button's hard-coded default:
+      the cause of F-B-2). Never worded as "no access". By the code, an address the database cannot take (a ?sayfa= of twenty digits) brings the
+      same state, and "Yeniden dene" fails again for ever (STUDENTS-5, not verified). The stack cannot make the API fail for one account, so this
+      state is drawn and not walked.
+    by: human
+    on:
+      RETRY: { target: reading, say: "they press Yeniden dene: the page is read again", source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/students/components/students-page.tsx:84
+
+  handed_over.ban:
+    title: The ban dialog opens for that talebe
+    description: >-
+      "Yasakla: <name>" opens the dialog of nazar.bans.ban over this page, for that talebe, with the courses they hold a seat in
+      and the whole medrese to choose from (ban-dialog is mounted only while it is open, students-table.tsx:297-311). What the
+      dialog does is that flow's; after a saved ban the page asks the server again (router.refresh), and the list is the same.
+    type: final
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the read is Next's not-found page (lib/tedrisat-read.ts:43-50). The layout answers it first for a person who holds no seat in the medrese, so the read itself meets it only when the medrese goes between the two."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: pages-only-in-a-long-list
+    never: "state in ['middlePage', 'lastPage'] and roster != 'many'"
+    say: A middle or a last page exists only where the medrese has more talebe than fit on two pages.
+    source: apps/nazar/features/students/students.ts:119
+  - id: a-narrowed-list-is-one-page
+    never: "state in ['firstPage', 'middlePage', 'lastPage'] and narrowing != 'none'"
+    say: The graph draws a narrowed list as one page, and a long list only with no filter.
+    source: apps/nazar/features/students/components/students-table.tsx:63
+  - id: empty-means-nobody-at-all
+    never: "state == 'empty' and (roster != 'none' or narrowing != 'none')"
+    say: The "no talebe yet" notice shows only for a medrese with none and no filter.
+    source: apps/nazar/features/students/components/students-table.tsx:259
+  - id: no-match-means-a-word
+    never: "state == 'nobody' and narrowing == 'none'"
+    say: 'The "nobody matches" notice shows only while a filter is on (`narrowed`): a word that finds nobody, or any filter on a medrese with no talebe.'
+    source: apps/nazar/features/students/components/students-table.tsx:245
+  - id: no-list-without-a-read
+    never: "state in ['firstPage', 'middlePage', 'lastPage', 'onePage', 'empty', 'nobody'] and roster in ['refused', 'down']"
+    say: A reader who is refused, or a read that fails, gets no table.
+    source: apps/nazar/features/students/components/students-page.tsx:84

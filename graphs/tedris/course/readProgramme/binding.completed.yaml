@@ -1,0 +1,20 @@
+# tedris.course.readProgramme as a talebe whose seat the course team completed: the other card (no menu, no progress, "Celse sayfasını aç");
+# the content stays open while the course runs. Same course, data and locators as binding.yaml (see its header); the scenario is the only
+# difference.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/readProgramme --bind graphs/tedris/course/readProgramme/binding.completed.yaml \
+#     --to curriculum --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.readProgramme
+
+scenarios:
+  completed:
+    given: { read: ok, who: completed, ahead: noLink, course: rich, tabParam: none, views: none }
+    as: applicantA
+    open: '{tedris}/courses/{prog.course}'
+    setup:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, make]
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, seat, COMPLETED]
+    teardown:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, remove]

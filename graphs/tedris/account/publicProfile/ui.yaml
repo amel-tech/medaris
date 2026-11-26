@@ -1,0 +1,39 @@
+# The screens of tedris.account.publicProfile: what tedris-web answers at /account/public-profile while the profile is switched
+# off (features/public-profile/availability.ts:14), which is the app's not-found page (app/not-found.tsx, NotFoundState in
+# features/errors/system-page.tsx). The switched-on page (features/public-profile/components/public-profile-page.tsx) is not drawn:
+# nobody can reach it, so needs.yaml holds it. Its bar is drawn as a frame only; its items belong to tedris.shell.frame.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.SystemPages`), the key being
+# the path inside that file. The flow invokes no writing action, so it has no `changes` note. There is no `composed.*` key.
+schema: delurio-graph/0
+kind: ui
+id: tedris.account.publicProfile
+flow: tedris.account.publicProfile
+status: captured
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+
+nodes:
+  # the system's bar (PhoneChrome, mounted by app/not-found.tsx), then the box; at /account nothing wraps them in a <main> (SYS-1)
+  systemBar: { type: page, component: Page, role: banner, in: [notFound], source: apps/tedris/components/phone-menu/desktop-bar.tsx:57 } # <header data-system-chrome>, from 768 px; below it the phone's app bar (out of view)
+  notFoundSection: { type: page, component: Page, role: region, name: { labelledBy: notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:49 } # SystemState with `shell` is a <section>, not a <main>; no initialFocus (rule focus-not-set)
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:52 } # h1
+  notFoundText: { type: text, component: Text, text: { key: SystemPages.notFoundText }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:59 }
+  homeLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: SystemPages.notFoundAction }, text: { key: SystemPages.notFoundAction }, in: [notFound], emits: GO_HOME, source: apps/tedris/features/errors/system-page.tsx:54 } # href /home for a signed-in person (system-page.tsx:33); the graph has no key for an address
+
+edges:
+  - { labelledBy: [notFoundSection, notFoundTitle] }
+
+rules:
+  - { id: focus-not-set, rule: "The not-found page sets no initial focus (no autoFocus or focus() in features/errors or app/not-found.tsx), so the section has no `initialFocus` and the graph says nothing of the focus when the page opens. It is SYS-3 of tedris.shell.systemPages, recorded here so the silence is not read as an omission." }
+  - { id: SYS-1, rule: "TabView leaves its <main> off every address that ownsItsMain, and /account is one of them (components/tab-view/index.tsx:12-22), so at /account/public-profile the not-found page has a banner and a region and no <main>. Read from the code, not seen at this address (seen at /courses/<missing> by tedris.shell.systemPages). Fix as SYS-1 there: draw the not-found face with SystemState's own <main>." }
+  - { id: http-status-200, rule: "The page answers the not-found markup with HTTP 200, not 404: app/account/loading.tsx has streamed the shell before notFound() runs (page.tsx:18-23; docs/migration/mdrs-141-hide-the-public-profile.md, seen on 5 Oct on another build, not seen on this branch). A link checker or a crawler is told the address is a live page. Known and left as it is by the owner's order (a real 404 would need the decision before the loading boundary); recorded so it is not rediscovered." }
+  - { id: PUBPROF-1, rule: "Switching the profile on would break a promise the privacy notice makes. As built the gender is always public on it: GET /users/{id}/public-profile always returns it (user-profile.service.ts:97), the preview shows it (public-profile-page.tsx:356-360) and the page tells the person that \"İlmî künye ve cinsiyet her zaman herkese açıktır\" (PublicProfile.consentBefore). The notice says \"Cinsiyetiniz herkese açık profilinizde gösterilmez\" (apps/landing/content/aydinlatma-metni.ts:105). availability.ts:8-13 records that the owner decides this before the switch is turned on. Proposed id; the decision is in the code comment, the contradiction is not in the inventory. Fix: decide, then make the notice, the page and the API say the same (flow decision D1)." }
+  - { id: PUBPROF-2, rule: "The profile is on in two places and the web side does not check the other. With the web constant on and API__PUBLIC_PROFILE_ENABLED off, getMyPublicProfile maps every failure, this permanent 404 PUBLIC_PROFILE_UNAVAILABLE included, to null (features/account/reads.ts:54-64) and the page draws \"Profilin yüklenemedi / Herkese açık profilin şu an okunamadı. Biraz sonra yeniden dene.\" (page.tsx:44-49), which tells the person to retry something that will never work; Hesap would also show the card (account-settings.tsx:434) that leads to that box. Not reachable today: the constant is false. Proposed id. Fix: turn the profile on from one value, or let the page read the API's answer and say the profile is unavailable." }
+  - { id: unreadable-input-500, rule: "The domain's finding unreadable-input-500, as it touches this feature: PATCH /me/public-profile with kunye null passes validation (IsOptional lets null through, dto/public-profile.dto.ts:140-145) and fails as a 500 INTERNAL_ERROR at user-profile.service.ts:67, where dto.kunye.trim() is called on null. tedris-web never sends null (saveProfileTexts sends the trimmed text, features/public-profile/actions.ts:20), so a person cannot meet it from the page; a direct call can, once the profile is on. While it is off the guard answers 404 first. Fix: IsNotEmpty with no IsOptional null, or ValidateIf." }
+  - { id: ACC-02, rule: "Switched-on page, not drawn. The künye field's error (\"İlmî künyeni yaz.\", \"Bu künyeyi başka biri kullanıyor; başka bir künye seç.\") is a Field error that is not a live region, and focus is not moved to the field after a failed submit (public-profile-page.tsx:77-83, 171-190), so a screen-reader user who presses Kaydet hears nothing. Fix: focus the first invalid input and announce the error." }
+  - { id: ACC-10, rule: "Switched-on page, not drawn. The four switches become natively `disabled` while one save is in flight (public-profile-page.tsx:146) and \"Vazgeç\" is disabled once the draft is clean (:335), so a control the person has just used can lose the focus. Fix: aria-disabled for the busy state." }
+  - { id: ACC-12, rule: "Switched-on page, not drawn. The calls of saveVisibility and saveProfileTexts have no try/catch (public-profile-page.tsx:83-111, 129-139): an unreachable server rejects inside the transition (the error page) or leaves the optimistic switch with no rollback and no message. Fix: treat a rejection as a refusal." }
+  - { id: ACC-13, rule: "Switched-on page, not drawn. The four switches have the same accessible name \"Herkese göster\"; the heading that says which field it is is a sibling, not part of the name (public-profile-page.tsx:142-150, 259-261, 310-312). Fix: \"Herkese göster: <field>\"." }
+  - { id: ACC-14, rule: "Switched-on page, not drawn. The consent note reads \"Bu, kayıtta onaylanan [Açık rıza metninin adı] kapsamındadır.\": the key PublicProfile.consentName holds a literal placeholder in the shipped catalog (public-profile-page.tsx:237-241). Fix: the real document name before the profile is switched on (MDRS-141, MDRS-102)." }

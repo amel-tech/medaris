@@ -1,0 +1,468 @@
+# "Erişim, kayıt ve saat dilimi", the first card of Ders ayarları in nazar-web (/ders/<id>/ayarlar), read from the code of the branch (the tree of
+# PR #394) on 15 Nov 2026: apps/nazar/features/course-settings (the page, the form, its rules and server actions) and the API's GET /courses/:id,
+# GET /courses/:id/my-permissions, PATCH /lessons/:id and PATCH /courses/:id. Nothing here was walked in a browser: "from the code" is the only
+# source of every behaviour below, apart from the unit specs (apps/nazar/test/course-settings*.spec.ts*) and the e2e file's own words.
+#
+# What the card does: the hoca (or a ders nazırı who holds the codes) changes "Kapalı ders", "Örnek ders", "Kayıt onayı gereksin", "Celseler yüz
+# yüze yapılır" and "Saat dilimi" together; "Kaydet" and "Vazgeç" are off until something differs. Kaydet writes the sample session first (the old
+# one is taken off with the page's version, the new one is set with the version that write returned: PATCH /lessons/:id), then one
+# PATCH /courses/:id with only the course fields that differ. A success is a toast and a re-read; a refusal is worded in a toast that stays.
+#
+# Where this flow stops. The page has three more cards, each another flow's: "Hocalar ve unvanları" (nazar.courseSettings.hocaTitles, with its OWN
+# Kaydet and Vazgeç: since #344 the page has two of each, F-D2c-14), "Yayın" (nazar.courseSettings.publish, in the aside) and "Ortak uygulama
+# kodları" (nazar.courseSettings.partnerCodes). Only this card's form, its two option lists and its toasts are drawn, with the page's own heading
+# and sentence over them. Every locator of the binding is scoped to the form (`data-testid=course-settings-form`) for that reason.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - A stale page is told to retry ONLY when the sample session is among the changes: the course fields go through PATCH /courses/:id, which takes
+#     no version, so a save of closed, approval, in person or zone from an old page is never refused (the last save wins). The sample's write
+#     carries the page's version, and a 409 stops the save before the course fields are sent (e2e course-settings#3).
+#   - What the page then shows depends on what the other save changed: if it changed the stored values the form is built again and the person's
+#     pressed controls are gone (`staleValues`); if it only moved the version the draft stays and the same Kaydet goes through (`staleVersion`).
+#   - CSA-1: a save that wrote the sample and was then refused on the course fields (a policy, a lost code) answers with a toast whose sentence
+#     ("... ayar değiştirilmedi") says nothing was changed, although the sample was, and the re-read builds the form again and drops the other
+#     pressed controls.
+#   - CSA-2: a refusal that leaves the stored values as they were (a policy that came on, a lost code, a failure) does not read the page again:
+#     the form keeps the pressed box and Kaydet on, so the person can press the same Kaydet and be refused the same way; only a reload shows the lock.
+#   - CSA-3: no e2e spec touches "Celseler yüz yüze yapılır" (MDRS-283): the twelve specs predate it. It is walked only by the unit specs and,
+#     later, by the replay.
+#   - F-D2c-7: after a save that changes the stored values the form is built again (`key={JSON.stringify(stored)}`), so the pressed Kaydet is destroyed
+#     and the focus falls to the body; the toast is the only word. F-D2c-17: the zone list holds about 418 zones labelled by city alone.
+#   - F-D2c-14: the e2e specs of this card (course-settings#1, #2, #3, #10) were written before the "Hocalar ve unvanları" card; each names Kaydet
+#     by role and name and finds two buttons, so they cannot pass as written. The behaviour they pin is carried here, with the form's own Kaydet.
+schema: delurio-graph/0
+kind: flow
+id: nazar.courseSettings.access
+status: captured
+domain: medaris.api
+ui: nazar.courseSettings.access
+title: Change who may take the course, in one Kaydet
+summary: >-
+  The hoca opens Ders ayarları and finds "Erişim, kayıt ve saat dilimi": "Kapalı ders", "Örnek ders", "Kayıt onayı gereksin", "Celseler yüz yüze
+  yapılır" and "Saat dilimi", with "Kaydet" and "Vazgeç" off until something differs. She presses boxes and chooses from the two lists, and one
+  Kaydet writes it all: the sample session first (PATCH /lessons/:id, with the version the page was read at), then the course's own fields
+  (PATCH /courses/:id, only what differs). A toast says "Ders ayarları kaydedildi", and after a reload each value is read back. A save of the sample
+  from a page that is out of date is refused with "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi; ayarlar yeniden okundu.
+  Yeniden deneyin." and writes nothing. A policy that holds a box shows it ticked and shut with the reason beside it, and a policy that came on
+  after the page was opened refuses the save in words ("Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi."). A refusal for a lost code
+  is "Bunu yapma izniniz yok.", and after a reload the page says "Bu sayfaya izniniz yok".
+
+scope:
+  shows: >-
+    the card "Erişim, kayıt ve saat dilimi" of Ders ayarları with its own Vazgeç and Kaydet, the two option lists (Örnek ders, Saat dilimi), the
+    toasts of a save, the page's heading and sentence over it, and the refusal that replaces the page when the codes are gone
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the card 'Hocalar ve unvanları', with its own Kaydet and Vazgeç: nazar.courseSettings.hocaTitles (F-D2c-14: the page has two of each since #344)"
+    - "the card 'Yayın' (Yayımla, Taslağa çek and its confirmation, the status) and the link 'Tanıtım sayfasını gör' that opens the course in Tedris: nazar.courseSettings.publish"
+    - "the section 'Ortak uygulama kodları', drawn to the köşk nazımı and the başnazım when the köşk has a partner: nazar.courseSettings.partnerCodes"
+    - "what a ders nazırı sees by the codes they hold: session.manage alone opens the sample only; course.settings or course.publish without course.edit shuts every control under 'Bu ayarları değiştirmek için “Dersi düzenle” izni de gerekir.'; no code is the refusal (the state `refusedPage` draws that one only as the end of e2e course-settings#10): nazar.access.dersNazirPages (course-settings#7, #8, #9, #11)"
+    - "the başnazım opening the page by its address (course-settings#12): another flow's, it reads the same card with every control open"
+    - "a read that fails ('Ders ayarları yüklenemedi', with a second h1, F-D2c-1) and the 404 of an unknown or hidden course: nazar.shell.errorStates"
+    - "an ended session: every server action sends the person to sign in (handleUnauthenticated) instead of drawing an error: realm.auth.signIn, realm.auth.sessionEnded"
+    - "the second write of a MOVED sample (the old one off, the new one on) failing after the first landed: the toast says 'Örnek ders kaydedilemedi; şu an bu dersin örnek dersi yok.' (course-settings-form.tsx:116-121) and the page is read again; the stack cannot make the second write fail"
+    - "VALIDATION_ERROR ('Bu değer kaydedilemez. Sayfayı yenileyip yeniden deneyin.'): the page's own lists hold only valid zones and sessions, so no save of this card can draw it"
+    - "a saved sample that is not a LIVE session: the list holds LIVE sessions only (`sampleOptions`) but `sampleOf` takes the first session marked as a preview of any type, so such a course would show a value the list does not hold; not seen, no stack course has one"
+    - "the other options of the two lists: about 418 zones, and the other sessions of a longer course; two options of each are drawn"
+    - "the way back of each press (untick 'Kapalı ders' or 'Celseler yüz yüze yapılır', choose İstanbul again, choose 'Örnek ders yok' after a saved sample): the same transitions the other way; only the two a world needs are drawn, the approval box unticked where a policy came on and 'Örnek ders yok' after a conflict showed the other person's sample"
+    - "a second round of edits after a save in the same visit (the way back of course-settings#2, a11-a17): the same transitions again from `readBack`; the graph keeps one record of what the form shows, so Vazgeç after a save would put back values it does not keep, and the round is not drawn: its first press ends the flow in `edit_not_drawn`"
+    - "a page opened with two boxes locked by a policy and then edited (the zone, in person or sample, which a policy does not lock): `readLocked` is drawn as a read, and its first press ends the flow in `edit_not_drawn`; the states of an edit are the unlocked ones, with the two boxes drawn open"
+    - "leaving a changed form: nothing asks (no beforeunload or router guard in features/course-settings; the recording dialog has one), so a menu entry, a link or a reload drops the pressed controls; the same as SET-2 of nazar.settings.edit"
+    - "the policies themselves and who sets them: nazar.settings.edit for the medrese's, the köşk's and the platform's elsewhere"
+    - "the sidebar and its scope picker: nazar.shell.scopeAndMenu; only the sidebar's entry 'Ders ayarları', which the e2e reads for aria-current, is drawn"
+
+decisions:
+  D1:
+    question: >-
+      Should a refusal that leaves the stored values as they were read the page again? After PLATFORM_POLICY_LOCKED, AUTHZ_FORBIDDEN or any other
+      failure the form keeps the pressed box and Kaydet on and the page is not read (apps/nazar/test/course-settings-form.spec.tsx:323 pins
+      `refresh` not called), so the lock the refusal names is not shown until a reload (CSA-2).
+    recommend: >-
+      Read the page again after a policy lock so the box shows shut with its reason, keep the draft of the other controls, and after AUTHZ_FORBIDDEN
+      read it again so the page says "Bu sayfaya izniniz yok" instead of offering controls it will refuse.
+    affects: [dirty, afterRefusal, clean]
+  D2:
+    question: >-
+      When the sample landed and the course fields were then refused, what should the person be told, and should their other pressed controls
+      survive? Today the toast says the setting was not changed and the form is built again without them (CSA-1).
+    recommend: >-
+      Say that the sample was saved and the rest was not (as the page already does for a failed second sample write), and keep the draft of the
+      course fields so a retry sends them.
+    affects: [sendingCourse, afterRefusal, clean]
+
+context:
+  world:
+    initial: any
+    values: [saves, staleValues, staleVersion, policyLate, policyAfterSample, policyOpen, forbidden, failed]
+    say:
+      saves: "the course is open, without approval, not in person, in Istanbul, with no sample; every write is accepted"
+      staleValues: "the course is as above; after the page was read someone else saved the sample session, so the first write is refused and the stored values moved"
+      staleVersion: "the course is as above; after the page was read someone else saved the course with no change of value, so the first write is refused and only the version moved"
+      policyLate: "the course asks for approval; a policy that holds approval came on after the page was read, so unticking it is refused (409)"
+      policyAfterSample: "as policyLate, and the sample is changed too: the sample write lands and the course's fields are then refused"
+      policyOpen: "a policy holds the course closed and the enrolment on approval from the start, so the page opens with the two boxes shut"
+      forbidden: "the caller holds course.edit and course.settings when the page opens and not when Kaydet is pressed (the codes are taken back); after a reload the page is refused"
+      failed: "the course is gone when Kaydet is pressed: the save is refused with something the page does not word apart"
+  closed: { values: ["off", "on"], initial: "off" } # what "Kapalı ders" shows
+  approval: { values: ["off", "on"], initial: "off" } # what "Kayıt onayı gereksin" shows
+  inPerson: { values: ["off", "on"], initial: "off" } # what "Celseler yüz yüze yapılır" shows
+  zone: { values: [istanbul, berlin], initial: istanbul } # what "Saat dilimi" shows (two of about 418)
+  sample: { values: [none, first, second], initial: none } # what "Örnek ders" shows: no sample, the first or the second live session
+  sampleDraft: { values: [unchanged, changed], initial: unchanged } # the sample differs from what the page read: the first write is due
+  fieldsDraft: { values: [unchanged, changed], initial: unchanged } # a box or the zone differs from what the page read: the course write is due
+  written: { values: [unchanged, written], initial: unchanged } # the sample write of this Kaydet has landed
+  looked: { values: [first, again], initial: first } # the page's first read, or the read that followed a refusal or a conflict
+  toast: { values: [none, saved, refused], initial: none } # the toast the last save left; a refusal's words come from `world`
+
+guards:
+  # the first write is refused when someone else saved since the page was read; the read after it is no longer old
+  conflicting: "(world == 'staleValues' or world == 'staleVersion') and looked == 'first'"
+  policyWorld: "world == 'policyLate' or world == 'policyAfterSample'"
+  # PATCH /courses/:id is refused in these worlds
+  courseRefused: "policyWorld or world == 'forbidden' or world == 'failed'"
+  sampleDue: "sampleDraft == 'changed'"
+  fieldsDue: "fieldsDraft == 'changed'"
+  anythingPressed: "sampleDraft == 'changed' or fieldsDraft == 'changed'"
+  # What each world presses. Every press is drawn one way only (a box is ticked, a zone and a sample are chosen; approval is unticked where a policy
+  # holds it), so that a walk of a world presses the same controls whichever way the checker finds to Kaydet: the way back is the same transition
+  # the other way and is not drawn (outOfView).
+  closeIt: "closed == 'off' and (world == 'saves' or world == 'forbidden' or world == 'failed')"
+  askApproval: "approval == 'off' and world == 'saves'"
+  dropApproval: "approval == 'on' and policyWorld"
+  markInPerson: "inPerson == 'off' and world == 'saves'"
+  pickBerlin: "zone == 'istanbul' and (world == 'saves' or world == 'staleValues' or world == 'staleVersion')"
+  pickFirst: "sample == 'none' and (world == 'saves' or world == 'staleValues' or world == 'staleVersion' or world == 'policyAfterSample')"
+  pickNone: "sample == 'second' and world == 'staleValues'"
+  # Kaydet is on as soon as one control differs; the graph draws its press once the form holds everything the world presses
+  readyToSend: "(world == 'saves' and closed == 'on' and approval == 'on' and inPerson == 'on' and zone == 'berlin' and sample == 'first') or (world == 'staleValues' and ((looked == 'first' and zone == 'berlin' and sample == 'first') or (looked == 'again' and sample == 'none'))) or (world == 'staleVersion' and zone == 'berlin' and sample == 'first') or (world == 'policyLate' and approval == 'off') or (world == 'policyAfterSample' and approval == 'off' and sample == 'first') or ((world == 'forbidden' or world == 'failed') and closed == 'on')"
+
+effects:
+  loadedPlain: { set: { closed: "off" } } # the page was read as the walk's own course is: open, no approval, Istanbul, no sample (a no-op that names the read for the effect check)
+  loadedApproval: { set: { approval: "on" } }
+  loadedLocked: { set: { closed: "on", approval: "on" } }
+  closedOn: { set: { closed: "on", fieldsDraft: changed } }
+  approvalOn: { set: { approval: "on", fieldsDraft: changed } }
+  approvalOff: { set: { approval: "off", fieldsDraft: changed } }
+  inPersonOn: { set: { inPerson: "on", fieldsDraft: changed } }
+  zoneBerlin: { set: { zone: berlin, fieldsDraft: changed } }
+  sampleNone: { set: { sample: none, sampleDraft: changed } }
+  sampleFirst: { set: { sample: first, sampleDraft: changed } }
+  # Vazgeç puts back what the page read (setDraft(saved)); `saved` is what the last read or write left
+  restorePlain: { set: { closed: "off", approval: "off", inPerson: "off", zone: istanbul, sample: none, sampleDraft: unchanged, fieldsDraft: unchanged } }
+  restoreApproval: { set: { closed: "off", approval: "on", inPerson: "off", zone: istanbul, sample: none, sampleDraft: unchanged, fieldsDraft: unchanged } }
+  restoreSecond: { set: { closed: "off", approval: "off", inPerson: "off", zone: istanbul, sample: second, sampleDraft: unchanged, fieldsDraft: unchanged } }
+  restorePartial: { set: { closed: "off", approval: "on", inPerson: "off", zone: istanbul, sample: first, sampleDraft: unchanged, fieldsDraft: unchanged } }
+  sampleLanded: { set: { written: written } }
+  # the first write was refused and the stored values moved: the form is built again from them, and the pressed controls are gone
+  rereadStale: { set: { closed: "off", approval: "off", inPerson: "off", zone: istanbul, sample: second, sampleDraft: unchanged, fieldsDraft: unchanged, looked: again, toast: refused } }
+  # the first write was refused and only the version moved: the draft stays and the next Kaydet carries the new version
+  keptDraft: { set: { looked: again, toast: refused } }
+  toastRefused: { set: { toast: refused } }
+  # the sample landed, the course's fields were refused, and the page is read again: the form is built again from what is stored
+  partialReread: { set: { closed: "off", approval: "on", inPerson: "off", zone: istanbul, sample: first, sampleDraft: unchanged, fieldsDraft: unchanged, written: unchanged, looked: again, toast: refused } }
+  savedAll: { set: { sampleDraft: unchanged, fieldsDraft: unchanged, written: unchanged, toast: saved } }
+  clearToast: { set: { toast: none } }
+
+failures:
+  sendingSample:
+    from: updateLesson
+    stale: [COURSE_VERSION_CONFLICT]
+  sendingCourse:
+    from: updateCourse
+    policy: [PLATFORM_POLICY_LOCKED]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND]
+
+# The story the card tells first, and e2e course-settings#2: on a course of her own the hoca closes it, chooses a sample session, asks for approval,
+# marks the celses as in person and picks Berlin, saves once, and after a reload reads each value back.
+main:
+  given: { world: saves }
+  events: [DONE, TOGGLE_CLOSED, OPEN_SAMPLE, PICK_FIRST, TOGGLE_APPROVAL, TOGGLE_IN_PERSON, OPEN_ZONE, PICK_BERLIN, SUBMIT, DONE, DONE, RELOAD, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The course and what the caller holds are read
+    description: >-
+      The page reads GET /courses/:id and GET /courses/:id/my-permissions on the server, behind a loading skeleton (loading.tsx), and works out
+      from the codes what each control may do (`controlsOf`): "Kapalı ders" and "Kayıt onayı gereksin" open for course.edit together with
+      course.settings, "Celseler yüz yüze yapılır" and "Saat dilimi" for course.edit, "Örnek ders" for session.manage; a box a policy holds is
+      shut and ticked (`locked`). A caller who holds none of the page's five codes gets the refusal and a failed read the retry state; both are
+      other flows' (outOfView). The form is keyed by the stored values it shows, not by the version.
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "world == 'policyOpen'", target: readLocked, effect: [loadedLocked], say: "a policy holds the course closed and the enrolment on approval: the two boxes come shut", source: apps/nazar/features/course-settings/controls.ts:38 }
+        - { guard: policyWorld, target: clean, effect: [loadedApproval], say: "the course asks for approval: the box is ticked and open", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76 }
+        - { target: clean, effect: [loadedPlain], say: "the course is open, takes anyone, is not in person, is in Istanbul and has no sample", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76 }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51
+
+  readLocked:
+    title: The page opens with two boxes shut by a policy
+    by: human
+    description: >-
+      "Kapalı ders" is ticked and shut and says "Medresenin “Kapalı ders zorunlu” politikası bu ayarı kilitler." (locked when the course is closed
+      and setting.course_open is gone, controls.ts:38); "Kayıt onayı gereksin" is ticked and shut and says "Bir politika bu derste kaydın her
+      zaman onaya bağlı olmasını istiyor; bu ayar değiştirilemez." (locked when setting.approval_off is gone, controls.ts:43, and shown ticked
+      whatever the course's own flag holds, `checked = locked || draft`). A shut box is never sent. The other three controls stay open and Kaydet
+      and Vazgeç are off until one differs; editing them is not drawn here (outOfView). The page sets no focus (focus-not-set).
+    on:
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:234 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:195 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and an edit of a locked page is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:246 }
+      NAVIGATE: { target: left, say: "they go to another page" }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:161
+
+  clean:
+    title: The card holds what is stored
+    by: human
+    description: >-
+      The five controls show what the course holds, and "Kaydet" and "Vazgeç" are natively disabled with no word of why. The card is a named form
+      landmark ("Erişim, kayıt ve saat dilimi"); the page has a second form with its own Kaydet and Vazgeç below it, so a locator by role and name
+      finds two of each (F-D2c-14). The page moves no focus (focus-not-set). After a refusal that stopped the save and read the page again
+      (`staleValues`, `partialReread`) this is where the person is, with the toast of the refusal over the page and the stored values the page was
+      read with just now: the pressed controls are gone (the form is built again), and the focus is on the body (F-D2c-7).
+    on:
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:172 }
+      TOGGLE_APPROVAL:
+        - { guard: askApproval, target: dirty, effect: [approvalOn], say: "they tick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+        - { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:235 }
+      OPEN_SAMPLE: { target: choosingSample, say: "they open 'Örnek ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:189 }
+      OPEN_ZONE: { target: choosingZone, say: "they open 'Saat dilimi'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:146
+
+  dirty:
+    title: Something differs from what is stored
+    by: human
+    description: >-
+      Kaydet and Vazgeç are on as soon as one control differs (a control put back by hand turns them off again; not drawn). The graph draws the press
+      of Kaydet once the form holds everything the walk's world presses (`readyToSend`): a form that holds less sends what differs by the same
+      transitions. Nothing is sent until Kaydet, and the only sign of an
+      unsaved change is that the two buttons are on: a menu entry, a link or a reload drops the pressed controls without a word. After a
+      refusal that did not read the page again this is where the person stays, with the error toast over the page (it stays until closed) and
+      the pressed controls as they were: after a policy lock the box is still unticked and open although the policy now holds it (CSA-2), after a
+      lost code the controls are still offered, and the same Kaydet is refused again. After a conflict that only moved the version the same
+      Kaydet goes through, since the read brought the new version (`staleVersion`).
+    on:
+      TOGGLE_CLOSED: { guard: closeIt, target: dirty, effect: [closedOn], say: "they tick 'Kapalı ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:172 }
+      TOGGLE_APPROVAL:
+        - { guard: askApproval, target: dirty, effect: [approvalOn], say: "they tick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+        - { guard: dropApproval, target: dirty, effect: [approvalOff], say: "they untick 'Kayıt onayı gereksin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:225 }
+      TOGGLE_IN_PERSON: { guard: markInPerson, target: dirty, effect: [inPersonOn], say: "they tick 'Celseler yüz yüze yapılır'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:235 }
+      OPEN_SAMPLE: { target: choosingSample, say: "they open 'Örnek ders'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:189 }
+      OPEN_ZONE: { target: choosingZone, say: "they open 'Saat dilimi'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:242 }
+      SUBMIT: { guard: readyToSend, target: sending, say: "they press Kaydet (the page's own one, not 'Hocalar ve unvanları')", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:75 }
+      CANCEL: { target: reverting, say: "they press Vazgeç: nothing asks first", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:261 }
+      RELOAD: { guard: "world == 'forbidden'", target: reloading, effect: [clearToast], say: "after the refusal they reload the page: it is read again", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51 }
+      NAVIGATE: { target: left, say: "they leave the page: the pressed controls are lost and nothing warned them" }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:260
+
+  choosingSample:
+    title: The list "Örnek ders" is open
+    by: human
+    description: >-
+      The kit's Select, a Base UI listbox in a popup: "Örnek ders yok" and one option for every LIVE session in programme order, "Hafta 1 · Celse 1"
+      and "Hafta 1 · Celse 2" for the walk's course. Base UI's Select is modal, so the page behind is taken to be inert and only the list is
+      drawn here (not verified in a browser). Choosing the value already shown changes nothing and is not drawn, and the way back to
+      "Örnek ders yok" is drawn only after a conflict showed the other person's sample (outOfView); "Hafta 1 · Celse 2" is an option of the list that no
+      walk of this graph chooses (the other person's save, `interfere values`, makes it the stored sample). Esc closes the list and changes nothing.
+    on:
+      PICK_NONE: { guard: pickNone, target: dirty, effect: [sampleNone], say: "they choose 'Örnek ders yok' (after a conflict showed the other person's sample)", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:192 }
+      PICK_FIRST: { guard: pickFirst, target: dirty, effect: [sampleFirst], say: "they choose 'Hafta 1 · Celse 1'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:192 }
+      DISMISS:
+        - { guard: anythingPressed, target: dirty, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+        - { target: clean, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  choosingZone:
+    title: The list "Saat dilimi" is open
+    by: human
+    description: >-
+      The same Select with every zone the runtime lists (about 418), each named by its city alone, "İstanbul" being the only one the catalog words
+      and the others being the last part of the IANA id with the underscores as spaces ("Berlin"), in the order of the ids, not of the labels
+      (F-D2c-17: no region, no search, two cities of different regions could read alike). Two options are drawn: the zone every course starts
+      with and the one e2e course-settings#2 chooses; choosing İstanbul again is the way back and is not drawn. The page behind is inert as for the
+      first list (not verified in a browser).
+    on:
+      PICK_BERLIN: { guard: pickBerlin, target: dirty, effect: [zoneBerlin], say: "they choose 'Berlin'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:245 }
+      DISMISS:
+        - { guard: anythingPressed, target: dirty, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+        - { target: clean, say: "Esc: the list closes, nothing changes", source: libs/ui/src/mds/select.tsx:79 }
+    source: libs/ui/src/mds/select.tsx:79
+
+  reverting:
+    title: Vazgeç puts back what the page read
+    description: >-
+      Not a screen: the draft becomes what the form holds as stored (`setDraft(saved)`), where `saved` is what the last read or write left. The
+      graph keeps one such record, the course as the walk's world has it, so it puts that back; a Vazgeç after a save in the same visit is not drawn
+      (outOfView). Vazgeç is natively disabled once the form equals the record, so the pressed button turns off under the focus.
+    always:
+      - { guard: "world == 'staleValues' and looked == 'again'", target: clean, effect: [restoreSecond], say: "back to what the read after the conflict brought: the other person's sample" }
+      - { guard: "world == 'policyAfterSample' and looked == 'again'", target: clean, effect: [restorePartial], say: "back to what the read after the partial save brought: the sample saved, the approval still on" }
+      - { guard: policyWorld, target: clean, effect: [restoreApproval], say: "back to the course that asks for approval" }
+      - { target: clean, effect: [restorePlain], say: "back to the course as it was read" }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:261
+
+  sending:
+    title: Which writes are due
+    description: >-
+      Not a screen: `submit` returns at once when nothing differs or the form is busy, otherwise it writes the sample first when it differs and
+      the course's fields after it when any differs (`courseSettingsPatch` is null when none does, and then no course write is made).
+    always:
+      - { guard: sampleDue, target: sendingSample, say: "the sample differs: it is written first" }
+      - { guard: fieldsDue, target: sendingCourse, say: "only the course's fields differ" }
+      - { target: saved, effect: [savedAll], say: "nothing differs (Kaydet is off then, so this is never taken)" }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:75
+
+  sendingSample:
+    title: The sample session is written
+    description: >-
+      The server action setSampleLesson, PATCH /lessons/:id with `{ version, isPreview }` and the version the page was read at: first the old sample
+      is taken off (`isPreview: false`) when the course had one, then the new one is set (`isPreview: true`) with the version the first write
+      returned; a course with no sample or a change to none is one write. The API checks the version in the statement that bumps it, so a stale
+      page changes nothing (COURSE_VERSION_CONFLICT), and the course's fields are then not sent at all (`return` after `stop`). The fields of the
+      card are disabled and Kaydet is busy (aria-disabled, aria-busy, a hidden output "Kaydediliyor…"); Vazgeç is off. The session's write needs
+      session.manage, the card's own codes are checked by the next write.
+    invoke: { action: updateLesson }
+    on:
+      DONE: { guard: "not conflicting", target: afterSample, effect: [sampleLanded], say: "the sample is stored: it carries the course's new version", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:124 }
+      FAIL.stale:
+        - { guard: "world == 'staleValues' and looked == 'first'", target: clean, effect: [rereadStale], say: "409: nothing was written, the error toast is the e2e's sentence, the page is read again and the stored values moved, so the form is built again from them: the other person's sample is shown and every control pressed here is gone (course-settings#3 a8-a10)", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:92 }
+        - { guard: "world == 'staleVersion' and looked == 'first'", target: dirty, effect: [keptDraft], say: "409: nothing was written, the toast says so and the page is read again; the stored values did not move, so the form stays as it is and the new version is carried by its next Kaydet", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:92 }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:95
+
+  afterSample:
+    title: Is a course write due?
+    description: "Not a screen: after the sample the course's fields are written when any differs, and a save that changed only the sample is done."
+    always:
+      - { guard: fieldsDue, target: sendingCourse, say: "a box or the zone differs: one PATCH /courses/:id follows" }
+      - { target: saved, effect: [savedAll], say: "only the sample differed: the save is done" }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:127
+
+  sendingCourse:
+    title: The course's fields are written
+    description: >-
+      The server action saveCourseSettings, PATCH /courses/:id with only the fields that differ from what was read among isClosed, requiresApproval,
+      inPerson and timeZone: never the version (the route takes none, so it is never COURSE_VERSION_CONFLICT and the last save wins), never null,
+      never a box a policy holds. It needs course.edit, and course.settings for the two boxes (AUTHZ_FORBIDDEN otherwise), and switching approval
+      off or opening a closed course needs the abilities a policy may have closed (PLATFORM_POLICY_LOCKED, 409). A course gone is COURSE_NOT_FOUND,
+      worded with the generic sentence. The controls and Kaydet are busy as in the sample's write.
+    invoke: { action: updateCourse }
+    on:
+      DONE: { guard: "not courseRefused", target: saved, effect: [savedAll], say: "the course is saved", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:136 }
+      FAIL.policy: { guard: policyWorld, target: afterRefusal, effect: [toastRefused], say: "409 PLATFORM_POLICY_LOCKED: the toast says 'Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.' and names no box", source: apps/nazar/features/course-settings/course-settings.ts:148 }
+      FAIL.forbidden: { guard: "world == 'forbidden'", target: afterRefusal, effect: [toastRefused], say: "403 AUTHZ_FORBIDDEN: 'Bunu yapma izniniz yok.'", source: apps/nazar/features/course-settings/course-settings.ts:146 }
+      FAIL.other: { guard: "world == 'failed'", target: afterRefusal, effect: [toastRefused], say: "anything else: 'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.'", source: apps/nazar/features/course-settings/course-settings.ts:154 }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:128
+
+  afterRefusal:
+    title: Did the sample land before the refusal?
+    description: >-
+      Not a screen: `stop` sets the stored record to what the writes left and reads the page again only when it moved (the sample landed) or the
+      conflict asks for it. A refusal after a sample that landed is read again (the form is built again from what is stored, and the pressed
+      course fields are gone: CSA-1); a refusal with nothing written is not (CSA-2), and the person is back in the form with the toast.
+    always:
+      - { guard: "written == 'written'", target: clean, effect: [partialReread], say: "the sample was saved and the rest refused: the form is built again with the new sample and without the pressed course fields", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:92 }
+      - { target: dirty, say: "nothing was written: the form keeps the pressed controls and Kaydet stays on", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:83 }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:83
+
+  saved:
+    title: The settings are saved
+    by: human
+    description: >-
+      The toast "Ders ayarları kaydedildi" with "<course> dersinin ayarları güncellendi." (it closes by itself after 6 seconds), Kaydet and
+      Vazgeç off, and `router.refresh()` reads the page again. When the saved values differ from what the page read the form is built again
+      (`key={JSON.stringify(stored)}`), so the pressed Kaydet is destroyed and the focus falls to the body (F-D2c-7); the toast is the only word.
+      Each value is read back after a reload (e2e course-settings#2 a5-a10); a second round of edits is not drawn (outOfView).
+    on:
+      RELOAD: { target: reloading, effect: [clearToast], say: "they reload the page: it is read again with what the API now holds", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51 }
+      TOGGLE_CLOSED: { target: edit_not_drawn, say: "they press 'Kapalı ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:171 }
+      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:224 }
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:234 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:195 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:246 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:136
+
+  reloading:
+    title: The page is read again
+    description: >-
+      After a reload the page reads the course and the caller's codes again, as `opened` does. What the form shows is now what the API holds. A
+      caller whose codes were taken back meets the refusal.
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "world == 'forbidden'", target: refusedPage, say: "the codes are gone: 'Bu sayfaya izniniz yok' replaces the card (course-settings#10 a5)", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:60 }
+        - { target: readBack, say: "the card shows what was saved", source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76 }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:51
+
+  readBack:
+    title: Each value is read back
+    by: human
+    goal: true
+    description: >-
+      The reloaded page shows the closed box, the approval box, the in-person box, the sample and the zone as they were saved, and Kaydet and
+      Vazgeç are off again (e2e course-settings#2 a5-a9). The page sets no focus. The card's values were read from the API, not kept by the
+      browser: the walk's effect check reads the course again through the API as well (a10).
+    on:
+      TOGGLE_CLOSED: { target: edit_not_drawn, say: "they press 'Kapalı ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:171 }
+      TOGGLE_APPROVAL: { target: edit_not_drawn, say: "they press 'Kayıt onayı gereksin': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:224 }
+      TOGGLE_IN_PERSON: { target: edit_not_drawn, say: "they press 'Celseler yüz yüze yapılır': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:234 }
+      OPEN_SAMPLE: { target: edit_not_drawn, say: "they open the list 'Örnek ders': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:195 }
+      OPEN_ZONE: { target: edit_not_drawn, say: "they open the list 'Saat dilimi': it is open here, and a second round of edits is not drawn", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:246 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:76
+
+  refusedPage:
+    title: The page is refused
+    by: human
+    description: >-
+      The heading "Ders ayarları" stays; where the cards would be an alert says "Bu sayfaya izniniz yok" and tells the person to ask the
+      medrese's başmüderris (`gate == forbidden`, course-settings-page.tsx:60-72). It is the other half of e2e course-settings#10; the whole
+      story of a caller who holds none of the page's codes is nazar.access.dersNazirPages.
+    on:
+      NAVIGATE: { target: left, say: "they go to another page" }
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:60
+
+  edit_not_drawn:
+    title: They change the card, and the graph does not follow
+    type: final
+    description: >-
+      A box pressed or a list opened on a card saved in this visit (`saved`, `readBack`) or opened with two boxes locked by a policy
+      (`readLocked`): the control is open (course-settings-form.tsx:171-246 disable it only while a save runs or a code or a policy shuts it),
+      and Kaydet and Vazgeç come on once a value differs. What follows is a new round of this flow, which the graph does not draw (scope.outOfView:
+      a second round of edits, an edit of a locked page). The person stays on the page.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: the-sample-is-sent-only-when-it-differs
+    never: "state == 'sendingSample' and sampleDraft == 'unchanged'"
+    say: The sample session is written only when the chosen one differs from the stored one.
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:95
+  - id: the-course-is-sent-only-when-a-field-differs
+    never: "state == 'sendingCourse' and fieldsDraft == 'unchanged'"
+    say: PATCH /courses/:id is sent only when a box or the zone differs, and carries only what differs.
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:127
+  - id: the-sample-goes-before-the-course
+    never: "state == 'sendingCourse' and sampleDraft == 'changed' and written == 'unchanged'"
+    say: When the sample differs, the course's fields are sent only after the sample's write landed.
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:95
+  - id: a-conflict-stops-the-save
+    never: "state == 'sendingCourse' and conflicting and sampleDraft == 'changed'"
+    say: A sample write refused for a stale page stops the save; the course's fields are not sent after it.
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:83
+  - id: a-locked-page-sends-nothing
+    never: "world == 'policyOpen' and (state == 'sendingSample' or state == 'sendingCourse')"
+    say: A page whose two boxes a policy holds shut sends nothing in the walk of this flow, and a shut box is never in a body.
+    source: apps/nazar/features/course-settings/course-settings.ts:91
+  - id: a-success-toast-follows-a-save
+    never: "state == 'saved' and toast != 'saved'"
+    say: After a save the toast says so.
+    source: apps/nazar/features/course-settings/components/course-settings-form.tsx:138

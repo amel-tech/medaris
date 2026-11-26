@@ -1,0 +1,138 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.learn.homeworkMemorize
+status: proposed
+summary: >-
+  What must exist for a talebe to recite a homework to the hoca and read the mark: the flow's product list, from its story and
+  from the domain's rules, never from what the card does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing or unwalked, for the orchestrator's gaps merge:
+# missing:  told-when-marked (none), failed-read-can-be-retried (none; WRT-06), mark-is-named-as-the-hocas (none; MEMO-2),
+# earlier-heading-says-what-it-lists (none; MEMO-3), kind-of-homework-is-content (none; the domain finding
+# evaluation-probe-leaks-homework-kind)
+# unwalked: see-what-to-recite (code, no e2e and no replay run yet), earlier-work-stays-readable (unit spec only; a file cannot be stored
+# on the local stack), a-completed-talebe-reads-the-mark (no data, no walk), refused-read-is-told (bound nowhere: the stack cannot
+# make the read fail)
+# Nothing here is walked by a replay yet: the owner moved every replay to the end, so `walked` holds only e2e checks that exist today.
+# The binding's scenarios (waits, marked, incomplete, absent, note, reviewed) are written and load; they are walked in the walk phase.
+# Nothing here carries a kontenjan or a gender rule: a mark has neither.
+
+needs:
+  - id: see-what-to-recite
+    need: >-
+      A talebe who holds a seat in the course sees, on the celse, what the hoca has asked them to recite, and is told in so many
+      words that nothing is handed in for it: the hoca listens and marks. There is no field or button to hand anything in.
+    evidence:
+      - state: waiting
+      - state: marked
+      - source: apps/tedrisat/src/course/lesson.controller.ts:230
+      - source: apps/tedris/features/courses/components/session-homework.tsx:173
+
+  - id: no-file-for-a-recital
+    need: >-
+      A homework that is recited takes no file: the card offers no way to hand one in, and tedrisat refuses one that is sent
+      anyway, so that a talebe never has a hand-in that nobody reads.
+    evidence:
+      - state: waiting
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:174
+      - source: apps/tedris/features/courses/components/session-homework.tsx:173
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the talebe marks nobody, themselves included, reads no board and hands no file in on a recited homework"
+
+  - id: read-own-mark
+    need: >-
+      A talebe reads their own mark of the recital, and only their own: "Bekliyor" until the hoca has marked, then "Tam", "Eksik"
+      or "Vermedi", with the hoca's note when they wrote one.
+    evidence:
+      - state: reading
+      - state: waiting
+      - state: marked
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:145
+      - source: apps/tedris/features/courses/components/session-homework.tsx:189
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the müderris marks the talebe on the recited homework with a press and with a key, and the count follows"
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the talebe marks nobody, themselves included, reads no board and hands no file in on a recited homework"
+
+  - id: talebe-cannot-mark-themselves
+    need: >-
+      Only the course team marks a recital: a talebe cannot save a mark, their own included, and reads no board of the others.
+    evidence:
+      - state: waiting
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:115
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "the talebe marks nobody, themselves included, reads no board and hands no file in on a recited homework"
+
+  - id: told-when-marked
+    need: >-
+      When the hoca has marked the recital the talebe is told, and a card that is open shows the mark without a reload, as a
+      homework review and a released exam both reach the talebe (SUBMISSION_REVIEWED, EXAM_RESULTS_RELEASED).
+    missing: no Linear issue
+    note: >-
+      Drawn on the state waiting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: failed-read-can-be-retried
+    need: >-
+      When the mark cannot be read, the card says so and offers to read it again, as the notes, the questions and the file card
+      do.
+    missing: no Linear issue; WRT-06
+    note: >-
+      Drawn on the state loadFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: mark-is-named-as-the-hocas
+    need: >-
+      The mark says, to a person who cannot see the layout, whose mark it is and of what: not the word "Tam" alone beside the
+      heading.
+    missing: no Linear issue; MEMO-2
+    note: >-
+      Drawn on the states waiting and marked, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: kind-of-homework-is-content
+    need: >-
+      Which celses carry a recited homework is read only by those who may read the course's content, as the list of grades does
+      for a caller it is closed to; a stranger of an open course learns nothing from the read of a mark.
+    missing: no Linear issue; the domain finding evaluation-probe-leaks-homework-kind
+    note: >-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: earlier-work-stays-readable
+    need: >-
+      What a talebe handed in before the hoca switched the homework to recited stays theirs: it is listed, the files can be
+      downloaded and removed, the note is read-only, and the hoca's review of it stays readable; nothing new can be added.
+    evidence:
+      - state: waiting
+      - state: marked
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:99
+      - source: apps/tedris/features/courses/components/session-homework.tsx:283
+
+  - id: earlier-heading-says-what-it-lists
+    need: >-
+      The heading over the earlier work says what is listed: a talebe who handed in only a note is not told they handed in files.
+    missing: no Linear issue; MEMO-3
+    note: >-
+      Drawn on the states waiting and marked, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-completed-talebe-reads-the-mark
+    need: >-
+      A talebe who has completed the course still reads their mark and the hoca's note on the celse (the card is drawn for an
+      ENROLLED or a COMPLETED seat).
+    evidence:
+      - state: marked
+      - source: apps/tedris/features/courses/lesson-note-model.ts:21
+
+  - id: refused-read-is-told
+    need: >-
+      A mark that the API refuses (the course's scope has turned passive, or the homework is no longer recited) is told to the
+      talebe in words, not left as a card with no mark.
+    evidence:
+      - state: loadFailed
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:145
+      - source: apps/tedris/features/courses/components/session-homework.tsx:270

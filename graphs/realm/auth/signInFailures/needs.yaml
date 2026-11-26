@@ -1,0 +1,201 @@
+schema: delurio-graph/0
+kind: needs
+id: realm.auth.signInFailures
+status: proposed
+summary: >-
+  Each need is what the product must do, from the flow's story and from planned.md, never from what the page does today; a finding
+  the flow touches is a need with `missing: none` where the code does not meet it (its id is in the need).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code):
+# the-box-is-announced, each-page-has-its-own-title, a-way-out-that-is-not-the-same-failure, a-pause-says-how-long-and-who-to-ask,
+# a-refusal-does-not-tell-strangers-the-account-exists, the-error-link-goes-to-sign-in, a-refusal-moves-the-focus (all `missing: none`:
+# findings SHL-03/F-E-1/F-P0-1, SHL-01/F-E-23/F-P0-3/K2, SIF-4/SIF-6, SIF-1/SIF-2, SIF-3, SIF-5, K3);
+# a-ban-switches-the-account-off (MDRS-197)
+# unwalked (code, no e2e and no replay that passed):
+# a-failure-another-try-fixes-is-retried-once, a-signed-in-browser-is-not-shown-an-error, a-blocked-cookie-is-named
+# walked only by an e2e that renders the page in Storybook (giris#14), not on a live Keycloak: an-expired-form-can-be-restarted,
+# the-error-page-takes-them-back
+# The scenarios nizamConfiguration, nazarSignInLimit, tedrisAutoRetry, tedrisRetrySpent, requestRefused and cookieBlocked of
+# binding.yaml are written and were not walked in the writing phase; the e2e checks below are the evidence where one is named.
+
+needs:
+  - id: the-box-says-what-happened
+    need: >-
+      When a round trip comes back failed, the app's sign-in page says so in the person's own words and in the app's own wording:
+      the account was refused, the service is unavailable, this browser tried too often, or something went wrong; and it offers
+      the way on that fits the failure.
+    evidence:
+      - state: errorBoxTedris
+      - state: errorBoxNizam
+      - state: errorBoxNazar
+      - source: apps/tedris/features/auth/auth-entry.tsx:85
+      - source: apps/nizam/features/auth/auth-entry.tsx:88
+      - source: apps/nazar/features/auth/auth-entry.tsx:88
+      - source: libs/auth/src/shared/auth-error.ts:45
+      - test: apps/nazar/e2e/auth-pages.e2e.ts
+        name: "a failed sign-in says what happened, in Turkish and in the unified system"
+      - scenario: tedrisAccessDenied
+
+  - id: a-final-failure-is-never-retried
+    need: >-
+      A failure that no second try fixes (the account is refused, the app is misconfigured, this browser tried too often) is shown
+      at once and starts nothing by itself, and its box offers no button that repeats it.
+    evidence:
+      - state: pageOpens
+      - state: errorBoxTedris
+      - source: libs/auth/src/client/sign-in.ts:322
+      - source: libs/auth/src/shared/auth-error.ts:54
+      - scenario: tedrisAccessDenied
+
+  - id: a-failure-another-try-fixes-is-retried-once
+    need: >-
+      A failure that a second round trip usually fixes (the start could not be made, the callback was replayed or expired) is
+      retried once, by the page, without the person pressing anything; when that has been spent the box says so and offers a
+      button that starts it again.
+    evidence:
+      - state: pageOpens
+      - state: readingSession
+      - state: errorBoxTedris
+      - state: errorBoxNizam
+      - state: errorBoxNazar
+      - source: libs/auth/src/client/sign-in.ts:346
+      - source: libs/auth/src/client/sign-in.ts:375
+
+  - id: a-signed-in-browser-is-not-shown-an-error
+    need: >-
+      A browser that already holds a usable session (another tab finished the round trip, or the Back button replayed a callback)
+      is sent on to the page it was going to, not shown a box for a retryable failure.
+    evidence:
+      - state: readingSession
+      - state: went_on_signed_in
+      - source: libs/auth/src/client/sign-in.ts:345
+
+  - id: a-way-out-that-is-not-the-same-failure
+    need: >-
+      The way out of a box leads somewhere a person can go on from, not into the same refusal: tedris's retryable box has a way
+      home as nizam's and nazar's have; nazar's "Ana sayfaya dön" is a public page, not a gate that starts the same sign-in again;
+      and tedris's header does not offer a Giriş yap that returns to the sign-in page itself (findings SIF-4, SIF-6).
+    missing: no Linear issue; findings SIF-4, SIF-6
+    note: >-
+      Drawn on the states errorBoxTedris, errorBoxNazar and home_opened, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-box-is-announced
+    need: >-
+      When the box replaces the redirecting state, a person who cannot see it is told, and the keyboard focus is where they can
+      act (findings SHL-03, F-E-1, F-P0-1).
+    missing: no Linear issue; findings SHL-03, F-E-1, F-P0-1
+    note: >-
+      Drawn on the states errorBoxTedris, errorBoxNizam and errorBoxNazar, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: each-page-has-its-own-title
+    need: >-
+      The sign-in page of each app, and Keycloak's form, expired page and error page, each has a tab title of its own that says
+      what the page is (findings SHL-01, F-E-23, F-P0-3, K2).
+    missing: no Linear issue; findings SHL-01, F-E-23, F-P0-3
+    note: >-
+      Drawn on the states errorBoxTedris, errorBoxNizam, errorBoxNazar, formLocked, expiredPage and errorPage, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-moves-the-focus
+    need: >-
+      After Keycloak's form answers with a refusal, the focus goes to the alert or to the first field the person must change, not
+      to the top of the document (finding K3).
+    missing: >-
+      no Linear issue; all `missing: none`: findings SHL-03/F-E-1/F-P0-1, SHL-01/F-E-23/F-P0-3/K2, SIF-4/SIF-6, SIF-1/SIF-2,
+      SIF-3, SIF-5, K3
+    note: >-
+      Drawn on the states formDisabled and formLocked, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-switched-off-account-says-so
+    need: >-
+      A person whose account is switched off is told so on the form, once they have typed the right password, and is never sent
+      back to the app.
+    evidence:
+      - state: formDisabled
+      - source: apps/keycloak-theme/src/login/Template.tsx:81
+      - scenario: disabledAccount
+
+  - id: repeated-failures-pause-the-account
+    need: >-
+      An account whose password is tried wrongly again and again is paused for a while, whatever is typed next, and the form says
+      so; when the pause is over the right password signs in.
+    evidence:
+      - state: formLocked
+      - state: handed_over.callback
+      - source: config/keycloak/realms/_base.json:12
+      - source: apps/keycloak-theme/src/login/pages/Login.tsx:41
+      - scenario: lockedApplicantB
+
+  - id: a-pause-says-how-long-and-who-to-ask
+    need: >-
+      The message of a pause or of a switched-off account says how long it lasts or what ends it, and names someone the person can
+      reach (an address or a link), not only "yönetici" (findings SIF-1, SIF-2).
+    missing: no Linear issue; findings SIF-1, SIF-2
+    note: >-
+      Drawn on the states formDisabled and formLocked, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-does-not-tell-strangers-the-account-exists
+    need: >-
+      The form does not tell someone who types an address and a wrong password whether the account exists or is paused (finding
+      SIF-3).
+    missing: no Linear issue; findings SIF-3
+    note: >-
+      Drawn on the state formLocked, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-ban-switches-the-account-off
+    need: >-
+      A platform-wide ban switches the person's Keycloak account off, so that they meet the switched-off message at the form and
+      the ban holds in every Medaris app (P-35).
+    evidence:
+      - source: apps/keycloak-theme/src/login/Template.tsx:81
+    missing: MDRS-197; code exists in part
+    note: >-
+      Drawn on the state formDisabled, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: an-expired-form-can-be-restarted
+    need: >-
+      A person whose login form sat open too long, or was replayed from the Back button, is told the page has expired and has one
+      button that starts the sign-in again.
+    evidence:
+      - state: expiredPage
+      - state: handed_over.keycloak_form
+      - source: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:25
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "error and expired pages send the person to the start"
+
+  - id: the-error-page-takes-them-back
+    need: >-
+      When Keycloak cannot take a request at all, its page says the sign-in stopped, never shows Keycloak's own wording, and has
+      one link back to the app.
+    evidence:
+      - state: errorPage
+      - state: app_opened
+      - source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:30
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "error and expired pages send the person to the start"
+
+  - id: a-blocked-cookie-is-named
+    need: >-
+      A person whose browser blocks the cookie Keycloak's page needs is told that, and what to do (allow cookies, then return to
+      the sign-in), not that the sign-in simply failed.
+    evidence:
+      - state: errorPage
+      - source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:25
+
+  - id: the-error-link-goes-to-sign-in
+    need: >-
+      The error page's link, which says "Giriş sayfasına dön", goes to the app's sign-in page, not to the app's front door
+      (finding SIF-5).
+    missing: no Linear issue; findings SIF-5
+    note: >-
+      Drawn on the states errorPage and app_opened, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

@@ -1,0 +1,110 @@
+# nizam.moderation.decideBan on the local stack, at the köşk's own list: the köşk nazım of "Kubbealtı Köşkü" at http://localhost:4001 opens
+# /kosks/<id>/yasaklamalar (the seed's second köşk, which she manages beside the first and in which no seeded flow makes a ban).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>        (every transition the scenarios below can drive)
+# The other bindings of this flow (each a file of its own, because a scenario that adds no transition of its own is not walked by
+# `--cover transitions`, because their events differ, or because `states` is one per file and the Medaris list has another address):
+#   binding.platform.yaml  a ban Medaris placed: no lift, the note, the widening (kosk); the başnazım lifts it all the same (chief)  (--cover transitions)
+#   binding.moved.yaml     the ban is lifted by another hand before the lift is sent: BAN_ALREADY_LIFTED                     (--cover transitions)
+#   binding.stale.yaml     a ban is lifted behind the page and the one-click widening still goes through (NDB-2)              (--main)
+#   binding.staff.yaml     the one-click widening over a person who runs THIS course: BAN_TARGET_INVALID                       (--cover transitions)
+#   binding.all.yaml       the Medaris list as the başnazım: the lift, the widening dialog, the row `staff` accepted         (--cover transitions)
+#   binding.allMoved.yaml  the Medaris list: BAN_ALREADY_LIFTED on the lift and on the widening                               (--cover transitions)
+#   binding.medaris.yaml   the Medaris list as a Medaris nazım holding platform.ban_scoped: a köşk ban lifted, a course ban widened
+#   binding.refused.yaml   the same nazım loses the permission before she presses: BAN_LIFT_FORBIDDEN                        (--cover transitions)
+#   binding.noAccess.yaml  a köşk nazım at the Medaris list: "Bu bölüm için izniniz yok" (bans-medaris#8)                    (--to no_access)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation here is from
+# the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and walked nothing).
+#
+# Data. Every scenario makes its own course in the seed's second köşk (helpers/course.mjs make decideBan --kosk {seed.kosk2}: published, the
+# müderris as hoca; the ids are read from graphs/.local/made/decideBan.json as {made.*}), enrols spare talebe in it, and helpers/kosk-bans.mjs puts
+# open bans on them through the API: as the müderris (a course ban, "Hoca"), as the başnazım (a course ban, "Medaris yönetimi") or as the
+# köşk nazım (a köşk ban). The teardown removes the bans with SQL (no route deletes a ban or its notices to the nazıms), then deletes the
+# course. What the walk cannot undo: the audit rows of every ban, lift and widening (no route removes them, and nothing depends on them) and
+# the notifications a widening sends to a seat of the person (course.mjs remove clears those that point at the course).
+#   applicantC, applicantD, applicantE  talebe, the people the bans are on ("Esma", "Salih", "Betül Başvuran"); never F or H (other flows')
+#
+#   decides   (the main story) three course bans a hoca placed. LIFT, FILL_IN, SUBMIT, DONE; OPEN_LIFTED (the Kaldırılan tab says who lifted it
+#             and why); OPEN_ACTIVE; WIDEN_NOW, DONE (bans#6, #7, #8). The list is newest first and a repeated node is pressed on its first
+#             item: the lift decides the last placed (Betül), the widening the next (Salih); the effects therefore ask of the three together.
+#   nobody    no ban is open: "Etkin yasak yok", both counts 0 (bans#6 a3 reads the table). Nothing is made. Needs the köşk to hold no open ban.
+#   wide      one köşk ban the köşk nazım placed from the course: the row offers the lift and no widening, and the list reads "Köşk" and
+#             "Deneme dersi decideBan dersinden genişletildi" (the list half of bans#5); lifting the only ban leaves the list empty
+#             ("Etkin yasak yok"). Needs the köşk to hold no other open ban, which no seeded flow makes: a leftover of another walk would show.
+#
+# Not bound, and why:
+#   - `answer: failed`: VALIDATION_ERROR and HTTP_400 need a reason the page never lets through or a malformed id; COURSE_NOT_FOUND needs
+#     the course deleted while its ban stands (the walk's own course goes in the teardown, after the bans). BAN_NOT_FOUND (a ban the
+#     database no longer has) cannot be reached from a row the page draws. The unit specs of the API cover them.
+#   - `answer: refused` on the one-click widening (BAN_FORBIDDEN needs the nazım to lose her role between the list and the click): the lift's
+#     is walked by binding.refused.yaml.
+#   - `read: missing` (a köşk that does not exist) and a müderris at this list (bans#9): the same screen as no_access, nizam.shell.noAccessAndNotFound's.
+#   - the exit load_failed (the stack cannot make tedrisat fail); the focus after a decision (NDB-9, not drawn).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+# the three server actions are Next server actions: a POST to the page's own address, held while the busy state is checked. (The page's own
+# reads are GETs with a query, so the glob, which is anchored, matches only the POST.) Only DONE is walked here: a refusal of a server
+# action answers 200 on that address too, so its status could not be compared with the API's (binding.moved.yaml and binding.staff.yaml
+# leave `call` off).
+states:
+  listed: { url: '{nizam}/kosks/*/yasaklamalar' }
+  empty: { url: '{nizam}/kosks/*/yasaklamalar' }
+  liftedTab: { url: '{nizam}/kosks/*/yasaklamalar' }
+  lifting: { call: '{nizam}/kosks/*/yasaklamalar' }
+  widening: { call: '{nizam}/kosks/*/yasaklamalar' }
+
+scenarios:
+  decides:
+    given: { viewer: kosk, read: ok, row: low, answer: done, after: more }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+        expect: 'ready: 3 open'
+    teardown:
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: 'APPLICANT_C,APPLICANT_D,APPLICANT_E'
+      liftHas: 'COURSE lifted by KOSK_NAZIM "Yeniden değerlendirildi"'
+      widenHas: KOSK open
+
+  wide:
+    given: { viewer: kosk, read: ok, row: wide, answer: done, after: none }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"tag":"decideBan"'
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --wide, APPLICANT_C]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: 'KOSK lifted by KOSK_NAZIM "Yeniden değerlendirildi"'
+      widenHas: KOSK open
+
+  nobody:
+    given: { viewer: kosk, read: ok, row: none, answer: done, after: none }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/yasaklamalar'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: 'COURSE lifted'
+      widenHas: KOSK open

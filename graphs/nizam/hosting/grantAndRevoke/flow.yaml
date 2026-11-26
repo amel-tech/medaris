@@ -1,0 +1,406 @@
+# Giving a medrese a hosting right in a köşk, and taking it back: Barındırma hakları (/kosks/<id>/ayarlar/barindirma) in nizam-web,
+# read from the code of PR #394's branch on 15 Nov 2026 (apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx,
+# features/hosting/{reads,present,actions}.ts and components/{hosting-view,grant-dialog,revoke-dialog}.tsx, and apps/tedrisat/src/hosting).
+# The page is read by the köşk's own nazımı, by the başnazım, and by a Medaris nazımı holding platform.hosting_grant (the one
+# /kosks/<id> sends there). A right lets the medrese open courses in the köşk and gives it no power over the köşk; the medrese's side of
+# the same right is nazar.courses.open (its list of hosting köşks), and nizam.kosks.manage withdraws a right from the management view
+# with the same call.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - "Barındırma hakkı ver" and "Barındırma hakkını geri al" are natively disabled until a medrese is chosen, or an answer for the
+#     open courses is, and nothing says why (F-W3-1, F-X-3).
+#   - the dialogs' "Vazgeç", close icon and Escape do nothing while the call runs, and stay enabled (HOST-2); the grant dialog's first
+#     focus is its close icon, not the medrese list (HOST-6, from the code).
+#   - after a withdrawal the row whose button opened the dialog is gone, so the focus that Base UI gives back has no element (HOST-1).
+#   - a refusal (the medrese was hidden meanwhile, the right was already withdrawn) says so in a toast but the page is not read again,
+#     so the list and the table stay as they were (HOST-4); a list of medreses that could not be read has no retry in the dialog (HOST-5),
+#     and the page reads every page of every open medrese on each load (HOST-3).
+#   - the title and the h1 never name the köşk (F-W3-9).
+# F-W3-5 of FLOWS.md does not belong here: this page's tabs are `Tabs mode="links"`; the finding is about the two request pages.
+schema: delurio-graph/0
+kind: flow
+id: nizam.hosting.grantAndRevoke
+status: captured
+domain: medaris.api
+ui: nizam.hosting.grantAndRevoke
+title: Give a medrese a hosting right and take it back
+summary: >-
+  A köşk nazımı (or the başnazım, or a Medaris nazımı with platform.hosting_grant) opens Barındırma hakları: the medreses that may open
+  courses in the köşk, who gave each the right and when, and how many courses each has open there. "Barındırma hakkı ver" opens a window
+  with a list of the open medreses that hold no right; one is chosen and the right is given at once, and a toast says so. "Barındırma
+  hakkını geri al" on a row opens a window that names the medrese, lists its open courses and asks what becomes of them: they carry on
+  (KEEP) or are hidden and come back from the Arşiv (HIDE). No answer is chosen for the person, so the button stays off until one is;
+  with no open course there is nothing to ask. "Vazgeç", the close icon and Escape leave everything as it was. A person who does not
+  manage the köşk, and a köşk that is not there, get "Bu bölüm için izniniz yok". Where the list of medreses is empty or could not be
+  read, the window says so and gives nothing to choose.
+
+scope:
+  shows: >-
+    Barındırma hakları of one köşk: the table of rights, the grant window and its list of medreses, the withdrawal window with its
+    open courses and its question, the toasts of both calls, the page's two refusals and its read that failed
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the other two tabs of the köşk's settings, Genel and Köşk nazımları: nizam.kosks.editAndHide, nizam.kosks.nazims; and the management view that withdraws a right with the same call: nizam.kosks.manage"
+    - "what the medrese meets afterwards: its list of hosting köşks and the refusal HOSTING_RIGHT_REQUIRED when it opens a course: nazar.courses.open; the courses a withdrawal hid, in the köşk's Arşiv: nizam.moderation.restoreArchived"
+    - "the page's other two reads, the köşk and its nazımlar: the first gives the name (without it the page says 'Bu köşk'), the second decides whether the settings tabs are drawn; a Medaris nazımı who holds only platform.hosting_grant is refused the second and sees no tabs (`tabs: hidden`, MDRS-137)"
+    - "the header button 'Barındırma hakkı ver' stays on the page when the rights could not be read and opens the same window; it is not drawn from `readFailed`"
+    - "an ended session: both server calls and the reads send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "a second right in the table behind the one that is withdrawn: only the row's own is drawn, the others are 'rest'"
+
+context:
+  read:
+    values: [ok, forbidden, missing, failed]
+    initial: any
+    say:
+      ok: "the rights of the köşk are read"
+      forbidden: "the person is neither a nazım of this köşk nor holds platform.hosting_grant: another köşk's page"
+      missing: "no köşk has that address"
+      failed: "the read fails for any other reason: the API does not answer"
+  before:
+    values: [none, some]
+    initial: any
+    say: { none: "the köşk holds no right when the page opens", some: "the köşk holds at least one right when the page opens" }
+  tabs:
+    values: [shown, hidden]
+    initial: any
+    say: { shown: "the settings tabs are drawn and the first crumb is a link", hidden: "a Medaris nazımı holding only platform.hosting_grant: no tabs, the crumb is plain text" }
+  options:
+    values: [some, none, failed]
+    initial: any
+    say:
+      some: "at least one open medrese holds no right yet"
+      none: "every open medrese holds a right already"
+      failed: "the list of open medreses could not be read"
+  courses:
+    values: [some, none]
+    initial: any
+    say: { some: "the medrese whose right is withdrawn has open courses in this köşk (a draft and a published one)", none: "it has none" }
+  rest:
+    values: [none, some]
+    initial: any
+    say: { none: "no other right is held once this one is withdrawn", some: "another right stays in the table" }
+  answer:
+    values: [done, madrasahGone, notHeld, koskGone, forbidden, failed]
+    initial: any
+    say:
+      done: "the server does what was asked"
+      madrasahGone: "the chosen medrese is hidden or deleted before the right is given (a grant only)"
+      notHeld: "the right was withdrawn by someone else before this withdrawal (a withdrawal only)"
+      koskGone: "the köşk is gone"
+      forbidden: "the caller may no longer do this"
+      failed: "anything else: the body is refused, the server does not answer"
+  table: { values: [empty, listed], initial: empty }
+  picked: { values: [true, false], initial: false }
+  choice: { values: [none, keep, hide], initial: none }
+  toast: { values: [none, granted, revoked, grantMadrasahGone, grantKoskGone, grantForbidden, grantFailed, revokeNotHeld, revokeKoskGone, revokeForbidden, revokeFailed], initial: none }
+
+guards:
+  # `disabled={madrasahId === null}` (grant-dialog.tsx:90) and `disabled={!canRevoke(count, choice)}` (revoke-dialog.tsx:114, present.ts:99)
+  grantRefused: "toast in ['grantMadrasahGone', 'grantKoskGone', 'grantForbidden', 'grantFailed']"
+  revokeRefused: "toast in ['revokeNotHeld', 'revokeKoskGone', 'revokeForbidden', 'revokeFailed']"
+
+effects:
+  held: { set: { table: listed } }
+  openedGrant: { set: { picked: false, toast: none } }
+  openedRevoke: { set: { choice: none, toast: none } }
+  pickedOne: { set: { picked: true } }
+  choseKeep: { set: { choice: keep } }
+  choseHide: { set: { choice: hide } }
+  clearToast: { set: { toast: none } }
+  granted: { set: { table: listed, toast: granted } }
+  grantMadrasahGone: { set: { toast: grantMadrasahGone } }
+  grantKoskGone: { set: { toast: grantKoskGone } }
+  grantForbidden: { set: { toast: grantForbidden } }
+  grantFailed: { set: { toast: grantFailed } }
+  revokedNoCourses: { set: { toast: revoked } }
+  revokedKept: { set: { toast: revoked } }
+  revokedHidden: { set: { toast: revoked } }
+  lastGone: { set: { table: empty } }
+  revokeNotHeld: { set: { toast: revokeNotHeld } }
+  revokeKoskGone: { set: { toast: revokeKoskGone } }
+  revokeForbidden: { set: { toast: revokeForbidden } }
+  revokeFailed: { set: { toast: revokeFailed } }
+
+failures:
+  reading:
+    from: listKoskHostingRights
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [KOSK_NOT_FOUND]
+    unavailable: []
+  readingMedreses:
+    from: listMadrasahs
+    unavailable: []
+  granting:
+    from: grantKoskHostingRight
+    madrasahGone: [MADRASAH_NOT_FOUND]
+    koskGone: [KOSK_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+  revoking:
+    from: revokeKoskHostingRight
+    notHeld: [HOSTING_RIGHT_NOT_FOUND]
+    koskGone: [KOSK_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [HTTP_400]
+
+# The main story: the köşk's nazımı opens the page, gives the medrese that is not yet in the table the right from the list, then
+# withdraws it, finds the button off, chooses "Dersler sürsün" and withdraws.
+main:
+  given: { read: ok, before: none, tabs: shown, options: some, courses: some, rest: none, answer: done }
+  events: [DONE, DONE, OPEN_GRANT, OPEN_LIST, PICK_MADRASAH, SUBMIT, DONE, OPEN_REVOKE, CHOOSE_KEEP, SUBMIT, DONE]
+
+initial: reading
+states:
+  reading:
+    title: The page reads the rights
+    description: >-
+      The server component reads GET /kosks/:id/hosting-rights, the köşk, the köşk's nazımları and the open medreses together
+      (page.tsx:33); loading.tsx draws a skeleton meanwhile (aria-busy) and nothing is drawn here. The read of the rights decides the
+      page: a 404 is `notFound()` and a 403 is `forbidden()`, both drawn as "Bu bölüm için izniniz yok" (the same words on purpose, so the
+      page never tells which köşks exist); any other failure leaves the rights `null` and the page draws its own error box.
+    source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:33"
+    invoke: { action: listKoskHostingRights }
+    on:
+      DONE: { guard: "read == 'ok'", target: readingMedreses, source: "apps/nizam/features/hosting/reads.ts:16", say: "the rights are read" }
+      FAIL.forbidden: { guard: "read == 'forbidden'", target: forbidden, source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:41", say: "the person manages no right of this köşk: forbidden() draws the no-access screen" }
+      FAIL.missing: { guard: "read == 'missing'", target: not_found, source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:40", say: "there is no such köşk: notFound() draws the same screen" }
+      FAIL.unavailable: { guard: "read == 'failed'", target: readingMedreses, source: "apps/nizam/features/hosting/reads.ts:29", say: "any other failure is logged and the rights are `null`: the page goes on and draws its error box" }
+
+  readingMedreses:
+    title: The page reads the open medreses
+    description: >-
+      The list the grant window chooses from: GET /madrasahs, 50 a page, every page, so that the köşks that hold a right cannot push a
+      medrese out of the list (reads.ts:34-60; HOST-3). A page that fails makes the whole list `null` and the window says so
+      (`options: failed`, HOST-5). The medreses that already hold a right are taken out of the list in the browser (`grantable`).
+    source: apps/nizam/features/hosting/reads.ts:43
+    invoke: { action: listMadrasahs }
+    on:
+      DONE: { guard: "options != 'failed'", target: settled, source: apps/nizam/features/hosting/reads.ts:56, say: "the list is read, with or without a medrese to choose" }
+      FAIL.unavailable: { guard: "options == 'failed'", target: settled, source: apps/nizam/features/hosting/reads.ts:60, say: "a page of the list fails: the window will say so" }
+
+  settled:
+    title: What the page draws
+    description: >-
+      Not a screen: the rights are `null` (the error box), empty (one row that says "Henüz barındırma hakkı yok") or a table of rows.
+    source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:47"
+    always:
+      - { guard: "read == 'failed'", target: readFailed, source: apps/nizam/features/hosting/components/hosting-view.tsx:202, say: "the rights could not be read: an error box with 'Yeniden dene'" }
+      - { guard: "before == 'some'", target: listed, effect: [held], source: apps/nizam/features/hosting/components/hosting-view.tsx:211, say: "the table lists the rights the köşk holds, oldest first" }
+      - { target: listed, source: apps/nizam/features/hosting/components/hosting-view.tsx:216, say: "the table holds one row: 'Henüz barındırma hakkı yok'" }
+
+  readFailed:
+    title: The rights could not be read
+    by: human
+    description: >-
+      An error box in place of the table: "Barındırma hakları yüklenemedi" with "Yeniden dene", which reads the page again
+      (`router.refresh()`). The heading, the crumbs and the tabs stay. The header button "Barındırma hakkı ver" is on the page too and opens
+      the same window (not drawn from here: the window would have to return to this state). For a Medaris nazımı holding only
+      platform.kosk_edit the management view meets the same box where it should say they may not (F-W3-4, nizam.kosks.manage).
+    source: apps/nizam/features/hosting/components/hosting-view.tsx:202
+    on:
+      RETRY: { target: reading, source: apps/nizam/features/hosting/components/hosting-view.tsx:205, say: "they press 'Yeniden dene': the page reads everything again" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  listed:
+    title: Barındırma hakları
+    by: human
+    description: >-
+      The page: the heading and the sentence that says the right gives the medrese no power over the köşk, "Barındırma hakkı ver" in the
+      header, the table (medrese with its başmüderris, who gave the right and in what role, the date, the number of open courses with
+      "1 yayında · 1 taslak", and "Barındırma hakkını geri al" on each row), and the footnote that says what a withdrawal leaves. Nothing
+      moves the focus when it opens (`focus-not-set`). A toast from the last call stands over it. The title and the h1 name no köşk
+      (F-W3-9). The settings tabs are links to the köşk's other pages and are not drawn when a Medaris nazımı holds only
+      platform.hosting_grant.
+    source: apps/nizam/features/hosting/components/hosting-view.tsx:157
+    on:
+      OPEN_GRANT:
+        - { guard: "options == 'some'", target: grantForm, effect: [openedGrant], source: apps/nizam/features/hosting/components/hosting-view.tsx:173, say: "they press 'Barındırma hakkı ver': the window opens with a list to choose from" }
+        - { guard: "options == 'none'", target: grantNone, effect: [openedGrant], source: apps/nizam/features/hosting/components/grant-dialog.tsx:101, say: "the window opens and says there is no other medrese to give the right to" }
+        - { target: grantFailed, effect: [openedGrant], source: apps/nizam/features/hosting/components/grant-dialog.tsx:97, say: "the window opens and says the list of medreses could not be read" }
+      OPEN_REVOKE:
+        - { guard: "table == 'listed' and courses == 'some'", target: revokeAsk, effect: [openedRevoke], source: apps/nizam/features/hosting/components/hosting-view.tsx:146, say: "they press 'Barındırma hakkını geri al' on a row: the window opens, lists the open courses and asks" }
+        - { guard: "table == 'listed'", target: revokeNoCourses, effect: [openedRevoke], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:192, say: "they press it on a row with no open course: the window says there is nothing to choose" }
+      NAVIGATE: { target: left, say: "they leave the page: a tab, a crumb or the menu" }
+
+  grantForm:
+    title: Barındırma hakkı ver, nothing chosen
+    by: human
+    description: >-
+      A window over the page; the scrim does not close it. Its first focus is the close icon, not the list (HOST-6: no `initialFocus` is
+      passed, so Base UI's default, the first thing it can focus, applies; from the code). One field, "Medrese", a select that shows
+      "Bir medrese seçin" and holds the open medreses that hold no right, each as "{name} (@{handle})". "Barındırma hakkı ver" is natively
+      disabled until one is chosen, and nothing says why (F-W3-1).
+    source: apps/nizam/features/hosting/components/grant-dialog.tsx:76
+    on:
+      OPEN_LIST: { target: choosing, source: libs/ui/src/mds/select.tsx:61, say: "they open the list" }
+      CANCEL: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Vazgeç or the close icon: the window closes and nothing is given; the focus goes back to 'Barındırma hakkı ver'" }
+      ESCAPE: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Escape does the same" }
+
+  choosing:
+    title: The list of medreses is open
+    by: human
+    description: >-
+      The kit's Select popup, above the window (z-index 61): a listbox with no name of its own and one option per medrese. Base UI's
+      select is modal, so the rest of the window may be taken out of the accessibility tree while it is open: not verified in a browser.
+      Escape closes the list only.
+    source: libs/ui/src/mds/select.tsx:72
+    on:
+      PICK_MADRASAH: { target: grantReady, effect: [pickedOne], source: apps/nizam/features/hosting/components/grant-dialog.tsx:111, say: "they choose a medrese: the list closes, the select shows it, the button comes on" }
+      CLOSE_LIST:
+        - { guard: picked, target: grantReady, source: libs/ui/src/mds/select.tsx:72, say: "Escape: the list closes and the earlier choice stands" }
+        - { target: grantForm, source: libs/ui/src/mds/select.tsx:72, say: "Escape: the list closes with nothing chosen" }
+      OPEN_LIST:
+        - { guard: picked, target: grantReady, source: libs/ui/src/mds/select.tsx:61, say: "they press the select again: Base UI leaves the trigger outside the list's backdrop and its press toggles the list shut; the earlier choice stands" }
+        - { target: grantForm, source: libs/ui/src/mds/select.tsx:61, say: "they press the select again: the list closes with nothing chosen" }
+
+  grantReady:
+    title: Barındırma hakkı ver, a medrese chosen
+    by: human
+    description: The same window with the medrese chosen and the button on. A refused call returns here with a toast, and the window stays open.
+    source: apps/nizam/features/hosting/components/grant-dialog.tsx:90
+    on:
+      OPEN_LIST: { target: choosing, source: libs/ui/src/mds/select.tsx:61, say: "they open the list to choose another" }
+      SUBMIT: { target: granting, effect: [clearToast], source: apps/nizam/features/hosting/components/grant-dialog.tsx:50, say: "they press 'Barındırma hakkı ver'" }
+      CANCEL: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Vazgeç or the close icon: nothing is given" }
+      ESCAPE: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Escape: nothing is given" }
+
+  grantNone:
+    title: Barındırma hakkı ver, no medrese to choose
+    by: human
+    description: >-
+      Every open medrese holds a right already: the window says "Barındırma hakkı verilebilecek başka medrese yok." in place of the select,
+      and the button stays off. The list is read when the page loads, so a medrese opened after that is not offered before a reload.
+    source: apps/nizam/features/hosting/components/grant-dialog.tsx:101
+    on:
+      CANCEL: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Vazgeç or the close icon" }
+      ESCAPE: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Escape" }
+
+  grantFailed:
+    title: Barındırma hakkı ver, the list could not be read
+    by: human
+    description: >-
+      An error box in the window, "Medreseler yüklenemedi", with no button to try again: the list is read once, by the page, so closing
+      and opening the window does not read it again; only a reload does (HOST-5). The button stays off.
+    source: apps/nizam/features/hosting/components/grant-dialog.tsx:97
+    on:
+      CANCEL: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Vazgeç or the close icon" }
+      ESCAPE: { target: listed, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Escape" }
+
+  granting:
+    title: Give the right
+    description: >-
+      The server action grantHostingRight, POST /kosks/:id/hosting-rights with the medrese's id: idempotent (a medrese that holds the right
+      gets the same answer and no second audit row), written to the audit log with the role the caller acted as. The select is disabled
+      and the button busy; "Vazgeç", the close icon and Escape stay on and do nothing (HOST-2).
+    source: apps/nizam/features/hosting/components/grant-dialog.tsx:55
+    invoke: { action: grantKoskHostingRight }
+    on:
+      CANCEL: { target: granting, source: apps/nizam/features/hosting/components/grant-dialog.tsx:78, say: "Vazgeç or the close icon: nothing happens, the call goes on (HOST-2)" }
+      DONE: { guard: "answer == 'done'", target: listed, effect: [granted], source: apps/nizam/features/hosting/components/grant-dialog.tsx:65, say: "a toast says the medrese may open courses here, the window closes, the page is read again and the table has the new row; the focus goes back to 'Barındırma hakkı ver'" }
+      FAIL.madrasahGone: { guard: "answer == 'madrasahGone'", target: grantReady, effect: [grantMadrasahGone], source: apps/nizam/features/hosting/components/grant-dialog.tsx:59, say: "a toast 'Barındırma hakkı verilemedi' says the medrese is gone or hidden; the window stays open and the list is not read again (HOST-4)" }
+      FAIL.koskGone: { guard: "answer == 'koskGone'", target: grantReady, effect: [grantKoskGone], source: apps/nizam/features/hosting/components/grant-dialog.tsx:59, say: "the toast says the köşk is gone; the window stays open" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: grantReady, effect: [grantForbidden], source: apps/nizam/features/hosting/components/grant-dialog.tsx:59, say: "the toast says they may not do this; the window stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: grantReady, effect: [grantFailed], source: apps/nizam/features/hosting/components/grant-dialog.tsx:59, say: "the toast says something went wrong, try again; the window stays open" }
+
+  revokeAsk:
+    title: Barındırma hakkını geri al, no answer chosen
+    by: human
+    description: >-
+      A window over the page; the scrim does not close it. It names the medrese over its title, says the medrese cannot open new courses
+      in the köşk and that its open courses are not closed, lists them (title, talebe, imam, "Yayında" or "Taslak") and asks what becomes of
+      them: "Dersler sürsün" (KEEP) or "Dersleri gizle" (HIDE), both unchecked. The first focus is "Vazgeç". "Barındırma hakkını geri al" is
+      natively disabled until an answer is chosen, and nothing says why (F-W3-1); the footer says the choice is written to the audit log.
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95
+    on:
+      CHOOSE_KEEP: { target: revokeReady, effect: [choseKeep], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:166, say: "they choose 'Dersler sürsün': the courses stay as they are and talebe see no change" }
+      CHOOSE_HIDE: { target: revokeReady, effect: [choseHide], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:166, say: "they choose 'Dersleri gizle': the courses leave the lists, nothing is deleted, the Arşiv brings them back" }
+      CANCEL: { target: listed, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Vazgeç or the close icon: the window closes and the right stays; the focus goes back to the row's button" }
+      ESCAPE: { target: listed, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Escape does the same: nothing is withdrawn" }
+
+  revokeReady:
+    title: Barındırma hakkını geri al, an answer chosen
+    by: human
+    description: The same window with an answer chosen and the button on. A refused call returns here with a toast, and the window stays open.
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:114
+    on:
+      CHOOSE_KEEP: { target: revokeReady, effect: [choseKeep], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:166, say: "they change the answer to 'Dersler sürsün'" }
+      CHOOSE_HIDE: { target: revokeReady, effect: [choseHide], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:166, say: "they change the answer to 'Dersleri gizle'" }
+      SUBMIT: { target: revoking, effect: [clearToast], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:72, say: "they press 'Barındırma hakkını geri al'" }
+      CANCEL: { target: listed, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Vazgeç or the close icon: nothing is withdrawn" }
+      ESCAPE: { target: listed, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Escape: nothing is withdrawn" }
+
+  revokeNoCourses:
+    title: Barındırma hakkını geri al, no open course
+    by: human
+    description: >-
+      The medrese has no open course here, so the window asks nothing: "Medresenin bu köşkte açık dersi yok.", the caption "Seçilecek bir
+      şey yok: hak geri alınınca medrese bu köşkte yeni ders açamaz." and the button on at once; it sends KEEP, which has nothing to keep.
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:192
+    on:
+      SUBMIT: { target: revoking, effect: [clearToast], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:72, say: "they press 'Barındırma hakkını geri al'" }
+      CANCEL: { target: listed, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Vazgeç or the close icon: nothing is withdrawn" }
+      ESCAPE: { target: listed, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Escape: nothing is withdrawn" }
+
+  revoking:
+    title: Withdraw the right
+    description: >-
+      The server action revokeHostingRight, DELETE /kosks/:id/hosting-rights/:madrasahId?coursesAction=KEEP|HIDE. The right stays as history
+      (revoked_at is set). KEEP leaves the medrese's courses in the köşk as they are; HIDE hides every one that is not hidden, drafts
+      included, at the level the caller acts at (the köşk's nazımı at the köşk's, the başnazım at the platform's, so the medrese's own
+      başmüderris cannot bring them back). One transaction with the audit row. The radios are disabled and the button busy; "Vazgeç", the
+      close icon and Escape stay on and do nothing (HOST-2).
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:77
+    invoke: { action: revokeKoskHostingRight }
+    on:
+      CANCEL: { target: revoking, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98, say: "Vazgeç or the close icon: nothing happens, the call goes on (HOST-2)" }
+      DONE:
+        - { guard: "answer == 'done' and courses == 'none'", target: afterRevoke, effect: [revokedNoCourses], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87, say: "the right is withdrawn; there was nothing to decide" }
+        - { guard: "answer == 'done' and choice == 'keep'", target: afterRevoke, effect: [revokedKept], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87, say: "the right is withdrawn and the courses carry on" }
+        - { guard: "answer == 'done' and choice == 'hide'", target: afterRevoke, effect: [revokedHidden], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87, say: "the right is withdrawn and the courses are hidden (archived)" }
+      FAIL.notHeld:
+        - { guard: "answer == 'notHeld' and courses == 'some'", target: revokeReady, effect: [revokeNotHeld], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "a toast 'Geri alınamadı' says the medrese holds no right here (someone withdrew it first); the window stays open and the table is not read again (HOST-4)" }
+        - { guard: "answer == 'notHeld'", target: revokeNoCourses, effect: [revokeNotHeld], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "the same toast; the window stays open" }
+      FAIL.koskGone:
+        - { guard: "answer == 'koskGone' and courses == 'some'", target: revokeReady, effect: [revokeKoskGone], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "the toast says the köşk is gone; the window stays open" }
+        - { guard: "answer == 'koskGone'", target: revokeNoCourses, effect: [revokeKoskGone], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "the same toast; the window stays open" }
+      FAIL.forbidden:
+        - { guard: "answer == 'forbidden' and courses == 'some'", target: revokeReady, effect: [revokeForbidden], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "the toast says they may not do this; the window stays open" }
+        - { guard: "answer == 'forbidden'", target: revokeNoCourses, effect: [revokeForbidden], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "the same toast; the window stays open" }
+      FAIL.failed:
+        - { guard: "answer == 'failed' and courses == 'some'", target: revokeReady, effect: [revokeFailed], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "the toast says something went wrong, try again; the window stays open" }
+        - { guard: "answer == 'failed'", target: revokeNoCourses, effect: [revokeFailed], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81, say: "the same toast; the window stays open" }
+
+  afterRevoke:
+    title: The page is read again
+    description: >-
+      Not a screen: a toast says the medrese cannot open new courses here, the window closes and `router.refresh()` reads the rights again
+      (hosting-view.tsx:68, revoke-dialog.tsx:90). The row whose button opened the window is gone, so the focus Base UI gives back has
+      nowhere to land (HOST-1). Where it was the last right the table holds the one row "Henüz barındırma hakkı yok".
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:90
+    always:
+      - { guard: "rest == 'none'", target: listed, effect: [lastGone], source: apps/nizam/features/hosting/components/hosting-view.tsx:216, say: "no right is left: the table says so" }
+      - { target: listed, source: apps/nizam/features/hosting/components/hosting-view.tsx:211, say: "the other rights stay in the table" }
+
+  forbidden:
+    type: final
+    title: The person may not manage this köşk's rights
+    description: >-
+      forbidden() draws "Bu bölüm için izniniz yok" in the shell (app/forbidden.tsx, components/errors/no-access.tsx), the same words as for a
+      köşk that is not there; nizam.shell.noAccessAndNotFound draws that screen. The address does not change.
+
+  not_found:
+    type: final
+    title: There is no such köşk
+    description: >-
+      notFound() draws the same "Bu bölüm için izniniz yok" (app/not-found.tsx), so a person cannot tell a köşk that is not theirs from one that
+      is not there; nizam.shell.noAccessAndNotFound draws it.
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: a-right-needs-a-medrese, never: "state == 'granting' and not picked", say: "No right is given before a medrese is chosen", source: apps/nizam/features/hosting/components/grant-dialog.tsx:90 }
+  - { id: open-courses-need-an-answer, never: "state == 'revoking' and courses == 'some' and choice == 'none'", say: "A right with open courses is never withdrawn before the person says what becomes of them", source: apps/nizam/features/hosting/present.ts:99 }
+  - { id: only-a-listed-right-is-withdrawn, never: "state == 'revoking' and table != 'listed'", say: "A withdrawal is only sent from a row of the table", source: apps/nizam/features/hosting/components/hosting-view.tsx:146 }

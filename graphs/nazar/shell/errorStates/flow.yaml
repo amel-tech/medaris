@@ -1,0 +1,263 @@
+# The faces nazar-web draws when something breaks, and how a person gets back from each: "Görevleriniz okunamadı" (the roles could
+# not be read), a page's own "... okunamadı" under the shell, "Sayfa bulunamadı", "Sayfa açılamadı" and the root error document.
+# Read from the code of PR #394 (apps/nazar/app/{not-found,error,global-error,page,loading}.tsx, features/shell/components/{load-failed,
+# page-problem,portal-layout}.tsx, lib/tedrisat-read.ts, libs/ui/src/mds/system-state.tsx) on 15 Nov 2026. It says what the code does:
+#   - A read that fails with anything but a 401 is a retry state, never a verdict. The roles read (GET /me/assignments) is the
+#     gate of every page, so its face replaces the whole page, shell included (`PortalUnavailable`); a page's own read is
+#     drawn under the page's heading, inside the shell, with a second <h1> (F-L-16).
+#   - There is one not-found file and one error file, both at the root. A `notFound()` thrown by a layout or by a page, and a
+#     route no page owns, all end in that root file, which replaces everything below the root layout: the shell is never
+#     drawn around a 404 (F-L-15, read in Next 16.4.2 and seen in the served HTML on 15 Nov 2026, not in a browser).
+#   - Findings it carries (inventory ids): F-L-13 (checked: not a finding), F-L-15 (answered), F-L-16, F-E-15, F-E-23. Five more
+#     are this flow's own, proposed as ERR-1 to ERR-5 (ui.yaml `rules`).
+#   - e2e checks it takes over: access#6 (the 404 half: a1 and a3 by scenario; a2 and a4 draw the same page at another address)
+#     and auth-pages#4 (a2; a1 is an HTTP status, which the replay does not read); see needs.yaml.
+schema: delurio-graph/0
+kind: flow
+id: nazar.shell.errorStates
+status: captured
+domain: medaris.api
+ui: nazar.shell.errorStates
+title: Meet a failed read, a 404 and a render error
+summary: >-
+  When the portal cannot read who the person is (the read of their roles fails with anything but a 401), the whole page is
+  "Görevleriniz okunamadı", one sentence and "Yeniden dene": no sidebar, no menu and no other link. Pressing it reads again;
+  at the root address the person is then sent on to their scope. When a page's own read fails instead, the shell stays and a
+  second box, "<page> okunamadı", with the same button, sits under the page's heading, so the page has two <h1>. A route that
+  is not there, a medrese or course that is not the person's, and a section that does not exist in the person's own scope are
+  one page in the same words, "Sayfa bulunamadı" with "Ana sayfaya dön", drawn without the shell; a signed-out person can
+  reach it only under /auth/. A page that throws while it renders is "Sayfa açılamadı" with "Yeniden dene", and a root layout
+  that throws is a document of its own with "Bir şeyler ters gitti". None of these faces sets focus, takes a role="alert" or
+  names its tab (F-E-15, F-E-23).
+
+scope:
+  shows: what the person meets when a read fails, an address gives nothing, or a page throws, and the way back from each face
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the loading skeleton that app/loading.tsx draws while the roles are read: a transient screen of every page, never a state of its own; the shell it imitates is nazar.shell.scopeAndMenu's"
+    - "the sidebar's content (scope picker, menu entries, person row) and the phone bar: drawn here only as the frame that tells inside the shell from outside it (nazar.shell.scopeAndMenu)"
+    - "the no-access page, and the forbidden alert a page draws for a person who may not read it (nazar.access.noAccess, nazar.access.medreseNazirRefused): a refusal is not a failed read"
+    - "a signed-out request for any address but /auth/...: the proxy sends it to sign in before any page runs (realm.auth.signIn; auth-pages#1)"
+    - "the HTTP status of each face: 404 for a route no page owns, 200 for a scope or section that is not the person's (seen in `next dev`, ERR-3); the replay does not read a navigation's status"
+    - "the failed-read box of every other page (each carries its own title and sentence from its own catalog): İtirazlar stands for them all, and the box is the same component"
+    - "the causes that make the roles face appear at /erisim-yok, at a scoped address or for the başnazım's own medrese or course read: the face is the same, only the address differs"
+    - "the phone layout: below 768 px the shell is the app bar and its sheet; the faces themselves do not change"
+    - "what makes a page or the root layout throw: nothing in the stack's nazar-web does, so the render-error faces are drawn from the code and not walked"
+
+decisions:
+  D1:
+    question: >-
+      Should the 404 of a section of the person's own scope keep the shell around it (F-L-15)? Today the one root not-found
+      file answers every case, so the person loses the menu and has only "Ana sayfaya dön".
+    recommend: >-
+      Leave it: the same markup for a foreign scope and an unknown section is what keeps a person from telling which ids exist,
+      and a menu around one case and not the other would tell them. If the menu is wanted, add a not-found file under
+      app/medrese/[medreseId] and app/ders/[dersId] and draw the shell in both cases of the same scope.
+    affects: [notFound]
+  D2:
+    question: >-
+      Should the face that says "Görevleriniz okunamadı" offer a way out beside "Yeniden dene" (ERR-4)? It has no link at all:
+      no "Çıkış yap", no way to Tedris, and no sidebar.
+    recommend: >-
+      Yes, as the no-access page already does (MDRS-248: a person signed in with the wrong account is not stuck): add "Çıkış yap"
+      and the link to Tedris to LoadFailed when it is not `shell`.
+    affects: [rolesUnreadable]
+
+context:
+  arrival:
+    values: [rolesUnreadable, readFailed, unknownAddress, foreignScope, unknownSection, visitorAuthAddress, pageThrows, layoutThrows]
+    initial: any
+    say:
+      rolesUnreadable: "the person is signed in and the read of their roles fails with something other than a 401 (a 5xx, a refusal other than 401, or no answer)"
+      readFailed: "the roles are read, and the page's own read fails the same way (the page here is İtirazlar)"
+      unknownAddress: "a signed-in person asks for an address no page owns (a typed or an old link)"
+      foreignScope: "a signed-in person asks for a medrese or a course that is not theirs, or that is not there"
+      unknownSection: "a signed-in person asks, in a scope that is theirs, for a section that does not exist (a typo, a menu entry of the other kind of scope)"
+      visitorAuthAddress: "a signed-out person asks for an address under /auth/ that no page owns (the one subtree the proxy lets through)"
+      pageThrows: "a page throws while it renders, below the root layout"
+      layoutThrows: "the root layout itself throws"
+  recovery:
+    values: [gone, stays]
+    initial: any
+    say:
+      gone: "whatever made the read or the page fail is over by the time they press \"Yeniden dene\""
+      stays: "it is still there when they press it"
+
+# The story the page tells first, and the one the e2e checks carry: a section that does not exist in the person's own medrese,
+# and the way back from it (access#6, a3).
+main:
+  given: { arrival: unknownSection, recovery: gone }
+  events: [GO_HOME]
+
+initial: opening
+
+states:
+  opening:
+    title: Ask for the address
+    description: >-
+      The request goes through proxy.ts first: a signed-out request for anything but /auth/... is sent to sign in before any page
+      runs, so a signed-out person meets only the 404 of an /auth/ address. Next then renders the root layout, which reads the
+      session, and below it the portal's layout, which reads the roles (GET /me/assignments), and the page, which reads its own
+      data. What is drawn is decided by what fails: the root layout throws (the root error document), the roles read fails (the
+      roles face), the page's own read fails (the box under its heading), a page throws (the root error page), or the address
+      gives nothing (the 404 page). While the roles are read the root loading.tsx draws a skeleton of the shell; it is out of
+      view. Nothing is shown in this state.
+    source: apps/nazar/proxy.ts:16
+    always:
+      - { guard: "arrival == 'layoutThrows'", target: shellErrorShown, say: "the root layout threw, so Next draws the document of global-error.tsx", source: apps/nazar/app/global-error.tsx:19 }
+      - { guard: "arrival == 'rolesUnreadable'", target: rolesUnreadable, say: "getPortal answers unavailable and the layout, or the page at the root address, draws PortalUnavailable", source: apps/nazar/features/shell/components/portal-layout.tsx:67 }
+      - { guard: "arrival == 'readFailed'", target: readFailed, say: "the page's read answers failed and the page draws PageProblem", source: apps/nazar/features/shell/components/page-problem.tsx:31 }
+      - { guard: "arrival == 'pageThrows'", target: errorShown, say: "the page threw, and the root's error boundary replaces everything below the root layout", source: apps/nazar/app/error.tsx:13 }
+      - { target: notFound, say: "no page owns the address, or a layout or a page called notFound(): the root not-found file answers all of them", source: apps/nazar/app/not-found.tsx:10 }
+
+  rolesUnreadable:
+    title: Read that the roles could not be read
+    by: human
+    description: >-
+      The page is "Görevleriniz okunamadı", the sentence "Görevleriniz şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+      and one button, "Yeniden dene", in a <main> named by its heading. It is drawn by `PortalUnavailable` at the root address,
+      at /erisim-yok and from the portal's layout for every page with a menu (and for the başnazım's own medrese or course read
+      when that read fails), so there is no sidebar, no menu and no other control: the person cannot sign out or leave from here
+      (ERR-4, decision D2). It is never worded as "no access" (nazar 02, criterion 5). The button is busy while the retry runs
+      (aria-busy, and a hidden "Yükleniyor" that is the button's own default word, not the catalog's), and never `disabled`, so
+      the focus stays on it. The tab keeps the app's name at the root address; only /erisim-yok names it "Görevleriniz okunamadı"
+      (ERR-5). The face has no role="alert" and takes no focus (F-E-15; the route announcer is not verified). Seen in no browser:
+      nothing in the stack makes the roles read fail by itself (binding.yaml makes it by spending the account's request budget
+      on that route).
+    includes: ["a <main> and an <h1>, with no shell", "\"Yeniden dene\""]
+    source: apps/nazar/features/shell/components/load-failed.tsx:28
+    on:
+      RETRY: { target: loadRetrying, say: "\"Yeniden dene\" asks Next to render the page again on the server", source: apps/nazar/features/shell/components/load-failed.tsx:36 }
+      NAVIGATE: { target: left, say: "they use the address bar: the page has no link", source: apps/nazar/features/shell/components/load-failed.tsx:28 }
+
+  readFailed:
+    title: Read that the page could not be read, with the shell around it
+    by: human
+    description: >-
+      The roles were read, so the shell is there: the sidebar with its menu, and the shell's <main>. The page draws its own
+      heading first ("İtirazlar"), and in place of its body a <section> named by a second <h1> ("İtirazlar okunamadı"), the
+      sentence of that page and the same "Yeniden dene". Both headings are level 1, because LoadFailed does not pass
+      headingLevel when it sits inside the shell, so every medrese and course page has two <h1> in this state (F-L-16, read
+      from the code, not seen). A refusal (403) is another thing: it is a neutral alert, "Bu sayfaya izniniz yok", and a 404 is
+      the 404 page. No role="alert", no focus (F-E-15). Not seen in a browser: it needs a read that fails, which the stack's
+      tedrisat does not do by itself.
+    includes: ["the shell's sidebar and menu", "two <h1>", "\"Yeniden dene\""]
+    source: apps/nazar/features/shell/components/page-problem.tsx:31
+    on:
+      RETRY: { target: loadRetrying, say: "\"Yeniden dene\" asks Next to render the page again on the server", source: apps/nazar/features/shell/components/load-failed.tsx:36 }
+      NAVIGATE: { target: left, say: "they use the menu, the picker or the address", source: apps/nazar/features/shell/components/portal-frame.tsx:89 }
+
+  notFound:
+    title: Read that the page is not there
+    by: human
+    goal: true
+    description: >-
+      "Sayfa bulunamadı", "Aradığınız sayfa taşınmış, kaldırılmış ya da görev alanınızın dışında olabilir." and one link,
+      "Ana sayfaya dön" (/), in a <main> named by its heading, and nothing else: no sidebar and no menu. The same words answer a
+      route no page owns, a medrese or course that is not the person's, a section that does not exist, and a read that answered
+      404, so the page never says which ids exist. Where the 404 is thrown does not matter: a layout's `notFound()`
+      (PortalLayout) and a page's (the [bolum] pages, a 404 of a page's read) both end in the root not-found file, the only one
+      the app has, and it replaces everything below the root layout, the shell included (F-L-15). Seen in the served HTML in
+      `next dev` as the başmüderris: an unknown route answers 404 with this page and no shell markup; a foreign scope and an unknown
+      section answer 200 with `noindex`, the root loading skeleton in the HTML and the 404 digest (NEXT_HTTP_ERROR_FALLBACK) in the
+      stream, so the page is drawn by the client (ERR-3), and neither streams the shell's navigation. The final page was not seen in
+      a browser. The tab says "Medaris Nazar" (F-E-23), or, for a
+      foreign medrese or course, the title of the page that was asked for ("Pano · Medaris Nazar", "Genel bakış · Medaris
+      Nazar"; ERR-2). A signed-out person gets it only at /auth/<unknown>, with a real 404 (auth-pages#4).
+    includes: ["a <main> and an <h1>, with no shell", "\"Ana sayfaya dön\""]
+    source: apps/nazar/app/not-found.tsx:14
+    on:
+      GO_HOME:
+        - { guard: "arrival == 'visitorAuthAddress'", target: sign_in_opened, say: "\"Ana sayfaya dön\" is /, which the proxy sends a signed-out person to sign in from", source: apps/nazar/proxy.ts:16 }
+        - { target: scope_opened, say: "\"Ana sayfaya dön\" is /, which sends a signed-in person to the scope they last used, or their first medrese, or to the no-access page", source: apps/nazar/app/page.tsx:13 }
+      NAVIGATE: { target: left, say: "they use the address bar: the page has no other link", source: apps/nazar/app/not-found.tsx:14 }
+
+  errorShown:
+    title: Read that the page could not be opened
+    by: human
+    description: >-
+      "Sayfa açılamadı", "Sayfa açılırken bir sorun çıktı. Yeniden deneyin; sürerse birkaç dakika sonra tekrar bakın." and
+      "Yeniden dene", in a <main> named by its heading. The boundary is the root's, so it replaces the portal's layout and the
+      shell with it: no sidebar. The error itself is never shown; it goes to the console only. The button calls Next's `retry`
+      (checked in Next 16.4.2: the prop exists, F-L-13), which re-renders the segment from the server; it passes no `loading`,
+      so there is no busy mark and nothing is announced while it runs (ERR-1). No role="alert", no focus (F-E-15); the tab keeps
+      the app's name (F-E-23). Not seen: nothing in the stack's nazar-web throws while it renders.
+    includes: ["a <main> and an <h1>, with no shell", "\"Yeniden dene\""]
+    source: apps/nazar/app/error.tsx:27
+    on:
+      RETRY: { target: nextRetrying, say: "\"Yeniden dene\" calls Next's retry, which reads the segment from the server again", source: apps/nazar/app/error.tsx:31 }
+      NAVIGATE: { target: left, say: "they use the address bar: the page has no link", source: apps/nazar/app/error.tsx:27 }
+
+  shellErrorShown:
+    title: Read that the app could not start
+    by: human
+    description: >-
+      A document of its own, <html lang="tr" dir="ltr">, with no providers and no shell: "Bir şeyler ters gitti", "Sunucuya
+      ulaşılamadı. İnternet bağlantınızı denetleyip yeniden deneyin." and "Yeniden dene", in a <main> named by its heading. The
+      words are `common.globalError`, read without next-intl, and it is always Turkish and left to right. It follows the saved
+      theme through ThemeScript. The button calls Next's `retry`, which asks the server for the root layout again; it has no busy
+      mark either (ERR-1). Not seen: nothing in the stack makes the root layout throw; unit test global-error.spec.tsx covers the
+      markup.
+    includes: ["a document of its own with a <main> and an <h1>", "\"Yeniden dene\""]
+    source: apps/nazar/app/global-error.tsx:40
+    on:
+      RETRY: { target: nextRetrying, say: "\"Yeniden dene\" calls Next's retry, which asks the server for the root layout again", source: apps/nazar/app/global-error.tsx:44 }
+      NAVIGATE: { target: left, say: "they use the address bar: the document has no link", source: apps/nazar/app/global-error.tsx:40 }
+
+  loadRetrying:
+    title: Read again what failed
+    description: >-
+      The button calls router.refresh() inside a transition, so Next renders the page again on the server and swaps it in. The
+      button is busy until the new page arrives (aria-busy and the hidden "Yükleniyor"). If the read now works, the roles face is
+      replaced by what the address gives: the page at a scoped address, or, at the root address, the redirect to the person's
+      scope; if the read still fails, the same face is drawn again and nothing says that a retry was made. Nothing is checked in
+      this state: it is over in one render.
+    source: apps/nazar/features/shell/components/load-failed.tsx:36
+    always:
+      - { guard: "recovery == 'gone' and arrival == 'rolesUnreadable'", target: scope_opened, say: "the roles read works now and / redirects to the person's scope", source: apps/nazar/app/page.tsx:16 }
+      - { guard: "recovery == 'gone'", target: page_shown, say: "the page's read works now and the page the person asked for is drawn", source: apps/nazar/features/appeals/components/appeals-page.tsx:38 }
+      - { guard: "arrival == 'rolesUnreadable'", target: rolesUnreadable, say: "the roles read fails again and the same face is drawn", source: apps/nazar/features/shell/reads.ts:65 }
+      - { target: readFailed, say: "the page's read fails again and the same box is drawn", source: apps/nazar/lib/tedrisat-read.ts:49 }
+
+  nextRetrying:
+    title: Render the segment again
+    description: >-
+      Next's `retry` re-renders the boundary's segment (or the root layout) from the server inside a transition. If what threw is
+      over, the page the person asked for is drawn; if not, the same error face is drawn again, with nothing to say a retry was
+      made and no busy mark while it ran (ERR-1). Nothing is checked in this state.
+    source: apps/nazar/app/error.tsx:31
+    always:
+      - { guard: "recovery == 'gone'", target: page_shown, say: "the page or the layout renders now and the page the person asked for is drawn", source: apps/nazar/app/error.tsx:31 }
+      - { guard: "arrival == 'layoutThrows'", target: shellErrorShown, say: "the root layout throws again and the document is drawn again", source: apps/nazar/app/global-error.tsx:44 }
+      - { target: errorShown, say: "the page throws again and the error page is drawn again", source: apps/nazar/app/error.tsx:13 }
+
+  page_shown:
+    type: final
+    title: The page the person asked for is drawn
+    description: "After a retry the address gives its page, with the shell, under its own heading."
+  scope_opened:
+    type: final
+    title: "/ sends the person on to their scope (nazar.access.landingScope), or to the no-access page (nazar.access.noAccess)"
+    leavesPage: true
+  sign_in_opened:
+    type: final
+    title: "Keycloak's sign-in opens (realm.auth.signIn)"
+    leavesPage: true
+  left:
+    type: final
+    title: The person leaves by the menu or the address
+    leavesPage: true
+
+assertions:
+  - id: a-failed-read-is-not-a-404
+    never: "state == 'notFound' and arrival in ['rolesUnreadable', 'readFailed', 'pageThrows', 'layoutThrows']"
+    say: A read that failed, a page that threw and a layout that threw are never drawn as the page that is not there; only a 404 answer is.
+    source: apps/nazar/lib/tedrisat-read.ts:43
+  - id: a-missing-page-is-not-an-error
+    never: "state in ['rolesUnreadable', 'readFailed', 'errorShown', 'shellErrorShown'] and arrival in ['unknownAddress', 'foreignScope', 'unknownSection', 'visitorAuthAddress']"
+    say: An address that gives nothing is never drawn as a failed read or a thrown page.
+    source: apps/nazar/app/not-found.tsx:10
+  - id: a-signed-out-person-meets-only-the-404
+    never: "arrival == 'visitorAuthAddress' and state in ['rolesUnreadable', 'readFailed', 'errorShown', 'shellErrorShown', 'scope_opened', 'page_shown']"
+    say: A signed-out person sees no state that needs the roles; the 404 of an /auth/ address is the only one the proxy lets through.
+    source: apps/nazar/proxy.ts:36

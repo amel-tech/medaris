@@ -1,0 +1,134 @@
+# nizam.home.chiefOverview on the local stack (graphs/README.md, "The stack and the bindings"): nizam-web on :4001, the seeded başnazım
+# (SYSTEM_ADMIN) signed in through Keycloak's real form and opening "/" (the page the sign-in lands on).
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/home/chiefOverview \
+#     --bind graphs/nizam/home/chiefOverview/binding.yaml --cover transitions --out <dir>
+#
+# Read only, on purpose. The owner's word for this flow is: use the seeded personas read-only, read a count from the seed or by a GET,
+# never create data to make a count. So `setup` runs home-numbers.mjs (this folder), which makes one GET /nizam/dashboard as the
+# başnazım, writes what it read to graphs/.local/chief-home.json (read below as {home.*}) and checks that the stack is in the state
+# the scenario's `given` says. Nothing is created, nothing is removed, so no scenario has a teardown.
+#
+# What the seed gives and what it does not (STACK.md: "Not seeded: köşk applications, appeals, bans, exams, recordings, reviews of
+# hand-ins, partner registrations in nizam"; nothing is passive). Read with GET /nizam/dashboard on 15 Nov 2026 as the başnazım: nothing
+# waits, every list is empty, no scope is passive. Köşk 2, Medrese 1, Ders 3, Kayıtlı talebe 2 (the numbers move when another walk leaves
+# a köşk or a course, which is why they are read, not written here).
+#
+#   seed    the page as the seed makes it: the greeting says nothing waits, the four numbers, four empty cards, no warning. It takes
+#           every link that is drawn on an empty card (the three "Tümünü gör", "Yasaklamalar’a git", "Köşklere git", "Medreselere
+#           git", "Köşk aç") and the reload. This is the main story and the only scenario that can be walked on the seed as it is.
+#   rows    NOT WALKED, and fails at its setup with the missing pieces named until the stack has them: a pending köşk application, a
+#           pending deck publish request, a medrese with no başmüderris, an open ban (e2e dashboard#1 and #2 need exactly these, and
+#           #3 needs the passive medrese healed between two reads). It would take "İncele" on an application, a deck request and a
+#           ban, the passive row's button, the warning, and the reload that drops the warning once the post is filled. Ask: data.
+#   queues  NOT WALKED, the same ask without the passive medrese: the home with no warning and a row in each queue, so that "İncele" is
+#           taken where the warning is absent (the transitions `rows` reaches only in the warned home).
+# Not bound, with the reason: `requests: appealsOnly`, `decks`, `applications`, `passive: kosk | course` and `unlisted: some` each need a
+# row the seed does not make (an appeal, a deck request, a köşk with no manager, a hidden listing); `roles: unreadable` and
+# `dashboard: unreadable` need tedrisat to refuse a read, which the local stack cannot be made to do (no e2e check and no unit spec
+# of the app draws either state). The exits `kosk_application_opened`, `deck_request_opened` and `bans_opened` are reached only by
+# `rows` and `queues`, and `RETRY` and the box's `NAVIGATE` and the bare line's `RELOAD` and `NAVIGATE` by nothing here.
+#
+# Locators. The numbers and the rows are data, so they are found by the page's own hooks (data-testid on the cards and rows, the kit's
+# classes) and, where the words are data, by a pattern. A Stat is two spans, the label then the number, in one card, so the number node
+# is the value span of the card whose label is the node's own, with the expected number from {home.*} spelled in the css (a placeholder
+# inside a /regex/ is NOT filled in, the emitted spec shows it; one inside css or a plain string is). The plural messages (the warning's
+# title and the two notes under a number) are ICU plurals the engine cannot spell, so they are found by their ending.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.home.chiefOverview
+
+data:
+  home: { json: ../.local/chief-home.json }
+
+scenarios:
+  seed:
+    given: { roles: ok, dashboard: ok, requests: none, passive: none, bans: empty, unlisted: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    setup: [{ run: [node, ../nizam/home/chiefOverview/home-numbers.mjs, read, empty], expect: 'chief-home empty' }]
+  # Not walked: the stack holds none of the rows. The setup says which are missing.
+  rows:
+    given: { roles: ok, dashboard: ok, requests: both, passive: madrasah, bans: rows, unlisted: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    setup: [{ run: [node, ../nizam/home/chiefOverview/home-numbers.mjs, read, rows], expect: 'chief-home rows' }]
+  # Not walked: the same three queues with a row each and nothing passive, so "İncele" is taken on the home with no warning. Same ask.
+  queues:
+    given: { roles: ok, dashboard: ok, requests: both, passive: none, bans: rows, unlisted: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    setup: [{ run: [node, ../nizam/home/chiefOverview/home-numbers.mjs, read, queues], expect: 'chief-home queues' }]
+
+events:
+  # no node sends it: the person reloads the tab (e2e dashboard#3)
+  RELOAD: [{ reload: true }]
+  # the person goes to another page of the menu: Bildirimler, which every başnazım may open
+  NAVIGATE: [{ goto: '{nizam}/bildirimler' }]
+  # RETRY (the box that says the home could not be read) is not bound: the stack cannot make tedrisat refuse a read
+
+states:
+  homeClear: { url: '{nizam}/' }
+  homeWarned: { url: '{nizam}/' }
+  # exits with no screen of their own are checked by their address; the pages they are belong to the flows they start
+  kosk_form_opened: { url: '{nizam}/kosks?ac=1' }
+  kosks_opened: { url: '{nizam}/kosks' }
+  madrasahs_opened: { url: '{nizam}/medreseler' }
+  kosk_application_opened: { url: '{nizam}/talepler/kosk-basvurulari?secili=*' }
+  kosk_applications_opened: { url: '{nizam}/talepler/kosk-basvurulari' }
+  deck_request_opened: { url: '{nizam}/talepler/deste-yayin-istekleri?secili=*' }
+  deck_requests_opened: { url: '{nizam}/talepler/deste-yayin-istekleri' }
+  inactive_scopes_opened: { url: '{nizam}/pasif-kapsamlar' }
+  bans_opened: { url: '{nizam}/yasaklamalar' }
+  left: { url: '{nizam}/bildirimler' }
+
+nodes:
+  # the shell's <main>; every page the walk leaves for has one too, so it is found by what only this page says
+  homePage: { role: main, hasText: '/Selâmün aleyküm|Ana sayfa okunamadı|Hoş geldiniz/' }
+  # one <p data-testid="home-greeting"> holds both sentences: the greeting, then how many wait
+  greeting: { testId: home-greeting, hasText: '/^\s*Selâmün aleyküm/' }
+  pendingLine: { testId: home-greeting, hasText: 'Karar bekleyen {home.pending} talep var.' }
+  pendingNoneLine: { testId: home-greeting, hasText: 'Karar bekleyen talep yok.' }
+
+  # the warning: a warning-tone Alert; its title is an ICU plural, its sentence has a test id
+  passiveAlert: { css: '.mds-alert--warning', hasText: '/kapsamın yöneticisi yok/' }
+  passiveAlertBody: { testId: home-passive-alert }
+
+  # the four numbers: found by "<label><number>" in the card, the number read from the dashboard just before the page opens
+  statKosk: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Köşk$/' }
+  statKoskValue: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Köşk")) .mds-stat__value:text-is("{home.kosk}")' }
+  statKoskUnlisted: { css: '[data-testid=home-counts] .mds-stat', hasText: '/^Köşk\d+(Biri|\d+ tanesi) listelenmeyen/' }
+  statMadrasah: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Medrese$/' }
+  statMadrasahValue: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Medrese")) .mds-stat__value:text-is("{home.madrasah}")' }
+  statMadrasahPassive: { css: '[data-testid=home-counts] .mds-stat', hasText: '/^Medrese\d+(Biri|\d+ tanesi) pasif/' }
+  statCourse: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Ders$/' }
+  statCourseValue: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Ders")) .mds-stat__value:text-is("{home.course}")' }
+  statCoursePassive: { css: '[data-testid=home-counts] .mds-stat', hasText: '/^Ders\d+(Biri|\d+ tanesi) pasif/' }
+  statStudents: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Kayıtlı talebe$/' }
+  statStudentsValue: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Kayıtlı talebe")) .mds-stat__value:text-is("{home.students}")' }
+
+  # the cards: each is a <section data-testid>, its rows <li data-testid>; "Tümünü gör" is on three cards, so it is found inside its own
+  applicationsAll: { role: link, name: Tümünü gör, within: { testId: home-applications } }
+  applicationsList: { testId: home-applications-list }
+  applicationRow: { testId: home-application, count: '{home.applications}' }
+  applicationCaption: { css: '[data-testid=home-application] .mds-caption' }
+  applicationReview: { role: link, name: '/^İncele: /', within: { testId: home-applications } }
+
+  decksAll: { role: link, name: Tümünü gör, within: { testId: home-decks } }
+  decksList: { testId: home-decks-list }
+  deckRow: { testId: home-deck, count: '{home.decks}' }
+  deckCaption: { css: '[data-testid=home-deck] .mds-caption' }
+  deckReview: { role: link, name: '/^İncele: /', within: { testId: home-decks } }
+
+  passiveAll: { role: link, name: Tümünü gör, within: { testId: home-passive } }
+  passiveList: { testId: home-passive-list }
+  passiveRow: { testId: home-passive-scope, count: '{home.passiveShown}' }
+  passiveCaption: { css: '[data-testid=home-passive-scope] .mds-caption' }
+  passiveAssign: { role: link, name: '/^(Köşk nazımı ata|Başmüderris ata|Hoca ata): /', within: { testId: home-passive } }
+
+  bansList: { testId: home-bans-list }
+  banRow: { testId: home-ban, count: '{home.bans}' }
+  banCaption: { css: '[data-testid=home-ban] .mds-caption', hasText: '/^(Ders yasağı|Köşk yasağı): /' }
+  banReason: { css: '[data-testid=home-ban] .mds-caption', hasText: '/^Gerekçe: /' }
+  banReview: { role: link, name: '/^İncele: /', within: { testId: home-bans } }

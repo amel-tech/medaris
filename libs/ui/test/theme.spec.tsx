@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 
 import { act } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { hydrateRoot } from "react-dom/client";
+import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   THEME_STORAGE_KEY,
@@ -76,6 +77,28 @@ describe("the no-flash script", () => {
     expect(markup).toContain("medaris-theme");
     expect(themeScript).not.toContain("matchMedia");
     expect(themeScript).not.toContain("prefers-color-scheme");
+  });
+
+  it("draws no script when the browser renders it, and sets the theme itself", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    html.dataset.theme = "light";
+    const host = await render(<ThemeScript />);
+    expect(host.querySelector("script")).toBeNull();
+    expect(html.dataset.theme).toBe("dark");
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("hydrates the server's script without an error", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    const host = document.createElement("div");
+    host.innerHTML = renderToString(<ThemeScript />);
+    document.body.appendChild(host);
+    const root = await act(async () => hydrateRoot(host, <ThemeScript />));
+    expect(html.dataset.theme).toBe("dark");
+    expect(error).not.toHaveBeenCalled();
+    await act(async () => root.unmount());
   });
 
   it.each([

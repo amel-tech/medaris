@@ -1,0 +1,182 @@
+# What the bindings of nizam.kosks.manage share: the köşk's data, the events no node sends, the places each exit opens, the calls the
+# server actions make, the checks of what a write leaves, and where role and name cannot find a node. It carries no scenario, so it is
+# not walked by itself:
+#   binding.yaml   nine scenarios: the başnazım on an active köşk with a hosted course (the main story: hide, restore, the numbers,
+#                  the passivation, the nazım added, the right withdrawn), on a hidden köşk, on a passive one, with a right and no
+#                  course, with no right (and a person who already is a nazım); the Medaris nazımı with platform.kosk_edit only; the
+#                  köşk's own nazımı; the Medaris nazımı with platform.hosting_grant only; a nazım of another köşk
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/features/kosks/components/kosk-manage-page.tsx and the four dialogs, libs/ui/src/mds) and is unverified until a walk.
+# Where a walk may need a fix, a comment says so.
+#
+# The walk's data, all through tedrisat's API as the başnazım (no SQL), made in `setup` and removed in `teardown`:
+#   a köşk        "Deneme köşkü kmanage" (short name deneme-kmanage), made by helpers/make-kosk.mjs with
+#                 applicantE (Betül Başvuran) as its only nazım; the seed's two köşks are never hidden, passivated or changed
+#   a right       the seed's medrese "Hadis ve Siyer Medresesi" holds a hosting right in it (manage-data.mjs rights); the medrese's own
+#                 data is not touched
+#   a course      "Deneme dersi kmanagec", a published course of that medrese in the walk's köşk, 1 week of 2 celses (helpers/course.mjs)
+# `teardown` removes the course, then the köşk (DELETE /kosks/:id takes its courses, nazımları and hosting rights with it). The audit rows
+# of every write stay: the API has no way to remove them.
+# Every walk runs under the replay lock, one at a time, so the spare accounts other flows use too can be used here: C and D are made
+# Medaris nazımları for the length of one scenario (nazim.mjs, which the Medaris nazımı flow of nizam/home wrote), E is the köşk's
+# nazım and G the person added (D is also the second nazım of IMPACT_CHANGED). Each is given back as it was: the köşk's removal takes
+# E's and D's nazım roles with it, nazim.mjs `down` takes the Medaris seats. Not F or H, which other nizam flows hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.kosks.manage
+
+# the sidebar shows from 768 px; the walk is the desktop's
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/kmanage.json }
+  madec: { json: ../.local/made/kmanagec.json }
+
+events:
+  # the address is looked up on Enter (it is also looked up when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: '/^Köşk nazımı/', value: '{lookupEmail}', within: { role: dialog } }
+    - key: Enter
+  # what a colleague does to the köşk while the page stays open (the API itself, as the başnazım)
+  HIDDEN_ELSEWHERE:
+    - run: [node, ../nizam/kosks/manage/manage-data.mjs, elsewhere, kmanage, hide]
+      expect: 'elsewhere kmanage hide'
+  RESTORED_ELSEWHERE:
+    - run: [node, ../nizam/kosks/manage/manage-data.mjs, elsewhere, kmanage, restore]
+      expect: 'elsewhere kmanage restore'
+  # a second nazım, which changes the numbers the passivation dialog has read (applicantD, who is not a nazım of the köşk)
+  IMPACT_CHANGED:
+    - run: [node, ../nizam/kosks/manage/manage-data.mjs, second, kmanage, applicantD]
+      expect: 'second kmanage APPLICANT_D'
+  # the box that stands for an unreadable page has a retry of its own; nothing on the stack makes the overview fail, so RETRY and
+  # `read: overviewFailed` are not bound
+
+states:
+  # the view is one address; a state that shows it is told apart by its nodes, not by where it is
+  viewing: { url: '{nizam}/kosks/*' }
+  restoring: { url: '{nizam}/kosks/*', call: '{nizam}/kosks/*' }
+  # the writes are Next server actions: a POST to the page's own address, held while the busy state is checked
+  hiding: { call: '{nizam}/kosks/*' }
+  passiveLoading: { call: '{nizam}/kosks/*' }
+  passivating: { call: '{nizam}/kosks/*' }
+  looking: { call: '{nizam}/kosks/*' }
+  adding: { call: '{nizam}/kosks/*' }
+  revoking: { call: '{nizam}/kosks/*' }
+  # An exit has no nodes, so its address is all the replay can check.
+  kosks_opened: { url: '{nizam}/kosks' }
+  dersler_opened: { url: '{nizam}/kosks/*/dersler' }
+  settings_opened: { url: '{nizam}/kosks/*/ayarlar' }
+  hosting_opened: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  kosk_archive_opened: { url: '{nizam}/kosks/*/arsiv' }
+  archive_opened: { url: '{nizam}/arsiv' }
+  # the refusal's address is the page's own, or the link's; what it says is the same
+  no_access: { text: Bu bölüm için izniniz yok }
+
+# What a write leaves outside the screen, read through the API as the başnazım (helpers/api.mjs prints the answer's JSON on one line).
+effects:
+  hideKosk:
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/kosks/{made.kosk}/overview']
+      expect: '"status":"HIDDEN"'
+  restoreKosk:
+    # "hiddenLevel" is null once nothing hides it (kosk-admin.repository.ts:558: the level is selected only while archived_at is set)
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/kosks/{made.kosk}/overview']
+      expect: '"hiddenLevel":null'
+  deactivateKosk:
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/kosks/{made.kosk}/overview']
+      expect: '"status":"PASSIVE"'
+  addKoskNazims:
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/kosks/{made.kosk}/nazims']
+      expect: 'Dilek'
+  revokeKoskHostingRight:
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/kosks/{made.kosk}/hosting-rights']
+      expect: '[]'
+
+# Where role and name are not enough. A name given as a string is matched whole; one between slashes is a pattern. The sidebar's links
+# carry words of the same family as the page's (Köşkler, Arşiv), so a page link is looked for inside its own region or navigation.
+nodes:
+  # the page and its frame
+  managePage: { role: main, hasText: '/Bu, Medaris yönetimi görünümüdür/' }
+  loadFailedPage: { role: main, hasText: Bölüm yüklenemedi }
+  crumbKosks: { role: link, name: Köşkler, within: { role: navigation, name: Sayfa yolu } }
+  crumbCurrent: { css: '.mds-breadcrumb__current' }
+  koskTitle: { role: heading, name: Deneme köşkü kmanage }
+  koskHandle: { css: 'header p', hasText: '@deneme-kmanage' }
+  publicPage: { role: link, name: '/^Köşk sayfasını gör/' }
+  hiddenNote: { role: status, hasText: '/^Bu köşk gizli \(.+ beri\)\./' }
+  passiveNote: { role: status, hasText: '/^Bu köşk pasif \(.+ beri\)\./' }
+  # the four numbers: each label and caption is a span of its card
+  statCourses: { css: '.mds-stat .mds-caption', hasText: '/^Ders$/' }
+  statCoursesBreakdown: { css: '.mds-stat .mds-caption', hasText: '/^\d+ yayında · \d+ taslak · \d+ gizli$/' }
+  statStudents: { css: '.mds-stat .mds-caption', hasText: '/^Kayıtlı talebe$/' }
+  statNazims: { css: '.mds-stat .mds-caption', hasText: '/^Köşk nazımı$/' }
+  statHosting: { css: '.mds-stat .mds-caption', hasText: '/^Barındırma hakkı olan medrese$/' }
+  statHostingNone: { css: '.mds-stat .mds-caption', hasText: '/^Henüz yok$/' }
+  statHostingNames: { css: '.mds-stat .mds-caption', hasText: Hadis ve Siyer Medresesi }
+  # the info rows are <dd>s of one <dl>
+  infoDescription: { css: 'dl dd', hasText: '/^—$/' }
+  infoStatusActive: { css: 'dl dd', hasText: '/^Etkin$/' }
+  infoStatusHidden: { css: 'dl dd', hasText: '/^Gizli$/' }
+  infoStatusPassive: { css: 'dl dd', hasText: '/^Pasif$/' }
+  infoOpened: { css: 'dl dd', hasText: '/^\d{1,2} [^ ]+ \d{4} · /' }
+  infoPolicy: { css: 'dl dd', hasText: '/^Yok$/' }
+  # the actions: the two "Köşkü pasife al" buttons share one text and are told apart by the attribute
+  deactivateButton: { css: 'button:not([disabled])', hasText: Köşkü pasife al }
+  deactivateOff: { css: 'button[disabled]', hasText: Köşkü pasife al }
+  # the tables
+  nazimRow: { text: Betül Başvuran, within: { role: table, name: Köşk nazımları } }
+  hostingTable: { role: table, name: '/barındırma hakkı olan medreseler$/' }
+  hostingMedrese: { text: Hadis ve Siyer Medresesi, within: { role: table, name: '/barındırma hakkı olan medreseler$/' } }
+  revokeButton: { role: button, name: '/^Barındırma hakkını geri al: /' }
+  hostingUnavailable: { role: alert, hasText: Bölüm yüklenemedi }
+  archiveLink: { role: link, name: Arşiv, within: { role: region, name: Dersler } }
+
+  # Köşkü gizle
+  hideEyebrow: { css: '[role=alertdialog] .mds-eyebrow' }
+  hideConfirmButton: { role: button, name: Gizle, within: { role: alertdialog } }
+  hideCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  hideClose: { role: button, name: Kapat, within: { role: alertdialog } }
+
+  # Köşkü pasife al
+  passiveEyebrow: { css: '[role=dialog] .mds-eyebrow' }
+  passiveWarning: { role: status, hasText: Pasife almak yanında şunları götürür }
+  impactStaff: { text: '/^\d+ köşk nazımı görevden alınır$/' }
+  impactCourses: { text: '/^\d+ ders kapanır \(\d+ yayında, \d+ taslak\)$/' }
+  impactLive: { text: '/^\d+ dersin görevde hocası var$/' }
+  impactSessions: { text: '/^Önümüzdeki \d+ günde \d+ canlı celse takvimlerden düşer$/' }
+  passiveCancel: { role: button, name: Vazgeç, within: { role: dialog } }
+  passiveConfirmButton: { role: button, name: Yine de pasife al }
+  passiveClose: { role: button, name: Kapat, within: { role: dialog } }
+
+  # Köşk nazımı ekle
+  addEyebrow: { css: '[role=dialog] .mds-eyebrow' }
+  addEmail: { role: textbox, name: '/^Köşk nazımı/', within: { role: dialog } }
+  searching: { role: status, hasText: Aranıyor }
+  chosenPerson: { css: '[data-testid=chosen-nazims] li bdi', hasText: '/Başvuran/' }
+  removeChosen: { role: button, name: '/^Seçimi kaldır: /' }
+  addCancel: { role: button, name: Vazgeç, within: { role: dialog } }
+  addSubmit: { role: button, name: Ekle, within: { role: dialog } }
+  addClose: { role: button, name: Kapat, within: { role: dialog } }
+
+  # Barındırma hakkını geri al
+  revokeEyebrow: { css: '[role=dialog] .mds-eyebrow' }
+  revokeIntro: { css: '[role=dialog] p', hasText: '/yeni ders açamayacak\./' }
+  revokeCourses: { testId: open-courses }
+  revokeLegend: { role: radiogroup, name: Açık dersler }
+  revokeKeep: { role: radio, name: '/^Dersler sürsün/' }
+  revokeHide: { role: radio, name: '/^Dersleri gizle/' }
+  revokeCancel: { role: button, name: Vazgeç, within: { role: dialog } }
+  revokeSubmit: { role: button, name: Barındırma hakkını geri al, within: { role: dialog } }
+  revokeClose: { role: button, name: Kapat, within: { role: dialog } }
+
+  # the toasts: sonner's <li data-sonner-toast>, found by the words of its title
+  toastHidden: { css: '[data-sonner-toast]', hasText: Köşk gizlendi }
+  toastHideSettled: { css: '[data-sonner-toast]', hasText: Köşk gizlenemedi }
+  toastRestored: { css: '[data-sonner-toast]', hasText: Köşk geri alındı }
+  toastRestoreSettled: { css: '[data-sonner-toast]', hasText: Köşk geri alınamadı }
+  toastPassivated: { css: '[data-sonner-toast]', hasText: Köşk pasife alındı }
+  toastAdded: { css: '[data-sonner-toast]', hasText: Köşk nazımı eklendi }
+  toastAddExists: { css: '[data-sonner-toast]', hasText: Köşk nazımı eklenemedi }
+  toastAddRefused: { css: '[data-sonner-toast]', hasText: Köşk nazımı eklenemedi }
+  toastRevoked: { css: '[data-sonner-toast]', hasText: Barındırma hakkı geri alındı }

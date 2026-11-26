@@ -1,0 +1,68 @@
+# nizam.courseRequests.decide, the answers of a race: the two refusals of "Reddet" that the local stack can cause. It extends binding.yaml and adds
+# a scenario for each, which starts as `rejects` does (one waiting request of the walk's own, the köşk's nazım on "Ders talepleri") with a
+# different `answer`:
+#   answered   the request was refused in another tab meanwhile (COURSE_REQUEST_NOT_PENDING)
+#   gone       the request is gone meanwhile (COURSE_REQUEST_NOT_FOUND)
+#   node apps/engine/src/cli.ts replay graphs/nizam/courseRequests/decide --bind graphs/nizam/courseRequests/decide/races.binding.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml).
+#
+# How each is made: the walk is at "confirmRejectReady" when the dialog has the reason and "Reddet" is on, and a state's `before` runs when the walk
+# reaches the state, before it is checked, so the race is made there: `requests.mjs meanwhile <mode>` does what someone else would do (the köşk's
+# nazım refuses the same request through the API with another reason; the request is deleted, the one SQL, as no route does it). The page still
+# holds the row it read, so "Reddet" asks the API about a request that is no longer as the page saw it. Each mode is safe to run twice. The
+# answer closes the dialog, takes the row off the list, and says so in a sticky error toast.
+#
+# `rejecting` drops the `call` of binding.yaml: a Next server action answers 200 on the page's own address, and the replay compares a FAIL class
+# with the call's HTTP status (SPEC.md section 7), which cannot pass here. The busy state is walked in binding.yaml.
+#
+# The scenarios of binding.yaml are inherited and walk here without a race (their `meanwhile` is `none`). What this file does not do:
+# `answer: forbidden` (the nazım's role taken away: it would change the seed's KOSK_NAZIM) and `answer: other`.
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nizam.courseRequests.decide
+
+scenarios:
+  answered:
+    given: { read: one, decidedTab: none, answer: answered, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ders-talepleri'
+    vars: { meanwhile: answered }
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up, --waiting, '1', --alone]
+        expect: 'ready: 1 waiting'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+
+  gone:
+    given: { read: one, decidedTab: none, answer: gone, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ders-talepleri'
+    vars: { meanwhile: gone }
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up, --waiting, '1', --alone]
+        expect: 'ready: 1 waiting'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+
+states:
+  # a state's entry replaces the base's whole entry: no `call` here
+  rejecting: {}
+  # the race is made when the dialog has the reason and the button is on, before the state is checked
+  confirmRejectReady:
+    before:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, meanwhile, '{meanwhile}']
+        expect: 'meanwhile'
+
+# What a race leaves outside the screen, read through the database as the walk's own row.
+effects:
+  # the other nazım's refusal stands; this page's reason was never written
+  answeredElsewhere:
+    - run: [node, helpers/sql.mjs, "select status, reject_reason from course_requests where id = '{made.first.id}'"]
+      expect: '"status":"REJECTED","reject_reason":"Başka bir nazım aynı anda karar verdi."'
+  # no row is left to be refused
+  vanishedIt:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_requests where id = '{made.first.id}'"]
+      expect: '"n":0'

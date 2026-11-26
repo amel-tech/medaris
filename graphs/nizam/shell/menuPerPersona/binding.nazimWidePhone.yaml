@@ -1,0 +1,25 @@
+# nizam.shell.menuPerPersona for the same appointed Medaris nazımı on a phone (390 x 844), as shell.e2e.ts#10 does: the sheet holds the
+# eight entries in four groups and the role line "Medaris nazımı". See binding.nazimWide.yaml for what the walk appoints and removes.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.nazimWidePhone.yaml \
+#     --to sheet --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 390, height: 844 }
+
+scenarios:
+  nazimWidePhone:
+    given: { opensAt: phone, who: nazimWide, unread: none, waiting: none }
+    as: applicantE
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}', --any]
+        expect: 'HTTP'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, /nizam/medaris-nazims, '{"userId":"{secret.E2E_APPLICANT_E_SUB}","permissions":["platform.madrasah_edit","platform.kosk_edit","platform.kosk_application_decide","platform.deck_publish","platform.ban_account"]}']
+        expect: '"appointedAt"'
+    teardown:
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/nizam/medaris-nazims/{secret.E2E_APPLICANT_E_SUB}', --any]
+        expect: 'HTTP'

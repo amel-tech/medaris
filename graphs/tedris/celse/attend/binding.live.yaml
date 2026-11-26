@@ -1,0 +1,24 @@
+# tedris.celse.attend, the standing `live` (a running celse with a meeting link and an agenda: the date block counts the minutes, the agenda marks the step now). Same data, exits and locators as binding.yaml (see locators.binding.yaml).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/attend --bind graphs/tedris/celse/attend/binding.live.yaml --to live --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.attend
+
+samples:
+  title: Başlamış celse
+  previous: Yaklaşan celse
+  next: Yayınlı celse
+
+scenarios:
+  live:
+    given: { access: open, standing: live, means: link, place: online, agenda: listed, resources: none, exam: none, neighbours: both }
+    as: applicantE
+    open: '{tedris}/courses/{att.course}/lessons/{att.live}'
+    vars: { steps: 3 }
+    setup:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, up]
+        expect: 'attend-data up'
+    teardown:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, down]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

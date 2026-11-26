@@ -1,0 +1,90 @@
+# nazar.questions.answer on the local stack: Sorular (/ders/<id>/sorular) of a course the walk makes, at http://localhost:4002, 1440 x 900.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/questions/answer \
+#     --bind graphs/nazar/questions/answer/binding.yaml [--cover transitions] [--absent] --out <dir>
+#   (the second page of a long list is binding.many.yaml; both extend locators.binding.yaml)
+# WRITTEN IN THE WRITING PHASE, NOT REPLAYED: the owner moved every replay to the walk phase. What follows is from the code and the e2e; it
+# loads (`--emit-spec`), nothing has been walked, and every locator is unverified until a walk.
+#
+# Data. The seed has no waiting question that a walk may answer (its one question is TALEBE's, on the course whose other flows read it), so
+# each scenario makes a course of its own with the shared helper (helpers/course.mjs make answer: "Deneme dersi answer", one week of
+# celses three days ago and later, the spare talebe `applicantE` seated: the course takes anyone) and helpers/questions.mjs asks the questions
+# through the API as that talebe and answers some as the hoca. `course.mjs make` removes an old course of its tag first, so a walk that
+# died leaves nothing in the way; `teardown` removes the course, which takes the questions with it (course-purge.ts), and
+# graphs/.local/made/answerQ.json. No SQL writes anything: the `effects` in locators.binding.yaml read the database.
+#   main     the müderris of the course (`muderris`, the hoca of the course made in the second köşk): a waiting question and an answered one
+#            (the e2e's two, apps/nazar/e2e/questions-seed.ts), so the page has two cards, the waiting one first. The walk reaches the page
+#            by the course menu's "Sorular" (the nav graph's entry frame:ders->dersQuestions), from Genel bakış.
+#   empty    a course with no question: the empty line.
+#   refused  a ders nazırı appointed with no permission (helpers/course-nazir-grants.mjs, --codes none, as the course's hoca) in a course of
+#            the medrese with the başmüderris as its hoca (the shape nazar.course.overview's bare scenario uses): the API answers her 403
+#            and the page draws "Bu sayfaya izniniz yok" (F-D1-29, e2e questions#2 a1-a4). A question waits in the course so that the
+#            refusal has something to hide.
+# Which e2e checks the main walk carries: questions#1 a1 (the h1), a2 (the sidebar entry's aria-current, by its locator), a3 (two cards,
+# `count: 2`), a4-a6 (the first card is the waiting one, with "Bekliyor" and its celse line, by the locator within the first <li>), a7-a8
+# (the answered card's "Cevap: <hoca>" and "Cevaplandı"), a9 (the blank answer refused), a10-a11 (the card turns into the answer, "Cevabı
+# değiştir"), a12-a13 (effects `stored`: the row, the talebe's list), a14 (the badge gone after the reload, under --absent). The text of
+# a question and of an answer are the walk's data and are not drawn, so a4 and a7 are carried through the cards that hold them.
+#
+# What a walk will need: the stack up with nazar-web, tedris-web and tedrisat; `muderris`, `dersNazir`, `basmuderris` and `applicantE` in
+# accounts.env; 13 events in the main story, nine of them the person's own and none a second person's (the talebe's delete, QUESTION_DELETED, is an API call, not a page).
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nazar.questions.answer
+
+scenarios:
+  main:
+    given: { waiting: true, answered: some, read: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersQuestions' }
+    vars:
+      answer: 'Mâzîde aynü’l-fiil fethalıdır; fe‘ile ve fe‘ule de vardır.'
+      answer_token: 'fe‘ule de vardır'
+      replacement: 'Mâzîde aynü’l-fiil üç harekeyle gelir: fetha, kesre ve damme.'
+      replacement_token: 'üç harekeyle'
+    setup:
+      - run: [node, helpers/course.mjs, make, answer, --weeks, '1', --lessons, '3', --start, '-3', --hoca, MUDERRIS, --talebe, APPLICANT_E]
+        expect: '"tag":"answer"'
+      - run: [node, helpers/questions.mjs, up, answer, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '1', --answered, '1']
+        expect: 'questions up answer: 1 waiting, 1 answered'
+    teardown:
+      - run: [node, helpers/questions.mjs, down, answer]
+      - run: [node, helpers/course.mjs, remove, answer]
+        expect: 'course remove answer'
+
+  empty:
+    given: { waiting: false, answered: none, read: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersQuestions' }
+    setup:
+      - run: [node, helpers/course.mjs, make, answer, --weeks, '1', --lessons, '1', --start, '-3', --hoca, MUDERRIS]
+        expect: '"tag":"answer"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, answer]
+        expect: 'course remove answer'
+
+  refused:
+    given: { waiting: true, answered: none, read: refused }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersQuestions' }
+    setup:
+      - run: [node, helpers/course.mjs, make, answer, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '2', --start, '-3', --talebe, applicantE]
+        expect: '"tag":"answer"'
+      - run: [node, helpers/questions.mjs, up, answer, --talebe, APPLICANT_E, --hoca, BASMUDERRIS, --waiting, '1', --answered, '0']
+        expect: 'questions up answer: 1 waiting, 0 answered'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/questions.mjs, down, answer]
+      - run: [node, helpers/course.mjs, remove, answer]
+        expect: 'course remove answer'
+
+# What only the main story sees: two cards, the waiting one first and holding the waiting question; the answered one holding its answer.
+# (A walk of the other scenarios shows no card, or a different number of them.) The words are the e2e's: apps/nazar/e2e/questions-seed.ts.
+nodes:
+  card: { role: article, name: '/tarafından sorulan soru$/', count: 2 }
+  waitingBadge: { text: '/^Bekliyor$/', within: { css: 'ul > li:first-child article', hasText: 'aynü’l-fiili' } }
+  answerBy: { text: '/^Cevap: /', within: { role: article, hasText: 'Dört tanedir' } }

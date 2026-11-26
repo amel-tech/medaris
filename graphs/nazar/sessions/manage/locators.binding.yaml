@@ -1,0 +1,189 @@
+# What every walk of nazar.sessions.manage shares: the course the walk makes, the words it types, the events no node sends, the states'
+# addresses, the locators role and name cannot find, and the checks of what a write leaves in the database. It has no scenario; binding.yaml
+# (the müderris, the stale page, the person who holds nothing) and binding.manage.yaml and binding.stream.yaml (a ders nazırı who holds one
+# code each) extend it. Written without a replay (the owner's word: replays happen once, at the end), so every locator, every address and
+# every expectation is from the code and unverified. Each of the three files loads: `replay <dir> --bind <file> --emit-spec` writes a spec
+# and walks nothing.
+#
+# The stack: nazar-web at http://localhost:4002, signed in through Keycloak's real form (graphs/bindings/local.nazar.binding.yaml).
+# Data. A walk makes its own course and takes it away, so no seeded course, celse or grant is touched: helpers/course.mjs opens "Deneme dersi
+# sesManage" (published, one week of one LIVE celse of 60 minutes tomorrow at 21:00 in Istanbul, in the seed's second köşk, MUDERRIS its hoca;
+# the ids are read from graphs/.local/made/sesManage.json as {made.*}) and its teardown deletes it with everything under it, the ders
+# nazırı's post included. The celse has no link, no stream and no in-person mark, so it reads "Eksik" at the start. What a walk cannot undo:
+# the audit rows of the stream and the recording access (the API has no way to remove them; nothing depends on them) and the notification
+# rows `course.mjs remove` already deletes. SQL is used for one thing only: `bump` makes a page stale. The course's version is the lock
+# counter the link, the time and the in-person writes carry, and no API call raises it without a second signed-in person editing the same course.
+#
+# What the typed values are. They are fixed, and far enough ahead that the walk does not age: the new date of the celse (2029-03-12 21:00) is
+# before the recording's release time (2030-01-15 10:00), so the dialog's "before the celse begins" check never fires on the walk's own data.
+#   words.linkText        https://zoom.us/j/81234567890         a Zoom address: the platform chip reads "Zoom"
+#   words.linkBad         http://zoom.us/j/81234567890          not https: refused under the field, nothing sent
+#   words.streamUrl       https://www.youtube.com/watch?v=Abc123Def45   stored as https://www.youtube.com/live/Abc123Def45
+#   words.streamBad       https://www.youtube.com/@ornekkanal/live      a channel link: "Bu bir kanal bağlantısı…"
+#   words.releaseDate     15.01.2030 and 10:00 (the date box types "GG.AA.YYYY")      releaseDateBad 15.01.2020: in the past
+#
+# Not bound, and why (each is a transition the local stack cannot be made to take on request):
+#   - FAIL.forbidden and FAIL.failed of every write, FAIL.moved of the stream and release writes (no scenario has `streamAnswer` or
+#     `releaseAnswer` other than `saved`), and FAIL.missing of the read: the walk would have to take a permission away, hide the celse or break
+#     a call between two presses of one walk. FAIL.moved of the link, the time and the in-person mark IS bound: scenario `stale` raises the
+#     course's version while the form is open (`states.<form>.before`).
+#   - the stream link of a celse that is not live, a celse that has begun (its row has no time and no cancel button), a cancelled celse and a
+#     course held in person: the stack's clock and the course's setting are not the walk's to change; `rowState` is only ever "Planlandı".
+#   - an exam celse (`exam: exam` and `exam: retake`, the badges 'Sınav' and 'Telafi' in the name cell, fdc6e995): every scenario gives `exam: none`. The
+#     only helper that plans an exam (nazar/evaluation/examScores/exam-data.mjs) plans it for yesterday, so it would be in the second table, not the
+#     upcoming one; an exam ahead of the clock needs that helper to take a date, which it does not yet.
+#   - the dropped call (F-C-course-a-19), the 404 page, a failed read of the course.
+# What carries the e2e course-scope#1 (apps/nazar/e2e/course-scope.e2e.ts): a1 (the h1), a3 (the plan link), a4 (the table is named), a6 ("Eksik")
+# are carried; a2 (a text that is absent), a5 and a7 (the seed's celse titles) and a8 (aria-current on the menu entry) are not.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.sessions.manage
+
+data:
+  made: { json: ../.local/made/sesManage.json }
+  # the words the walk types, one file, so no scenario repeats them (no secret in it)
+  words: { json: ../nazar/sessions/manage/words.json }
+
+# {platform}, {whenLabel} and {timeLabel} are composed in code (composed.* of the catalog): the walk gives their words, else they match anything
+samples:
+  platform: Zoom
+  whenLabel: Açılış tarihi ve saati
+  timeLabel: Saat
+
+events:
+  # what is typed
+  FILL_LINK:
+    - fill: { role: textbox, name: Toplantı bağlantısı, value: '{words.linkText}' }
+  FILL_LINK_BAD:
+    - fill: { role: textbox, name: Toplantı bağlantısı, value: '{words.linkBad}' }
+  FILL_TIME:
+    - fill: { label: '/^Tarih/', value: '{words.timeDate}' }
+    - fill: { label: '/^Saat/', value: '{words.timeTime}' }
+  # the date is emptied: "Tarihi ve saati girin." under Tarih
+  FILL_TIME_BAD:
+    - fill: { label: '/^Tarih/', value: '' }
+  FILL_STREAM:
+    - fill: { role: textbox, name: Canlı yayın bağlantısı, value: '{words.streamUrl}' }
+  FILL_STREAM_BAD:
+    - fill: { role: textbox, name: Canlı yayın bağlantısı, value: '{words.streamBad}' }
+  # the dialog's two boxes: the date box commits when it loses the focus, the time box when five characters parse
+  FILL_RELEASE:
+    - fill: { role: textbox, name: Açılış tarihi ve saati, value: '{words.releaseDate}' }
+    - fill: { role: textbox, name: Açılış tarihi ve saati Saat, value: '{words.releaseTime}' }
+  FILL_RELEASE_BAD:
+    - fill: { role: textbox, name: Açılış tarihi ve saati, value: '{words.releaseDateBad}' }
+    - fill: { role: textbox, name: Açılış tarihi ve saati Saat, value: '{words.releaseTime}' }
+  # "Celse planla" and the menu leave the page; the address is the plan page's, which refuses a person who may not plan (the address is what is checked)
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}/celseler/planla'
+
+states:
+  listed: { url: '{nazar}/ders/*/celseler' }
+  # `bump` is 0 except in scenario `stale`, where 1 raises the course's version as soon as a form that sends it is open: the page was read at the
+  # old one, so its "Kaydet" is refused with the version conflict. The stream and the release carry no version, and have no such form state.
+  linkForm:
+    url: '{nazar}/ders/*/celseler'
+    before:
+      - run: [node, helpers/sql.mjs, "update courses set version = version + {bump} where id = '{made.course}'"]
+        expect: '"rows":1'
+  timeForm:
+    url: '{nazar}/ders/*/celseler'
+    before:
+      - run: [node, helpers/sql.mjs, "update courses set version = version + {bump} where id = '{made.course}'"]
+        expect: '"rows":1'
+  inPersonForm:
+    url: '{nazar}/ders/*/celseler'
+    before:
+      - run: [node, helpers/sql.mjs, "update courses set version = version + {bump} where id = '{made.course}'"]
+        expect: '"rows":1'
+  streamForm: { url: '{nazar}/ders/*/celseler' }
+  releaseDialog: { url: '{nazar}/ders/*/celseler' }
+  forbidden: { url: '{nazar}/ders/*/celseler' }
+  # the writes are Next server actions: a POST to the page's own address, held while the busy state is checked
+  savingLink: { call: '{nazar}/ders/*/celseler' }
+  savingTime: { call: '{nazar}/ders/*/celseler' }
+  savingInPerson: { call: '{nazar}/ders/*/celseler' }
+  savingStream: { call: '{nazar}/ders/*/celseler' }
+  removingStream: { call: '{nazar}/ders/*/celseler' }
+  savingRelease: { call: '{nazar}/ders/*/celseler' }
+  # exits with no node of their own are checked by their address; "İptal et" opens a dialog over this same page
+  left: { url: '{nazar}/ders/*/celseler/planla' }
+  handed_over.cancel: { url: '{nazar}/ders/*/celseler' }
+
+# Where role and name do not find a node. The words of a node come from the catalog; a {placeholder} the binding does not give matches anything.
+nodes:
+  # the shell's one <main>; the plan page's <main> also has "Celseler" in it, so the page is told by what only this one holds
+  page: { role: main, hasText: '/Yaklaşan celseler|Bu sayfaya izniniz yok/' }
+  # the link's name carries the sidebar's number and its hidden label ("Celseler 1 katılım yolu eksik"), so it is found by its beginning
+  sessionsLink: { role: link, name: '/^Celseler/', within: { role: navigation, name: Ana menü } }
+  # a neutral Alert is a status; its title is a paragraph, not its name
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  # two messages joined with " · " in one span; "Eksik" and its hidden sentence are one badge; the note is one span
+  upcomingCounts: { testId: upcoming-counts }
+  missingBadge: { testId: attendance-missing }
+  releaseNote: { testId: release-note }
+  # the exam badge in the name cell (data-testid=session-exam-badge); no scenario holds an exam (`exam: none` everywhere), so these are loaded and not walked
+  examBadge: { testId: session-exam-badge, hasText: Sınav }
+  retakeBadge: { testId: session-exam-badge, hasText: Telafi }
+  # "Yüz yüze" is also the in-person form's radio: the cell is the one inside the table
+  attendanceInPerson: { text: Yüz yüze, within: { role: table, name: Yaklaşan celseler } }
+  # a radio's words are its label's, beside it, not inside it: found by role and name (exact, so "Yüz yüze" is not "Yüz yüze değil")
+  radioCourse: { role: radio, name: Dersin ayarına uy }
+  radioYes: { role: radio, name: Yüz yüze }
+  radioNo: { role: radio, name: Yüz yüze değil }
+  releaseReady: { role: radio, name: Hazır olunca hemen }
+  releaseAt: { role: radio, name: Şu tarih ve saatte }
+  # native date and time inputs have no role: found by their label, which ends in a decorative star
+  dateField: { label: '/^Tarih/' }
+  timeField: { label: '/^Saat/' }
+  # the error under a field is one of several sentences
+  streamError: { css: '.mds-error', within: { testId: session-edit } }
+  releaseError: { css: '.mds-error', within: { role: dialog, name: Kayıt erişimi } }
+  # the dialog's eyebrow is the celse's date in full, which the walk does not know; its close icon shares the name "Kapat" with every toast's
+  releaseEyebrow: { css: 'p.mds-eyebrow', within: { role: dialog, name: Kayıt erişimi } }
+  releaseClose: { role: button, name: Kapat, within: { role: dialog, name: Kayıt erişimi } }
+  # an error toast has one of several sentences, by which write was refused
+  toastMoved: { role: alertdialog, hasText: '/başkası tarafından kaydedildi|Yalnız canlı celselere|iptal edilmiş|artık yok/' }
+  toastFailed: { role: alertdialog, hasText: '/Bir şeyler ters gitti|bir yayın bulunamadı|okunamadı/' }
+
+# What a write leaves outside the screen, read from tedrisat's database. The first is the finding MANAGE-1: no audit row for the link, the
+# time or the in-person mark; if the API ever writes one, this check fails and the graph is to say so.
+effects:
+  updateLesson:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where entity_id = '{made.lessons.0}' and action not like 'lesson.live_stream%' and action not like 'lesson.recording_availability%'"]
+      expect: '{"n":0}'
+  closedAfterLink:
+    - run: [node, helpers/sql.mjs, "select meeting_url from lessons where id = '{made.lessons.0}'"]
+      expect: '"meeting_url":"{words.linkText}"'
+  # the time as the viewer reads it: 21:00 on the new date, in Istanbul
+  closedAfterTime:
+    - run: [node, helpers/sql.mjs, "select to_char(scheduled_at at time zone 'Europe/Istanbul', 'YYYY-MM-DD HH24:MI') as at from lessons where id = '{made.lessons.0}'"]
+      expect: '"at":"{words.timeDate} {words.timeTime}"'
+  closedAfterInPersonYes:
+    - run: [node, helpers/sql.mjs, "select in_person from lessons where id = '{made.lessons.0}'"]
+      expect: '"in_person":true'
+  closedAfterInPersonNo:
+    - run: [node, helpers/sql.mjs, "select in_person from lessons where id = '{made.lessons.0}'"]
+      expect: '"in_person":false'
+  closedAfterInPersonCourse:
+    - run: [node, helpers/sql.mjs, "select in_person is null as follows from lessons where id = '{made.lessons.0}'"]
+      expect: '"follows":true'
+  closedAfterStream:
+    - run: [node, helpers/sql.mjs, "select live_stream_url from lessons where id = '{made.lessons.0}'"]
+      expect: '"live_stream_url":"https://www.youtube.com/live/Abc123Def45"'
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as written from audit_log where entity_id = '{made.lessons.0}' and action = 'lesson.live_stream_set'"]
+      expect: '"written":true'
+  closedAfterRemoval:
+    - run: [node, helpers/sql.mjs, "select live_stream_url is null as cleared from lessons where id = '{made.lessons.0}'"]
+      expect: '"cleared":true'
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as written from audit_log where entity_id = '{made.lessons.0}' and action = 'lesson.live_stream_clear'"]
+      expect: '"written":true'
+  closedAfterReleaseAt:
+    - run: [node, helpers/sql.mjs, "select recording_available_at is not null as held from lessons where id = '{made.lessons.0}'"]
+      expect: '"held":true'
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as written from audit_log where entity_id = '{made.lessons.0}' and action = 'lesson.recording_availability_set'"]
+      expect: '"written":true'
+  closedAfterReleaseReady:
+    - run: [node, helpers/sql.mjs, "select recording_available_at is null as ready from lessons where id = '{made.lessons.0}'"]
+      expect: '"ready":true'

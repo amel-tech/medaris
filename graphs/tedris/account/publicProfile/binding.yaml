@@ -1,0 +1,54 @@
+# tedris.account.publicProfile on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web (:4000) asked for
+# /account/public-profile, as the seeded talebe (who meets the not-found page) and as a visitor (who is sent to sign in first).
+#   node apps/engine/src/cli.ts replay graphs/tedris/account/publicProfile \
+#     --bind graphs/tedris/account/publicProfile/binding.yaml --cover transitions --out <dir>
+# NOT RUN in this phase (no replay is run while the graphs are written): nothing below was walked. What was looked at without a
+# browser, read-only: a GET of the address with no session answers 307 to /auth/signin?callbackUrl=%2Faccount%2Fpublic-profile,
+# and the API's GET /me/public-profile and GET /users/<id>/public-profile with no token answer 401 (curl, 15 Nov 2026).
+#
+# The profile is switched off here too: `.env` holds API__PUBLIC_PROFILE_ENABLED=false (STACK.md) and the web constant is in the code.
+# This flow can therefore be walked, but only its off state; the switched-on page cannot (needs.yaml).
+#
+# What each scenario is:
+#   member   (the main story) TALEBE types the address and meets "Sayfa bulunamadı"; "Ana sayfaya dön" goes to /home. `setup` asks
+#            the API the two questions a screen never asks while the page is off, as TALEBE, and expects the 404
+#            PUBLIC_PROFILE_UNAVAILABLE of both, so the walk starts from a measured fact: the API side is off too (a web page that
+#            says not found over an API that answers would be the other disagreement, PUBPROF-2). Both calls are GETs and write
+#            nothing (the guard answers before the user-sync interceptor runs).
+#   visitor  no sign-in: the same address is a protected page, so the proxy sends the browser to Keycloak (exit handed_over.sign_in).
+# There is no `enter`: the navigation graph has no goal for this flow, because the page is a `missing` page of tedris.nav and no link
+# leads to it (the Hesap card is left out); the way in is the typed address, which `open` is.
+# Nothing is created, changed or removed, so there is no `teardown`. `call` is not used on any state: the page makes no fetch.
+# Every state of the flow is bound. What the replay cannot read is the HTTP status of the navigation (200, http-status-200).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.account.publicProfile
+
+scenarios:
+  member:
+    given: { person: member }
+    as: talebe
+    open: '{tedris}/account/public-profile'
+    setup:
+      - run: [node, helpers/api.mjs, talebe, GET, '/me/public-profile', --any]
+        expect: PUBLIC_PROFILE_UNAVAILABLE
+      - run: [node, helpers/api.mjs, talebe, GET, '/users/{secret.E2E_OTHER_SUB}/public-profile', --any]
+        expect: PUBLIC_PROFILE_UNAVAILABLE
+  visitor:
+    given: { person: visitor }
+    open: '{tedris}/account/public-profile'
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' }
+  home_opened: { url: '{tedris}/home' }
+  left: { url: '{tedris}/discover' }
+
+# Where role and name cannot find a node. The not-found page's bar is a banner like the one on the page the walk leaves for, and
+# --absent would find that one there, so the box that follows the bar is part of what finds it (the locator tedris.shell.systemPages
+# uses for the same bar). The section, its heading, the sentence and the link are found by role and name.
+nodes:
+  systemBar: { css: 'header[data-system-chrome]:not(main header):has(~ section.mds-system-state)' }

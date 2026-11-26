@@ -1,0 +1,182 @@
+# PLANNED, NOT WALKABLE: the screens of nizam.moderation.decidePermanentBan, the page "Kalıcı yasak talepleri" (/talepler/kalici-yasak) that the
+# menu already offers and no code answers. Drawn from the three Talepler pages beside it, which are code (apps/nizam/features/platform-admin
+# applications-view.tsx, features/deck-review deck-requests-view.tsx and reject-dialog.tsx, features/appeals appeals-view.tsx), as read on
+# 16 Nov 2026. Nothing here has a `source` except what exists today: the menu (apps/nizam/lib/shell-nav.ts and the shell's <nav> and <main>
+# in libs/ui/src/mds/app-shell.tsx). The entry "Kalıcı yasak talepleri" exists and opens "Sayfa bulunamadı" (F-P0-4, F-X-11); the page it
+# should open does not.
+#
+# Words. Existing messages are copied letter for letter from libs/i18n/src/locales/tr/nizam.json, each under its own key:
+#   Shell.nav, Shell.groups.requests, Shell.items.permanentBans   the menu and the page's title
+#   Dashboard.permanentBans.empty                                 "Bekleyen kalıcı yasak talebi yok." (the Medaris home's card, which exists)
+#   AppealsPage.*                                                 the neighbour's tab names, badges, "Kabul et", "Reddet", "Tekrar dene", the
+#                                                                 "Karar kaydedilemedi" toast title, two of its refusals and "Karar notu" (decisionNote)
+#   BansPage.columns.*, BansPage.scope.COURSE, BansPage.platformOnly   the ban list's column names, "Ders", and "Bu yasağı yalnız Medaris yönetimi kaldırabilir."
+#   DeckReject.*                                                  the shared reject dialog's close, cancel, submit, "zorunlu alan", the empty-reason line, and
+#                                                                 its note label "Karar notu" (appeal.reasonLabel)
+# New words are `planned.PermanentBans.*` (Turkish only, short, in the app's voice), listed for review in the report. Two are not copied:
+#   planned.PermanentBans.row, rowDecided, personValue, scopeValue, bannedByValue, requestedByValue, decidedByValue, reasonValue, noteValue,
+#   personName, count   text the page would build in code from data, as its neighbours do (their `composed.*`); here they are planned words
+#                       because no code line exists to name.
+#   Changes.note        the one message written for this graph, as CONVENTIONS asks (`changes` below): no app message says what the two
+#                       decisions change. It is the only entry that is neither copied nor under planned.
+# The {scope} of a row and of the detail is a value the page would fill from the ban: "Ders" (the ban list's BansPage.scope.COURSE) or
+# "Medrese"; it is a datum like {place}, so it is in the samples and in no catalog key.
+# The reject dialog is the shared RejectDialog in a sixth kind (the neighbours use request, proposal, application, courseRequest, appeal,
+# unpublish): `planned.PermanentBans.reject.*` stand for that kind's title, body and help.
+schema: delurio-graph/0
+kind: ui
+id: nizam.moderation.decidePermanentBan
+flow: nizam.moderation.decidePermanentBan
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note } # the one authored message of this catalog
+samples:
+  name: Örnek Talebe
+  email: ornek.talebe@medaris.test
+  scope: Ders
+  place: Örnek Akaid Dersi
+  date: 16 Kas 10:00
+  outcome: Reddedildi
+  by: Esma Başmüderris
+  role: Başmüderris
+  when: 16 Kasım 2026 Pazartesi 10:00
+  reason: Derste defalarca uyarıldığı hâlde başkalarının çalışmasını bozdu.
+  note: Yasak yeterli görüldü; kalıcı yasağa gerek yok.
+  count: "2"
+
+# The page sets no focus of its own in its neighbours (APPDEC-5), and nothing is decided for this one: no `initialFocus` on the page and no
+# node has `focus` after a step (rule focus-open). The two dialogs' own focus is drawn, as theirs is.
+nodes:
+  # ---- the menu entry: EXISTS (shell-nav.ts), the page behind it does not -----------------------------------------------------------------
+  menuNav: { type: page, component: Page, role: navigation, name: { key: Shell.nav }, in: [menu], source: libs/ui/src/mds/app-shell.tsx:98 } # the sidebar's <nav>, or the phone sheet's
+  sectionRequests: { type: text, component: Text, text: { key: Shell.groups.requests }, in: [menu], source: apps/nizam/lib/shell-nav.ts:102 } # a group label, "Talepler"
+  navPermanentBans: { type: action, component: LinkButton, role: link, name: { key: Shell.items.permanentBans }, in: [menu], emits: OPEN, source: apps/nizam/lib/shell-nav.ts:122 } # the başnazım's, and a Medaris nazımı's who holds platform.ban_account; today it opens "Sayfa bulunamadı" (F-P0-4)
+
+  # ---- the page: the shell's <main> exists, what is inside it is planned -----------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [unreadable, empty, loadingTab, waitingDetail, decidedDetail], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">: no name, no initialFocus
+  title: { type: text, component: Heading, role: heading, text: { key: Shell.items.permanentBans }, in: [unreadable, empty, loadingTab, waitingDetail, decidedDetail] } # h1, the menu's own words
+  intro: { type: text, component: Text, text: { key: planned.PermanentBans.intro }, in: [unreadable, empty, loadingTab, waitingDetail, decidedDetail] }
+
+  # ---- the read failed -------------------------------------------------------------------------------------------------------------------
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.PermanentBans.loadFailedTitle }, text: { key: planned.PermanentBans.loadFailed }, in: [unreadable] } # tone error: role alert, announced when it appears
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: AppealsPage.retry }, in: [unreadable], emits: RETRY }
+
+  # ---- the tabs: Bekleyen and Karara bağlanan, each with its count ---------------------------------------------------------------------
+  tabList: { type: list, component: List, role: tablist, name: { key: planned.PermanentBans.tabsLabel }, in: [empty, loadingTab, waitingDetail, decidedDetail] } # the neighbours' tabs have no tab panel (F-X-1); see rule tabs-need-a-panel
+  # The tabs are the kit's (libs/ui/src/mds/tabs.tsx), as in the three neighbours: nothing holds them while the decided list is read, so
+  # Bekleyen can be pressed then (duringStep); the graph has it taken where the read leads, as the page is not built yet.
+  tabWaiting: { type: action, component: Button, role: tab, text: { key: AppealsPage.tabs.PENDING }, in: [empty, loadingTab, waitingDetail, decidedDetail], emits: TAB_WAITING, duringStep: true } # its name carries the count: "Bekleyen 2"
+  tabDecided: { type: action, component: Button, role: tab, text: { key: AppealsPage.tabs.DECIDED }, in: [empty, loadingTab, waitingDetail, decidedDetail], emits: TAB_DECIDED }
+  waitingCount: { type: text, component: Text, text: { key: planned.PermanentBans.count, params: { count: counts.pending } }, in: [empty, loadingTab, waitingDetail, decidedDetail] }
+  decidedCount: { type: text, component: Text, text: { key: planned.PermanentBans.count, params: { count: counts.decided } }, in: [empty, loadingTab, waitingDetail, decidedDetail] }
+
+  # ---- nothing to list -----------------------------------------------------------------------------------------------------------------
+  emptyWaiting: { type: text, component: Text, text: { key: Dashboard.permanentBans.empty }, in: [empty], when: "tab == 'waiting'" } # the Medaris home's card has these very words today
+  emptyDecided: { type: text, component: Text, text: { key: planned.PermanentBans.emptyDecided }, in: [empty], when: "tab == 'decided'" }
+
+  # ---- the list: one row per request, newest decision or oldest request first -----------------------------------------------------------
+  requestList: { type: list, component: List, role: list, in: [waitingDetail, decidedDetail] } # no name, as the neighbours' lists
+  row: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.PermanentBans.row, params: { name: request.person.name, scope: request.scope, date: request.requestedAt } }, in: [waitingDetail], repeat: requests.items, emits: SELECT_OTHER } # a <button> in an <li>, the selected one aria-current
+  rowDecided: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.PermanentBans.rowDecided, params: { name: request.person.name, scope: request.scope, date: request.decidedAt, outcome: request.outcome } }, in: [decidedDetail], repeat: requests.items, emits: SELECT_OTHER }
+
+  # ---- the detail of the selected request --------------------------------------------------------------------------------------------
+  detailRegion: { type: page, component: Page, role: region, name: { labelledBy: detailTitle }, in: [waitingDetail, decidedDetail] }
+  detailEyebrow: { type: text, component: Text, text: { key: planned.PermanentBans.detailEyebrow }, in: [waitingDetail, decidedDetail] }
+  detailTitle: { type: text, component: Heading, role: heading, text: { key: planned.PermanentBans.personName, params: { name: request.person.name } }, in: [waitingDetail, decidedDetail] } # h2
+  badgeWaiting: { type: text, component: Text, text: { key: AppealsPage.status.PENDING }, in: [waitingDetail] }
+  badgeApproved: { type: text, component: Text, text: { key: AppealsPage.status.ACCEPTED }, in: [decidedDetail], when: "answered == 'approved'" }
+  badgeRejected: { type: text, component: Text, text: { key: AppealsPage.status.REJECTED }, in: [decidedDetail], when: "answered == 'rejected'" }
+
+  # the person and the lower ban: what the başnazım decides about
+  personLabel: { type: text, component: Text, text: { key: BansPage.columns.person }, in: [waitingDetail, decidedDetail] } # a <dt>
+  personValue: { type: text, component: Text, text: { key: planned.PermanentBans.personValue, params: { name: request.person.name, email: request.person.email } }, in: [waitingDetail, decidedDetail] }
+  scopeLabel: { type: text, component: Text, text: { key: BansPage.columns.scope }, in: [waitingDetail, decidedDetail] }
+  scopeValue: { type: text, component: Text, text: { key: planned.PermanentBans.scopeValue, params: { scope: request.ban.scope, place: request.ban.place } }, in: [waitingDetail, decidedDetail] } # "Ders · {course}" or "Medrese · {medrese}"
+  bannedByLabel: { type: text, component: Text, text: { key: BansPage.columns.bannedBy }, in: [waitingDetail, decidedDetail] }
+  bannedByValue: { type: text, component: Text, text: { key: planned.PermanentBans.bannedByValue, params: { by: request.ban.bannedBy, role: request.ban.bannedRole, when: request.ban.createdAt } }, in: [waitingDetail, decidedDetail] }
+  banReasonLabel: { type: text, component: Text, text: { key: BansPage.columns.reason }, in: [waitingDetail, decidedDetail] }
+  banReasonValue: { type: text, component: Text, text: { key: planned.PermanentBans.reasonValue, params: { reason: request.ban.reason } }, in: [waitingDetail, decidedDetail] }
+
+  # the request: who asked, and why
+  requestRegion: { type: page, component: Page, role: region, name: { labelledBy: requestTitle }, in: [waitingDetail, decidedDetail] }
+  requestTitle: { type: text, component: Heading, role: heading, text: { key: planned.PermanentBans.requestTitle }, in: [waitingDetail, decidedDetail] } # h3
+  requestedByLabel: { type: text, component: Text, text: { key: planned.PermanentBans.requestedBy }, in: [waitingDetail, decidedDetail] }
+  requestedByValue: { type: text, component: Text, text: { key: planned.PermanentBans.requestedByValue, params: { by: request.requestedBy, role: request.requestedRole, when: request.requestedAt } }, in: [waitingDetail, decidedDetail] }
+  requestReasonLabel: { type: text, component: Text, text: { key: planned.PermanentBans.requestReason }, in: [waitingDetail, decidedDetail] }
+  requestReasonValue: { type: text, component: Text, text: { key: planned.PermanentBans.reasonValue, params: { reason: request.reason } }, in: [waitingDetail, decidedDetail] }
+
+  # the answer, for a decided request
+  decidedByLabel: { type: text, component: Text, text: { key: planned.PermanentBans.decidedBy }, in: [decidedDetail] }
+  decidedByValue: { type: text, component: Text, text: { key: planned.PermanentBans.decidedByValue, params: { by: request.decidedBy, when: request.decidedAt } }, in: [decidedDetail] }
+  decisionNoteAlert: { type: alert, component: Alert, role: status, name: { key: AppealsPage.decisionNote }, text: { key: planned.PermanentBans.noteValue, params: { note: request.note } }, in: [decidedDetail], when: "answered == 'rejected'" } # a neutral Alert is a status, not an alert
+
+  # what the buttons do, and what they do not offer
+  actionNote: { type: text, component: Text, text: { key: planned.PermanentBans.actionNote }, in: [waitingDetail], when: mayApprove }
+  blockedSelf: { type: text, component: Text, text: { key: planned.PermanentBans.blocked.self }, in: [waitingDetail], when: "target == 'self'" } # the check refuses the caller; "Kabul et" is left out
+  blockedChief: { type: text, component: Text, text: { key: planned.PermanentBans.blocked.chief }, in: [waitingDetail], when: "target == 'chief'" }
+  blockedPost: { type: text, component: Text, text: { key: planned.PermanentBans.blocked.post }, in: [waitingDetail], when: "target == 'holdsPost'" }
+  approveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: AppealsPage.accept }, in: [waitingDetail], when: mayApprove, emits: APPROVE } # absent, not disabled, for a person the check refuses (D2)
+  rejectButton: { type: action, component: Button, role: button, intent: secondary, text: { key: AppealsPage.reject }, in: [waitingDetail], emits: REJECT }
+
+  # ---- the toasts: sonner's; a success goes after 6 seconds, an error stays until it is closed -------------------------------------
+  toastApproved: { type: status, component: Status, name: { key: planned.PermanentBans.approved }, text: { key: planned.PermanentBans.approvedBody, params: { name: request.person.name } }, in: [empty, waitingDetail], when: "last == 'approved'" }
+  toastRejected: { type: status, component: Status, name: { key: planned.PermanentBans.rejected }, text: { key: planned.PermanentBans.rejectedBody, params: { name: request.person.name } }, in: [empty, waitingDetail], when: "last == 'rejected'" }
+  toastAnswered: { type: status, component: Status, name: { key: AppealsPage.answerFailed }, text: { key: planned.PermanentBans.errors.answered }, in: [empty, waitingDetail], when: "last == 'answered'" }
+  toastGone: { type: status, component: Status, name: { key: AppealsPage.answerFailed }, text: { key: planned.PermanentBans.errors.gone }, in: [empty, waitingDetail], when: "last == 'gone'" }
+  toastForbidden: { type: status, component: Status, name: { key: AppealsPage.answerFailed }, text: { key: AppealsPage.errors.forbidden }, in: [waitingDetail, rejectFormReady], when: "last == 'forbidden'" }
+  toastProtected: { type: status, component: Status, name: { key: AppealsPage.answerFailed }, text: { key: planned.PermanentBans.errors.protected }, in: [waitingDetail], when: "last == 'protected'" }
+  toastDirectory: { type: status, component: Status, name: { key: AppealsPage.answerFailed }, text: { key: planned.PermanentBans.errors.directory }, in: [waitingDetail], when: "last == 'directory'" }
+  toastFailed: { type: status, component: Status, name: { key: AppealsPage.answerFailed }, text: { key: AppealsPage.errors.generic }, in: [waitingDetail, rejectFormReady], when: "last == 'failed'" }
+  toastLoadFailed: { type: status, component: Status, name: { key: planned.PermanentBans.loadFailedTitle }, text: { key: planned.PermanentBans.loadFailed }, in: [unreadable], when: "last == 'loadFailed'" }
+
+  # ---- Kabul et asks first: an alert dialog, the focus on Vazgeç --------------------------------------------------------------------
+  approveDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: approveTitle }, in: [approveConfirm, approving], initialFocus: approveCancel }
+  approveEyebrow: { type: text, component: Text, text: { key: planned.PermanentBans.personName, params: { name: request.person.name } }, in: [approveConfirm, approving] } # the person's name above the title
+  approveTitle: { type: text, component: Heading, role: heading, text: { key: planned.PermanentBans.approve.title }, in: [approveConfirm, approving] }
+  approveBody: { type: text, component: Text, text: { key: planned.PermanentBans.approve.body, params: { name: request.person.name } }, in: [approveConfirm, approving] }
+  approveLiftNote: { type: text, component: Text, text: { key: BansPage.platformOnly }, in: [approveConfirm, approving] } # the ban list's own sentence about a ban Medaris placed
+  approveCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: DeckReject.cancel }, in: [approveConfirm], emits: CANCEL }
+  approveSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.PermanentBans.approve.submit }, in: [approveConfirm, approving], disabledIn: [approving], emits: CONFIRM } # busy while the account is being closed
+
+  # ---- Reddet asks for a note: the shared reject dialog ----------------------------------------------------------------------------------
+  rejectDialog: { type: page, component: Page, role: dialog, name: { labelledBy: rejectTitle }, in: [rejectForm, rejectFormReady, rejecting], initialFocus: reasonField }
+  rejectEyebrow: { type: text, component: Text, text: { key: planned.PermanentBans.personName, params: { name: request.person.name } }, in: [rejectForm, rejectFormReady, rejecting] }
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: planned.PermanentBans.reject.title }, in: [rejectForm, rejectFormReady, rejecting] }
+  rejectClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: DeckReject.close }, in: [rejectForm, rejectFormReady], emits: CANCEL }
+  rejectBody: { type: text, component: Text, text: { key: planned.PermanentBans.reject.body }, in: [rejectForm, rejectFormReady, rejecting] }
+  rejectRequiredNote: { type: text, component: Text, text: { key: DeckReject.requiredNote }, in: [rejectForm, rejectFormReady, rejecting] } # drawn as "* zorunlu alan"
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: DeckReject.appeal.reasonLabel }, value: { literal: "" }, in: [rejectForm, rejectFormReady, rejecting] } # a textarea of 4 rows, 1000 characters at most, required; starts empty
+  reasonHelp: { type: text, component: Text, text: { key: planned.PermanentBans.reject.help }, in: [rejectForm, rejectFormReady, rejecting], when: "reason != 'touched'" }
+  reasonRequired: { type: text, component: Text, text: { key: DeckReject.reasonRequired }, in: [rejectForm], when: "reason == 'touched'" } # replaces the help once the field was left empty; no live region, no move of the focus
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: DeckReject.cancel }, in: [rejectForm, rejectFormReady], emits: CANCEL }
+  rejectSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: DeckReject.submit }, in: [rejectForm, rejectFormReady, rejecting], disabledIn: [rejectForm, rejecting], emits: SUBMIT } # natively disabled while the note is blank (F-X-3); busy while it is sent
+
+edges:
+  - { labelledBy: [detailRegion, detailTitle] }
+  - { labelledBy: [requestRegion, requestTitle] }
+  - { labelledBy: [approveDialog, approveTitle] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { triggers: [navPermanentBans, reading] }
+  - { triggers: [retryButton, reading] }
+  - { triggers: [tabDecided, loadingTab] }
+  - { triggers: [approveButton, approveConfirm] }
+  - { triggers: [approveSubmit, approving] }
+  - { triggers: [rejectButton, rejectForm] }
+  - { triggers: [rejectSubmit, rejecting] }
+  - { returnsFocus: [approveDialog, approveButton] } # Vazgeç or Escape: the page's Kabul et is still there
+  - { returnsFocus: [rejectDialog, rejectButton] } # likewise; after a decision the button is gone with the row
+
+rules:
+  - { id: planned-page, rule: "PLANNED: the page does not exist; this ui is drawn from its three neighbours and says what they do, not what a page of this kind is proven to do. `status: proposed`, no binding, nothing walkable. Every word that is not copied from nizam.json is `planned.PermanentBans.*` or `Changes.note` and awaits review." }
+  - { id: F-P0-4, rule: "The menu entry 'Kalıcı yasak talepleri' (lib/shell-nav.ts:122; ITEM_PERMISSIONS 'permanent-bans': platform.ban_account) opens 'Sayfa bulunamadı' today: no folder under app/talepler/kalici-yasak, and app/[...rest]/page.tsx:9 calls notFound(). This is the `menu` state of the flow; the page is what this ui draws. Fix: build the page (MDRS-140), or remove the entry until then (F-W3-10)." }
+  - { id: F-X-11, rule: "The family of F-P0-4: two menu entries with no page (this one and /ayarlar/youtube)." }
+  - { id: F-W1-15, rule: "The Medaris home's card 'Kalıcı yasak talepleri' always says 'Bekleyen kalıcı yasak talebi yok.' (medaris-home.tsx:147-152) because tedrisat sends a constant 0 for pendingTotals.permanentBanRequests. Once the page exists the card must count the waiting requests and link to it; its empty line is the words this page's empty state reuses. Not drawn here: nizam.home.medarisNazimCut." }
+  - { id: PBAN-1, rule: "New, from the code (not run): the audit page has a type 'Kalıcı yasak talebi ve kararı' (AuditPage.types.PERMANENT_BAN) that matches the action key `permanent_ban.%` (apps/tedrisat/src/audit/audit-types.ts:57), and no code writes such a key: requestPermanentBan writes `ban.permanent_request` (ban.repository.ts:787), which the BAN rule `ban.%` (:51) takes. So the filter is empty today. The planned decision rows are named `permanent_ban.approve` and `permanent_ban.reject` to fill it; the request's own row would move to `permanent_ban.request` for the same reason (an open choice, since changing a key splits the history)." }
+  - { id: platform-ban-account-widens, rule: "Design finding, not a bug: platform.ban_account is held today for READING bans (listAllBans, listKoskBans, the menu entry) and the code's own comment says it 'bans nothing yet' (apps/tedrisat/src/ban/ban-codes.ts:33-35). Asking it for the account-closing decision means every Medaris nazımı who holds it for reading gains the power to close any account when this ships. Either say so to the başnazım before release, or give the decision a code of its own." }
+  - { id: tabs-need-a-panel, rule: "Proposed, not to repeat F-X-1 and F-W3-5: the neighbours' Tabs have no TabsPanel, so a tab switch changes the list and the detail with no announcement. This page is drawn with the same component (tabList, tabWaiting, tabDecided) and nothing else is decided; the fix is a TabsPanel around the list, or links." }
+  - { id: focus-open, rule: "No focus is drawn: no `initialFocus` on the page and no `focus` after a step. The neighbours move none after a decision (APPDEC-5): the row and the pressed button leave and the focus falls to the page. Proposed for this page: move it to the next row, or to the tab list when none is left. Nothing is decided; both dialogs draw the focus their shared components give (reason field; Vazgeç on the alert dialog)." }
+  - { id: no-reason-in-notices, rule: "Proposed, not to repeat TRIAGE-2: the notice that a request was filed names the person and the medrese and carries no reason; the reason is read on this page, behind platform.ban_account. A new request is announced to the holders of that code and to the başnazım only (TRIAGE-1 is that the başnazım is never told of a ban today)." }
+  - { id: F-X-3, rule: "'Reddet' of the shared reject dialog is natively disabled while the note is blank and nothing ties the note to the button; leaving the field empty draws 'Bir gerekçe yazın.' as a plain line (no live region, no move of the focus). Drawn as the shared component does it." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Bekleyen' in 'Bekleyen 2', 'Kabul et', 'Reddet', 'Hesabı kapat'. Holds (WCAG 2.5.3)." }

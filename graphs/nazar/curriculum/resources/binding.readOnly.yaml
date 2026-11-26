@@ -1,0 +1,36 @@
+# nazar.curriculum.resources as a ders nazırı who holds session.manage and not course.edit (resources-data.mjs make readOnly: the
+# walk's own course, and DERS_NAZIR's post in it with that one permission, granted as the hoca grants it). Müfredat opens for the one
+# permission of the page, says under the title that it is read-only, draws both lists with no button and no save bar, and the celses'
+# lists are read with the details toggle. Its own file for the same reason as binding.noSessions.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/curriculum/resources \
+#     --bind graphs/nazar/curriculum/resources/binding.readOnly.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written from the code and unverified; it loads.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: nazar.curriculum.resources
+
+scenarios:
+  readOnly:
+    given: { rights: readOnly, answer: saved, store: storage, file: fine }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      linkName: Hâşiye listesi
+      linkUrl: https://kaynak.example.test/hasiye
+      lessonLinkName: Birinci bâb özeti
+      lessonLinkUrl: https://kaynak.example.test/bab-1
+      lessonLinkName2: İkinci bâb özeti
+      lessonLinkUrl2: https://kaynak.example.test/bab-2
+      queued: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, make, readOnly]
+        expect: 'resources-data make readOnly'
+    teardown:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, remove]
+        expect: 'resources-data remove'
+
+states:
+  listed: { url: '{nazar}/ders/*/mufredat' }
+  left: { url: '{nazar}/ders/*' }

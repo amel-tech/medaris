@@ -1,0 +1,108 @@
+# nazar.courseNazirs.dismiss on the local stack: the hoca (MUDERRIS, "Hamdi Müderris" in STACK.md) dismisses a ders nazırı of a course the walk
+# makes, at http://localhost:4002/ders/<id>/nazirlar. The nodes, the events, the exits and the effects are in locators.binding.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/courseNazirs/dismiss \
+#     --bind graphs/nazar/courseNazirs/dismiss/binding.yaml --cover transitions --out <dir>
+# and the appointer's walk, which takes no transition of its own (binding.appointer.yaml):
+#   ... replay graphs/nazar/courseNazirs/dismiss --bind graphs/nazar/courseNazirs/dismiss/binding.appointer.yaml --to handed_over.no_access --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+#   plain          the main story, course-nazirs#11. "Deneme dersi nzdismiss": applicantF is the ders nazırı, holding "Ders kaydı" and "Celse" (two
+#                  permissions, no end: the row says "2 izin" and "Süresiz"). The walk enters by the course menu's "Ders nazırları" (the nav
+#                  graph's entry), opens the dialog, leaves it with Vazgeç, opens it again and dismisses. Then applicantF opens Nazar's root in
+#                  their own browser and is sent to /erisim-yok.
+#   handsOn        applicantF holds course_nazir.assign by a grant and has appointed applicantE: the list shows both, the button of applicantF is off with
+#                  the sentence, and applicantE's is on. The walk dismisses applicantE first, then applicantF (course-nazirs#13 a21, a22, a24-a26).
+#   handsOnUnseen  the same people, but applicantF appoints applicantE after the hoca read the page (the event ELSEWHERE_APPOINTS): the button is on, the API
+#                  answers 409 DISMISS_SEAT_HANDED_ON, the dialog closes, the error toast stays, the list is read again with the button off (#13 a20-a23).
+#                  The walk then goes on as in handsOn.
+#   vanishes       someone else dismisses applicantF after the hoca read the page (the event ELSEWHERE_DISMISSES, helpers: ./nazirs.mjs revoke): the button is on, the
+#                  API answers 404 COURSE_NAZIR_NOT_FOUND, the dialog closes, the list is read again without the row and an error toast stays (CNDIS-4).
+# The seeded ders nazırı is not used. The walk ends each scenario with the course removed and nothing left held by applicantF or applicantE.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.dismiss
+
+scenarios:
+  plain:
+    given: { post: plain }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    vars:
+      person: Tahsin Başvuran
+      personSub: '{secret.E2E_APPLICANT_F_SUB}'
+      appointee: Betül Başvuran
+      appointeeSub: '{secret.E2E_APPLICANT_E_SUB}'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzdismiss, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nzdismiss"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, applicantF, --codes, 'recording.manage,session.manage']
+        expect: 'course-nazir-grants APPLICANT_F'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzdismiss]
+        expect: 'course remove nzdismiss'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from role_assignments where role = 'DERS_NAZIR' and revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as posts, (select count(*) from permission_grants where revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as held"]
+        expect: '"posts":0,"held":0'
+  handsOn:
+    given: { post: handsOn }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    vars:
+      person: Tahsin Başvuran
+      personSub: '{secret.E2E_APPLICANT_F_SUB}'
+      appointee: Betül Başvuran
+      appointeeSub: '{secret.E2E_APPLICANT_E_SUB}'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzdismiss, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nzdismiss"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, applicantF, --codes, course_nazir.assign]
+        expect: 'course-nazir-grants APPLICANT_F course_nazir.assign'
+      - run: [node, helpers/api.mjs, applicantF, POST, '/courses/{made.course}/nazirs', '{"userId":"{secret.E2E_APPLICANT_E_SUB}","permissions":[]}']
+        expect: '"items"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzdismiss]
+        expect: 'course remove nzdismiss'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from role_assignments where role = 'DERS_NAZIR' and revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as posts, (select count(*) from permission_grants where revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as held"]
+        expect: '"posts":0,"held":0'
+  handsOnUnseen:
+    given: { post: handsOnUnseen }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    vars:
+      person: Tahsin Başvuran
+      personSub: '{secret.E2E_APPLICANT_F_SUB}'
+      appointee: Betül Başvuran
+      appointeeSub: '{secret.E2E_APPLICANT_E_SUB}'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzdismiss, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nzdismiss"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, applicantF, --codes, course_nazir.assign]
+        expect: 'course-nazir-grants APPLICANT_F course_nazir.assign'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzdismiss]
+        expect: 'course remove nzdismiss'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from role_assignments where role = 'DERS_NAZIR' and revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as posts, (select count(*) from permission_grants where revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as held"]
+        expect: '"posts":0,"held":0'
+  vanishes:
+    given: { post: vanishes }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    vars:
+      person: Tahsin Başvuran
+      personSub: '{secret.E2E_APPLICANT_F_SUB}'
+      appointee: Betül Başvuran
+      appointeeSub: '{secret.E2E_APPLICANT_E_SUB}'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzdismiss, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nzdismiss"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, applicantF, --codes, 'recording.manage,session.manage']
+        expect: 'course-nazir-grants APPLICANT_F'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzdismiss]
+        expect: 'course remove nzdismiss'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from role_assignments where role = 'DERS_NAZIR' and revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as posts, (select count(*) from permission_grants where revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as held"]
+        expect: '"posts":0,"held":0'

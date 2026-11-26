@@ -1,0 +1,69 @@
+# nazar.roster.decide on the local stack: the müderris of a course the walk makes, at http://localhost:4002. Three scenarios.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/decide --bind graphs/nazar/roster/decide/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# The seeded courses are other flows' data and the seed's one waiting application (TALEBE_MALE, in "İsâgûcî ile Mantığa Giriş")
+# is never touched, so each scenario makes its own course with helpers/course.mjs (a published course in the second köşk, the
+# müderris as its hoca, asking for approval) and removes it in `teardown`; `make` removes a tag a crashed walk left, so `setup` is
+# safe to run twice. The applicants are spare accounts that apply in `setup` through the API, in order, so the last one is the
+# newest row (the page lists newest first, and a walk presses the first item).
+#   decides   the main story. "Deneme dersi rosMain": applicantC, applicantD and applicantE wait. The walk reaches the page by the
+#             course menu's "Talebeler" (the nav graph's entry frame:ders->dersStudents) from Genel bakış, approves the newest,
+#             rejects the next after the confirmation, and one still waits. Also takes the cancel and close paths of the dialog.
+#   empty     "Deneme dersi rosEmpty": the course asks for approval and nobody has applied: the empty line, the tab's 0, no badge.
+#   shutOut   "Deneme dersi rosShut": the seeded ders nazırı's account (Rukiye) is appointed with no permission at all (the
+#             helper sets the post's whole set to none), so the page refuses her while an application waits. The menu still
+#             lists "Talebeler" for her (F-D1-29).
+# The other readings are in the files beside this one, each its own binding because each adds no transition the main file lacks or
+# needs an event of its own: binding.mayNot.yaml (the reader with no button), binding.gone.yaml (the application settled behind the
+# page: FAIL.gone of both decisions, and ROSTER-1), binding.barred.yaml (a ban placed behind the page: FAIL.barred, ROSTER-2).
+# Not bound anywhere, and why: FAIL.forbidden and FAIL.other of both decisions (nothing on the stack makes tedrisat refuse a
+# decision the page drew, short of taking the müderris's role away mid-walk), FAIL.missing and FAIL.failed of the read (a 404 or a
+# 500 the layout would answer first or tedrisat does not give), the not_found and loadFailed exits, and the sign-in a lost
+# session would send to.
+# What a walk leaves that its teardown cannot undo: the notifications the decisions send to the applicants (course.mjs removes
+# those that point at the course) and the audit rows (enrollment.reject, audit of the roster reads), for which no route exists.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.decide
+
+scenarios:
+  decides:
+    given: { approval: needed, mayDecide: may, note: asks }
+    as: muderris
+    open: '{nazar}/ders/{rosMain.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    vars: { course: '{rosMain.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosMain, --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosMain]
+        expect: 'course remove rosMain'
+  empty:
+    given: { approval: none, mayDecide: may, note: asks }
+    as: muderris
+    open: '{nazar}/ders/{rosEmpty.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    vars: { course: '{rosEmpty.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosEmpty, --approval, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi rosEmpty"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosEmpty]
+        expect: 'course remove rosEmpty'
+  shutOut:
+    given: { approval: needed, mayDecide: shutOut, note: asks }
+    as: dersNazir
+    open: '{nazar}/ders/{rosShut.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    vars: { course: '{rosShut.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosShut, --approval, --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"APPLICANT_C":"PENDING"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{rosShut.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosShut]
+        expect: 'course remove rosShut'

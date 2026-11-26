@@ -1,0 +1,57 @@
+# nizam.courses.manageSessions when the API refuses a write on a page that has gone stale: the same course as binding.yaml, but a second person
+# changes it while the köşk nazımı has a form (or the confirmation) open. Two scenarios, each with its own `given`:
+#   stale        someone else saved the course: `bump` raises its version (sessions.mjs bump 1, as the course's hoca) when the link, time or in-person
+#                form, or the confirmation, opens, so each of those writes is refused with COURSE_VERSION_CONFLICT (FAIL.moved of savingLink,
+#                savingTime, savingInPerson and cancelling). The toast says to reload, nothing reads the page again, and the form or the dialog
+#                stays (NMSESS-1): a walk through it shows the stale page.
+#   streamGone   someone else cancelled the celse: `gone` cancels it (sessions.mjs gone 1) when the stream form opens, so the stream write is refused
+#                with LESSON_CANCELLED (FAIL.moved of savingStream: "Bu celse iptal edilmiş; yayın bağlantısı değiştirilemez.").
+# They are in a file of their own because their refusals are Next server actions that answer 200 on the page's own address, so a `call` (which
+# compares a refusal's status) would fail them: the states here carry none, and the busy states of these walks are seen if the replay is quick.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/manageSessions \
+#     --bind graphs/nizam/courses/manageSessions/refusals.binding.yaml --cover transitions --out <dir>
+#
+# Not bound: FAIL.moved, FAIL.forbidden and FAIL.failed of removingStream (a stream must be set first, and `streamAnswer` is one value for the whole
+# walk); the rest is in locators.binding.yaml. NOT RUN; see there.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.manageSessions
+
+scenarios:
+  stale:
+    given: { access: own, changeAnswer: moved, streamAnswer: saved, cancelAnswer: moved }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions'
+    setup:
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/course.mjs, make, nmSessions, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --start, '-1', --talebe, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nmSessions]
+        expect: 'course remove nmSessions'
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nmSessions'"]
+        expect: '{"n":0}'
+    vars: { bump: '1', gone: '0' }
+
+  streamGone:
+    given: { access: own, changeAnswer: saved, streamAnswer: moved, cancelAnswer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions'
+    setup:
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/course.mjs, make, nmSessions, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '2', --start, '-1', --talebe, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nmSessions]
+        expect: 'course remove nmSessions'
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nmSessions'"]
+        expect: '{"n":0}'
+    vars: { bump: '0', gone: '1' }

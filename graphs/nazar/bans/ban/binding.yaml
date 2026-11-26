@@ -1,0 +1,222 @@
+# nazar.bans.ban on the local stack: the başmüderris of "Hadis ve Siyer Medresesi" (Nuri Başmüderris) at http://localhost:4002, in the
+# real Keycloak sign-in of local.nazar.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/bans/ban --bind graphs/nazar/bans/ban/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code and is
+# unverified until a walk; where the walk may need a fix, a comment says so.
+#
+# What a walk bans, and how it is taken away. A walk bans a SPARE talebe and only on a course of its own, never a seeded person: the
+# başmüderris, the müderris, the talebe and the rest of the stack's accounts are never put in the dialog (bans.mjs refuses them).
+# `setup` makes, through tedrisat's API (helpers/course.mjs, which keeps it under graphs/.local/made/bansban.json), "Deneme dersi
+# bansban": a published course of the medrese with one celse, the müderris as its hoca and applicantE (Betül Başvuran) enrolled in it.
+# `teardown`, in this order: lifts every ban the başmüderris placed on that talebe (POST /bans/:id/lift, bans.mjs lift), deletes the lifted
+# rows (bans.mjs clear: the one SQL write, because no route deletes a ban, and a lifted row would stay in the medrese's "Kaldırılan" count
+# for the other ban pages), and deletes the course, which takes the seat and the notices that point at it (helpers/course.mjs remove).
+# `setup` lifts and clears first, so a walk that died before its teardown leaves nothing: an open ban would refuse the talebe's seat.
+# What it cannot undo: the audit rows (user.lookup, ban.create), which no route removes, and the lessons' invitation mails, which the
+# course's `remove` and `mail.mjs clear` take.
+#
+# The header's dialog lists the medrese's courses by title and chooses the first, which would be the seeded "Bina ve İzhar Şerhi", not the
+# walk's. Its scenarios (email, runsTheCourse) therefore rename the walk's course to "Alıştırma dersi yasak" in `setup` (PATCH
+# /courses/:id, the API's own), which sorts before it; a row's dialog lists only the talebe's own course. Should course.mjs one day take
+# a --title, the rename goes.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   row            Talebeler -> the row's Yasakla -> the first course stays chosen, the reason is written, the ban is placed (students#4)
+#   rowMadrasah    the same, choosing "Medrese düzeyi": a ban of the whole medrese
+#   email          Yasaklamalar -> the header's Yasakla -> the address is searched, the person is found, the walk's course, the ban (bans#7)
+#   emailMadrasah  the same, choosing "Medrese düzeyi"
+#   unknown        the header's dialog and an address no account has: the note under the field; nothing is written
+#   runsTheCourse  the person is the hoca of the walk's course (a spare account, applicantG): BAN_TARGET_INVALID, and nothing is written
+# Not bound, with the reason (each is drawn in the flow and cannot be made on the local stack):
+#   way: down       the directory does not answer: nothing here can make Keycloak's admin read fail
+#   way: noCourses  the medrese's courses could not be read: nothing can make GET /madrasahs/:id/courses fail
+#   answer: forbidden, notAllowed, invalid, failed
+#                   AUTHZ_FORBIDDEN needs the başmüderris to lose madrasah.ban between the page and the press (it is a role default, not a
+#                   grant); BAN_FORBIDDEN is reached by no person who can open this page; VALIDATION_ERROR is refused by the textarea's
+#                   maxLength before the server sees it; `failed` needs the medrese gone or the server down
+#   answer: courseGone  binding.courseGone.yaml
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.ban
+
+scenarios:
+  # The main story: the menu's "Talebeler", the row of the walk's talebe (the newest, so on the first page), "Yasakla", the reason with its
+  # white space, the ban placed on the course.
+  row:
+    given: { way: row, scope: course, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseStudents' }
+    setup:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, make, bansban, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"ENROLLED"'
+    teardown:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+    vars:
+      who: applicantE
+      whoKey: APPLICANT_E
+      whoSub: '{secret.E2E_APPLICANT_E_SUB}'
+      personName: Betül Başvuran
+      personAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      courseTitle: Deneme dersi bansban
+      reason: '  Dersin sohbetinde reklam yaptı  '
+      reasonSaved: Dersin sohbetinde reklam yaptı
+      expectedBan: 'ban APPLICANT_E COURSE course={made.course} role=MEDRESE_BASMUDERRIS reason=Dersin sohbetinde reklam yaptı'
+
+  rowMadrasah:
+    given: { way: row, scope: madrasah, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseStudents' }
+    setup:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, make, bansban, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"ENROLLED"'
+    teardown:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+    vars:
+      who: applicantE
+      whoKey: APPLICANT_E
+      whoSub: '{secret.E2E_APPLICANT_E_SUB}'
+      personName: Betül Başvuran
+      personAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      courseTitle: Deneme dersi bansban
+      reason: Medrese içinde hesabını paylaştı
+      reasonSaved: Medrese içinde hesabını paylaştı
+      expectedBan: 'ban APPLICANT_E MADRASAH course=- role=MEDRESE_BASMUDERRIS reason=Medrese içinde hesabını paylaştı'
+
+  # The same ban from the header of Yasaklamalar, by the talebe's e-mail address (bans#7).
+  email:
+    given: { way: email, scope: course, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    setup:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, make, bansban, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"ENROLLED"'
+      - run: [node, helpers/api.mjs, SYSTEM_ADMIN, PATCH, '/courses/{made.course}', '{"title":"Alıştırma dersi yasak"}']
+        expect: '"title":"Alıştırma dersi yasak"'
+    teardown:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+      - run: [node, helpers/mail.mjs, clear, 'to:{personAddress}']
+    vars:
+      who: applicantE
+      whoKey: APPLICANT_E
+      whoSub: '{secret.E2E_APPLICANT_E_SUB}'
+      personName: Betül Başvuran
+      personAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      courseTitle: Alıştırma dersi yasak
+      reason: Hesabını başkasına kullandırdı
+      reasonSaved: Hesabını başkasına kullandırdı
+      expectedBan: 'ban APPLICANT_E COURSE course={made.course} role=MEDRESE_BASMUDERRIS reason=Hesabını başkasına kullandırdı'
+
+  # The same from the header, choosing "Medrese düzeyi": a ban of the whole medrese on the person the address found.
+  emailMadrasah:
+    given: { way: email, scope: madrasah, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    setup:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, make, bansban, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"ENROLLED"'
+      - run: [node, helpers/api.mjs, SYSTEM_ADMIN, PATCH, '/courses/{made.course}', '{"title":"Alıştırma dersi yasak"}']
+        expect: '"title":"Alıştırma dersi yasak"'
+    teardown:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantE, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+      - run: [node, helpers/mail.mjs, clear, 'to:{personAddress}']
+    vars:
+      who: applicantE
+      whoKey: APPLICANT_E
+      whoSub: '{secret.E2E_APPLICANT_E_SUB}'
+      personName: Betül Başvuran
+      personAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      courseTitle: Alıştırma dersi yasak
+      reason: Medrese içinde de aynı davranışı sürdürdü
+      reasonSaved: Medrese içinde de aynı davranışı sürdürdü
+      expectedBan: 'ban APPLICANT_E MADRASAH course=- role=MEDRESE_BASMUDERRIS reason=Medrese içinde de aynı davranışı sürdürdü'
+
+  # An address no account has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." under the field, and nobody is chosen. Nothing is made,
+  # so there is nothing to remove; the search is written to the audit log and stays there.
+  unknown:
+    given: { way: unknown, scope: course, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    vars:
+      personName: Nazlı Talebe
+      personAddress: kimse.yok@example.test
+      courseTitle: '{seed.titles.courses.open}'
+      reason: Bu yazı gönderilmez
+      reasonSaved: Bu yazı gönderilmez
+
+  # A person who runs the walk's course cannot be barred from it: BAN_TARGET_INVALID, a toast that stays, the dialog still open. The
+  # person is a spare account (applicantG, Dilek Başvuran) made the course's hoca; the ban is refused before anything is written.
+  runsTheCourse:
+    given: { way: email, scope: course, answer: invalidTarget }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    setup:
+      - run: [node, helpers/api.mjs, applicantG, GET, /me]
+        expect: '"id"'
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantG, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantG, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, make, bansban, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --hoca, applicantG]
+        expect: '"title":"Deneme dersi bansban"'
+      - run: [node, helpers/api.mjs, SYSTEM_ADMIN, PATCH, '/courses/{made.course}', '{"title":"Alıştırma dersi yasak"}']
+        expect: '"title":"Alıştırma dersi yasak"'
+    teardown:
+      - run: [node, ../nazar/bans/ban/bans.mjs, lift, --user, applicantG, --madrasah, '{seed.madrasah}']
+        expect: lifted
+      - run: [node, ../nazar/bans/ban/bans.mjs, clear, --user, applicantG, --madrasah, '{seed.madrasah}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, bansban]
+        expect: course remove bansban
+      - run: [node, helpers/mail.mjs, clear, 'to:{personAddress}']
+    vars:
+      who: applicantG
+      whoKey: APPLICANT_G
+      whoSub: '{secret.E2E_APPLICANT_G_SUB}'
+      personName: Dilek Başvuran
+      personAddress: '{secret.E2E_APPLICANT_G_EMAIL}'
+      courseTitle: Alıştırma dersi yasak
+      reason: Derste yetkisiz kayıt aldı
+      reasonSaved: Derste yetkisiz kayıt aldı

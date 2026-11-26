@@ -1,0 +1,44 @@
+# nizam.kosks.editAndHide, world chiefOverrides: the başnazım at the platform lock (see binding.yaml for what a walk writes and how it
+# is taken away, and for the one platform change, RECORDINGS_NEVER_PUBLIC on by SQL and put back exactly). The köşk is the walk's own,
+# made with the recordings policy on and applicantG as its nazım; the başnazım unticks the box and the server accepts it, because the
+# service skips the platform check for SYSTEM_ADMIN (apps/tedrisat/src/kosk/kosk.service.ts:235). He has no menu entry for a köşk's
+# settings, so he opens the address. It adds no transition of its own to binding.yaml's, so it is walked by this file.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/editAndHide \
+#     --bind graphs/nizam/kosks/editAndHide/binding.chief.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written from the code, not looked for in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.editAndHide
+
+scenarios:
+  # The same lock and the same click, by the başnazım: no platform policy refuses him, so the save is accepted and the köşk loses the
+  # policy.
+  chiefOverrides:
+    given: { world: chiefOverrides, hideAnswer: hidden }
+    as: systemAdmin
+    open: '{nizam}/kosks/{made.kosk}/ayarlar'
+    setup:
+      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, make, editandhide, applicantG, --ruled]
+        expect: '"ruled":true'
+      - run: [node, helpers/policies.mjs, lock, RECORDINGS_NEVER_PUBLIC, editandhide]
+        expect: 'policy lock RECORDINGS_NEVER_PUBLIC on'
+    teardown:
+      - run: [node, helpers/policies.mjs, unlock, editandhide]
+        expect: 'policy restore editandhide'
+      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, remove, editandhide]
+        expect: 'kosk remove editandhide'
+    vars:
+      home: /
+      owner: systemAdmin
+      newName: Ayar Deneme Köşkü II
+      newTags: 'Hadis, Mustalah '
+      newDescription: Hadis usûlü okuyan köşk.
+      savedName: Ayar Deneme Köşkü
+      savedTags: Akaid
+      savedDescription: Deneme için açılmış köşk.
+      savedCover: '250'
+      savedPrivate: 'false'
+      savedApproval: 'false'
+      savedRecordings: 'false'
+      savedListed: 'true' # still listed

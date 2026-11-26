@@ -1,0 +1,356 @@
+# Giving a scope with no manager one again: nizam-web "Pasif kapsamlar" (/pasif-kapsamlar, app/pasif-kapsamlar/page.tsx,
+# features/inactive-scopes/components/{inactive-view,assign-scope-dialog}.tsx, features/madrasahs/components/head-picker.tsx) and
+# tedrisat's inactive-scope module (apps/tedrisat/src/inactive-scope), read from the code of the branch (the tree of PR #394) on
+# 15 Nov 2026. Nothing here is approved. What it draws:
+#   - the one read the page makes (GET /nizam/inactive-scopes) and what the page shows after it: the list, "Yöneticisi olmayan
+#     kapsam yok.", the box that says the list could not be read, or the "izniniz yok" screen (the exit `refused`);
+#   - the filter by kind (Tümü, Köşk, Medrese, Ders), which is the browser's alone: no call, no address;
+#   - the window that "Köşk nazımı ata", "Başmüderris ata" and "Hoca ata" open over a row: the person found by their exact e-mail
+#     address in the realm, an optional end of the post, the save (POST /nizam/inactive-scopes/:type/:id/assign), the toast and
+#     the row that leaves the list, and every answer the API gives that the page words;
+#   - "Vazgeç", the close icon and Escape, and the scrim, which the form window ignores.
+# It does not draw what led a scope here (it starts at the list) or "İçeriği gör" (nizam.inactive.viewContent). The one flow that
+# starts it is nizam.madrasahs.passivate, on its event OPEN_INACTIVE (`starts: { flow: nizam.inactive.reassign }`); it passes no
+# `given`, so this flow declares no variable for it: the medrese it made passive is the list's `madrasah` row, "Başmüderris görevden
+# alındı", and everything starts from the list as for a person who opens the menu.
+# Findings it carries (the inventory's ids): F-W2-1, F-W2-3, F-W2-10, F-W2-12, F-X-3, F-X-14, F-UI-W1-1. Five more are this flow's
+# own, REASSIGN-1 to REASSIGN-5, and one is security (inactive-scope-accepts-new-scope): all are in ui.yaml `rules`.
+# Seen, as opposed to read: nothing in a browser. The code is read from the files named in each `source`, and the API's answers from
+# the controller and the service. The owner's word is that replays happen once, at the end; binding.yaml loads and each scenario is
+# bound, none has been walked.
+schema: delurio-graph/0
+kind: flow
+id: nizam.inactive.reassign
+status: captured
+domain: medaris.api
+ui: nizam.inactive.reassign
+title: Give a scope with no manager one again
+summary: >-
+  The başnazım opens Pasif kapsamlar: the köşks, medreses and courses whose last manager is gone, with why (a term that ran out
+  or a post taken away and by whom), since when, and who the last one was. The chips filter by kind. Each row has its own button,
+  "Köşk nazımı ata", "Başmüderris ata" or "Hoca ata", which opens a window: the person is found by their exact e-mail address
+  (the search is audited), an end of the post is optional ("Görev bitiş tarihi ve saati"), and the button sends them. The scope
+  has its manager and is active again: the row leaves the list and a toast names the person and the scope. "Vazgeç", the close
+  icon and Escape close the window and change nothing; a click on the scrim does nothing. Refusals the page words: the scope has
+  a manager already ("Bu kapsam artık pasif değil."), the end is in the past, the account is not in Medaris, the caller may not.
+source: apps/nizam/app/pasif-kapsamlar/page.tsx
+
+scope:
+  shows: Pasif kapsamlar for the başnazım, the "… ata" window with its e-mail lookup and its optional end, and the answers of the server
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "'İçeriği gör' on a köşk or a course row (a record of the opening, then the scope's own page): nizam.inactive.viewContent"
+    - "how a scope came to have no manager: the medrese's 'Pasife al' (nizam.madrasahs.passivate starts this flow on OPEN_INACTIVE with no `given`, and the medrese reads here 'Başmüderris görevden alındı'), a köşk's 'Pasife al', a nazım or a hoca taken off, a post that ran out; this flow starts at the list"
+    - "the reasons of a post that ran out ('Son köşk nazımının görev süresi doldu', 'Başmüderrisin görev süresi doldu', 'Son hocanın görev süresi doldu') and a row's remover when a köşk nazımı or a Medaris nazımı took the post away: the same nodes with other words"
+    - "a Medaris nazımı who holds platform.inactive_scopes_manage: the API and the page admit them, the menu gives them no entry (F-W2-1), so they arrive by address; the walk uses the başnazım, and the case that they pick their own address is refused as SELF_GRANT_REFUSED (REASSIGN-2)"
+    - "the 'izniniz yok' screen itself, and what 'Bu bölüm için izniniz yok' says: nizam.shell.noAccessAndNotFound; here it is the exit `refused`"
+    - "a token tedrisat refuses (401): every call sends the person to sign in again (realm.auth.sessionEnded)"
+    - "the loading skeleton while the page is read (app/pasif-kapsamlar/loading.tsx) and the phone's stacked rows"
+    - "a scope that never had a manager: the list leaves it out and the API still accepts it when called directly (the security rule inactive-scope-accepts-new-scope in ui.yaml)"
+    - "what the medrese's row does to the medrese: it goes through MadrasahService.setHeadMuderris, the path of 'Başmüderris ata' on Medreseler (nizam.madrasahs.headMuderris), and asks nothing about hand-ons because nobody is replaced"
+
+decisions:
+  D1:
+    question: >-
+      Should a Medaris nazımı who holds platform.inactive_scopes_manage see "Pasif kapsamlar" in the menu? The page and the API
+      admit them and the page's own notice says they may open a passive scope, but `inactive` is not in medarisGroups, so they
+      reach it by address only (F-W2-1).
+    recommend: >-
+      Put `inactive` in the Medaris variant's menu, shown by the permission, as the permission map already says; or drop the
+      permission from the Medaris nazımı's choices if the page is meant to stay the başnazım's.
+    affects: [reading]
+  D2:
+    question: >-
+      When the API says the scope has a manager already (INACTIVE_SCOPE_NOT_FOUND), should the page read the list again and close
+      the window? Today the window stays open with a sticky toast and the stale row stays (REASSIGN-4).
+    recommend: >-
+      Refresh the list and close the window on that one code, as a second person's decision elsewhere does, and keep the toast.
+    affects: [saving, formReady]
+
+context:
+  read:
+    values: [ok, forbidden, unreadable]
+    initial: any
+    say:
+      ok: "GET /nizam/inactive-scopes answers"
+      forbidden: "tedrisat answers 403: the person is not the başnazım and holds no platform.inactive_scopes_manage (a köşk nazımı, a Medaris nazımı without it)"
+      unreadable: "the read fails, or tedrisat answers a 5xx; the page treats them alike"
+  list:
+    values: [rows, none]
+    initial: any
+    say:
+      rows: "the list holds a köşk, a medrese and a course with no manager (one of each kind is drawn)"
+      none: "nothing has no manager"
+  lookup:
+    values: [found, notFound, down]
+    initial: any
+    say: { found: "the realm has an account with that e-mail address", notFound: "the realm has none", down: "the directory does not answer" }
+  endAt:
+    values: [none, future, past, unfinished]
+    initial: any
+    say:
+      none: "the person leaves the end empty: the post lasts until it is changed"
+      future: "an end after now, in the viewer's zone, is typed"
+      past: "an end before now is typed"
+      unfinished: "the native picker is half typed (a day and no time)"
+  answer:
+    values: [assigned, notPassive, expiry, unknownAccount, forbidden, failed]
+    initial: any
+    say:
+      assigned: "the server gives the scope its manager (204)"
+      notPassive: "the scope has a manager already, is hidden or is gone (404 INACTIVE_SCOPE_NOT_FOUND)"
+      expiry: "the end is not after now by the server's clock (400 GRANT_EXPIRY_INVALID)"
+      unknownAccount: "the account is in neither tedrisat nor the directory (404 KOSK_NAZIM_UNKNOWN_ACCOUNT)"
+      forbidden: "the caller lost the right to manage passive scopes (403 AUTHZ_FORBIDDEN)"
+      failed: "anything else: the caller named themselves (403 SELF_GRANT_REFUSED), the body is refused, the server does not answer"
+  filter: { values: [all, kosk, madrasah, course], initial: all }
+  koskLeft: { values: [true, false], initial: false } # the köşk's row has left the list
+  madrasahLeft: { values: [true, false], initial: false }
+  courseLeft: { values: [true, false], initial: false }
+  picked: { values: [none, kosk, madrasah, course], initial: none } # which row's window is open
+  chosen: { values: [none, some], initial: none }
+  note: { values: [none, notFound, down], initial: none }
+  end: { values: [blank, future, past, unfinished], initial: blank }
+  saved: { values: [none, kosk, madrasah, course], initial: none } # the toast "Atandı" that has just been shown, and for which kind
+  toast: { values: [none, notPassive, expiry, unknownAccount, forbidden, failed], initial: none } # the sticky error toast
+
+guards:
+  # the rows the list shows: the chip's kind, minus the rows an assignment has taken away (inactive-view.tsx:60-63, present.ts:22-27)
+  showsKosk: "(filter == 'all' or filter == 'kosk') and not koskLeft"
+  showsMadrasah: "(filter == 'all' or filter == 'madrasah') and not madrasahLeft"
+  showsCourse: "(filter == 'all' or filter == 'course') and not courseLeft"
+  noRows: "not showsKosk and not showsMadrasah and not showsCourse"
+  # `disabled={!person || problem !== null}` of assign-scope-dialog.tsx:122
+  ready: "chosen == 'some' and (end == 'blank' or end == 'future')"
+  pickerError: "chosen == 'none' and note != 'none'"
+
+effects:
+  nothingListed: { set: { koskLeft: true, madrasahLeft: true, courseLeft: true } }
+  filterAll: { set: { filter: all, saved: none } }
+  filterKosk: { set: { filter: kosk, saved: none } }
+  filterMadrasah: { set: { filter: madrasah, saved: none } }
+  filterCourse: { set: { filter: course, saved: none } }
+  pickKosk: { set: { picked: kosk, chosen: none, note: none, end: blank, saved: none } }
+  pickMadrasah: { set: { picked: madrasah, chosen: none, note: none, end: blank, saved: none } }
+  pickCourse: { set: { picked: course, chosen: none, note: none, end: blank, saved: none } }
+  closeDialog: { set: { picked: none, chosen: none, note: none, end: blank } }
+  chose: { set: { chosen: some, note: none } }
+  nobodyFound: { set: { note: notFound } }
+  directoryDown: { set: { note: down } }
+  removedPerson: { set: { chosen: none, note: none } }
+  endFuture: { set: { end: future } }
+  endPast: { set: { end: past } }
+  endUnfinished: { set: { end: unfinished } }
+  clearToast: { set: { toast: none } }
+  leftKosk: { set: { koskLeft: true, saved: kosk, picked: none, chosen: none, note: none, end: blank, toast: none } }
+  leftMadrasah: { set: { madrasahLeft: true, saved: madrasah, picked: none, chosen: none, note: none, end: blank, toast: none } }
+  leftCourse: { set: { courseLeft: true, saved: course, picked: none, chosen: none, note: none, end: blank, toast: none } }
+  notPassiveToast: { set: { toast: notPassive } }
+  expiryToast: { set: { toast: expiry } }
+  unknownAccountToast: { set: { toast: unknownAccount } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  reading:
+    from: getInactiveScopes
+    forbidden: [AUTHZ_FORBIDDEN]
+    unreadable: []
+  looking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN]
+  saving:
+    from: assignInactiveScope
+    notPassive: [INACTIVE_SCOPE_NOT_FOUND]
+    expiry: [GRANT_EXPIRY_INVALID]
+    unknownAccount: [KOSK_NAZIM_UNKNOWN_ACCOUNT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [SELF_GRANT_REFUSED, VALIDATION_ERROR, HTTP_400]
+
+# The main story: the başnazım opens Pasif kapsamlar, keeps the köşks, presses "Köşk nazımı ata" on the row, finds a person by e-mail
+# address, gives the post an end and sends it: the row leaves and the köşk is active again.
+main:
+  given: { read: ok, list: rows, lookup: found, endAt: future, answer: assigned }
+  events: [DONE, FILTER_KOSK, ASSIGN_KOSK, SEARCH, DONE, SET_END, SUBMIT, DONE]
+
+initial: reading
+states:
+  reading:
+    title: Read the list
+    description: >-
+      The page reads GET /nizam/inactive-scopes on the server (getInactiveScopes, reads.ts:15-27). tedrisat lets the başnazım and a
+      Medaris nazımı holding platform.inactive_scopes_manage through (inactive-scope.service.ts:58-69); anyone else is a 403 and
+      the page calls forbidden(), which draws "Bu bölüm için izniniz yok" (page.tsx:23); another failure is a box with "Yeniden
+      dene". The menu entry for a Medaris nazımı does not exist (D1, F-W2-1). The list holds only scopes that once had a manager
+      and have none now, oldest first, hidden ones left out (inactive-scope.repository.ts:64-107).
+    source: apps/nizam/features/inactive-scopes/reads.ts:15
+    invoke: { action: getInactiveScopes }
+    on:
+      DONE:
+        - { guard: "read == 'ok' and list == 'none'", target: view, effect: [nothingListed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:246, say: "nothing has no manager: the table says so" }
+        - { guard: "read == 'ok'", target: view, source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:241, say: "the list is drawn with a row for each scope" }
+      FAIL.forbidden: { guard: "read == 'forbidden'", target: refused, source: apps/nizam/app/pasif-kapsamlar/page.tsx:23, say: "tedrisat says 403 and the page draws 'Bu bölüm için izniniz yok'" }
+      FAIL.unreadable: { guard: "read == 'unreadable'", target: unreadable, source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:233, say: "the read failed: a box says so and offers 'Yeniden dene'" }
+
+  view:
+    title: Which rows are shown
+    description: >-
+      Not a screen: after a chip, an assignment or a cancelled window the table shows the rows of the chosen kind that have not
+      left, or its one empty line.
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:60
+    always:
+      - { guard: noRows, target: empty, say: "no row is left in what the chip shows: 'Yöneticisi olmayan kapsam yok.'" }
+      - { target: listed, say: "at least one row is shown" }
+
+  listed:
+    title: Pasif kapsamlar, with rows
+    goal: true
+    by: human
+    description: >-
+      The list: for each scope its name and kind (a course says its köşk), why it has no manager (and who took the post away), since
+      which day and for how many days, the last manager and their role, and the buttons "… ata" and, on a köşk and a course,
+      "İçeriği gör". The count above says "N kapsam". The chips filter in the browser. The page moves no focus when it opens. A toast
+      from a window just closed may stand over it. Nothing says that a chip changed the rows (REASSIGN-5).
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:196
+    on:
+      FILTER_ALL: { target: view, effect: [filterAll], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Tümü' (or the chip that is on, which switches the filter off)" }
+      FILTER_KOSK: { target: view, effect: [filterKosk], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Köşk': only köşk rows stay" }
+      FILTER_MADRASAH: { target: view, effect: [filterMadrasah], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Medrese'" }
+      FILTER_COURSE: { target: view, effect: [filterCourse], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Ders'" }
+      ASSIGN_KOSK: { guard: showsKosk, target: form, effect: [pickKosk], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:176, say: "they press 'Köşk nazımı ata' on the köşk's row: the window opens on its close icon (F-W2-12)" }
+      ASSIGN_MADRASAH: { guard: showsMadrasah, target: form, effect: [pickMadrasah], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:176, say: "they press 'Başmüderris ata' on the medrese's row" }
+      ASSIGN_COURSE: { guard: showsCourse, target: form, effect: [pickCourse], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:176, say: "they press 'Hoca ata' on the course's row" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  empty:
+    title: Pasif kapsamlar, nothing in view
+    by: human
+    description: >-
+      The table's one line "Yöneticisi olmayan kapsam yok.", with "0 kapsam" above it: nothing has no manager, or the kind the chip
+      shows has none left (every row of it has just been given a manager). A toast from the window that took the last row may stand
+      over it. The other chips still work.
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:246
+    on:
+      FILTER_ALL: { target: view, effect: [filterAll], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Tümü': the other kinds' rows come back, if any" }
+      FILTER_KOSK: { target: view, effect: [filterKosk], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Köşk'" }
+      FILTER_MADRASAH: { target: view, effect: [filterMadrasah], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Medrese'" }
+      FILTER_COURSE: { target: view, effect: [filterCourse], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "they press 'Ders'" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  unreadable:
+    title: Pasif kapsamlar, the list could not be read
+    by: human
+    description: >-
+      The page, its notice and its chips, and in place of the table an error box "Pasif kapsamlar yüklenemedi" with "Yeniden
+      dene", which reads the page again (router.refresh()). The count is absent.
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:233
+    on:
+      RETRY: { target: reading, source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:236, say: "they press 'Yeniden dene': the page is read again" }
+      FILTER_ALL: { target: unreadable, effect: [filterAll], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "a chip is pressed: there is nothing to filter" }
+      FILTER_KOSK: { target: unreadable, effect: [filterKosk], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "a chip is pressed: there is nothing to filter" }
+      FILTER_MADRASAH: { target: unreadable, effect: [filterMadrasah], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "a chip is pressed: there is nothing to filter" }
+      FILTER_COURSE: { target: unreadable, effect: [filterCourse], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:227, say: "a chip is pressed: there is nothing to filter" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the window the button is on or off. The submit is natively `disabled` until a person is
+      chosen and the end is empty or after the moment the window was opened; nothing says which is missing (F-X-3).
+    source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:122
+    always:
+      - { guard: ready, target: formReady, say: "a person is chosen and the end is right: the button is on" }
+      - { target: form, say: "nobody is chosen, or the end is wrong: the button is off" }
+
+  form:
+    title: The "… ata" window, the button off
+    by: human
+    description: >-
+      A form dialog over the page, named by its title ("Köşk nazımı ata", "Başmüderris ata" or "Hoca ata"), with the scope's name above
+      it and one intro for the kind. The scrim does not close it (a form dialog never does, libs/ui/src/mds/dialog.tsx:74), so a
+      stray click loses nothing. The focus starts on the close icon (F-W2-12). The person's address is searched on Enter and when
+      the field is left (F-W2-3, F-X-14). The end field is a native datetime-local that is not required: an end in the past, or one
+      half typed, is said under it and turns the button off. The button is natively off and says nothing of why (F-X-3).
+    source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:103
+    on:
+      SEARCH: { target: looking, source: apps/nizam/features/madrasahs/components/head-picker.tsx:53, say: "they type the person's e-mail address and press Enter, or leave the field" }
+      SET_END:
+        - { guard: "endAt == 'future'", target: settle, effect: [endFuture], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:153, say: "they type an end after now: nothing is said" }
+        - { guard: "endAt == 'past'", target: settle, effect: [endPast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:60, say: "they type an end before the moment the window was opened: 'Bitiş zamanı şu andan sonra olmalı.' replaces the help line and the button goes off" }
+        - { guard: "endAt == 'unfinished'", target: settle, effect: [endUnfinished], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:157, say: "they half type the picker and leave it: 'Bitiş tarihini ve saatini tamamlayın.' and the button goes off" }
+      REMOVE_PERSON: { guard: "chosen == 'some'", target: settle, effect: [removedPerson], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen person: nothing asks first and the focus is not moved" }
+      CANCEL: { target: view, effect: [closeDialog], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106, say: "Vazgeç, the close icon or Escape: the window closes and nothing is assigned; the focus goes back to the row's button (not verified in a browser)" }
+      CLICK_SCRIM: { target: form, source: libs/ui/src/mds/dialog.tsx:133, say: "they click outside the window: nothing happens, and nothing typed is lost" }
+
+  formReady:
+    title: The "… ata" window, the button on
+    by: human
+    description: The same window with the button on; pressing it sends the assignment.
+    source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:119
+    on:
+      SEARCH: { target: looking, source: apps/nizam/features/madrasahs/components/head-picker.tsx:53, say: "they look up another person: the first stays chosen if nothing is found (REASSIGN-1)" }
+      SET_END:
+        - { guard: "endAt == 'future'", target: settle, effect: [endFuture], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:153, say: "they change the end to another one after now" }
+        - { guard: "endAt == 'past'", target: settle, effect: [endPast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:60, say: "they type an end before now: the error shows and the button goes off" }
+        - { guard: "endAt == 'unfinished'", target: settle, effect: [endUnfinished], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:157, say: "they half type the picker and leave it: the error shows and the button goes off" }
+      REMOVE_PERSON: { guard: "chosen == 'some'", target: settle, effect: [removedPerson], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen person: the button goes off" }
+      SUBMIT: { target: saving, effect: [clearToast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:69, say: "they press the button" }
+      CANCEL: { target: view, effect: [closeDialog], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106, say: "Vazgeç, the close icon or Escape: the window closes and nothing is assigned" }
+      CLICK_SCRIM: { target: formReady, source: libs/ui/src/mds/dialog.tsx:133, say: "they click outside the window: nothing happens" }
+
+  looking:
+    title: Look the person up
+    description: >-
+      The server action lookupUserByEmail, GET /users/lookup (features/madrasahs/actions.ts:123): the realm's directory is searched
+      for the exact address (0 or 1 account) and tedrisat writes the search to the audit log, found or not. The e-mail field is
+      disabled while it runs, so it loses the focus (F-W2-3). The rest of the window stays live: Vazgeç still closes it, and the
+      button keeps the state it had (not drawn here).
+    source: apps/nizam/features/madrasahs/actions.ts:123
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "lookup == 'found'", target: settle, effect: [chose], source: apps/nizam/features/madrasahs/components/head-picker.tsx:61, say: "the person is chosen: a card with their name and address and a button to remove them; the field is cleared" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/madrasahs/components/head-picker.tsx:66, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field, if nobody is chosen" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/madrasahs/components/head-picker.tsx:68, say: "the directory did not answer: 'Arama şu an yapılamıyor.' under the field, if nobody is chosen" }
+      CANCEL: { target: view, effect: [closeDialog], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:106, say: "they close the window while the search runs; its answer is dropped" }
+      REMOVE_PERSON: { guard: "chosen == 'some'", target: settle, effect: [removedPerson], source: apps/nizam/features/madrasahs/components/head-picker.tsx:84, say: "they remove the person chosen before, while the search for another runs: the button is not disabled for a search; the person goes, the search's answer is dropped (remove() clears `searched`, head-picker.tsx:59) and the address stays in the field" }
+
+  saving:
+    title: Send the assignment
+    description: >-
+      The server action assignScope, POST /nizam/inactive-scopes/:type/:id/assign with the person's id and the end (actions.ts:12).
+      The API asks again that the scope has no manager now (it does not ask that it had one: ui.yaml rule
+      inactive-scope-accepts-new-scope), that the end is after now, that the caller does not name themselves unless they are the
+      başnazım, and that the account is known; then a köşk gets a KOSK_NAZIM and loses its passive mark, a course gets a MUDERRIS who
+      is its imam and a line in its list of müderrisler, a medrese goes through setHeadMuderris; one audit row is written. The
+      fields are disabled and the button is busy; Vazgeç, the close icon and Escape stay on and do nothing (REASSIGN-3).
+    source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:78
+    invoke: { action: assignInactiveScope }
+    on:
+      DONE:
+        - { guard: "answer == 'assigned' and picked == 'kosk'", target: view, effect: [leftKosk], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:93, say: "a toast 'Atandı' names the person and the köşk, the window closes and the row leaves the list (revalidatePath and a refresh); the focus has nowhere to go back to (F-W2-10)" }
+        - { guard: "answer == 'assigned' and picked == 'madrasah'", target: view, effect: [leftMadrasah], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:93, say: "the same for the medrese: the person is its başmüderris" }
+        - { guard: "answer == 'assigned' and picked == 'course'", target: view, effect: [leftCourse], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:93, say: "the same for the course: the person is its hoca and imam" }
+      FAIL.notPassive: { guard: "answer == 'notPassive'", target: settle, effect: [notPassiveToast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:86, say: "a sticky toast 'Atama yapılamadı' says 'Bu kapsam artık pasif değil.'; the window stays open and the list is not read again (REASSIGN-4)" }
+      FAIL.expiry: { guard: "answer == 'expiry'", target: settle, effect: [expiryToast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:86, say: "a sticky toast says 'Bitiş tarihi geçmişte.': the end passed between the moment the window was opened, which the form judges by, and the server's clock" }
+      FAIL.unknownAccount: { guard: "answer == 'unknownAccount'", target: settle, effect: [unknownAccountToast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:86, say: "a sticky toast says 'Bu hesap bulunamadı.'" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:86, say: "a sticky toast says 'Bunu yapma izniniz yok.'" }
+      FAIL.failed: { guard: "answer == 'failed'", target: settle, effect: [failedToast], source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:86, say: "a sticky toast says 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.', also for a person who named themselves (REASSIGN-2)" }
+
+  refused:
+    type: final
+    title: The person may not open the page
+    description: >-
+      The page calls forbidden(), which draws "Bu bölüm için izniniz yok" inside the shell (nizam.shell.noAccessAndNotFound draws
+      it). A köşk nazımı and a Medaris nazımı without platform.inactive_scopes_manage meet it (e2e inactive#4, #5).
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: only-a-chosen-person-is-sent, never: "state == 'saving' and chosen == 'none'", say: "An assignment is never sent without a person", source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:76 }
+  - { id: only-a-right-end-is-sent, never: "state == 'saving' and (end == 'past' or end == 'unfinished')", say: "An end that is in the past, or half typed, is never sent: the button is off", source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:122 }
+  - { id: a-window-has-a-scope, never: "state == 'saving' and picked == 'none'", say: "A window that sends belongs to a row", source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:76 }
+  - { id: a-list-with-rows-shows-one, never: "state == 'listed' and noRows", say: "The list state always has a row in view; otherwise it is the empty line", source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:246 }

@@ -14,7 +14,7 @@ import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { Tabs } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { RejectDialog } from "~/features/deck-review/components/reject-dialog";
 import { longDateTime, shortDateTime } from "~/features/deck-review/present";
 import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
@@ -62,9 +62,13 @@ export function CourseRequestsView({ koskId, initial }: Props) {
 
   const items = lists[tab] ?? [];
   const selected = items.find((r) => r.id === selectedId) ?? null;
+  // A read answers for the tab it was asked for: once another tab is shown, a
+  // late answer must not select one of its requests under the tab on the screen.
+  const ticket = useRef(0);
 
   const load = useCallback(
     async (next: RequestTab) => {
+      const mine = ++ticket.current;
       setLoading(true);
       let result: Awaited<ReturnType<typeof loadCourseRequests>> | null;
       try {
@@ -72,6 +76,7 @@ export function CourseRequestsView({ koskId, initial }: Props) {
       } catch {
         result = null;
       }
+      if (mine !== ticket.current) return;
       setLoading(false);
       if (redirectIfUnauthenticated(result)) return;
       if (!result?.success) {
@@ -94,6 +99,8 @@ export function CourseRequestsView({ koskId, initial }: Props) {
   );
 
   const changeTab = (next: RequestTab) => {
+    ticket.current++;
+    setLoading(false);
     setTab(next);
     setSelectedId((lists[next] ?? [])[0]?.id ?? null);
     if (lists[next] === undefined) void load(next);

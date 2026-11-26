@@ -1,0 +1,416 @@
+# Changing a Medaris nazımı's permissions and end: "İzinleri düzenle" on a row of Medaris nazımları (nizam-web /medaris-nazimlari), read from
+# the code of PR #394's branch on 15 Nov 2026 (apps/nizam/app/medaris-nazimlari/page.tsx, features/permissions/{reads.ts, actions.ts, present.ts,
+# components/nazims-view.tsx, components/permissions-dialog.tsx, components/permission-boxes.tsx}, libs/utils/src/end-instant.ts, and the API's
+# PUT /nizam/medaris-nazims/:userId/grants in apps/tedrisat/src/assignment/admin). Nothing here was walked in a browser: every behaviour is
+# "from the code" until the walk phase; the owner moved every replay to the end.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - Every row of the table has "İzinleri düzenle: <name>" (the başnazım's page; a Medaris nazımı never reaches it). The dialog opens from what the
+#     person holds now: a ready group in a select ("Grup yok" or one of the platform's groups), one box for each of the 19 platform permissions
+#     (the ones the group carries are ticked, locked and say "Gruptan gelir."), the end on the başnazım's clock, a summary, "Vazgeç" and "Kaydet".
+#   - "Kaydet" sends the group, the single permissions beyond it and the end (PUT, `expiresAt` null is "no end of its own"). The API replaces what the
+#     person holds and keeps what stays: a kept row keeps its giver and date. A null end means "when the appointment ends", so on a seat that has an end,
+#     clearing the field cannot make the permissions endless; the dialog says so in its help line, and the row then still shows the appointment's end.
+#   - An end that is not ahead, or is after the appointment's, is said under the field as it is typed and "Kaydet" is natively disabled; the message is
+#     not a live region and nothing moves the focus (F-UI-W3-1). The reason is at least visible, which the buttons of F-X-3 do not give.
+#   - A refusal is a toast over the open dialog and the dialog stays, with the form as it was. The list and the group list are NOT read again after a
+#     refusal (EPERM-1), and a save with nothing changed is sent all the same and says "izinler güncellendi" (EPERM-2).
+#   - The dialog sets no initial focus (F-W2-12) and is described by its whole body (F-W2-13); a row whose person has no name is "İzinleri düzenle: "
+#     (F-W2-11); the e2e checks that carry this flow (permissions#6, #7, #8) are date-bound to 2026-12-31 (F-W2-7, F-X-20), and this flow does not copy
+#     them: its walk appoints a seat of its own.
+# Appointing is nizam.nazims.appoint, which opens the same dialog in its other mode; dismissing is nizam.nazims.dismiss; the groups are
+# nizam.nazims.groups. A saved edit changes what the person sees on her own Ana sayfa: nizam.home.medarisNazimCut (started from the save).
+#
+# Which seat the walk edits: not the seeded one. The walk's setup makes a platform group of its own ("Deneme grubu epDialog": Denetim kaydını oku, Pasif
+# kapsamları yönet) and makes a spare talebe account (applicantD, "Salih Başvuran") a Medaris nazımı holding that group, "Medrese aç ve başmüderrisini
+# seç" and "Desteyi herkese yayımla", with an end twenty days ahead (or none). The seeded Medaris nazımı (Selma Medaris Nazımı) is never touched.
+schema: delurio-graph/0
+kind: flow
+id: nizam.nazims.editPermissions
+status: captured
+domain: medaris.api
+ui: nizam.nazims.editPermissions
+title: Change a Medaris nazımı's permissions and end
+summary: >-
+  The başnazım opens Medaris nazımları and presses "İzinleri düzenle" on a row. A dialog opens with what the person holds: a ready group, the
+  single permissions, and the end on her clock (or empty). She chooses another group or "Grup yok", ticks or unticks a permission, changes the end or
+  clears it, and presses "Kaydet". A toast says "İzinler kaydedildi", the dialog closes and the row shows the new group, the permissions and the end. An
+  end that is not ahead, or is after the appointment's, is said under the field and "Kaydet" stays off; Vazgeç, the close icon and Esc write nothing.
+  The server can still say no: the person was dismissed meanwhile, the group was deleted meanwhile, an end it counts differently, or any other refusal;
+  each is a toast and the dialog stays open on a form that is as it was. Once saved, the person's own Ana sayfa follows the grants.
+
+scope:
+  shows: >-
+    the Medaris nazımları table with the edited person's row, the dialog "İzinleri düzenle" (the person's card, the group select, five of the 19
+    boxes, the end field with its help and its two errors, the summary, the footer), the select's open list, the toasts that follow, and the row after a
+    save
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "appointing a Medaris nazımı (the same dialog in its other mode, with the e-mail picker and 'Kaydet' off until somebody is chosen): nizam.nazims.appoint; dismissing one, with its question: nizam.nazims.dismiss; the groups' own page: nizam.nazims.groups"
+    - "the page's own load-failed box, drawn here only as far as its retry ('Medaris nazımları yüklenemedi'), and the screen a person who is no başnazım meets ('Bu bölüm için izniniz yok'): nizam.shell.noAccessAndNotFound; the three first reads (the list, the catalog and the groups) are one state here"
+    - "the 14 other boxes of the catalog and the two other sections' captions ('Köşkler', 'Yasak ve cihaz'), the small print under a box (PermissionCatalog help), the line 'Verilme zamanı' under 'Platformdan yasakla' and the caption of the bans section"
+    - "a person who also holds a course-wide or one-course group: the note 'ders izinleri bu pencerede görünmez' lists them, and a save leaves them as they are (the API's planGrants only diffs the platform scope); the seeded and the walk's seat hold none"
+    - "a half-typed end ('Bitiş tarihini ve saatini tamamlayın.'): a datetime-local field the walk fills whole; isUnfinishedEnd and resolveEnd read it (libs/utils/src/end-instant.ts:98, :141)"
+    - "a save that empties the seat (no group and no permission: 'İzin verilmemiş' in the row): the walk's seat always keeps 'Medrese aç', so the start of nizam.home.medarisNazimCut is given granted: some here"
+    - "a person who has no name in the directory ('Adı bilinmiyor', and a button named 'İzinleri düzenle: ' with nothing after it: F-W2-11)"
+    - "a session that has ended: the server action sends the person to sign in (realm.auth.signIn) instead of drawing a message"
+
+decisions:
+  D1:
+    question: >-
+      Should a refusal that says the person is no longer a Medaris nazımı, or the group no longer exists, read the list and the groups again? Today the
+      dialog stays open on a row and a group that are no longer true, and the same save is refused the same way (EPERM-1). The Course nazırı dialog of
+      nazar reads again and closes (CNP-1 there).
+    recommend: >-
+      Re-read after those two refusals (the page already has `refresh`), and close the dialog when the person is gone; keep it open, with the group list
+      read again, when only the group is.
+    affects: [editing, formBlocked]
+  D2:
+    question: >-
+      Should a save that changes nothing say so? "Kaydet" with the same group, the same permissions and the same end sends the PUT, the API writes nothing
+      (no audit row) and the toast still says "{name} için izinler güncellendi." (EPERM-2).
+    recommend: >-
+      Close the dialog without a call and with no toast when the form equals what the person holds, as nazar's ders nazırı dialog does, or say 'Değişiklik yok'.
+    affects: [saving, listed]
+
+context:
+  seat:
+    values: [dated, forever]
+    initial: any
+    say:
+      dated: "the appointment ends twenty days ahead: the dialog's end field holds that moment, its help line says 'Atamanız ... tarihinde bittiği için izin de en geç o zaman biter.', and an end after it is refused"
+      forever: "the appointment has no end: the end field starts empty, its help line says 'Boş bırakırsanız süresiz olur.', and any end ahead is allowed"
+  answer:
+    values: [saved, gone, groupGone, expiry, forbidden, failed]
+    initial: any
+    say:
+      saved: "the server writes what the form says"
+      gone: "the person was dismissed after the page was drawn (MEDARIS_NAZIM_NOT_FOUND)"
+      groupGone: "the group was deleted after the page was drawn (PERMISSION_GROUP_NOT_FOUND)"
+      expiry: "the server counts the end differently from the page: it is not ahead, or it is after an appointment that now ends sooner (GRANT_EXPIRY_INVALID)"
+      forbidden: "the caller is no longer the başnazım (AUTHZ_FORBIDDEN)"
+      failed: "any other refusal, or the server does not answer: the generic sentence"
+  # what the person holds, as the row says it; the dialog opens from it every time
+  heldGroup:
+    values: [chosen, none]
+    initial: chosen
+    say: { chosen: "she holds the walk's group: the row has its badge and the singles read 've ...'", none: "she holds no group: the row names the permissions alone" }
+  heldDeck:
+    values: [ticked, unticked]
+    initial: ticked
+    say: { ticked: "she holds 'Desteyi herkese yayımla' as a single permission", unticked: "she does not" }
+  heldEnd:
+    values: [ahead, none]
+    initial: ahead
+    say: { ahead: "the row says the day her permissions end and, within 30 days, how many days are left", none: "the row says 'Süresiz'" }
+  # the form
+  group:
+    values: [chosen, none]
+    initial: chosen
+    say: { chosen: "the select says the walk's group: its two boxes are ticked, locked and say 'Gruptan gelir.'", none: "the select says 'Grup yok': every box is free" }
+  deck:
+    values: [ticked, unticked]
+    initial: ticked
+    say: { ticked: "the box 'Desteyi herkese yayımla' is ticked", unticked: "it is not" }
+  end:
+    values: [kept, cleared, later, past, beyond]
+    initial: kept
+    say:
+      kept: "the end field holds what the person holds (the end on her clock, or empty): the stored instant goes back as it is"
+      cleared: "the field was emptied: no end of its own, so the permissions end with the appointment, or never when the seat has no end"
+      later: "a moment ahead, other than the held one and before the appointment's end, was typed"
+      past: "a moment that is not after now was typed"
+      beyond: "a moment after the appointment's end was typed (only a seat that has an end)"
+  toast:
+    values: [none, saved, gone, groupGone, expiry, forbidden, failed]
+    initial: none
+    say:
+      none: "no toast of this flow is up"
+      saved: "'İzinler kaydedildi' with '{name} için izinler güncellendi.' (closes by itself after 6 seconds)"
+      gone: "'İzinler kaydedilemedi' with 'Bu kişi artık Medaris nazımı değil.' (an error toast stays)"
+      groupGone: "'İzinler kaydedilemedi' with 'Bu grup artık yok.'"
+      expiry: "'İzinler kaydedilemedi' with 'Bitiş tarihi geçmişte ya da atamanın bitişinden sonra.'"
+      forbidden: "'İzinler kaydedilemedi' with 'Bunu yapma izniniz yok.'"
+      failed: "'İzinler kaydedilemedi' with 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'"
+
+guards:
+  # resolveEnd() of libs/utils/src/end-instant.ts:141: "past" when the end is not after now, "afterAssignment" when it is after the appointment's end; `canSave` keeps "Kaydet" off
+  endWrong: "end == 'past' or end == 'beyond'"
+  # what the form sends as `expiresAt`: a typed moment, or the held end untouched; "cleared" sends null (permissions-dialog.tsx:148)
+  endSent: "end == 'later' or (end == 'kept' and heldEnd == 'ahead')"
+  # the end the row says after a save that worked: the API's `expiresAt` is the earliest of the appointment's end and the permissions' (a null end means "with the appointment")
+  endStays: "seat == 'dated' or end == 'later' or (end == 'kept' and heldEnd == 'ahead')"
+
+effects:
+  holdsForever: { set: { heldEnd: none } }
+  # the dialog starts again from what the person holds, every time it opens (permissions-dialog.tsx:82-94)
+  openedChosenTicked: { set: { group: chosen, deck: ticked, end: kept, toast: none } }
+  openedChosenUnticked: { set: { group: chosen, deck: unticked, end: kept, toast: none } }
+  openedNoneTicked: { set: { group: none, deck: ticked, end: kept, toast: none } }
+  openedNoneUnticked: { set: { group: none, deck: unticked, end: kept, toast: none } }
+  groupChosen: { set: { group: chosen } }
+  groupNone: { set: { group: none } }
+  deckTicked: { set: { deck: ticked } }
+  deckUnticked: { set: { deck: unticked } }
+  endKept: { set: { end: kept } }
+  endCleared: { set: { end: cleared } }
+  endLater: { set: { end: later } }
+  endPast: { set: { end: past } }
+  endBeyond: { set: { end: beyond } }
+  # what the person holds after a save that worked
+  heldChosenTicked: { set: { heldGroup: chosen, heldDeck: ticked, toast: saved } }
+  heldChosenUnticked: { set: { heldGroup: chosen, heldDeck: unticked, toast: saved } }
+  heldNoneTicked: { set: { heldGroup: none, heldDeck: ticked, toast: saved } }
+  heldNoneUnticked: { set: { heldGroup: none, heldDeck: unticked, toast: saved } }
+  heldAhead: { set: { heldEnd: ahead } }
+  heldForever: { set: { heldEnd: none } }
+  goneToast: { set: { toast: gone } }
+  groupGoneToast: { set: { toast: groupGone } }
+  expiryToast: { set: { toast: expiry } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  reading:
+    from: listMedarisNazims
+    forbidden: [AUTHZ_FORBIDDEN]
+    unreadable: []
+  saving:
+    from: setMedarisNazimGrants
+    gone: [MEDARIS_NAZIM_NOT_FOUND]
+    groupGone: [PERMISSION_GROUP_NOT_FOUND]
+    expiry: [GRANT_EXPIRY_INVALID]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [HTTP_400, VALIDATION_ERROR, PERMISSION_UNKNOWN, PERMISSION_GROUP_SCOPE_INVALID]
+# `unreadable` stands for any answer but a refused token: a failed read of any of the page's three reads (the list, the catalog, the groups) is
+# `null`, which draws the load-failed box (reads.ts:34-35). The web app words the codes in permissionErrorKey (present.ts:348-371): the four named
+# ones have a sentence of their own, everything else is "Bir şeyler ters gitti. Biraz sonra yeniden deneyin."
+
+# The story the page tells first (permissions#6, #7, #8 without their dates): the başnazım opens the dialog, takes the group away, unticks
+# 'Desteyi herkese yayımla', moves the end sooner and saves; the row says so; she opens it again and clears the end.
+main:
+  given: { seat: dated, answer: saved }
+  events: [DONE, OPEN_EDIT, OPEN_GROUP_LIST, CHOOSE_NO_GROUP, TOGGLE_DECK, TYPE_LATER_END, SAVE, DONE, OPEN_EDIT, CLEAR_END, SAVE, DONE]
+
+initial: reading
+states:
+  reading:
+    title: The Medaris nazımları are read
+    description: >-
+      The page reads three things on the server at once, behind a loading page of skeletons: GET /nizam/medaris-nazims (the list), GET /nizam/permissions
+      (the catalog of codes) and GET /nizam/permission-groups (the groups). Nothing is on the screen of this step. A 403 of any of them is Next's
+      forbidden(): "Bu bölüm için izniniz yok" (the page is the başnazım's alone, also for a Medaris nazımı with every permission); a read that fails
+      is `null` and draws the load-failed box. The walk's seat is in the list, appointed by the setup.
+    source: apps/nizam/app/medaris-nazimlari/page.tsx:25
+    invoke: { action: listMedarisNazims }
+    on:
+      DONE:
+        - { guard: "seat == 'forever'", target: listed, effect: [holdsForever], source: apps/nizam/features/permissions/components/nazims-view.tsx:133, say: "the seat has no end: the row says 'Süresiz'" }
+        - { target: listed, source: apps/nizam/features/permissions/components/nazims-view.tsx:133, say: "the seat ends twenty days ahead: the row says the day and '20 gün kaldı'" }
+      FAIL.forbidden: { target: no_access, source: apps/nizam/app/medaris-nazimlari/page.tsx:28, say: "a 403 of one of the reads: forbidden(), the screen 'Bu bölüm için izniniz yok'" }
+      FAIL.unreadable: { target: loadFailed, source: apps/nizam/features/permissions/reads.ts:35, say: "a read failed: the page draws 'Medaris nazımları yüklenemedi' with 'Yeniden dene'" }
+
+  loadFailed:
+    title: The list could not be read
+    description: >-
+      The header stays and an error box says "Medaris nazımları yüklenemedi" / "Medaris nazımları şu an okunamıyor. Biraz sonra yeniden deneyin." with
+      "Yeniden dene", which refreshes the route in a transition. The count and the table are left out, and "Medaris nazımı ata" and "İzinleri düzenle" are
+      natively disabled when the catalog or the groups are the ones that failed. Drawn only as far as the retry; the stack cannot make a read fail.
+    by: human
+    on:
+      RETRY: { target: reading, source: apps/nizam/features/permissions/components/nazims-view.tsx:231, say: "they press 'Yeniden dene': the page is read again" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:228
+
+  listed:
+    title: The table of Medaris nazımları
+    description: >-
+      The page: "Medaris nazımları", its intro, "Medaris nazımı ata" and, under "Görevde" and the count, a table with a row for each person in office:
+      name and address, the group badge ("{group} grubu") with "her ders" or a course for a course group, the single permissions as one caption
+      ("ve Medrese aç, Desteyi herkese yayımla" after a group, the plain list without one, "İzin verilmemiş" for none), the end ("Süresiz", or the day with
+      "{n} gün kaldı" within 30 days and "Bugün bitiyor" on the day), who appointed and on which day, and "İzinleri düzenle: {name}" and "Görevden al:
+      {name}". The walk's person is one row among two (the seeded Medaris nazımı is the other). The row's words follow the last save (the page is read again
+      after it). The toast "İzinler kaydedildi" stands over the page for 6 seconds after a save; the focus goes back to the row's button, which stays
+      mounted (not verified in a browser). The row's button is named after the person: with no name it is "İzinleri düzenle: " (F-W2-11); the end is a
+      day, not the hour the permissions end at (the same as CNP-2 of nazar's table).
+    by: human
+    goal: true
+    on:
+      OPEN_EDIT:
+        - { guard: "heldGroup == 'chosen' and heldDeck == 'ticked'", target: editing, effect: [openedChosenTicked], source: apps/nizam/features/permissions/components/nazims-view.tsx:181, say: "they press 'İzinleri düzenle: {name}': the dialog opens with the group chosen and 'Desteyi herkese yayımla' ticked, and the end she holds" }
+        - { guard: "heldGroup == 'chosen'", target: editing, effect: [openedChosenUnticked], source: apps/nizam/features/permissions/components/nazims-view.tsx:181, say: "the dialog opens with the group chosen and 'Desteyi herkese yayımla' unticked" }
+        - { guard: "heldDeck == 'ticked'", target: editing, effect: [openedNoneTicked], source: apps/nizam/features/permissions/components/nazims-view.tsx:181, say: "the dialog opens with 'Grup yok' and 'Desteyi herkese yayımla' ticked" }
+        - { target: editing, effect: [openedNoneUnticked], source: apps/nizam/features/permissions/components/nazims-view.tsx:181, say: "the dialog opens with 'Grup yok' and 'Desteyi herkese yayımla' unticked" }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:236
+
+  settle:
+    title: Is "Kaydet" on?
+    description: >-
+      Not a screen: after every change to the end the button is on or off. "Kaydet" is natively disabled (`disabled={!canSave}`) while the end is wrong:
+      not after now, or after the appointment's end. Nothing else turns it off in this mode (a person is always chosen).
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:134
+    always:
+      - { guard: endWrong, target: formBlocked, say: "the end is wrong: its message is under the field and the button is off" }
+      - { target: editing, say: "the form is right: the button is on" }
+
+  editing:
+    title: The dialog, "Kaydet" on
+    description: >-
+      The dialog "İzinleri düzenle" over the page, "Platform" above its title: the person's card (name, address, "Medaris nazımı · Veren: {giver} ·
+      {date}"), the select "Hazır izin grubu" with its help and the link "İzin gruplarını düzenle", "İzinler" and the boxes in their sections (five drawn;
+      the group's two boxes are ticked, locked and say "Gruptan gelir." while the group is chosen), the end field "Bitiş tarihi ve saati (isteğe bağlı)"
+      with its help line ("Atamanız {moment} tarihinde bittiği için izin de en geç o zaman biter." on a seat that has an end, else "Boş bırakırsanız
+      süresiz olur."), the note about the audit log, the summary ("Gruptan 2 izin ve 2 ek izin", or "2 izin" with no group) and "Vazgeç" / "Kaydet". The
+      focus starts on the header's close icon: the dialog passes no initialFocus (F-W2-12, not verified in a browser). The scrim does not close it, so a stray
+      click loses nothing; Esc, Vazgeç and the close icon close it and drop the form with no question. A toast of a refusal that was just made is over it.
+      The form is described by its whole body (F-W2-13).
+    by: human
+    on:
+      OPEN_GROUP_LIST: { target: choosingGroup, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:229, say: "they press the select 'Hazır izin grubu': its list opens" }
+      TOGGLE_DECK:
+        - { guard: "deck == 'ticked'", target: editing, effect: [deckUnticked], source: apps/nizam/features/permissions/components/permission-boxes.tsx:75, say: "they untick 'Desteyi herkese yayımla': the summary counts one permission less" }
+        - { target: editing, effect: [deckTicked], source: apps/nizam/features/permissions/components/permission-boxes.tsx:75, say: "they tick 'Desteyi herkese yayımla' again" }
+      CLEAR_END: { target: settle, effect: [endCleared], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they empty the end field: no end of its own" }
+      TYPE_LATER_END: { target: settle, effect: [endLater], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type a moment ahead and before the appointment's end" }
+      TYPE_PAST_END: { target: settle, effect: [endPast], source: libs/utils/src/end-instant.ts:112, say: "they type a moment that is not after now: 'Bitiş zamanı şu andan sonra olmalı.' replaces the help line and the button goes off" }
+      TYPE_BEYOND_END: { guard: "seat == 'dated'", target: settle, effect: [endBeyond], source: libs/utils/src/end-instant.ts:112, say: "they type a moment after the appointment's end: 'Bitiş zamanı atamanın bitişinden ({moment}) sonra olamaz.' and the button goes off" }
+      SAVE: { target: saving, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:144, say: "they press 'Kaydet'" }
+      OPEN_GROUPS_PAGE: { target: groups_opened, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle', a plain link to /izin-gruplari: the page is left and what was typed is lost" }
+      CANCEL: { target: listed, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:192, say: "Vazgeç or Esc: the dialog closes and nothing is written; the focus goes back to the row's button" }
+      CLOSE: { target: listed, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:187, say: "the close icon: the same" }
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:178
+
+  formBlocked:
+    title: The dialog, "Kaydet" off
+    description: >-
+      The same dialog with an end that is wrong: the message stands under the field in place of the help line ("Bitiş zamanı şu andan sonra olmalı." or
+      "Bitiş zamanı atamanın bitişinden ({moment}) sonra olamaz.") as soon as it is typed, and "Kaydet" is natively disabled. The message is a Field error with
+      no role and no live region, and the focus is where it was, in the end field (F-UI-W3-1): a screen-reader user who types the end is not told. The reason
+      is at least on the screen, unlike the silent disabled buttons of F-X-3. Enter in the field sends nothing either: the form's one submit button is off.
+    by: human
+    on:
+      OPEN_GROUP_LIST: { target: choosingGroup, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:229, say: "they press the select: its list opens, the end stays wrong" }
+      TOGGLE_DECK:
+        - { guard: "deck == 'ticked'", target: formBlocked, effect: [deckUnticked], source: apps/nizam/features/permissions/components/permission-boxes.tsx:75, say: "they untick 'Desteyi herkese yayımla'" }
+        - { target: formBlocked, effect: [deckTicked], source: apps/nizam/features/permissions/components/permission-boxes.tsx:75, say: "they tick it again" }
+      CLEAR_END: { target: settle, effect: [endCleared], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they empty the field: the message goes and the button is on" }
+      TYPE_LATER_END: { target: settle, effect: [endLater], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type a moment that is right: the message goes and the button is on" }
+      TYPE_PAST_END: { guard: "end != 'past'", target: settle, effect: [endPast], source: libs/utils/src/end-instant.ts:112, say: "they change it to a moment that is not after now: the other message" }
+      TYPE_BEYOND_END: { guard: "seat == 'dated' and end != 'beyond'", target: settle, effect: [endBeyond], source: libs/utils/src/end-instant.ts:112, say: "they change it to a moment after the appointment's end: the other message" }
+      OPEN_GROUPS_PAGE: { target: groups_opened, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle': the page is left" }
+      CANCEL: { target: listed, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:192, say: "Vazgeç or Esc: the dialog closes and nothing is written" }
+      CLOSE: { target: listed, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:187, say: "the close icon: the same" }
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:289
+
+  choosingGroup:
+    title: The group list is open
+    description: >-
+      The kit's Select popup (Base UI), over the dialog: a listbox with no name of its own whose options are "Grup yok" and each platform group the page
+      read (the walk's group among them); the one the form says is selected. Choosing an option closes the list and, for a group, ticks and locks its
+      boxes and drops from the single permissions what the group carries, or, for "Grup yok", frees them; Esc closes the list alone and not the dialog
+      (Base UI, not verified here). The list the options come from was read when the page was, and is not read again (EPERM-1). The
+      dialog stays drawn behind it and in the accessibility tree (the Select's focus manager is not modal), but Base UI lays a backdrop
+      over the page with a hole for the select's own button: a press anywhere else lands on the backdrop and only closes the list
+      (read from Base UI 1.8's SelectPositioner, not verified in a browser).
+    by: human
+    on:
+      CHOOSE_GROUP: { target: settle, effect: [groupChosen], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:231, say: "they choose the group: its two boxes are ticked and locked ('Gruptan gelir.') and the summary counts them apart" }
+      CHOOSE_NO_GROUP: { target: settle, effect: [groupNone], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:231, say: "they choose 'Grup yok': the group's boxes lose their tick (they were not single permissions) and the summary is '{n} izin'" }
+      CLOSE_LIST: { target: settle, source: libs/ui/src/mds/select.tsx:80, say: "Esc: the list closes and the form stays as it was" }
+      OPEN_GROUP_LIST: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press the select's button again, which the backdrop leaves free: the list closes and the form stays as it was (not verified in a browser)" }
+      TOGGLE_DECK: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press 'Desteyi herkese yayımla' behind the list: the press lands on the Select's backdrop, the list closes and the box keeps its tick" }
+      SAVE: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press 'Kaydet' behind the list: the backdrop takes the press, the list closes and nothing is sent" }
+      OPEN_GROUPS_PAGE: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press 'İzin gruplarını düzenle' behind the list: the backdrop takes the press and the list closes; the link is not followed" }
+      CANCEL: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press Vazgeç behind the list: the backdrop takes the press, the list closes and the dialog stays" }
+      CLOSE: { target: settle, source: libs/ui/src/mds/select.tsx:51, say: "they press the close icon behind the list: the list closes and the dialog stays" }
+    source: libs/ui/src/mds/select.tsx:80
+
+  saving:
+    title: The permissions are on their way
+    description: >-
+      setNazimGrants calls PUT /nizam/medaris-nazims/:userId/grants with `groupId` (the chosen group, or null), `permissions` (the single permissions in the
+      catalog's order, minus what the group carries) and `expiresAt` (the end as an instant, or null). "Kaydet" is busy (aria-disabled, its hidden status
+      says "Yükleniyor"), the select, the boxes and the end field are off, and Vazgeç, the close icon and Esc do nothing while it runs
+      (permissions-dialog.tsx:181). One transaction replaces what the person holds in the platform scope: the rows that stay are left alone (same giver, same
+      date), the others are revoked in the başnazım's name, re-timed or added, and an end of null is the appointment's own. The end the server accepts is
+      ahead and not after the appointment's. A save with nothing changed is sent all the same and writes nothing (no audit row): EPERM-2. A success toasts
+      "İzinler kaydedildi", reads the page again (revalidatePath) and closes the dialog; a refusal toasts "İzinler kaydedilemedi" with the sentence of its
+      code, keeps the dialog open on the same form and reads nothing again (EPERM-1).
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:150
+    invoke: { action: setMedarisNazimGrants }
+    on:
+      CANCEL: { target: saving, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç or Esc: nothing happens, the save goes on" }
+      CLOSE: { target: saving, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "the close icon: nothing happens, the save goes on" }
+      OPEN_GROUPS_PAGE: { target: groups_opened, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle' while the PUT is out: a plain link, never disabled, so the page is loaded anew and no toast or row tells what became of the save, which has already gone (not verified in a browser)" }
+      DONE:
+        - { guard: "answer == 'saved'", target: applied, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:162, say: "the server wrote the form: the row will say it" }
+      FAIL.gone:
+        - { guard: "answer == 'gone'", target: settle, effect: [goneToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:156, say: "MEDARIS_NAZIM_NOT_FOUND: an error toast 'İzinler kaydedilemedi' / 'Bu kişi artık Medaris nazımı değil.'; the dialog stays open and the row stays in the list (EPERM-1)" }
+      FAIL.groupGone:
+        - { guard: "answer == 'groupGone' and group == 'chosen'", target: settle, effect: [groupGoneToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:156, say: "PERMISSION_GROUP_NOT_FOUND: an error toast with 'Bu grup artık yok.'; the dialog stays open and the select still lists the group (EPERM-1). Only a form that sends the group is refused: with 'Grup yok' chosen the save works" }
+      FAIL.expiry:
+        - { guard: "answer == 'expiry' and endSent", target: settle, effect: [expiryToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:156, say: "GRANT_EXPIRY_INVALID: an error toast with 'Bitiş tarihi geçmişte ya da atamanın bitişinden sonra.'; the page's own check used the moment the dialog opened and the appointment it read" }
+      FAIL.forbidden:
+        - { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:156, say: "AUTHZ_FORBIDDEN: an error toast with 'Bunu yapma izniniz yok.'" }
+      FAIL.failed:
+        - { guard: "answer == 'failed'", target: settle, effect: [failedToast], source: apps/nizam/features/permissions/present.ts:370, say: "any other refusal: an error toast with the generic sentence" }
+
+  applied:
+    title: The row will say what was saved
+    description: >-
+      Not a screen: the dialog closes, the success toast is raised and the page is read again, so what the row holds is now the form's group and the
+      single permission of the form. A step with no screen of its own.
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:163
+    always:
+      - { guard: "group == 'chosen' and deck == 'ticked'", target: appliedEnd, effect: [heldChosenTicked], say: "the group and 'Desteyi herkese yayımla' are held" }
+      - { guard: "group == 'chosen'", target: appliedEnd, effect: [heldChosenUnticked], say: "the group is held, the single permission is not" }
+      - { guard: "deck == 'ticked'", target: appliedEnd, effect: [heldNoneTicked], say: "no group, the single permission is held" }
+      - { target: appliedEnd, effect: [heldNoneUnticked], say: "no group and no 'Desteyi herkese yayımla'" }
+
+  appliedEnd:
+    title: The row will say its end
+    description: >-
+      Not a screen: the row's end is the API's `expiresAt`, the earliest of the appointment's end and the permissions' end. A seat that has an end always
+      shows one (an emptied field leaves the appointment's); a seat with none shows the typed end, or "Süresiz". The person's own pages follow the
+      grants the next time she reads them (nizam.home.medarisNazimCut, whose given `granted: some` is true here: the walk's seat always keeps "Medrese aç").
+      A step with no screen of its own.
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:133
+    always:
+      - { guard: endStays, target: listed, effect: [heldAhead], starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'some'" } }, say: "the row says a day and the days left; the person's home is cut to her new grants" }
+      - { target: listed, effect: [heldForever], starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'some'" } }, say: "the row says 'Süresiz'; the person's home is cut to her new grants" }
+
+  no_access:
+    title: The screen "Bu bölüm için izniniz yok"
+    description: >-
+      forbidden() draws the shell's own screen at the same address (nizam.shell.noAccessAndNotFound). Not reached by the walk: the başnazım is the one who
+      signs in, and the stack cannot take the realm role away between sign-in and read.
+    type: final
+    leavesPage: true
+
+  groups_opened:
+    title: The groups' page
+    description: >-
+      "İzin gruplarını düzenle" is a plain `<a href="/izin-gruplari">`, so the browser loads the page anew and what was typed in the dialog is dropped with
+      no question. nizam.nazims.groups draws it.
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-wrong-end-is-never-sent
+    never: "state == 'saving' and endWrong"
+    say: A form whose end is not after now, or is after the appointment's end, is stopped by the disabled button; nothing is sent.
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:134
+  - id: a-beyond-end-needs-an-appointment-end
+    never: "end == 'beyond' and seat == 'forever'"
+    say: An end after the appointment's end is only possible where the appointment has one.
+    source: libs/utils/src/end-instant.ts:112
+  - id: a-saved-toast-follows-a-saved-answer
+    never: "state == 'listed' and toast == 'saved' and answer != 'saved'"
+    say: The toast "İzinler kaydedildi" is raised only when the server wrote the set.
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:163
