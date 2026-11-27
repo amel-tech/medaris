@@ -12,6 +12,7 @@ import {
 import {
   cleanup,
   click,
+  pick,
   render,
   rerender,
   settle,
@@ -132,7 +133,8 @@ const page = (draft: OnlineExamDraftResponse) =>
   );
 const button = (root: ParentNode, label: string) =>
   [...root.querySelectorAll("button")].find(
-    (b) => b.textContent?.trim() === label
+    (b) =>
+      b.textContent?.trim() === label || b.getAttribute("aria-label") === label
   ) as HTMLButtonElement | undefined;
 const rowOf = (title: string) =>
   [...document.querySelectorAll("tbody tr")].find((tr) =>
@@ -263,7 +265,7 @@ describe("Soru ekle while a saved question is open (MDRS-248)", () => {
 
   it("asks before dropping a change, and keeps it on Soruya dön", async () => {
     const root = await page(set);
-    await click(button(root, "Düzenle") as HTMLButtonElement);
+    await click(button(root, "1. soruyu düzenle") as HTMLButtonElement);
     await typeInto(textarea() as HTMLTextAreaElement, "Kıyasın rükünleri?");
     await click(button(root, "Soru ekle") as HTMLButtonElement);
     await settle(40);
@@ -278,7 +280,7 @@ describe("Soru ekle while a saved question is open (MDRS-248)", () => {
 
   it("opens the new question once the change is let go", async () => {
     const root = await page(set);
-    await click(button(root, "Düzenle") as HTMLButtonElement);
+    await click(button(root, "1. soruyu düzenle") as HTMLButtonElement);
     await typeInto(textarea() as HTMLTextAreaElement, "Kıyasın rükünleri?");
     await click(button(root, "Soru ekle") as HTMLButtonElement);
     await settle(40);
@@ -290,14 +292,17 @@ describe("Soru ekle while a saved question is open (MDRS-248)", () => {
     expect(root.textContent).toContain("Kıyasın rükünleri kaç tanedir?");
   });
 
-  it("counts a topic name typed under + Konu as a change", async () => {
-    const root = await page(set);
-    await click(button(root, "Düzenle") as HTMLButtonElement);
-    await click(button(root, "+ Konu") as HTMLButtonElement);
-    await settle(20);
-    await typeInto(
-      document.querySelector("input[data-new-topic]") as HTMLInputElement,
-      "Kıyas"
+  it("counts a topic picked in the list as a change", async () => {
+    const root = await page({
+      ...set,
+      courseTopics: [
+        { id: "t3", number: 3, name: "Kıyas", picked: false, questionCount: 0 },
+      ],
+    } as unknown as OnlineExamDraftResponse);
+    await click(button(root, "1. soruyu düzenle") as HTMLButtonElement);
+    await pick(
+      root.querySelector("form input[role=combobox]") as HTMLInputElement,
+      "3. Kıyas"
     );
     await click(button(root, "Soru ekle") as HTMLButtonElement);
     await settle(40);
@@ -308,7 +313,7 @@ describe("Soru ekle while a saved question is open (MDRS-248)", () => {
 
   it("opens the new question at once when nothing changed", async () => {
     const root = await page(set);
-    await click(button(root, "Düzenle") as HTMLButtonElement);
+    await click(button(root, "1. soruyu düzenle") as HTMLButtonElement);
     await click(button(root, "Soru ekle") as HTMLButtonElement);
     await settle(40);
     expect(dialog()).toBeNull();

@@ -85,6 +85,24 @@
   .mds-option[data-highlighted] { background: Highlight; color: HighlightText; }
 }
 
+/* The searchable list of several values (MultiCombobox, MDRS-248): the
+   .mds-input box grows to hold the chosen chips and the text field after
+   them; the box takes the focus ring while its field has the focus. */
+.mds-input.mds-combobox { flex-wrap: wrap; gap: var(--space-1); block-size: auto; min-block-size: var(--size-control-regular); padding-block: var(--space-1); padding-inline: var(--space-2); cursor: text; }
+.mds-input.mds-combobox:focus-within { border-color: var(--border-neutral-strong); outline: var(--ring-focus-outline); outline-offset: var(--ring-focus-offset); box-shadow: var(--ring-focus); }
+.mds-combobox__chip { display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: var(--size-control-mini); padding-inline: var(--space-2) var(--space-1); border: var(--border-width-thin) solid var(--border-brand-default); border-radius: var(--radius-tag); background: var(--background-brand-subtle); color: var(--text-brand-default); font-size: var(--fs-body-sm); outline: 0; }
+.mds-combobox__chip[data-highlighted], .mds-combobox__chip:focus-visible { box-shadow: var(--ring-focus); }
+.mds-combobox__remove { display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: var(--radius-full); background: transparent; color: inherit; cursor: pointer; }
+.mds-combobox__remove:hover { background: var(--background-neutral-hover); }
+.mds-combobox__input { flex: 1 1 10ch; min-inline-size: 10ch; block-size: var(--size-control-mini); padding: 0; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; }
+.mds-combobox__input:focus, .mds-combobox__input:focus-visible { outline: 0; box-shadow: none; }
+.mds-combobox__input::placeholder { color: var(--text-neutral-subtle); opacity: 1; }
+.mds-combobox__mark { display: inline-grid; flex: none; place-items: center; inline-size: 16px; color: var(--text-brand-default); }
+.mds-popup__note:empty { display: none; }
+@media (forced-colors: active) {
+  .mds-combobox__chip { border-color: CanvasText; }
+}
+
 /* Overlays (MDRS-154, canvas rules 12 and 18). The system draws the dialog and
    the sheet as native <dialog>s in the top layer; Base UI renders a Popup in a
    Portal, so the scrim and the viewport that centres the popup are the two

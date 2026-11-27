@@ -844,26 +844,21 @@ export class OnlineExamRepository {
 
   /**
    * Adds an empty question last; its five option fields are the page's,
-   * nothing is stored for them. Its talebe notes are its set's default
-   * (MDRS-248, soru notları): on in a çalışma seti, off in an exam.
+   * nothing is stored for them. Its talebe notes start off, in a çalışma
+   * seti and an exam alike (MDRS-248, soru notları): the hoca turns them on
+   * per question.
    */
   async addQuestion(tx: Tx, examId: string): Promise<string> {
-    const [[last], [exam]] = await Promise.all([
-      tx
-        .select({ position: max(examQuestions.position) })
-        .from(examQuestions)
-        .where(eq(examQuestions.examId, examId)),
-      tx
-        .select({ kind: onlineExams.kind })
-        .from(onlineExams)
-        .where(eq(onlineExams.id, examId)),
-    ]);
+    const [last] = await tx
+      .select({ position: max(examQuestions.position) })
+      .from(examQuestions)
+      .where(eq(examQuestions.examId, examId));
     const [made] = await tx
       .insert(examQuestions)
       .values({
         examId,
         position: (last?.position ?? -1) + 1,
-        talebeNotes: exam?.kind === ExamKind.PRACTICE,
+        talebeNotes: false,
       })
       .returning({ id: examQuestions.id });
     return made.id;

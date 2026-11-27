@@ -17,8 +17,9 @@ So the setting is a small icon on the question and takes no line or field of its
   `IconButton` names the button by its tooltip. On, it is the `chat` bubble. Off, the bubble is struck
   through, so the state is never shown by colour alone.
   - In the question form, it sits in the row of "Kaydet" / "Vazgeç". It goes into the save as
-    `SaveExamQuestionDto.talebeNotes`. A new question starts with the API's default: on in a
-    çalışma seti, off in an exam.
+    `SaveExamQuestionDto.talebeNotes`. A new question starts with the API's default: off, in a
+    çalışma seti and an exam alike (2026-11-28, see `mdrs-248-editor-8.md`; until then on in a
+    çalışma seti).
   - On a saved question's row (draft editor), it calls
     `onlineExams.setExamQuestionTalebeNotes` at once. It runs outside the version queue, because
     the route takes no version. The page shows the new state before the API answers. A refusal

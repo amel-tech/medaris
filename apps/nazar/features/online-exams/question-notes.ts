@@ -19,13 +19,13 @@ export const notesHref = (
 
 /**
  * Whether a question takes notes. An older server leaves the field out:
- * then it is the API's default for a new question, on in a çalışma seti and
- * off in an exam.
+ * then it is the API's default for a new question, off in a çalışma seti
+ * and an exam alike (MDRS-248, 2026-11-28).
  */
 export const takesNotes = (
   question: { talebeNotes?: boolean },
-  kind: ExamKind
-): boolean => question.talebeNotes ?? kind === "PRACTICE";
+  _kind: ExamKind
+): boolean => question.talebeNotes ?? false;
 
 /** What the order reads of a note. */
 export interface OrderedNote {

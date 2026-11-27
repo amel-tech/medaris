@@ -130,9 +130,9 @@ const page = (
     )
   );
 const button = (root: ParentNode, label: string) =>
-  [...root.querySelectorAll("button")].find((b) => b.textContent === label) as
-    | HTMLButtonElement
-    | undefined;
+  [...root.querySelectorAll("button")].find(
+    (b) => b.textContent === label || b.getAttribute("aria-label") === label
+  ) as HTMLButtonElement | undefined;
 const labels = () =>
   [...document.querySelectorAll(".mds-label, legend")].map(
     (l) => l.textContent
@@ -216,7 +216,7 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
     expect(fields).not.toContain("Süre (dakika)");
     expect(fields).toContain("Çalışma setinin adı");
     expect(root.textContent).not.toContain("puan");
-    await click(button(root, "Düzenle") as HTMLButtonElement);
+    await click(button(root, "1. soruyu düzenle") as HTMLButtonElement);
     expect(labels()).not.toContain("Kendi puanı");
     // No day, no time, no late window: one "Yayınla".
     expect(labels()).not.toContain("En erken başlama");
@@ -290,9 +290,12 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
     expect(
       root.querySelector('article[aria-label="1. soru"]')?.textContent
     ).toContain("3. Kıyas");
-    expect(root.textContent).toContain(
-      "2. sorunun doğru şıkkı işaretli değil."
-    );
+    // The card ends with what it lacks (MDRS-248, 2026-11-28).
+    expect(
+      root
+        .querySelector('article[aria-label="2. soru"] [data-lacks]')
+        ?.getAttribute("aria-label")
+    ).toContain("Doğru şık işaretli değil");
     expect(root.textContent).toContain(
       "1 soru eksik; talebeler yalnız tamamlanmış soruları çözer."
     );
