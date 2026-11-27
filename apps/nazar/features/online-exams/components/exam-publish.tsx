@@ -25,6 +25,7 @@ import { boxDir } from "../arabic";
 import { onlineExamErrorKey, READS_AGAIN } from "../online-exams";
 import { ArabicText } from "./arabic-text";
 import { wholePercent } from "./practice-sets-table";
+import { QuestionNotesSwitch } from "./talebe-notes-toggle";
 
 const MINUTE = 60_000;
 /** The latest start the page fills in: the earliest plus ten minutes (decided 22 Nov 2026). */
@@ -554,9 +555,18 @@ export function PublishedExam({
         <ol className="flex list-none flex-col gap-3 ps-0">
           {draft.questions.map((q) => (
             <li key={q.id} className="mds-card flex flex-col gap-2 p-4">
-              <strong>
-                {t("OnlineExams.questionNumber", { number: q.number })}
-              </strong>
+              {/* The talebe-notes icon works on a published and a locked
+                  set or exam too (MDRS-248): it is not the question's content. */}
+              <div className="flex items-center justify-between gap-2">
+                <strong>
+                  {t("OnlineExams.questionNumber", { number: q.number })}
+                </strong>
+                <QuestionNotesSwitch
+                  examId={draft.id}
+                  kind={kind}
+                  question={q}
+                />
+              </div>
               {/* The paragraph takes its text's direction: an Arabic
                   question is laid out right to left, wrapped lines too. */}
               <p className="mds-body" dir={boxDir(q.text) ?? "auto"}>

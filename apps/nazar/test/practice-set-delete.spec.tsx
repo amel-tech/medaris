@@ -27,6 +27,11 @@ vi.mock("next/navigation", () => ({
 
 const deletePracticeSet = vi.fn();
 const addExamQuestion = vi.fn();
+// The talebe-notes icon and answers (MDRS-248): question-notes.spec covers them.
+vi.mock("~/features/online-exams/notes-actions", () => ({
+  setExamQuestionTalebeNotes: vi.fn(),
+  replyQuestionNote: vi.fn(),
+}));
 vi.mock("~/features/online-exams/actions", () => ({
   deletePracticeSet: (...a: unknown[]) => deletePracticeSet(...a),
   addExamQuestion: (...a: unknown[]) => addExamQuestion(...a),

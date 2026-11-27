@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  ExamQuestionNoteResponse,
   OnlineExamDraftResponse,
   PracticeSetStatsResponse,
 } from "@medaris/services/tedrisat";
@@ -8,6 +9,7 @@ import { useEffect, useState } from "react";
 import { DeletePracticeSet } from "./delete-practice-set";
 import { ExamEditor } from "./exam-editor";
 import { PublishedExam } from "./exam-publish";
+import { TalebeNotesSection } from "./talebe-notes-section";
 
 /**
  * One online exam's page (MDRS-299): the editor while it is a draft, the
@@ -22,6 +24,7 @@ import { PublishedExam } from "./exam-publish";
  *
  * A çalışma seti ends with "Seti sil" (MDRS-248), draft or published, off
  * once a talebe started it (the API's `locked`, or figures that say so).
+ * Before it, on a set and an exam alike, "Talebe notları" (MDRS-248).
  */
 export function ExamWorkspace({
   courseId,
@@ -29,6 +32,7 @@ export function ExamWorkspace({
   timeZone,
   locale,
   practiceStats,
+  notes,
 }: {
   courseId: string;
   draft: OnlineExamDraftResponse;
@@ -36,6 +40,8 @@ export function ExamWorkspace({
   locale: string;
   /** A çalışma seti's figures: null when nobody finished it, undefined when unread. */
   practiceStats?: PracticeSetStatsResponse | null;
+  /** The notes the talebe sent to the hoca; null when the read failed, left out for none. */
+  notes?: ExamQuestionNoteResponse[] | null;
 }) {
   const [current, setCurrent] = useState(draft);
   useEffect(() => {
@@ -70,10 +76,19 @@ export function ExamWorkspace({
         onUnpublished={setCurrent}
       />
     );
-  if (current.kind !== "PRACTICE") return view;
+  const notesPart =
+    notes === undefined ? null : <TalebeNotesSection notes={notes} />;
+  if (current.kind !== "PRACTICE")
+    return (
+      <>
+        {view}
+        {notesPart}
+      </>
+    );
   return (
     <>
       {view}
+      {notesPart}
       <DeletePracticeSet
         courseId={courseId}
         setId={current.id}

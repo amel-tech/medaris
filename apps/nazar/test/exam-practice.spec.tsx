@@ -31,6 +31,11 @@ const actions = {
   publishOnlineExam: vi.fn(),
   unpublishOnlineExam: vi.fn(),
 };
+// The talebe-notes icon and answers (MDRS-248): question-notes.spec covers them.
+vi.mock("~/features/online-exams/notes-actions", () => ({
+  setExamQuestionTalebeNotes: vi.fn(),
+  replyQuestionNote: vi.fn(),
+}));
 vi.mock("~/features/online-exams/actions", () => ({
   addExamQuestion: (...a: unknown[]) => actions.addExamQuestion(...a),
   saveExamQuestion: (...a: unknown[]) => actions.saveExamQuestion(...a),

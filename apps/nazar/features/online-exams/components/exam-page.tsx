@@ -13,6 +13,7 @@ import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { segmentOf } from "../online-exams";
+import { NOTES_ANCHOR } from "../question-notes";
 import { ExamWorkspace } from "./exam-workspace";
 
 /**
@@ -22,6 +23,8 @@ import { ExamWorkspace } from "./exam-workspace";
  * çalışma seti under "Çalışma Soruları" (MDRS-248); an id of the other kind
  * is sent to the page of its own. A published set also shows how it was
  * solved, and once a talebe finished it, that it can no longer be unpublished.
+ * Both end with "Talebe notları" (MDRS-248), a side read: the notes the
+ * talebe sent to the hoca, which the page goes on without when it fails.
  */
 export async function ExamPage({
   courseId,
@@ -33,7 +36,7 @@ export async function ExamPage({
   kind?: ExamKind;
 }) {
   const practice = kind === "PRACTICE";
-  const [t, locale, me, draft, permissions, stats] = await Promise.all([
+  const [t, locale, me, draft, permissions, stats, notes] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
@@ -47,6 +50,9 @@ export async function ExamPage({
           api.practice.listPracticeSetStats({ id: courseId })
         )
       : null,
+    readOnce("the set's talebe notes", (api) =>
+      api.questionNotes.listExamQuestionNotes({ examId })
+    ),
   ]);
   const gate = pageGate([draft], permissions, PAGE_CODES.exams);
   if (draft.status !== "ok" || gate !== "ok") {
@@ -88,6 +94,13 @@ export async function ExamPage({
             {t("ExamResults.link")}
           </a>
         ) : null}
+        {(draft.data.unansweredNotes ?? 0) > 0 ? (
+          <a className="mds-link mds-body-sm" href={`#${NOTES_ANCHOR}`}>
+            {t("QuestionNotes.headerLink", {
+              count: draft.data.unansweredNotes ?? 0,
+            })}
+          </a>
+        ) : null}
       </header>
       <ExamWorkspace
         key={draft.data.id}
@@ -100,6 +113,7 @@ export async function ExamPage({
             ? (stats.data.find((s) => s.setId === examId) ?? null)
             : undefined
         }
+        notes={notes.status === "ok" ? notes.data : null}
       />
     </>
   );

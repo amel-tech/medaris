@@ -1,5 +1,6 @@
 import type { NotificationResponse } from "@medaris/services/tedrisat";
 import { isUuid } from "~/features/courses/courses";
+import { notesHref } from "~/features/online-exams/question-notes";
 
 /**
  * What the Bildirimler page decides without a browser: the title a stored
@@ -26,6 +27,7 @@ export const WORDED_TYPES = [
   "SUBMISSION_REVIEWED",
   "COURSE_BAN_PLACED",
   "KOSK_BAN_PLACED",
+  "QUESTION_NOTE_SHARED",
 ] as const;
 
 const WORDED: ReadonlySet<string> = new Set(WORDED_TYPES);
@@ -34,13 +36,25 @@ const WORDED: ReadonlySet<string> = new Set(WORDED_TYPES);
 export const titleKey = (type: string): string =>
   WORDED.has(type) ? `types.${type}` : "unknownTitle";
 
-/** The values a title takes; a missing `outcome` reads as the cautious "other" branch. */
+/**
+ * The values a title takes; a missing `outcome` reads as the cautious
+ * "other" branch. A talebe note (MDRS-248) names its set or exam by
+ * `setTitle` and `examKind`; without a title it reads as the plain "other".
+ */
 export const titleValues = (
   n: NotificationResponse
 ): Record<string, string> => {
   const outcome = n.params.outcome;
+  const setTitle = n.params.setTitle;
+  const examKind = n.params.examKind;
+  const named = typeof setTitle === "string" && setTitle.trim() !== "";
   return {
     outcome: typeof outcome === "string" && outcome !== "" ? outcome : "other",
+    setTitle: named ? setTitle : "",
+    kind:
+      named && (examKind === "PRACTICE" || examKind === "EXAM")
+        ? examKind
+        : "other",
   };
 };
 
@@ -53,13 +67,24 @@ const uuidParam = (n: NotificationResponse, key: string): string | null => {
  * Where the notification leads, as an address; null when it leads nowhere.
  * Every target the API names (a course, a celse, a deck, a köşk) is a page of
  * Tedris, so the address is on `tedrisUrl`; without it nothing leads anywhere.
- * A ban told to a köşk nazımı is Nizam's and leads nowhere from here. Built
- * only from UUIDs, never from free text.
+ * A ban told to a köşk nazımı is Nizam's and leads nowhere from here. A
+ * talebe note sent to the hoca (MDRS-248) leads to the notes of its set or
+ * exam here in Nazar. Built only from UUIDs, never from free text.
  */
 export const notificationHref = (
   n: NotificationResponse,
   tedrisUrl: string | null
 ): string | null => {
+  if (n.type === "QUESTION_NOTE_SHARED") {
+    const courseId = uuidParam(n, "courseId");
+    const examId = uuidParam(n, "examId");
+    if (!courseId || !examId) return null;
+    return notesHref(
+      courseId,
+      n.params.examKind === "EXAM" ? "EXAM" : "PRACTICE",
+      examId
+    );
+  }
   if (!tedrisUrl || !n.targetId || !isUuid(n.targetId)) return null;
   if (n.type === "COURSE_BAN_PLACED" || n.type === "KOSK_BAN_PLACED") {
     return null;

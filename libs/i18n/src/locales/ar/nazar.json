@@ -240,7 +240,8 @@
       "DECK_PUBLISH_RESULT": "{outcome, select, approved {نُشرت المجموعة} unpublished {أُلغي نشر المجموعة} proposal_rejected {رُفض اقتراح المجموعة} other {رُفض طلب نشر المجموعة}}",
       "SUBMISSION_REVIEWED": "قُيِّم واجبك",
       "COURSE_BAN_PLACED": "حظر جديد من درس",
-      "KOSK_BAN_PLACED": "حظر جديد من الكوشك"
+      "KOSK_BAN_PLACED": "حظر جديد من الكوشك",
+      "QUESTION_NOTE_SHARED": "{kind, select, PRACTICE {ملاحظة طالب على مجموعة «{setTitle}»} EXAM {ملاحظة طالب على امتحان «{setTitle}»} other {وصلت ملاحظة طالب}}"
     }
   },
   "Problems": {
@@ -2678,5 +2679,38 @@
     "verdictSkipped": "تخطّاه وبقي فارغًا",
     "earned": "حصل على {earned} من {points} درجة",
     "chosen": "(اختياره)"
+  },
+  "QuestionNotes": {
+    "toggleOn": "يمكن للطالب إضافة ملاحظة",
+    "toggleOff": "ملاحظات الطالب مغلقة",
+    "toggleFailed": "تعذّر حفظ إعداد ملاحظات الطالب",
+    "title": "ملاحظات الطلاب",
+    "waiting": "{count} بلا جواب",
+    "intro": "الملاحظات التي كتبها الطلاب على أسئلة هذه المجموعة وأرسلوها إليك. افتح ملاحظات السؤال أو أغلقها بفقاعة الحديث التي بجانبه.",
+    "loadFailed": "تعذّرت قراءة ملاحظات الطلاب الآن.",
+    "empty": "لم تُرسَل إليك أي ملاحظة بعد. عندما يكتب طالب ملاحظة على سؤال ويرسلها إليك تظهر هنا.",
+    "questionNumber": "السؤال {number}",
+    "answered": "تمت الإجابة",
+    "unanswered": "بلا جواب",
+    "editedAfterReply": "تغيّرت بعد جوابك",
+    "noName": "طالب لا يظهر اسمه",
+    "sentAt": "أُرسلت {when}",
+    "yourReply": "جوابك",
+    "yourReplyAt": "جوابك · {when}",
+    "editReply": "تعديل الجواب",
+    "removeReply": "حذف الجواب",
+    "reply": "أجب",
+    "saveReply": "حفظ الجواب",
+    "cancel": "إلغاء",
+    "replyLabel": "الجواب على {name} في السؤال {number}",
+    "replyPlaceholder": "اكتب جوابًا قصيرًا",
+    "replied": "أُرسل الجواب",
+    "removed": "حُذف الجواب",
+    "replyFailed": "تعذّر إرسال الجواب",
+    "removeFailed": "تعذّر حذف الجواب",
+    "noteGone": "لم يعد الطالب يرسل إليك هذه الملاحظة.",
+    "badge": "{count} ملاحظة",
+    "badgeLabel": "«{title}»: {count} ملاحظة بلا جواب",
+    "headerLink": "{count} ملاحظة طالب بلا جواب"
   }
 }

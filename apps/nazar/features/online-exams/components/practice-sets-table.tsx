@@ -5,6 +5,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Table } from "@medaris/ui/mds/table";
 import { useFormatter, useTranslations } from "next-intl";
+import { notesHref } from "../question-notes";
 import { DeletePracticeSet } from "./delete-practice-set";
 
 /** One çalışma seti as the list shows it; the figures are null where there are none. */
@@ -19,6 +20,40 @@ export interface PracticeSetRow {
   attemptCount: number | null;
   /** The API's percentage with two decimals, e.g. "76.15". */
   averagePercent: string | null;
+  /** Talebe notes sent to the hoca and not answered (MDRS-248). */
+  unansweredNotes?: number;
+}
+
+/**
+ * "3 not" beside a set or an exam with talebe notes waiting for an answer
+ * (MDRS-248): a link to the notes on its page. None waiting, nothing shows.
+ */
+export function NotesBadge({
+  courseId,
+  kind,
+  id,
+  title,
+  count,
+}: {
+  courseId: string;
+  kind: "PRACTICE" | "EXAM";
+  id: string;
+  title: string;
+  count: number;
+}) {
+  const t = useTranslations("nazar.QuestionNotes");
+  if (count <= 0) return null;
+  return (
+    <a
+      href={notesHref(courseId, kind, id)}
+      aria-label={t("badgeLabel", { title, count })}
+      className="inline-flex no-underline"
+    >
+      <Badge variant="warning" icon={<Icon name="chat" size="sm" />}>
+        {t("badge", { count })}
+      </Badge>
+    </a>
+  );
 }
 
 /**
@@ -54,7 +89,8 @@ const COMPACT_STACK = [
  * work in progress. Below 768 px each row is a card (`responsive="stack"`),
  * so the page never scrolls sideways; its figures run on one or two lines,
  * each after its column's name, instead of one line apiece. The last
- * column is "Sil", which a locked set offers off, with its reason.
+ * column is "Sil", which a locked set offers off, with its reason. A set
+ * with talebe notes waiting for an answer says how many beside its name.
  */
 export function PracticeSetsTable({
   courseId,
@@ -94,13 +130,22 @@ export function PracticeSetsTable({
           rowHeader: true,
           primaryAction: true,
           render: (r) => (
-            <a
-              className="mds-link"
-              href={`/ders/${courseId}/calisma-sorulari/${r.id}`}
-              dir="auto"
-            >
-              {r.title}
-            </a>
+            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+              <a
+                className="mds-link"
+                href={`/ders/${courseId}/calisma-sorulari/${r.id}`}
+                dir="auto"
+              >
+                {r.title}
+              </a>
+              <NotesBadge
+                courseId={courseId}
+                kind="PRACTICE"
+                id={r.id}
+                title={r.title}
+                count={r.unansweredNotes ?? 0}
+              />
+            </span>
           ),
         },
         {

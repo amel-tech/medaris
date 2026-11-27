@@ -37,7 +37,13 @@ const actions = {
   setExamQuestionPoints: vi.fn(),
   removeCourseTopic: vi.fn(),
   saveExamSettings: vi.fn(),
+  setExamQuestionTalebeNotes: vi.fn(),
 };
+vi.mock("~/features/online-exams/notes-actions", () => ({
+  setExamQuestionTalebeNotes: (...a: unknown[]) =>
+    actions.setExamQuestionTalebeNotes(...a),
+  replyQuestionNote: vi.fn(),
+}));
 vi.mock("~/features/online-exams/actions", () => ({
   addExamQuestion: (...a: unknown[]) => actions.addExamQuestion(...a),
   saveExamQuestion: (...a: unknown[]) => actions.saveExamQuestion(...a),
@@ -1592,6 +1598,152 @@ describe("the exam editor (MDRS-299)", () => {
       "e1",
       "q1",
       expect.objectContaining({ topicIds: ["t4"] })
+    );
+  });
+});
+
+describe("the talebe-notes icon in the editor (MDRS-248)", () => {
+  const saved = (talebeNotes?: boolean) =>
+    ({
+      ...draft,
+      questions: [
+        {
+          id: "q1",
+          number: 1,
+          text: "Kıyasın rükünleri kaç tanedir?",
+          options: [
+            { id: "o1", text: "Dört", correct: true },
+            { id: "o2", text: "Üç", correct: false },
+          ],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: ["t3"],
+          ownPoints: null,
+          points: "100.00",
+          complete: true,
+          lacks: [],
+          ...(talebeNotes === undefined ? {} : { talebeNotes }),
+        },
+      ],
+    }) as unknown as OnlineExamDraftResponse;
+  const icon = (root: HTMLElement) =>
+    root.querySelector("button[data-talebe-notes]") as HTMLButtonElement;
+
+  it("turns a saved row's notes on at once, and sends it outside the version queue", async () => {
+    actions.setExamQuestionTalebeNotes.mockReturnValue(
+      later({ success: true, data: { questionId: "q1", talebeNotes: true } })
+    );
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={saved(false)} />)
+    );
+    expect(icon(root).getAttribute("aria-pressed")).toBe("false");
+    expect(icon(root).getAttribute("aria-label")).toBe("Talebe notu kapalı");
+    await click(icon(root));
+    // Shown before the server answers.
+    expect(icon(root).getAttribute("aria-pressed")).toBe("true");
+    expect(icon(root).getAttribute("aria-label")).toBe(
+      "Talebe not ekleyebilir"
+    );
+    expect(actions.setExamQuestionTalebeNotes).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      true
+    );
+    held.shift()?.();
+    await settle();
+    expect(icon(root).getAttribute("aria-pressed")).toBe("true");
+    // It names no version: no question write went out.
+    expect(actions.saveExamQuestion).not.toHaveBeenCalled();
+  });
+
+  it("takes the icon back and says so when the write is refused", async () => {
+    actions.setExamQuestionTalebeNotes.mockResolvedValue({
+      success: false,
+      code: "QUESTION_NOT_FOUND",
+    });
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={saved(true)} />)
+    );
+    expect(icon(root).getAttribute("aria-pressed")).toBe("true");
+    await click(icon(root));
+    await settle();
+    expect(icon(root).getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain(
+      "Talebe notu ayarı kaydedilemedi"
+    );
+  });
+
+  it("takes the icon back when the write throws", async () => {
+    actions.setExamQuestionTalebeNotes.mockRejectedValue(new Error("down"));
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={saved(false)} />)
+    );
+    await click(icon(root));
+    await settle();
+    expect(icon(root).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("reads a question without the field by the set's default: on in a çalışma seti, off in an exam", async () => {
+    const exam = await render(
+      wrap(<ExamEditor courseId="c1" draft={saved()} />)
+    );
+    expect(icon(exam).getAttribute("aria-pressed")).toBe("false");
+    await cleanup();
+    const set = await render(
+      wrap(<ExamEditor courseId="c1" draft={saved()} kind="PRACTICE" />)
+    );
+    expect(icon(set).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("puts the icon in a new question's form, beside its buttons, and sends it with the save", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) => ({
+      success: true,
+      data: {
+        version: 3,
+        question: {
+          id,
+          number: 1,
+          text: body.text,
+          options: [],
+          answerMode: "SINGLE",
+          scoring: null,
+          topicIds: body.topicIds,
+          ownPoints: null,
+          points: "100.00",
+          complete: false,
+          lacks: [],
+          talebeNotes: body.talebeNotes,
+        },
+      },
+    }));
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={draft} kind="PRACTICE" />)
+    );
+    await click(button(root, "Soru ekle"));
+    const form = root.querySelector("form[data-question]") as HTMLFormElement;
+    const toggle = icon(form);
+    // In the row of Kaydet and Vazgeç: no line of its own.
+    expect(toggle.closest("div")?.textContent).toContain("Kaydet");
+    // A new question of a set takes notes.
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    await click(toggle);
+    expect(icon(form).getAttribute("aria-pressed")).toBe("false");
+    // Pressing it writes nothing until the question is saved.
+    expect(actions.setExamQuestionTalebeNotes).not.toHaveBeenCalled();
+    await typeInto(
+      root.querySelector(QUESTION_TEXT) as HTMLTextAreaElement,
+      "Bir soru"
+    );
+    await click(button(root, "Kaydet"));
+    await settle();
+    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      expect.objectContaining({ talebeNotes: false })
     );
   });
 });
