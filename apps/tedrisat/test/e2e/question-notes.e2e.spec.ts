@@ -48,7 +48,10 @@ describe("soru notları (e2e)", () => {
   const other = bearerOf(CAST.STRANGER);
   const otherCourse = bearerOf(CAST.OTHER_COURSE);
 
-  /** A published çalışma seti of two complete radio questions ("Doğru" right). */
+  /**
+   * A published çalışma seti of two complete radio questions ("Doğru" right),
+   * their talebe notes turned on with the save: a new question starts off.
+   */
   const publishedSet = async (title = "Kıyas tekrar") => {
     const id = (
       await http()
@@ -65,7 +68,7 @@ describe("soru notları (e2e)", () => {
         .set("Authorization", muderris)
         .send({ version })
         .expect(201);
-      expect(added.body.question.talebeNotes).toBe(true);
+      expect(added.body.question.talebeNotes).toBe(false);
       version = added.body.version;
       const saved = await http()
         .put(`/online-exams/${id}/questions/${added.body.question.id}`)
@@ -79,8 +82,10 @@ describe("soru notları (e2e)", () => {
           ],
           answerMode: "SINGLE",
           topicIds: [],
+          talebeNotes: true,
         })
         .expect(200);
+      expect(saved.body.question.talebeNotes).toBe(true);
       version = saved.body.version;
       questions.push(added.body.question.id);
     }
@@ -152,27 +157,30 @@ describe("soru notları (e2e)", () => {
     await app.close();
   });
 
-  it("turns notes on for a çalışma seti's questions and off for an exam's", async () => {
-    const examId = (
-      await http()
-        .post(`/courses/${ids.courseId}/online-exams`)
+  it("starts every new question's notes off, in a çalışma seti and an exam alike", async () => {
+    for (const kind of ["EXAM", "PRACTICE"] as const) {
+      const examId = (
+        await http()
+          .post(`/courses/${ids.courseId}/online-exams`)
+          .set("Authorization", muderris)
+          .send({ title: `Yeni ${kind}`, kind })
+          .expect(201)
+      ).body.id as string;
+      const added = await http()
+        .post(`/online-exams/${examId}/questions`)
         .set("Authorization", muderris)
-        .send({ title: "Ara sınav" })
-        .expect(201)
-    ).body.id as string;
-    const added = await http()
-      .post(`/online-exams/${examId}/questions`)
-      .set("Authorization", muderris)
-      .send({ version: 1 })
-      .expect(201);
-    expect(added.body.question.talebeNotes).toBe(false);
-    const draft = await http()
-      .get(`/online-exams/${examId}`)
-      .set("Authorization", muderris)
-      .expect(200);
-    expect(draft.body.questions[0].talebeNotes).toBe(false);
-    expect(draft.body.unansweredNotes).toBe(0);
+        .send({ version: 1 })
+        .expect(201);
+      expect(added.body.question.talebeNotes).toBe(false);
+      const draft = await http()
+        .get(`/online-exams/${examId}`)
+        .set("Authorization", muderris)
+        .expect(200);
+      expect(draft.body.questions[0].talebeNotes).toBe(false);
+      expect(draft.body.unansweredNotes).toBe(0);
+    }
 
+    // Turned on with the save, they stay on.
     const set = await publishedSet();
     const setDraft = await http()
       .get(`/online-exams/${set.id}`)

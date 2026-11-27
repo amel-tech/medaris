@@ -5,10 +5,7 @@ import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  ExamEditor,
-  rowText,
-} from "~/features/online-exams/components/exam-editor";
+import { ExamEditor } from "~/features/online-exams/components/exam-editor";
 import {
   cleanup,
   click,
@@ -99,16 +96,53 @@ afterEach(async () => {
 /** The question form's text: the settings above it have a text area of their own. */
 const QUESTION_TEXT = 'form[aria-label$=". soru"] textarea';
 
+/** A button by its text, or by its name when it shows an icon only ("1. soruyu düzenle"). */
 const button = (root: HTMLElement, label: string) =>
   [...root.querySelectorAll("button")].find(
-    (b) => b.textContent === label
+    (b) => b.textContent === label || b.getAttribute("aria-label") === label
   ) as HTMLButtonElement;
 
-/** A topic's chip in the question form: a toggle button, pressed when picked. */
-const topicChip = (root: HTMLElement, label: string) =>
-  [...root.querySelectorAll("form button[aria-pressed]")].find(
-    (b) => b.textContent === label
-  ) as HTMLButtonElement;
+/** The question form's topics: a searchable list of several (MDRS-248). */
+const topicsField = (root: HTMLElement) =>
+  root.querySelector("form input[role=combobox]") as HTMLInputElement;
+
+/** Types into the topics' field as a person does, so its list opens. */
+const search = async (root: HTMLElement, text: string) => {
+  const input = topicsField(root);
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value"
+  )?.set;
+  await act(async () => {
+    input.focus();
+    setter?.call(input, text);
+    input.dispatchEvent(
+      new InputEvent("input", {
+        bubbles: true,
+        inputType: "insertText",
+        data: text,
+      })
+    );
+  });
+  await settle(60);
+};
+
+/** Picks a topic in the question form: typed, then taken from the open list. */
+const pickTopic = async (root: HTMLElement, label: string) => {
+  await search(root, label);
+  const option = [...document.querySelectorAll("[role=option]")].find(
+    (o) => o.textContent === label
+  );
+  if (!option) throw new Error(`no topic option "${label}"`);
+  await click(option);
+  await settle(30);
+};
+
+/** The topics picked in the question form, as its chips show them. */
+const pickedTopics = (root: HTMLElement) =>
+  [...root.querySelectorAll("form .mds-combobox__chip")].map(
+    (c) => c.textContent
+  );
 
 describe("the exam editor (MDRS-299)", () => {
   it("shows a saved question at once, and sends it in the background", async () => {
@@ -158,7 +192,7 @@ describe("the exam editor (MDRS-299)", () => {
       ) as HTMLInputElement,
       "Dört"
     );
-    await click(topicChip(root, "3. Kıyas"));
+    await pickTopic(root, "3. Kıyas");
     await click(button(root, "Kaydet"));
 
     // On the list at once, saving, while the server has not answered.
@@ -404,7 +438,7 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Soru ekle"));
     await typeInto(textOf(root), "Birinci yazış");
     await click(button(root, "Kaydet"));
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     await typeInto(textOf(root), "İkinci yazış");
     await click(button(root, "Kaydet"));
 
@@ -438,7 +472,7 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Soru ekle"));
     await typeInto(textOf(root), "Silinecek soru");
     await click(button(root, "Kaydet"));
-    await click(button(root, "Sil"));
+    await click(button(root, "1. soruyu sil"));
     await settle(80);
     const ask = document.querySelector("[role=alertdialog]") as HTMLElement;
     await click(button(ask, "Sil"));
@@ -481,7 +515,7 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Konu ekle"));
     await click(button(root, "Soru ekle"));
     await typeInto(textOf(root), "Soru");
-    await click(topicChip(root, "7. İcma"));
+    await pickTopic(root, "7. İcma");
     await click(button(root, "Kaydet"));
     held.shift()?.(); // the topic is made
     await settle();
@@ -545,7 +579,7 @@ describe("the exam editor (MDRS-299)", () => {
     expect(root.textContent).not.toContain("Puanlama");
     await click(control(root, "radio", "Çoklu seçim"));
     await click(control(root, "radio", "Kesirli, yanlış düşer"));
-    await click(topicChip(root, "3. Kıyas"));
+    await pickTopic(root, "3. Kıyas");
     await click(button(root, "Kaydet"));
     await settle();
     expect(actions.saveExamQuestion).toHaveBeenCalledWith(
@@ -578,7 +612,7 @@ describe("the exam editor (MDRS-299)", () => {
       /^\d+\. şık$/.test(i.getAttribute("aria-label") ?? "")
     );
 
-  it("puts each option's letter and Doğru before it, and says how to type them quickly", async () => {
+  it("puts each option's letter and Doğru before it, with no help text under Şıklar (MDRS-248)", async () => {
     actions.addExamQuestion.mockResolvedValue({
       success: true,
       data: { version: 2, question: { id: "q1" } },
@@ -602,11 +636,11 @@ describe("the exam editor (MDRS-299)", () => {
     );
     expect(letter?.textContent).toBe("A");
     expect(rows[1]?.textContent).toBe("BDoğru");
+    // The keys still work (below); the form no longer writes them out.
     const fieldset = root.querySelector("form fieldset") as HTMLElement;
-    expect(
-      document.getElementById(fieldset.getAttribute("aria-describedby") ?? "")
-        ?.textContent
-    ).toContain("Enter ile sonraki şıkka geçin");
+    expect(fieldset.hasAttribute("aria-describedby")).toBe(false);
+    expect(fieldset.textContent).not.toContain("sonraki şıkka");
+    expect(fieldset.textContent).not.toContain("Option");
   });
 
   it("goes on to the next option with Enter, and adds one after the last", async () => {
@@ -652,7 +686,7 @@ describe("the exam editor (MDRS-299)", () => {
     ]);
     expect(document.activeElement).toBe(option(root, 6));
     await click(control(root, "checkbox", "Doğru", 0));
-    await click(topicChip(root, "3. Kıyas"));
+    await pickTopic(root, "3. Kıyas");
     await click(button(root, "Kaydet"));
     await settle();
     expect(actions.saveExamQuestion).toHaveBeenCalledWith(
@@ -705,7 +739,7 @@ describe("the exam editor (MDRS-299)", () => {
     await click(control(root, "checkbox", "Doğru", 1));
     await click(control(root, "radio", "Çoklu seçim"));
     await click(control(root, "radio", "Doğrulardan biri yeterli"));
-    await click(topicChip(root, "3. Kıyas"));
+    await pickTopic(root, "3. Kıyas");
     await click(button(root, "Kaydet"));
     await settle();
     expect(actions.saveExamQuestion).toHaveBeenCalledWith(
@@ -800,7 +834,7 @@ describe("the exam editor (MDRS-299)", () => {
     const root = await render(
       wrap(<ExamEditor courseId="c1" draft={withOwn} />)
     );
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     expect(field(root, "Kendi puanı").value).toBe("5");
     await typeInto(field(root, "Kendi puanı"), "");
     await click(button(root, "Kaydet"));
@@ -849,11 +883,7 @@ describe("the exam editor (MDRS-299)", () => {
     const root = await render(wrap(<ExamEditor courseId="c1" draft={two} />));
     expect(root.textContent).toContain("50 puan · kendi puanı");
     expect(root.textContent).toContain("50 puan · eşit pay");
-    await click(
-      [...root.querySelectorAll("button")].filter(
-        (b) => b.textContent === "Düzenle"
-      )[1] as HTMLButtonElement
-    );
+    await click(button(root, "2. soruyu düzenle"));
     await typeInto(field(root, "Kendi puanı"), "60");
     await click(button(root, "Kaydet"));
     await settle(80);
@@ -869,11 +899,7 @@ describe("the exam editor (MDRS-299)", () => {
     expect(root.textContent).toContain("Kaydedilemedi");
     // The shares stay as the server has them; the typed points wait in the form.
     expect(root.textContent).toContain("50 puan · eşit pay");
-    await click(
-      [...root.querySelectorAll("button")].filter(
-        (b) => b.textContent === "Düzenle"
-      )[1] as HTMLButtonElement
-    );
+    await click(button(root, "2. soruyu düzenle"));
     expect(field(root, "Kendi puanı").value).toBe("60");
   });
 
@@ -1172,24 +1198,141 @@ describe("the exam editor (MDRS-299)", () => {
       "[role=checkbox]"
     ) as HTMLElement;
 
-  it("draws a saved question as one row: its text, options, correct letter, topic and state (MDRS-248)", async () => {
+  it("draws a saved question as the talebe sees it: its whole text, its option tiles, the correct one marked (MDRS-248)", async () => {
     const root = await render(
-      wrap(<ExamEditor courseId="c1" draft={saved()} />)
+      wrap(
+        <ExamEditor
+          courseId="c1"
+          draft={saved({
+            text: "Kıyasın rükünleri\nkaç tanedir?",
+            options: [
+              { id: "o1", text: "Üç", correct: false },
+              { id: "o2", text: "Dört", correct: true },
+              { id: "o3", text: "Beş", correct: false },
+            ],
+          })}
+        />
+      )
     );
-    const row = root.querySelector(
+    const card = root.querySelector(
       'article[aria-label="1. soru"]'
     ) as HTMLElement;
-    expect(row.textContent).toContain("Kıyasın rükünleri kaç tanedir?");
-    expect(row.textContent).toContain("2 şık · Doğru: B");
-    expect(row.textContent).toContain("3. Kıyas");
-    expect(row.textContent).toContain("Tamam");
-    // The options are in the form, not in the row.
-    expect(row.textContent).not.toContain("Üç");
+    // Its text with its lines, not cut to one.
+    const text = card.querySelector("p.whitespace-pre-line") as HTMLElement;
+    expect(text.textContent).toBe("Kıyasın rükünleri\nkaç tanedir?");
+    expect(card.textContent).toContain("3. Kıyas");
+    // The options as tiles, each with its letter; the correct one marked
+    // with a ✓ and its name, never colour alone.
+    const tiles = [...card.querySelectorAll("ul li")] as HTMLElement[];
+    expect(
+      tiles.map((li) => li.querySelector("[aria-hidden]")?.textContent)
+    ).toEqual(["A", "B", "C"]);
+    expect(tiles.map((li) => li.hasAttribute("data-correct"))).toEqual([
+      false,
+      true,
+      false,
+    ]);
+    expect(tiles[1]?.textContent).toContain("✓");
+    expect(tiles[1]?.textContent).toContain("Doğru");
+    expect(tiles[0]?.textContent).not.toContain("Doğru");
+    // Short options sit two to a row on a wide screen, as on the çalışma screen.
+    expect(card.querySelector("ul")?.className).toContain("md:grid-cols-2");
+    // No badge says it is complete, and no row facts are left over.
+    expect(card.textContent).not.toContain("Tamam");
+    expect(card.textContent).not.toContain("şık ·");
+    expect(card.hasAttribute("data-lacks-card")).toBe(false);
+    expect(card.querySelector("[data-lacks]")).toBeNull();
+    // The icons at its corner: notes, edit and delete, each named.
+    expect(button(card, "Talebe notları")).toBeTruthy();
+    expect(button(card, "1. soruyu sil")).toBeTruthy();
     expect(forms(root)).toHaveLength(0);
-    // A click on its text opens it in place.
-    await click(row.querySelector("button[tabindex='-1']") as HTMLElement);
+    await click(button(card, "1. soruyu düzenle"));
     expect(forms(root)).toHaveLength(1);
     expect(option(root, 2).value).toBe("Dört");
+  });
+
+  it("puts long options one to a row", async () => {
+    const long =
+      "Rahmân ve Rahîm olan Allah'ın adıyla, her işe O'nun adıyla başlanır.";
+    const root = await render(
+      wrap(
+        <ExamEditor
+          courseId="c1"
+          draft={saved({
+            options: [
+              { id: "o1", text: long, correct: true },
+              { id: "o2", text: "Kısa", correct: false },
+            ],
+          })}
+        />
+      )
+    );
+    expect(root.querySelector("article ul")?.className).not.toContain(
+      "md:grid-cols-2"
+    );
+  });
+
+  it("ends a question that is not ready with an exclamation mark naming what it lacks, its card tinted red (MDRS-248)", async () => {
+    const root = await render(
+      wrap(
+        <ExamEditor
+          courseId="c1"
+          draft={saved({
+            options: [
+              { id: "o1", text: "Üç", correct: false },
+              { id: "o2", text: "Dört", correct: false },
+            ],
+            topicIds: [],
+            complete: false,
+            lacks: ["correct", "topic"],
+          })}
+        />
+      )
+    );
+    const card = root.querySelector(
+      'article[aria-label="1. soru"]'
+    ) as HTMLElement;
+    expect(card.hasAttribute("data-lacks-card")).toBe(true);
+    expect(card.className).toContain("bg-error-subtle");
+    expect(card.textContent).not.toContain("Eksik");
+    // At the end of the question's text, a button the keyboard reaches,
+    // named by what is missing.
+    const mark = card.querySelector("[data-lacks]") as HTMLButtonElement;
+    expect(mark.closest("p.whitespace-pre-line")).not.toBeNull();
+    expect(mark.tagName).toBe("BUTTON");
+    expect(mark.getAttribute("aria-label")).toBe(
+      "Eksik: Doğru şık işaretli değil, Konu seçilmedi"
+    );
+    expect(mark.querySelector(".mds-icon")).not.toBeNull();
+    // It opens the question, as its edit icon does.
+    await click(mark);
+    expect(forms(root)).toHaveLength(1);
+  });
+
+  it("shows what a question lacks in a tooltip on hover and focus", async () => {
+    const root = await render(
+      wrap(
+        <ExamEditor
+          courseId="c1"
+          draft={saved({
+            text: "",
+            complete: false,
+            lacks: ["text", "option"],
+          })}
+        />
+      )
+    );
+    const mark = root.querySelector("[data-lacks]") as HTMLButtonElement;
+    await act(async () => {
+      mark.focus();
+      mark.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+      mark.dispatchEvent(new PointerEvent("pointerenter", { bubbles: true }));
+      mark.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+    await settle(700);
+    const tip = document.querySelector(".mds-tooltip");
+    expect(tip?.textContent).toContain("Soru metni yazılmadı");
+    expect(tip?.textContent).toContain("En az iki şık gerekli");
   });
 
   it("opens the next question's form after saving a new one, the caret in Soru (MDRS-248)", async () => {
@@ -1229,7 +1372,7 @@ describe("the exam editor (MDRS-299)", () => {
     const root = await render(
       wrap(<ExamEditor courseId="c1" draft={saved()} />)
     );
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     await typeInto(textOf(root), "Kıyasın kaç rüknü vardır?");
     await click(button(root, "Kaydet"));
     await settle();
@@ -1237,7 +1380,7 @@ describe("the exam editor (MDRS-299)", () => {
     expect(forms(root)).toHaveLength(0);
   });
 
-  it("saves with Cmd+Enter or Ctrl+Enter from any field, and says so under the form (MDRS-248)", async () => {
+  it("saves with Cmd+Enter or Ctrl+Enter from any field, with no line under the form saying so (MDRS-248)", async () => {
     actions.addExamQuestion.mockResolvedValue({
       success: true,
       data: { version: 2, question: { id: "q1" } },
@@ -1247,7 +1390,11 @@ describe("the exam editor (MDRS-299)", () => {
     );
     const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
     await click(button(root, "Soru ekle"));
-    expect(forms(root)[0]?.textContent).toContain("⌘ + Enter");
+    expect(forms(root)[0]?.textContent).not.toContain("⌘");
+    expect(forms(root)[0]?.textContent).not.toContain("Alt/Option");
+    expect(forms(root)[0]?.getAttribute("aria-keyshortcuts")).toBe(
+      "Meta+Enter Control+Enter"
+    );
     await typeInto(textOf(root), "Kıyasın rükünleri kaç tanedir?");
     await typeInto(option(root, 1), "Dört");
     // Cmd+Enter in an option saves; it does not go on to the next option.
@@ -1296,10 +1443,7 @@ describe("the exam editor (MDRS-299)", () => {
     expect(checkbox(root, 1).getAttribute("aria-checked")).toBe("true");
   });
 
-  it("picks topics as chips, makes one with + Konu, and Enter there never sends the question (MDRS-248)", async () => {
-    actions.createCourseTopic.mockReturnValue(
-      later({ success: true, data: { id: "t4", number: 4, name: "İcma" } })
-    );
+  it("picks topics in a searchable list, makes none in the form, and Enter there never sends the question (MDRS-248)", async () => {
     actions.addExamQuestion.mockResolvedValue({
       success: true,
       data: { version: 2, question: { id: "q1" } },
@@ -1307,48 +1451,57 @@ describe("the exam editor (MDRS-299)", () => {
     actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
       echo(id, body, 3)
     );
-    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    const two = {
+      ...draft,
+      courseTopics: [
+        { id: "t1", number: 1, name: "İcma", picked: false, questionCount: 0 },
+        ...draft.courseTopics,
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={two} />));
     await click(button(root, "Soru ekle"));
-    expect(topicChip(root, "3. Kıyas").getAttribute("aria-pressed")).toBe(
-      "false"
+    // No "+ Konu" in the form: topics are made under Konular.
+    expect(button(root, "+ Konu")).toBeUndefined();
+    const field = topicsField(root);
+    expect(root.querySelector(`label[for="${field.id}"]`)?.textContent).toBe(
+      "Konular"
     );
-    await click(topicChip(root, "3. Kıyas"));
-    expect(topicChip(root, "3. Kıyas").getAttribute("aria-pressed")).toBe(
-      "true"
-    );
-    await click(button(root, "+ Konu"));
-    const name = root.querySelector(
-      "input[aria-label='Yeni konu']"
-    ) as HTMLInputElement;
-    expect(document.activeElement).toBe(name);
-    await typeInto(name, "İcma");
-    await key(name, "Enter");
-    expect(actions.saveExamQuestion).not.toHaveBeenCalled();
-    // Shown and picked at once, made in the background.
-    expect(topicChip(root, "1. İcma").getAttribute("aria-pressed")).toBe(
-      "true"
-    );
-    expect(actions.createCourseTopic).toHaveBeenCalledWith(
-      "c1",
-      "İcma",
-      undefined
-    );
+    expect(pickedTopics(root)).toEqual([]);
+    // Typed, the list keeps what matches.
+    await search(root, "kıy");
+    expect(
+      [...document.querySelectorAll("[role=option]")].map((o) => o.textContent)
+    ).toEqual(["3. Kıyas"]);
+    await pickTopic(root, "3. Kıyas");
+    await pickTopic(root, "1. İcma");
+    expect(pickedTopics(root)).toEqual(["3. Kıyas", "1. İcma"]);
+    // Enter in the field picks or does nothing; it never sends the question.
+    const enter = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      topicsField(root).dispatchEvent(enter);
+    });
+    expect(enter.defaultPrevented).toBe(true);
     await typeInto(textOf(root), "İcmanın rüknü nedir?");
     await click(button(root, "Kaydet"));
-    held.shift()?.(); // the topic is made
     await settle();
+    expect(actions.createCourseTopic).not.toHaveBeenCalled();
     expect(actions.saveExamQuestion).toHaveBeenCalledWith(
       "e1",
       "q1",
-      expect.objectContaining({ topicIds: ["t3", "t4"] })
+      expect.objectContaining({ topicIds: ["t3", "t1"] })
     );
   });
 
   it("asks a topic in an exam, and not in a çalışma seti (MDRS-248)", async () => {
     const bare = saved({ topicIds: [], complete: false, lacks: ["topic"] });
     const exam = await render(wrap(<ExamEditor courseId="c1" draft={bare} />));
-    expect(exam.textContent).toContain("1. sorunun konusu yok.");
-    expect(exam.textContent).toContain("Eksik");
+    expect(exam.querySelector("[data-lacks]")?.getAttribute("aria-label")).toBe(
+      "Eksik: Konu seçilmedi"
+    );
     await cleanup();
     const set = await render(
       wrap(
@@ -1359,9 +1512,8 @@ describe("the exam editor (MDRS-299)", () => {
         />
       )
     );
-    expect(set.textContent).not.toContain("konusu yok");
-    expect(set.textContent).toContain("Tamam");
-    await click(button(set, "Düzenle"));
+    expect(set.querySelector("[data-lacks]")).toBeNull();
+    await click(button(set, "1. soruyu düzenle"));
     expect(set.textContent).toContain("Konular (isteğe bağlı)");
   });
 
@@ -1380,7 +1532,7 @@ describe("the exam editor (MDRS-299)", () => {
     await typeInto(option(root, 3), "Dört");
     await click(control(root, "checkbox", "Doğru", 2));
     expect(root.textContent).toContain("Boş şıklar kaydedince kaldırılır");
-    await click(topicChip(root, "3. Kıyas"));
+    await pickTopic(root, "3. Kıyas");
     await click(button(root, "Kaydet"));
     await settle();
     // "Dört" was C and is B now, still the correct one.
@@ -1394,7 +1546,12 @@ describe("the exam editor (MDRS-299)", () => {
         ],
       })
     );
-    expect(root.textContent).toContain("2 şık · Doğru: B");
+    // Its card marks "Dört", now B, as the correct one.
+    const correct = root.querySelector(
+      'article[aria-label="1. soru"] li[data-correct]'
+    );
+    expect(correct?.textContent).toContain("B");
+    expect(correct?.textContent).toContain("Dört");
   });
 
   it("does not save an empty option marked Doğru, and names it (MDRS-248)", async () => {
@@ -1411,6 +1568,53 @@ describe("the exam editor (MDRS-299)", () => {
     await settle();
     expect(actions.addExamQuestion).not.toHaveBeenCalled();
     expect(actions.saveExamQuestion).not.toHaveBeenCalled();
+  });
+
+  it("puts the questions at the top of the page, above Ayarlar and Konular (MDRS-248)", async () => {
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={saved()} />)
+    );
+    const headings = [...root.querySelectorAll("h2")].map((h) => h.id);
+    expect(headings.slice(0, 3)).toEqual([
+      "questions-title",
+      "settings-title",
+      "topics-title",
+    ]);
+  });
+
+  it("fills a new topic's number with the smallest one free, which can be typed over (MDRS-248)", async () => {
+    actions.createCourseTopic.mockReturnValue(
+      later({ success: true, data: { id: "t9", number: 1, name: "İcma" } })
+    );
+    const many = {
+      ...draft,
+      courseTopics: [
+        { id: "t2", number: 2, name: "Kitap", picked: false, questionCount: 0 },
+        ...draft.courseTopics,
+      ],
+    } as unknown as OnlineExamDraftResponse;
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={many} />));
+    // No line under Konular explains the chips any more.
+    expect(root.textContent).not.toContain("çipine tıklayın");
+    const number = field(root, "Numara");
+    expect(number.value).toBe("1");
+    await typeInto(field(root, "Konu (bir ile üç kelime)"), "İcma");
+    await click(button(root, "Konu ekle"));
+    await settle();
+    expect(actions.createCourseTopic).toHaveBeenCalledWith("c1", "İcma", 1);
+    // The next free one comes next: 1, 2 and 3 are taken.
+    expect(field(root, "Numara").value).toBe("4");
+    await typeInto(field(root, "Numara"), "12");
+    await typeInto(field(root, "Konu (bir ile üç kelime)"), "Nesih");
+    await click(button(root, "Konu ekle"));
+    held.shift()?.(); // the first topic is made; the second goes after it
+    await settle();
+    expect(actions.createCourseTopic).toHaveBeenLastCalledWith(
+      "c1",
+      "Nesih",
+      12
+    );
+    expect(field(root, "Numara").value).toBe("4");
   });
 
   it("folds Ayarlar and Konular to a summary line when they are filled in (MDRS-248)", async () => {
@@ -1455,7 +1659,7 @@ describe("the exam editor (MDRS-299)", () => {
     expect(open("topics-title")).toBe(true);
   });
 
-  it("draws Arabic by the standard: a row's text, a mixed text's Arabic run, and the form's fields (MDRS-248)", async () => {
+  it("draws Arabic by the standard: a card's text, a mixed text's Arabic run, and the form's fields (MDRS-248)", async () => {
     const arabic = saved({
       text: "مَا مَعْنَى «الرَّحْمٰنِ»؟",
       options: [
@@ -1469,11 +1673,18 @@ describe("the exam editor (MDRS-299)", () => {
     const row = root.querySelector(
       'article[aria-label="1. soru"]'
     ) as HTMLElement;
-    const text = row.querySelector("[lang=ar]") as HTMLElement;
+    // The whole paragraph reads right to left; the Arabic option tile too.
+    expect(
+      row.querySelector("p.whitespace-pre-line")?.getAttribute("dir")
+    ).toBe("rtl");
+    const text = row.querySelector("p [lang=ar]") as HTMLElement;
     expect(text.getAttribute("dir")).toBe("rtl");
+    expect(row.querySelector("li[data-correct] [lang=ar]")?.textContent).toBe(
+      "كَثِيرُ الرَّحْمَةِ"
+    );
     expect(text.textContent).toBe("مَا مَعْنَى «الرَّحْمٰنِ»؟");
     expect(text.style.fontFamily).toBe("var(--font-arabic)");
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     expect(textOf(root).getAttribute("lang")).toBe("ar");
     expect(option(root, 1).getAttribute("dir")).toBe("rtl");
     expect(option(root, 2).hasAttribute("dir")).toBe(false);
@@ -1490,7 +1701,7 @@ describe("the exam editor (MDRS-299)", () => {
       )
     );
     const line = mixed.querySelector(
-      'article[aria-label="1. soru"] button[tabindex="-1"] > span'
+      'article[aria-label="1. soru"] p.whitespace-pre-line > span'
     ) as HTMLElement;
     expect(line.hasAttribute("dir")).toBe(false);
     expect(line.getAttribute("lang")).toBeNull();
@@ -1509,7 +1720,7 @@ describe("the exam editor (MDRS-299)", () => {
       )
     );
     const box = hadith.querySelector(
-      'article[aria-label="1. soru"] button[tabindex="-1"]'
+      'article[aria-label="1. soru"] p.whitespace-pre-line'
     ) as HTMLElement;
     expect(box.hasAttribute("dir")).toBe(false);
     const runs = [...box.querySelectorAll("[lang=ar]")];
@@ -1535,7 +1746,7 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Kaydet"));
     await settle();
     expect(forms(root)[0]?.getAttribute("aria-label")).toBe("3. soru");
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     expect(forms(root).map((f) => f.getAttribute("aria-label"))).toEqual([
       "1. soru",
     ]);
@@ -1569,40 +1780,6 @@ describe("the exam editor (MDRS-299)", () => {
     await settle();
     expect(actions.addExamQuestion).toHaveBeenCalledTimes(1);
     expect(actions.saveExamQuestion).toHaveBeenCalledTimes(1);
-  });
-
-  it("makes a topic typed in + Konu and saves it with the question on Cmd+Enter (MDRS-248)", async () => {
-    actions.createCourseTopic.mockResolvedValue({
-      success: true,
-      data: { id: "t4", number: 4, name: "Tecvid" },
-    });
-    actions.addExamQuestion.mockResolvedValue({
-      success: true,
-      data: { version: 2, question: { id: "q1" } },
-    });
-    actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
-      echo(id, body, 3)
-    );
-    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
-    await click(button(root, "Soru ekle"));
-    await typeInto(textOf(root), "Med kaç çeşittir?");
-    await click(button(root, "+ Konu"));
-    const name = root.querySelector(
-      "input[aria-label='Yeni konu']"
-    ) as HTMLInputElement;
-    await typeInto(name, "Tecvid");
-    await press(name, { key: "Enter", metaKey: true });
-    await settle(40);
-    expect(actions.createCourseTopic).toHaveBeenCalledWith(
-      "c1",
-      "Tecvid",
-      undefined
-    );
-    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
-      "e1",
-      "q1",
-      expect.objectContaining({ topicIds: ["t4"] })
-    );
   });
 });
 
@@ -1648,7 +1825,7 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
     expect(icon(root).getAttribute("aria-pressed")).toBe("true");
     expect(icon(root).getAttribute("aria-label")).toBe("Talebe notları");
     // The row's form does not open while the icon is being written.
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     expect(root.querySelector("form[data-question]")).toBeNull();
     expect(actions.setExamQuestionTalebeNotes).toHaveBeenCalledWith(
       "e1",
@@ -1671,7 +1848,7 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
       )
     );
     expect(icon(root).getAttribute("aria-pressed")).toBe("true");
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     expect(root.querySelector("form[data-question]")).not.toBeNull();
   });
 
@@ -1713,7 +1890,7 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
     expect(icon(root).getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("reads a question without the field by the set's default: on in a çalışma seti, off in an exam", async () => {
+  it("reads a question without the field as off, in a çalışma seti and an exam alike (MDRS-248, 2026-11-28)", async () => {
     const exam = await render(
       wrap(<ExamEditor courseId="c1" draft={saved()} />)
     );
@@ -1722,7 +1899,7 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
     const set = await render(
       wrap(<ExamEditor courseId="c1" draft={saved()} kind="PRACTICE" />)
     );
-    expect(icon(set).getAttribute("aria-pressed")).toBe("true");
+    expect(icon(set).getAttribute("aria-pressed")).toBe("false");
   });
 
   it("puts the icon in a new question's form, beside its buttons, and sends it with the save", async () => {
@@ -1758,10 +1935,10 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
     const toggle = icon(form);
     // In the row of Kaydet and Vazgeç: no line of its own.
     expect(toggle.closest("div")?.textContent).toContain("Kaydet");
-    // A new question of a set takes notes.
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    // A new question takes no notes, in a set too: the icon turns them on.
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
     await click(toggle);
-    expect(icon(form).getAttribute("aria-pressed")).toBe("false");
+    expect(icon(form).getAttribute("aria-pressed")).toBe("true");
     // Pressing it writes nothing until the question is saved.
     expect(actions.setExamQuestionTalebeNotes).not.toHaveBeenCalled();
     await typeInto(
@@ -1773,20 +1950,7 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
     expect(actions.saveExamQuestion).toHaveBeenCalledWith(
       "e1",
       "q1",
-      expect.objectContaining({ talebeNotes: false })
+      expect.objectContaining({ talebeNotes: true })
     );
-  });
-});
-
-describe("a long question on its one-line row (MDRS-248, uzun soru)", () => {
-  it("shows the first line and says more follows", () => {
-    expect(
-      rowText(
-        "Âyetü'l-Kürsî şöyle başlar:\n\nاللَّهُ لَا إِلَٰهَ إِلَّا هُوَ\n\nHangi sûrededir?"
-      )
-    ).toBe("Âyetü'l-Kürsî şöyle başlar: …");
-    expect(rowText("Tek satırlık soru?")).toBe("Tek satırlık soru?");
-    expect(rowText("\n  Boş satırla başlayan\n")).toBe("Boş satırla başlayan");
-    expect(rowText("")).toBe("");
   });
 });

@@ -64,9 +64,6 @@ export function TalebeNotesSection({
           <Badge variant="warning">{t("waiting", { count: waiting })}</Badge>
         ) : null}
       </div>
-      <p className="mds-body-sm max-inline-measure text-neutral-muted">
-        {t("intro")}
-      </p>
       {notes === null ? (
         <p className="mds-body-sm text-neutral-muted">{t("loadFailed")}</p>
       ) : notes.length === 0 ? (

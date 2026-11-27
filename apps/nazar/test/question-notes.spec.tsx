@@ -129,9 +129,10 @@ describe("the hoca's order of the notes", () => {
     );
   });
 
-  it("reads a question without the field by the API's default", () => {
-    expect(takesNotes({}, "PRACTICE")).toBe(true);
+  it("reads a question without the field by the API's default: off, in a set and an exam alike", () => {
+    expect(takesNotes({}, "PRACTICE")).toBe(false);
     expect(takesNotes({}, "EXAM")).toBe(false);
+    expect(takesNotes({ talebeNotes: true }, "PRACTICE")).toBe(true);
     expect(takesNotes({ talebeNotes: false }, "PRACTICE")).toBe(false);
   });
 });
@@ -154,6 +155,9 @@ describe("Talebe notları on a set's page", () => {
     const section = root.querySelector("#talebe-notlari") as HTMLElement;
     expect(section.querySelector("h2")?.textContent).toBe("Talebe notları");
     expect(section.textContent).toContain("1 cevapsız");
+    // No line under the title explains the bubble (MDRS-248, 2026-11-28).
+    expect(section.textContent).not.toContain("konuşma balonu");
+    expect(section.children[1]?.tagName).toBe("OL");
     const [first, second] = cards(root);
     expect(first?.textContent).toContain("3. soru");
     expect(first?.textContent).toContain("Talebe b");

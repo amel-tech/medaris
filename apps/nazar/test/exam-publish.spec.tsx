@@ -6,7 +6,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExamWorkspace } from "~/features/online-exams/components/exam-workspace";
-import { cleanup, click, render, settle, type as typeInto } from "./dom";
+import { cleanup, click, pick, render, settle, type as typeInto } from "./dom";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -107,7 +107,7 @@ const page = (draft: OnlineExamDraftResponse) =>
   );
 const button = (root: ParentNode, label: string) =>
   [...root.querySelectorAll("button")].find(
-    (b) => b.textContent === label
+    (b) => b.textContent === label || b.getAttribute("aria-label") === label
   ) as HTMLButtonElement;
 const dialog = () =>
   document.querySelector("[role=alertdialog]") as HTMLElement;
@@ -315,10 +315,9 @@ describe("publishing an online exam (MDRS-299)", () => {
         .querySelector("form fieldset li")
         ?.querySelector("[role=checkbox]") as HTMLElement
     );
-    await click(
-      [...root.querySelectorAll("form button[aria-pressed]")].find(
-        (b) => b.textContent === "3. Kıyas"
-      ) as HTMLButtonElement
+    await pick(
+      root.querySelector("form input[role=combobox]") as HTMLInputElement,
+      "3. Kıyas"
     );
     await act(async () => {
       text.dispatchEvent(
@@ -352,7 +351,7 @@ describe("publishing an online exam (MDRS-299)", () => {
     await click(button(root, "Vazgeç"));
     expect(root.textContent).not.toContain(holding);
     // A saved question opened, changed, then let go for a new one.
-    await click(button(root, "Düzenle"));
+    await click(button(root, "1. soruyu düzenle"));
     const text = root.querySelector(
       'form[aria-label$=". soru"] textarea'
     ) as HTMLTextAreaElement;

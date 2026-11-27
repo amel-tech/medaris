@@ -10,7 +10,7 @@ import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
-import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
+import { MultiCombobox } from "@medaris/ui/mds/combobox";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { IconButton } from "@medaris/ui/mds/icon-button";
@@ -18,6 +18,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
+import { Tooltip } from "@medaris/ui/mds/tooltip";
 import {
   unstable_isUnrecognizedActionError as isStaleAction,
   useRouter,
@@ -181,21 +182,6 @@ const localKey = () => `local-${++localKeys}`;
  * no points and a publish with no date, since a set has no celse and every
  * question of it weighs the same.
  */
-/**
- * A question's text on its one-line row: its first line, and "…" when more
- * follows (MDRS-248, uzun soru). A long question opens with a sentence and
- * puts its âyet on a line of its own; cut in the middle of that line, the row
- * would show the end of the Arabic run instead of its start.
- */
-export const rowText = (text: string): string => {
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length <= 1) return lines[0] ?? "";
-  return `${lines[0]} …`;
-};
-
 export function ExamEditor({
   courseId,
   draft,
@@ -674,8 +660,9 @@ export function ExamEditor({
         topicIds: [],
         ownPoints: null,
         points: "",
-        // The API's default for a new question: on in a set, off in an exam.
-        talebeNotes: practice,
+        // Off for every new question, as the API's (MDRS-248, 2026-11-28):
+        // the hoca turns it on with the icon.
+        talebeNotes: false,
         complete: false,
         lacks: lacksOf({ text: "", options: [], topicIds: [] }, kind),
       },
@@ -863,20 +850,8 @@ export function ExamEditor({
 
   return (
     <div className="flex flex-col gap-section">
-      <SettingsSection
-        practice={practice}
-        settings={settings}
-        state={settingsState}
-        onSave={saveSettings}
-        onRetry={() => saveSettings(settings)}
-      />
-      <TopicsSection
-        topics={topics}
-        onAdd={(name, number) => {
-          addTopic(name, number);
-        }}
-        onRemove={removeTopic}
-      />
+      {/* The questions first, as the talebe will see them (MDRS-248):
+          the settings, the topics and the publishing come after them. */}
       <section
         className="flex flex-col gap-3"
         aria-labelledby="questions-title"
@@ -894,7 +869,7 @@ export function ExamEditor({
             {t("OnlineExams.noQuestions")}
           </p>
         ) : null}
-        {/* Each row says "1. soru": the list draws no number of its own. */}
+        {/* Each card says "1. soru": the list draws no number of its own. */}
         <ol className="flex list-none flex-col gap-2 ps-0">
           {numbered.map((q) => (
             <li key={q.key}>
@@ -905,7 +880,6 @@ export function ExamEditor({
                   draft={view}
                   question={q}
                   topicOf={topicOf}
-                  onAddTopic={(name) => addTopic(name, undefined)}
                   onTyping={setTyping}
                   onChanged={setChanged}
                   onCancel={() =>
@@ -922,7 +896,7 @@ export function ExamEditor({
                   }}
                 />
               ) : (
-                <QuestionRow
+                <QuestionCard
                   practice={practice}
                   draft={view}
                   topicOf={topicOf}
@@ -988,6 +962,20 @@ export function ExamEditor({
           {t("OnlineExams.unsavedBody")}
         </AlertDialog>
       </section>
+      <SettingsSection
+        practice={practice}
+        settings={settings}
+        state={settingsState}
+        onSave={saveSettings}
+        onRetry={() => saveSettings(settings)}
+      />
+      <TopicsSection
+        topics={topics}
+        onAdd={(name, number) => {
+          addTopic(name, number);
+        }}
+        onRemove={removeTopic}
+      />
       {publish ? (
         <PublishSection
           kind={kind}
@@ -1244,13 +1232,18 @@ function TopicsSection({
   const t = useTranslations("nazar");
   const [asking, setAsking] = useState<Topic | null>(null);
   const [name, setName] = useState("");
-  const [number, setNumber] = useState("");
+  // The number field holds the smallest number no topic has (MDRS-248, the
+  // owner: "yeni konu numarası otomatik"), the one the API would give, until
+  // it is typed over; cleared, the API picks it.
+  const [typed, setTyped] = useState<string | null>(null);
+  const number =
+    typed ?? String(nextFreeNumber(topics.map((topic) => topic.number)));
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (name.trim() === "") return;
     onAdd(name.trim(), number.trim() === "" ? undefined : Number(number));
     setName("");
-    setNumber("");
+    setTyped(null);
   };
   const [startOpen] = useState(() => topics.length === 0);
   return (
@@ -1260,9 +1253,6 @@ function TopicsSection({
       summary={t("OnlineExams.topicsCount", { count: topics.length })}
       startOpen={startOpen}
     >
-      <p className="mds-body-sm text-neutral-muted">
-        {t("OnlineExams.topicsIntro")}
-      </p>
       {topics.length > 0 ? (
         <ul className="flex list-none flex-wrap gap-2 ps-0">
           {topics.map((topic) => (
@@ -1320,7 +1310,7 @@ function TopicsSection({
           <Input
             inputMode="numeric"
             value={number}
-            onChange={(e) => setNumber(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => setTyped(e.target.value.replace(/\D/g, ""))}
             placeholder={t("OnlineExams.topicNumberPlaceholder")}
             className="w-24"
           />
@@ -1341,14 +1331,33 @@ function TopicsSection({
   );
 }
 
+/** The longest option text, in characters, that still sits in two columns: tedris's SHORT_OPTION. */
+const SHORT_OPTION = 32;
+
 /**
- * A saved question as one row (MDRS-248): its number, its text cut to one
- * line, how many options and which is correct, its topics, Tamam or Eksik,
- * and Düzenle / Sil; what it still lacks goes on a second line. A click on
- * its text opens it in place, as "Düzenle" does (the text is not a Tab stop
- * of its own: "Düzenle" is the keyboard's way in).
+ * How a question's options are laid out, as tedris's `optionsLayout` (MDRS-248):
+ * two equal columns from 768px (nazar's one breakpoint) when every option is short, else one.
+ * Counted in characters (code points), so Arabic is measured as it reads.
  */
-function QuestionRow({
+const optionsLayout = (
+  options: ReadonlyArray<{ text: string }>
+): "grid" | "list" =>
+  options.every((o) => [...o.text.trim()].length <= SHORT_OPTION)
+    ? "grid"
+    : "list";
+
+/**
+ * A saved question as the talebe will see it (MDRS-248, the owner: "canlıda
+ * nasıl görünecekse o şekilde görülmeli hazırlarken de"): its whole text with
+ * its lines kept, by the Arabic text standard, and its options as the tiles
+ * of the çalışma screen (tedris's `QuestionOptions`, #477), read only. The
+ * correct option is marked for the hoca, with a ✓ and its name, never colour
+ * alone. Its topics, the talebe-notes icon, "Düzenle" and "Sil" sit at its
+ * top corner. A question that is not ready ends with an exclamation mark that
+ * names what it lacks (on hover and focus, and as its name), and its card is
+ * tinted red.
+ */
+function QuestionCard({
   practice,
   draft,
   topicOf,
@@ -1379,24 +1388,19 @@ function QuestionRow({
   const ids = question.topicIds.map(topicOf);
   const named = draft.courseTopics.filter((topic) => ids.includes(topic.id));
   const n = question.number;
-  const missing = question.lacks
+  const lacking = question.lacks
     // A çalışma seti's question needs no topic (MDRS-248).
     .filter((lack) => !(practice && lack === "topic"))
     .map((lack) =>
       lack === "text"
-        ? t("OnlineExams.problemNoText", { n })
+        ? t("OnlineExams.lackText")
         : lack === "option"
-          ? t("OnlineExams.problemFewOptions", { n })
+          ? t("OnlineExams.lackOption")
           : lack === "correct"
-            ? t("OnlineExams.problemNoCorrect", { n })
-            : t("OnlineExams.problemNoTopic", { n })
+            ? t("OnlineExams.lackCorrect")
+            : t("OnlineExams.lackTopic")
     );
-  const letters = question.options
-    .flatMap((o, i) => (o.correct ? [optionLetter(i)] : []))
-    .join(", ");
   const facts = [
-    t("OnlineExams.optionCount", { count: question.options.length }),
-    ...(letters ? [t("OnlineExams.correctLetters", { letters })] : []),
     ...(question.answerMode === "MULTIPLE"
       ? [
           t("OnlineExams.modeMultiple"),
@@ -1415,33 +1419,17 @@ function QuestionRow({
         ]
       : []),
   ].join(" · ");
+  const lacks = lacking.length > 0;
   return (
     <article
-      className="mds-card flex flex-col gap-1 px-4 py-2"
+      className={`mds-card flex flex-col gap-2 p-3 ${lacks ? "border-error-default bg-error-subtle" : ""}`}
       aria-label={t("OnlineExams.questionNumber", { number: n })}
+      data-lacks-card={lacks ? "" : undefined}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <strong className="shrink-0">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <strong className="mds-body-sm shrink-0">
           {t("OnlineExams.questionNumber", { number: n })}
         </strong>
-        {/* Beside its number on a phone, its facts on the line under it.
-            An Arabic text is cut at its end, so the box takes its direction. */}
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={onEdit}
-          dir={paragraphDir(rowText(question.text))}
-          className="mds-body min-inline-0 flex-1 basis-[calc(100%-5rem)] cursor-pointer truncate border-0 bg-transparent p-0 text-start text-inherit md:basis-[12rem]"
-        >
-          {question.text ? (
-            <ArabicText text={rowText(question.text)} />
-          ) : (
-            <span className="text-neutral-muted">
-              {t("OnlineExams.noText")}
-            </span>
-          )}
-        </button>
-        <span className="mds-body-sm shrink-0 text-neutral-muted">{facts}</span>
         {named.map((topic) => (
           <Badge key={topic.id} variant="outline">
             <bdi>
@@ -1452,11 +1440,6 @@ function QuestionRow({
             </bdi>
           </Badge>
         ))}
-        <Badge variant={missing.length === 0 ? "success" : "warning"}>
-          {missing.length === 0
-            ? t("OnlineExams.complete")
-            : t("OnlineExams.incomplete")}
-        </Badge>
         {question.pending ? (
           <span className="mds-body-sm text-neutral-muted">
             {t("OnlineExams.saving")}
@@ -1476,14 +1459,22 @@ function QuestionRow({
               {t("OnlineExams.retry")}
             </Button>
           ) : null}
-          <Button size="small" variant="outline" onClick={onEdit}>
-            {t("OnlineExams.edit")}
-          </Button>
+          <IconButton
+            size="small"
+            variant="ghost"
+            icon={<Icon name="edit" size="sm" />}
+            label={t("OnlineExams.editQuestion", { number: n })}
+            onClick={onEdit}
+          />
           {/* Opened by state, as the other nazar dialogs are: a bare `trigger`
               is not wrapped in the kit's AlertDialogTrigger and opened nothing. */}
-          <Button size="small" variant="ghost" onClick={() => setAsking(true)}>
-            {t("OnlineExams.remove")}
-          </Button>
+          <IconButton
+            size="small"
+            variant="ghost"
+            icon={<Icon name="trash" size="sm" />}
+            label={t("OnlineExams.removeQuestion", { number: n })}
+            onClick={() => setAsking(true)}
+          />
         </div>
         <AlertDialog
           open={asking}
@@ -1501,9 +1492,80 @@ function QuestionRow({
           {t("OnlineExams.removeBody")}
         </AlertDialog>
       </div>
-      {missing.length > 0 ? (
-        // What "Eksik" means, so the hoca need not guess which part is wanting.
-        <p className="mds-body-sm text-neutral-muted">{missing.join(" ")}</p>
+      {/* Its lines and paragraphs as written (an âyet on a line of its own),
+          as the talebe's question screen keeps them. */}
+      {/* An Arabic question reads right to left as a whole, its mark at its
+          end; any other takes the page's direction (paragraphDir). */}
+      <p
+        dir={paragraphDir(question.text)}
+        className="mds-body m-0 whitespace-pre-line [overflow-wrap:anywhere]"
+      >
+        {question.text ? (
+          <ArabicText text={question.text} />
+        ) : (
+          <span className="text-neutral-muted">{t("OnlineExams.noText")}</span>
+        )}
+        {lacks ? (
+          <>
+            {" "}
+            <Tooltip
+              label={
+                <span className="flex flex-col">
+                  {lacking.map((line) => (
+                    <span key={line}>{line}</span>
+                  ))}
+                </span>
+              }
+            >
+              <button
+                type="button"
+                data-lacks=""
+                aria-label={t("OnlineExams.lacksLabel", {
+                  lacks: lacking.join(", "),
+                })}
+                onClick={onEdit}
+                className="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost inline-flex align-middle text-error-default"
+              >
+                <Icon name="warning" size="sm" />
+              </button>
+            </Tooltip>
+          </>
+        ) : null}
+      </p>
+      {question.options.length > 0 ? (
+        <ul
+          className={`m-0 grid list-none auto-rows-fr grid-cols-1 gap-1 ps-0 ${optionsLayout(question.options) === "grid" ? "md:grid-cols-2" : ""}`}
+          aria-label={t("OnlineExams.optionsLabel")}
+        >
+          {question.options.map((o, i) => (
+            <li
+              key={o.id}
+              data-correct={o.correct ? "" : undefined}
+              className={`flex min-h-control-small items-center gap-2 rounded-control border px-3 py-1 ${o.correct ? "border-success-default bg-success-subtle" : "border-neutral-subtle bg-neutral-surface"}`}
+            >
+              <span
+                aria-hidden="true"
+                className="mds-caption inline-grid size-6 shrink-0 place-items-center rounded-full border border-neutral-strong bg-neutral-surface font-semibold"
+              >
+                {optionLetter(i)}
+              </span>
+              <span className="mds-visually-hidden">{optionLetter(i)}) </span>
+              <ArabicText text={o.text} className="block min-inline-0 flex-1" />
+              {o.correct ? (
+                <span className="shrink-0 font-semibold text-success-default">
+                  <span aria-hidden="true">✓</span>
+                  <span className="mds-visually-hidden">
+                    {" "}
+                    {t("OnlineExams.correct")}
+                  </span>
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {facts ? (
+        <p className="mds-body-sm m-0 text-neutral-muted">{facts}</p>
       ) : null}
     </article>
   );
@@ -1520,12 +1582,13 @@ const marksCorrect = (event: KeyboardEvent<HTMLElement>) =>
  * A question typed fast (MDRS-248). The caret starts in "Soru"; Tab goes
  * Soru → A → B → … one stop per option, since each "Doğru" box is out of
  * the Tab order (tabIndex -1) and marked from its option instead with
- * Alt/Option + D (named in the help and in `aria-keyshortcuts`). The box is
- * still a labelled check box beside its option: a screen reader finds it
- * and a click or Space on it marks it. Cmd/Ctrl + Enter saves from any
- * field. The topics are chips (one Tab stop, arrows between them) with a
- * "+ Konu" to make one; empty options are left out on save, which the form
- * says before it happens.
+ * Alt/Option + D (named in `aria-keyshortcuts`). The box is still a
+ * labelled check box beside its option: a screen reader finds it and a click
+ * or Space on it marks it. Cmd/Ctrl + Enter saves from any field. The keys
+ * are not written under the form any more (the owner, 2026-11-28); they
+ * still work. The topics are a searchable list of several (MultiCombobox):
+ * a topic is made under "Konular", not here. Empty options are left out on
+ * save, which the form says before it happens.
  */
 function QuestionForm({
   practice,
@@ -1533,7 +1596,6 @@ function QuestionForm({
   draft,
   question,
   topicOf,
-  onAddTopic,
   onTyping,
   onChanged,
   onCancel,
@@ -1546,8 +1608,6 @@ function QuestionForm({
   question: Question;
   /** A topic made on this page by the id the server gave it, once it has. */
   topicOf: (id: string) => string;
-  /** Makes a course topic; its id on the page until the server answers. */
-  onAddTopic: (name: string) => string;
   /** Whether anything is typed in the form, so a blank new one holds nothing up. */
   onTyping: (typing: boolean) => void;
   /** Whether the form differs from the question it opened with: leaving it would lose that. */
@@ -1589,7 +1649,6 @@ function QuestionForm({
   const picked = [...new Set(topicIds.map(topicOf))].filter((id) =>
     known.has(id)
   );
-  const [newTopic, setNewTopic] = useState<string | null>(null);
   const setOption = (i: number, change: Partial<(typeof options)[number]>) =>
     setOptions((all) => all.map((o, j) => (j === i ? { ...o, ...change } : o)));
   const formRef = useRef<HTMLFormElement>(null);
@@ -1605,7 +1664,6 @@ function QuestionForm({
   }, [typing, onTyping]);
   // What the form holds against what it opened with: "Soru ekle" or another
   // question's "Düzenle" asks before a change is dropped (MDRS-248).
-  // A topic name typed under "+ Konu" is saved with the question, so it counts.
   const now = JSON.stringify([
     text,
     options,
@@ -1613,7 +1671,6 @@ function QuestionForm({
     mode,
     scoring,
     points,
-    (newTopic ?? "").trim(),
     notes,
   ]);
   const [opened] = useState(now);
@@ -1622,13 +1679,6 @@ function QuestionForm({
     onChanged(changed);
   }, [changed, onChanged]);
   useEffect(() => () => onChanged(false), [onChanged]);
-  const asksTopic = newTopic !== null;
-  useEffect(() => {
-    if (asksTopic)
-      formRef.current
-        ?.querySelector<HTMLInputElement>("input[data-new-topic]")
-        ?.focus();
-  }, [asksTopic]);
   // The option to put the caret in once it is drawn (Enter on the last one adds it).
   const [focusAt, setFocusAt] = useState<number | null>(null);
   useEffect(() => {
@@ -1670,14 +1720,6 @@ function QuestionForm({
     setOptions(spread.options);
     setFocusAt(spread.last);
   };
-  const addTopic = () => {
-    const name = (newTopic ?? "").trim();
-    if (name === "") return;
-    const id = onAddTopic(name);
-    setTopicIds((all) => [...all, id]);
-    // Open for one more; Escape or Tab moves on.
-    setNewTopic("");
-  };
   const { kept, gaps, blankCorrect } = optionsToSave(options);
   const correctCount = kept.filter((o) => o.correct).length;
   // How it is answered is asked only with two correct options or more; with
@@ -1695,14 +1737,10 @@ function QuestionForm({
 
   const save = () => {
     if (blocked) return;
-    // A topic typed in "+ Konu" and not yet added goes with the question.
-    const pending = (newTopic ?? "").trim();
-    const topics = pending === "" ? picked : [...picked, onAddTopic(pending)];
-    if (pending !== "") setNewTopic(null);
     onSave({
       text: text.trim(),
       options: kept,
-      topicIds: topics,
+      topicIds: picked,
       answerMode,
       scoring: answerScoring,
       points: own,
@@ -1713,8 +1751,19 @@ function QuestionForm({
     event.preventDefault();
     save();
   };
-  // Cmd/Ctrl + Enter saves from any field of the form.
+  // Cmd/Ctrl + Enter saves from any field of the form. Enter alone in the
+  // topics' search picks a topic (or nothing); it never sends the question.
   const onFormKey = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (
+      event.key === "Enter" &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      event.target instanceof HTMLElement &&
+      event.target.getAttribute("role") === "combobox"
+    ) {
+      event.preventDefault();
+      return;
+    }
     if (
       event.key === "Enter" &&
       (event.metaKey || event.ctrlKey) &&
@@ -1750,14 +1799,8 @@ function QuestionForm({
           className="field-sizing-content"
         />
       </Field>
-      <fieldset
-        className="flex flex-col gap-2"
-        aria-describedby={`${uid}-options-help`}
-      >
+      <fieldset className="flex flex-col gap-2">
         <legend className="mds-label">{t("OnlineExams.optionsLabel")}</legend>
-        <p id={`${uid}-options-help`} className="mds-help">
-          {t("OnlineExams.optionsHelp")}
-        </p>
         <ol className="flex list-none flex-col gap-1 ps-0">
           {options.map((o, i) => (
             <li key={i} className="flex items-center gap-2">
@@ -1877,102 +1920,48 @@ function QuestionForm({
           />
         </Field>
       )}
-      <div className="flex flex-col gap-2">
-        {draft.courseTopics.length > 0 ? (
-          <ChoiceChips
-            multiple
-            legendVisible
-            legend={
-              practice
-                ? t("OnlineExams.topicsOptional")
-                : t("OnlineExams.topicsTitle")
-            }
+      {draft.courseTopics.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${uid}-topics`} className="mds-label">
+            {practice
+              ? t("OnlineExams.topicsOptional")
+              : t("OnlineExams.topicsTitle")}
+          </label>
+          <MultiCombobox
+            id={`${uid}-topics`}
             value={picked}
             onChange={setTopicIds}
+            placeholder={t("OnlineExams.topicsSearch")}
+            emptyText={t("OnlineExams.topicsNoMatch")}
+            removeLabel={(name) => t("OnlineExams.topicUnpick", { name })}
             options={draft.courseTopics.map((topic) => ({
               value: topic.id,
-              label: (
-                <bdi>
-                  {t("OnlineExams.topicChip", {
-                    number: topic.number,
-                    name: topic.name,
-                  })}
-                </bdi>
-              ),
+              label: t("OnlineExams.topicChip", {
+                number: topic.number,
+                name: topic.name,
+              }),
             }))}
           />
-        ) : (
-          <p className="mds-body-sm text-neutral-muted">
-            {t("OnlineExams.topicsNone")}
-          </p>
-        )}
-        {newTopic === null ? (
-          <div>
-            <Button
-              size="small"
-              variant="ghost"
-              onClick={() => setNewTopic("")}
-            >
-              {t("OnlineExams.addTopicShort")}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              data-new-topic=""
-              aria-label={t("OnlineExams.newTopicLabel")}
-              value={newTopic}
-              onChange={(e) => setNewTopic(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setNewTopic(null);
-                }
-                // Enter makes the topic here; it never sends the question.
-                if (
-                  e.key === "Enter" &&
-                  !e.metaKey &&
-                  !e.ctrlKey &&
-                  !e.nativeEvent.isComposing
-                ) {
-                  e.preventDefault();
-                  addTopic();
-                }
-              }}
-              maxLength={60}
-              dir="auto"
-              className="w-[12rem]"
-            />
-            <Button
-              size="small"
-              variant="secondary"
-              onClick={addTopic}
-              disabled={newTopic.trim() === ""}
-            >
-              {t("OnlineExams.newTopicAdd")}
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Button type="submit" disabled={blocked}>
-            {t("OnlineExams.save")}
-          </Button>
-          <Button variant="ghost" onClick={onCancel}>
-            {t("OnlineExams.cancel")}
-          </Button>
-          {/* Beside the buttons, never a field of its own: it takes no room. */}
-          <span className="ms-auto">
-            <TalebeNotesToggle
-              on={notes}
-              onToggle={() => setNotes((was) => !was)}
-            />
-          </span>
         </div>
-        <p className="mds-caption text-neutral-muted">
-          {t("OnlineExams.shortcutHint")}
+      ) : (
+        <p className="mds-body-sm text-neutral-muted">
+          {t("OnlineExams.topicsNone")}
         </p>
+      )}
+      <div className="flex items-center gap-2">
+        <Button type="submit" disabled={blocked}>
+          {t("OnlineExams.save")}
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
+          {t("OnlineExams.cancel")}
+        </Button>
+        {/* Beside the buttons, never a field of its own: it takes no room. */}
+        <span className="ms-auto">
+          <TalebeNotesToggle
+            on={notes}
+            onToggle={() => setNotes((was) => !was)}
+          />
+        </span>
       </div>
     </form>
   );

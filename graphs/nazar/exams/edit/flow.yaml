@@ -492,15 +492,17 @@ states:
       NAVIGATE: left
   editor:
     title: The draft's page
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:762
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:749
     description: >-
-      Under the link "Sınavlar" and the h1 of the exam's title: "Ayarlar" (Sınavın adı; Süre (dakika), blank until typed, digits only,
-      "Varsayılanı yok; süre girilmeden sınav yayınlanmaz…"; Talimatlar; "Ayarları kaydet", off while nothing changed); "Konular" (the
-      course's topics as chips "3. Kıyas", those the exam has picked in the brand colour, each with a delete button; Numara, "Sıradaki" when
-      left blank, Konu (bir ile üç kelime), and "Konu ekle", off while the name is blank); "Sorular (n)", each question in its row with
-      its number, "Tamam" or "Eksik", its topics' numbers, how it is answered, its points (its own or its equal share, two decimals),
-      its text and its options with "Doğru" on the correct ones, "Düzenle" and "Sil", or "Henüz soru yok.", and "Soru ekle"; then the
-      section "Yayınla" (nazar.exams.publish). A write on its way says "Kaydediliyor…" beside the questions' heading and on its row;
+      Under the link "Sınavlar" and the h1 of the exam's title, first "Sorular (n)" (MDRS-248, 2026-11-28: the questions at the top,
+      each a card as the talebe will see it: its number, its topics, the talebe-notes icon, a pencil "<n>. soruyu düzenle" and a bin
+      "<n>. soruyu sil" at its corner; its whole text with its lines kept; its options as tiles with their letters, the correct ones
+      marked with a ✓; how it is answered and its points (its own or its equal share, two decimals); a question not ready ends with an
+      exclamation mark named "Eksik: <what it lacks>", and its card is tinted red), or "Henüz soru yok.", and "Soru ekle"; then
+      "Ayarlar" (Sınavın adı; Süre (dakika), blank until typed, digits only, "Varsayılanı yok; süre girilmeden sınav yayınlanmaz…";
+      Talimatlar; "Ayarları kaydet", off while nothing changed); "Konular" (the course's topics as chips "3. Kıyas", those the exam has
+      picked in the brand colour, each with a delete button; Numara, filled with the smallest number no topic has, Konu (bir ile üç
+      kelime), and "Konu ekle", off while the name is blank); then the section "Yayınla" (nazar.exams.publish). A write on its way says "Kaydediliyor…" beside the questions' heading and on its row;
       leaving the page meanwhile asks first (beforeunload). A question kept in the browser from before a reload comes back marked
       "Kaydedilemedi", with an info toast. A refusal is a toast "Kaydedilemedi" with why; a write that names a Server Action the server
       no longer has says "Medaris güncellendi" with "Yenile". The page does not say when anything was last saved.
@@ -508,8 +510,8 @@ states:
     goal: true
     on:
       SAVE_SETTINGS:
-        - { guard: "settingsTyped == 'noTitle'", target: editor, effect: [titleMissing], say: "they press Ayarları kaydet with no title", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:886" }
-        - { guard: "settingsTyped == 'zeroMinutes'", target: editor, effect: [durationInvalid], say: "they press Ayarları kaydet with a length of 0", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:887" }
+        - { guard: "settingsTyped == 'noTitle'", target: editor, effect: [titleMissing], say: "they press Ayarları kaydet with no title", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:861" }
+        - { guard: "settingsTyped == 'zeroMinutes'", target: editor, effect: [durationInvalid], say: "they press Ayarları kaydet with a length of 0", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:862" }
         - { guard: "settingsTyped == 'fit'", target: savingSettings, effect: [settingsSent], say: "they press Ayarları kaydet" }
       TYPE_SETTINGS: { target: editor, effect: [settingsTypedAgain], say: "they type in a setting" }
       RETRY_SETTINGS: { guard: "settingsSaved == 'no'", target: savingSettings, effect: [clearNotice], say: "they press Yeniden dene under the settings" }
@@ -517,11 +519,11 @@ states:
       ADD_TOPIC: { target: addingTopic, effect: [topicSent], say: "they type a topic, with a number or none, and press Konu ekle" }
       REMOVE_TOPIC: { target: removeTopicAsk, effect: [clearNotice], say: "they press a topic's delete button" }
       ADD_QUESTION: { target: questionForm, effect: [questionShown, questionTypedAgain], say: "they press Soru ekle: an empty question comes last, in its form" }
-      EDIT_QUESTION: { target: questionForm, effect: [clearNotice, questionOpened], say: "they press a question's Düzenle" }
+      EDIT_QUESTION: { target: questionForm, effect: [clearNotice, questionOpened], say: "they press a question's edit icon" }
       REMOVE_QUESTION: { target: removeAsk, effect: [clearNotice], say: "they press a question's Sil" }
       RETRY_QUESTION:
-        - { guard: "questionSaved == 'no' and questionIs == 'new'", target: addingQuestion, effect: [clearNotice], say: "they press Yeniden dene on a row added on this page that the server never made: it is made first, then saved", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:377" }
-        - { guard: "questionSaved == 'no'", target: savingQuestion, effect: [clearNotice], say: "they press Yeniden dene on a row that was not saved", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:806" }
+        - { guard: "questionSaved == 'no' and questionIs == 'new'", target: addingQuestion, effect: [clearNotice], say: "they press Yeniden dene on a row added on this page that the server never made: it is made first, then saved", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:363" }
+        - { guard: "questionSaved == 'no'", target: savingQuestion, effect: [clearNotice], say: "they press Yeniden dene on a row that was not saved", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:793" }
       COPY: { guard: noQuestions, target: readingCopies, effect: [clearNotice], say: "(not built) they choose to copy an earlier exam" }
       RENAME_TOPIC: { target: renamingTopic, effect: [clearNotice], say: "(not built) they change a topic's name in its row" }
       PREVIEW: { target: preview, effect: [clearNotice], say: "(not built) they see the exam as a talebe will" }
@@ -530,7 +532,7 @@ states:
       NAVIGATE: left
   savingSettings:
     title: Save the settings
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:477
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:463
     description: >-
       "Kaydediliyor…" beside "Ayarlar", and the fields stay as typed and open. In the editor's queue, after every write before it,
       updateOnlineExam, PATCH /online-exams/{examId}, with the title, the length (none when blank) and the instructions (none when
@@ -539,13 +541,13 @@ states:
     invoke: { action: updateOnlineExam }
     on:
       DONE: { target: editor, effect: [settingsSaved], say: "the settings are saved: Kaydediliyor… goes" }
-      FAIL.readAgain: { target: opening, effect: [settingsFailed, readAgain], say: "someone else saved the exam, or published it: the page is read again", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:278" }
+      FAIL.readAgain: { target: opening, effect: [settingsFailed, readAgain], say: "someone else saved the exam, or published it: the page is read again", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:264" }
       FAIL.forbidden: { target: editor, effect: [settingsRefused] }
       FAIL.invalid: { target: editor, effect: [settingsInvalid] }
       FAIL.other: { target: editor, effect: [settingsFailed] }
   addingTopic:
     title: Add a topic to the course's list
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:576
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:562
     description: >-
       The chip shows at once in its place by number (the next free one when none was typed) and the two fields are emptied. In the
       editor's queue, createCourseTopic, POST /courses/{id}/exam-topics, with the name and the number typed. Its answer gives the chip
@@ -562,7 +564,7 @@ states:
       FAIL.other: { target: editor, effect: [failed, topicBack] }
   removeTopicAsk:
     title: Delete the topic?
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1029
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1017
     description: >-
       An alert dialog "<number>. <name> silinsin mi?" says the topic leaves the course's list and that one a question carries is not
       deleted.
@@ -572,7 +574,7 @@ states:
       CANCEL: { target: editor, say: "they press Vazgeç" }
   removingTopic:
     title: Delete the topic from the course's list
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:665
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:651
     description: >-
       The chip leaves at once. In the editor's queue, removeCourseTopic, DELETE /courses/{id}/exam-topics/{topicId}; the exams that had
       it among their topics move on a version, and this one's is taken from the answer. A topic that questions carry is refused, and
@@ -580,12 +582,12 @@ states:
     invoke: { action: removeCourseTopic }
     on:
       DONE: { guard: "topicCarried == 'no'", target: editor, effect: [topicBack], say: "the topic is gone from the course's list" }
-      FAIL.inUse: { guard: "topicCarried == 'yes'", target: editor, effect: [topicInUse], say: "questions carry it: it comes back, and the toast names them", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:674" }
+      FAIL.inUse: { guard: "topicCarried == 'yes'", target: editor, effect: [topicInUse], say: "questions carry it: it comes back, and the toast names them", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:660" }
       FAIL.forbidden: { target: editor, effect: [refused] }
       FAIL.other: { target: editor, effect: [failed] }
   questionForm:
     title: A question in its form
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:790
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:777
     description: >-
       The form takes the question's row: "Soru"; "Şıklar", five fields at first, each with a box "Doğru", and "Şık ekle" with no upper
       limit (an empty option is not sent, and there is no remove button); with two correct or more, "Cevaplama": "Tek seçim" (radio
@@ -602,12 +604,12 @@ states:
       PICK_SINGLE: { guard: "correct == 'several'", target: questionForm, effect: [pickSingle], say: "they choose Tek seçim" }
       PICK_MULTIPLE: { guard: "correct == 'several'", target: questionForm, effect: [pickMultiple], say: "they choose Çoklu seçim: the scoring is asked" }
       SAVE_QUESTION:
-        - { guard: "questionIs == 'new' and canSave", target: addingQuestion, effect: [questionClosed], say: "they press Kaydet on a question added on this page: it shows at once in its row, Kaydediliyor…", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:378" }
+        - { guard: "questionIs == 'new' and canSave", target: addingQuestion, effect: [questionClosed], say: "they press Kaydet on a question added on this page: it shows at once in its row, Kaydediliyor…", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:364" }
         - { guard: canSave, target: savingQuestion, effect: [questionClosed], say: "they press Kaydet: the row shows it at once, Kaydediliyor…" }
-      CANCEL: { target: editor, effect: [questionDropped, questionsBack], say: "they press Vazgeç: the row comes back unchanged, and a question added on this page and never saved is taken off with what was typed", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:795" }
+      CANCEL: { target: editor, effect: [questionDropped, questionsBack], say: "they press Vazgeç: the row comes back unchanged, and a question added on this page and never saved is taken off with what was typed", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:782" }
   addingQuestion:
     title: Make the question on the server
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:379
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:365
     description: >-
       In the editor's queue, addExamQuestion, POST /online-exams/{examId}/questions, with the version: an empty question at the end, whose
       id the row now carries. The page meanwhile goes on; a refusal marks the row "Kaydedilemedi" with "Yeniden dene".
@@ -620,16 +622,16 @@ states:
       FAIL.other: { target: editor, effect: [questionFailed] }
   savingQuestion:
     title: Save the question
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:392
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:378
     description: >-
       In the editor's queue, saveExamQuestion, PUT /online-exams/{examId}/questions/{questionId}, with the text, the filled options and
       their correct marks, the topics (a topic added on this page by the id the server gave it), how it is answered and the version. A
-      question that lacks its text, a second option, a correct one or a topic is saved all the same, and its row says "Eksik"; the
+      question that lacks its text, a second option, a correct one or a topic is saved all the same, and its card ends with "Eksik: …"; the
       server picks for the exam the topics it carries. Only the latest save of a question draws its answer.
     invoke: { action: saveExamQuestion }
     on:
       DONE:
-        - { guard: "pointsTyped == 'changed'", target: settingPoints, say: "the question is saved: its own points are a second write", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:413" }
+        - { guard: "pointsTyped == 'changed'", target: settingPoints, say: "the question is saved: its own points are a second write", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:399" }
         - { target: editor, effect: [questionSaved], say: "the question is saved: Kaydediliyor… goes" }
       FAIL.readAgain: { target: opening, effect: [questionFailed, readAgain] }
       FAIL.mode: { target: editor, effect: [modeInvalid], say: "check boxes with fewer than two correct options" }
@@ -638,7 +640,7 @@ states:
       FAIL.other: { target: editor, effect: [questionFailed] }
   settingPoints:
     title: Set the question's own points
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:423
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:409
     description: >-
       In the editor's queue, after the save, setExamQuestionPoints, PUT /online-exams/{examId}/questions/{questionId}/points, with the
       points typed ("12.50") or none to put it back into the equal share, naming the version the save gave; the row shows what was typed
@@ -648,24 +650,24 @@ states:
     invoke: { action: setExamQuestionPoints }
     on:
       DONE: { guard: "answer != 'pointsOver'", target: editor, effect: [questionSaved], say: "the points are set and the shares follow" }
-      FAIL.over: { guard: "answer == 'pointsOver'", target: editor, effect: [pointsRefused], say: "the points do not fit in 100", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:431" }
+      FAIL.over: { guard: "answer == 'pointsOver'", target: editor, effect: [pointsRefused], say: "the points do not fit in 100", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:417" }
       FAIL.readAgain: { target: opening, effect: [questionFailed, readAgain] }
       FAIL.forbidden: { target: editor, effect: [questionRefused] }
       FAIL.invalid: { target: editor, effect: [questionInvalid] }
       FAIL.other: { target: editor, effect: [questionFailed] }
   removeAsk:
     title: Delete the question?
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1184
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1172
     description: An alert dialog "<n>. soru silinsin mi?" says the question goes with its options.
     by: human
     on:
       CONFIRM:
-        - { guard: "questionIs == 'new'", target: editor, effect: [removed], say: "they press Sil on a question the server never made (its add failed): it goes, and nothing is sent", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:498" }
+        - { guard: "questionIs == 'new'", target: editor, effect: [removed], say: "they press Sil on a question the server never made (its add failed): it goes, and nothing is sent", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:484" }
         - { target: removingQuestion, effect: [removed], say: "they press Sil: the row goes at once" }
       CANCEL: { target: editor, say: "they press Vazgeç" }
   removingQuestion:
     title: Delete the question
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:517
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:503
     description: >-
       In the editor's queue, removeExamQuestion, DELETE /online-exams/{examId}/questions/{questionId}, with the version; the shares of
       the others follow at once. A refusal puts the row back in its place, marked "Kaydedilemedi", with a toast.

@@ -11,15 +11,17 @@ on a set and answers them. This PR is the API only (`apps/tedrisat` and the
   answers it.
 - The hoca turns notes on or off **per question**, with an icon on the question ("ikon
   olarak dursun, tıklanırsa soruya eklensin, gereksiz yer kaplamasın soru ekleme
-  alanında"). A new question in a çalışma seti has it on; a new question in an exam has
-  it off.
+  alanında"). A new question has it off, in a çalışma seti and an exam alike ("default
+  olarak yorum eklenemez olmalı, ikon tıklanırsa eklenebilir olmalı", 2026-11-28; until
+  then a new question of a çalışma seti had it on).
 
 ## Model
 
-- `exam_questions.talebe_notes boolean not null default false`. `addQuestion` sets it
-  from the set's kind (PRACTICE true, EXAM false). Migration `0083_question_notes`
-  fills the existing rows by the same rule (`true` for every question of a PRACTICE
-  set).
+- `exam_questions.talebe_notes boolean not null default false`. `addQuestion` writes
+  `false` for every new question, whatever the set's kind (2026-11-28). Migration
+  `0083_question_notes` filled the rows that existed then by the earlier rule (`true` for
+  every question of a PRACTICE set); those rows are left as they are, and no migration
+  changes them.
 - `question_notes`: `id`, `course_id` (FK courses, restrict), `exam_id` (FK
   online_exams, restrict), `question_id` (FK exam_questions, restrict), `user_id`,
   `body` (1..1000 characters, trimmed), `shared_with_teacher`, `shared_at`,
