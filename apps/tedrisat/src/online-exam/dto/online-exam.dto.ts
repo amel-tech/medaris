@@ -416,6 +416,11 @@ export class OnlineExamDraftResponse {
   @ApiProperty({ enum: ["DRAFT", "SCHEDULED", "OPEN", "CLOSED"] })
   status!: "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
   @ApiProperty({
+    description:
+      "Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft.",
+  })
+  locked!: boolean;
+  @ApiProperty({
     type: Date,
     nullable: true,
     description:
@@ -487,6 +492,11 @@ export class OnlineExamSummaryResponse {
   @ApiProperty() questionCount!: number;
   @ApiProperty({ enum: ["DRAFT", "SCHEDULED", "OPEN", "CLOSED"] })
   status!: "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
+  @ApiProperty({
+    description:
+      "Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft.",
+  })
+  locked!: boolean;
   @ApiProperty({
     type: Date,
     nullable: true,

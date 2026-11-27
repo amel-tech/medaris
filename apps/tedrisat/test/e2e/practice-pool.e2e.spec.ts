@@ -309,8 +309,18 @@ describe("çalışma havuzu (e2e)", () => {
 
   it("locks a set once a pool attempt drew one of its questions", async () => {
     const { a, b } = await seedPool();
+    const lockedOf = async (id: string) =>
+      (
+        await http()
+          .get(`/online-exams/${id}`)
+          .set("Authorization", muderris)
+          .expect(200)
+      ).body.locked;
+    expect(await lockedOf(a.id)).toBe(false);
     await startPool({ mode: "ALL" }).expect(201);
     for (const set of [a, b]) {
+      // The draft says so before "Yayından kaldır" is pressed (MDRS-248).
+      expect(await lockedOf(set.id)).toBe(true);
       const locked = await http()
         .post(`/online-exams/${set.id}/unpublish`)
         .set("Authorization", muderris)

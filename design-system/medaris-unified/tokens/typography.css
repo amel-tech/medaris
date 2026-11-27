@@ -12,8 +12,12 @@
 /* ------------------------------------------------------------------ an Arabic-script page or region
    The interface itself switches to Naskh: bigger steps (Naskh's bowl is small for its size), no tracking,
    the Arabic leading, and one weight heavier so 15–16px labels hold on the night page.
-   ota-Arab: Ottoman in Arabic script. Latin-script Ottoman terms (müderris, icâzet) are lang="tr". */
-html:lang(ar), :lang(ar), :lang(ota-Arab) {
+   ota-Arab: Ottoman in Arabic script. Latin-script Ottoman terms (müderris, icâzet) are lang="tr".
+   An Arabic block beside Latin text ([data-arabic-block], MDRS-248) is no region: its lang="ar" must not
+   re-point the Latin size it is measured from, so it inherits its parent's steps. Inside a region the
+   interface is Arabic already, and such a block is not scaled again (--arabic-scale: 1). */
+html:lang(ar), :lang(ar):not([data-arabic-block]), :lang(ota-Arab) {
+  --arabic-scale: 1;
   --font-ui: var(--font-arabic);
   --font-reading: var(--font-arabic);
   --fs-eyebrow: 14px;
@@ -43,6 +47,7 @@ html:lang(ar), :lang(ar), :lang(ota-Arab) {
 /* A Latin island inside an Arabic region (a Turkish name, a URL, an English term) returns to the Latin
    defaults. Every value here equals its :root value below; check.mjs fails if one drifts. */
 :is(:lang(ar), :lang(ota-Arab)) [lang]:not(:lang(ar), :lang(ota-Arab)) {
+  --arabic-scale: 1.4;
   --font-ui: "Instrument Sans", "Noto Naskh Arabic", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
   --font-reading: "Literata", "Noto Naskh Arabic", Georgia, "Times New Roman", serif;
   --fs-eyebrow: 12px;
@@ -101,6 +106,11 @@ html:lang(ar), :lang(ar), :lang(ota-Arab) {
   --fs-quran: 34px;           /* Qur'anic text with full harakat; 28px below 768px */
   --fs-arabic-inline: 1.2em;  /* an Arabic word inside Latin text; 1.25em touches the line above at 18/1.7 (measured) */
   --fs-arabic-min: 16px;      /* vocalised Arabic is never smaller than this */
+  /* An Arabic block beside Latin text (a question, an option, an answer: MDRS-248). Naskh's body (ص م و ر)
+     stands 0.345 em, Instrument Sans' and Literata's x-height 0.51 em: 1.4 brings the body to 0.48 em, 95 % of
+     the Latin x-height, so Arabic reads as large as the Turkish beside it; the full 1.48 would put alif at 0.99 em. */
+  --arabic-scale: 1.4;        /* Arabic size = the Latin size it stands for x this; A−/A+ multiply both */
+  --fs-arabic-text-min: 18px; /* such a block is never smaller (1.4 x the 13px caption) */
 
   /* weight — 400–600 in every family; Naskh also 700 for the Arabic interface's semibold */
   --weight-regular: 400;
@@ -156,8 +166,11 @@ html:lang(ar), :lang(ar), :lang(ota-Arab) {
    .mds-arabic — a run inside Latin text: it never widens its line (line-height 1), never breaks a verb pair
      (nowrap; a run longer than three words is a block) and is isolated for bidi.
      Vocalised runs only inside --lh-reading text; in UI text an inline Arabic word is unvocalised.
+   .mds-arabic-block / [data-arabic-block] — an author's Arabic block beside Latin text (a question, an
+     option): the Latin size x --arabic-scale, never under --fs-arabic-text-min, with the harakat leading.
    .mds-arabic-text — a classical block (matn). .mds-quran — Qur'anic text, nothing else. */
 .mds-arabic { font-family: var(--font-arabic); font-size: max(var(--fs-arabic-min), var(--fs-arabic-inline)); font-weight: var(--weight-book); line-height: 1; letter-spacing: 0; white-space: nowrap; unicode-bidi: isolate; }
+.mds-arabic-block, .mds-arabic-block[dir], [data-arabic-block] { font-family: var(--font-arabic); font-size: max(var(--fs-arabic-text-min), calc(1em * var(--arabic-scale))); font-weight: var(--weight-book); line-height: var(--lh-arabic-text); letter-spacing: 0; unicode-bidi: isolate; }
 .mds-arabic-text, .mds-arabic-text[dir] { margin: 0; font-family: var(--font-arabic); font-size: var(--fs-arabic); font-weight: var(--weight-book); line-height: var(--lh-arabic-text); letter-spacing: 0; color: var(--text-neutral-default); text-wrap: balance; }
 .mds-quran, .mds-quran[dir] { margin: 0; font-family: var(--font-quran); font-size: var(--fs-quran); font-weight: var(--weight-book); line-height: var(--lh-quran); letter-spacing: 0; color: var(--text-neutral-default); text-wrap: balance; }
 .mds-mono { font-family: var(--font-mono); font-size: 0.93em; letter-spacing: 0; }

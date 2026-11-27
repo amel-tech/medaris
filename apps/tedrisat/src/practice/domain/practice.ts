@@ -10,7 +10,11 @@ import {
   earnedPart,
   type ScoredQuestion,
 } from "../../online-exam/domain/exam-attempt";
-import { lacksOf, pointsText } from "../../online-exam/domain/online-exam";
+import {
+  ExamKind,
+  lacksOf,
+  pointsText,
+} from "../../online-exam/domain/online-exam";
 
 /**
  * How a solving of the course's question pool was drawn (MDRS-248 Faz 4):
@@ -41,8 +45,9 @@ export interface Part {
 
 /**
  * Whether a question as the list reads it (its text and how many options,
- * correct options and topics it has) is complete, by the exam's own rule
- * (`lacksOf`): only complete questions are solved.
+ * correct options and topics it has) is complete, by the çalışma seti's
+ * rule (`lacksOf` for PRACTICE, where a topic is not needed): only complete
+ * questions are solved.
  */
 export const isCompleteCounted = (q: {
   text: string;
@@ -50,14 +55,17 @@ export const isCompleteCounted = (q: {
   correct: number;
   topics: number;
 }): boolean =>
-  lacksOf({
-    text: q.text,
-    options: Array.from({ length: q.options }, (_, i) => ({
-      text: "",
-      correct: i < q.correct,
-    })),
-    topicIds: Array.from({ length: q.topics }, (_, i) => String(i)),
-  }).length === 0;
+  lacksOf(
+    {
+      text: q.text,
+      options: Array.from({ length: q.options }, (_, i) => ({
+        text: "",
+        correct: i < q.correct,
+      })),
+      topicIds: Array.from({ length: q.topics }, (_, i) => String(i)),
+    },
+    ExamKind.PRACTICE
+  ).length === 0;
 
 /**
  * How an answer did: blank when nothing is chosen, correct when it gets the

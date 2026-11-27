@@ -4,7 +4,11 @@ import { Injectable } from "@nestjs/common";
 import { CourseService } from "../course/course.service";
 import { CourseNotFoundError } from "../course/errors/course-not-found.error";
 import { answerFits, drawOrder } from "../online-exam/domain/exam-attempt";
-import { lacksOf, pointsText } from "../online-exam/domain/online-exam";
+import {
+  ExamKind,
+  lacksOf,
+  pointsText,
+} from "../online-exam/domain/online-exam";
 import {
   type IDraftQuestion,
   OnlineExamRepository,
@@ -270,7 +274,7 @@ export class PracticeService {
       async (tx) => {
         const questions = (
           await this.setQuestions(set.courseId, setId, tx)
-        ).filter((q) => lacksOf(q).length === 0);
+        ).filter((q) => lacksOf(q, ExamKind.PRACTICE).length === 0);
         return {
           questionOrder: drawOrder(
             questions.map((q) => q.id),
