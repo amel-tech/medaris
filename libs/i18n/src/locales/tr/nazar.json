@@ -2536,7 +2536,11 @@
     "topicsCount": "{count} konu",
     "minutesShort": "{minutes} dk",
     "noDurationShort": "süre yok",
-    "lockedExam": "Celse başladı; sınav artık taslağa alınamaz."
+    "lockedExam": "Celse başladı; sınav artık taslağa alınamaz.",
+    "unsavedTitle": "Açık sorudaki değişiklikler kaydedilmedi",
+    "unsavedBody": "Devam ederseniz bu sorudaki değişiklikler kaybolur. Saklamak için “Soruya dön”e basıp soruyu kaydedin.",
+    "unsavedDrop": "Değişiklikleri bırak",
+    "unsavedKeep": "Soruya dön"
   },
   "Practice": {
     "title": "Çalışma Soruları",
@@ -2577,7 +2581,19 @@
     "publishedTitle": "Durum",
     "publishedBody": "Dersin talebeleri bu seti istedikleri zaman, süre sınırı olmadan çözebilir.",
     "lockedNow": "Talebeler bu seti başlattı; artık yayından kaldırılamaz.",
-    "lockedShort": "Yayından kaldırılamaz"
+    "lockedShort": "Yayından kaldırılamaz",
+    "colActions": "İşlemler",
+    "delete": "Sil",
+    "deleteLabel": "“{title}” setini sil",
+    "deleteSet": "Seti sil",
+    "deleteTitle": "“{title}” seti silinsin mi?",
+    "deleteBody": "Soruları da silinir. Bu işlem geri alınamaz.",
+    "deleteHelp": "Set, bütün sorularıyla birlikte kalıcı olarak silinir. Bir talebe çözmeye başladıktan sonra silinemez.",
+    "deleteLocked": "Bir talebe bu seti çözmeye başladı; artık silinemez.",
+    "deleteLockedShort": "Başlandı, silinemez",
+    "deleteGone": "Bu set artık yok; liste yeniden okundu.",
+    "deleteFailed": "Set silinemedi",
+    "deleted": "“{title}” silindi"
   },
   "ExamResults": {
     "title": "Sonuçlar",

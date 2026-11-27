@@ -22,6 +22,7 @@ import {
   topicNameOf,
 } from "./domain/online-exam";
 import {
+  ExamKindMismatchError,
   ExamLockedError,
   ExamNotPublishedError,
   ExamStaleError,
@@ -943,6 +944,65 @@ export class OnlineExamRepository {
       .delete(examQuestionTopics)
       .where(eq(examQuestionTopics.questionId, questionId));
     await tx.delete(examQuestions).where(eq(examQuestions.id, questionId));
+  }
+
+  /**
+   * Deletes a çalışma seti (MDRS-248) with its questions, their options and
+   * topics, its picked topics and any zeroth options, and writes
+   * `online_exam.delete`, in one transaction under the set's row lock. An
+   * exam is EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and
+   * deleting one is a decision of its own. A set a talebe started, or a pool
+   * attempt drew a question of, is EXAM_LOCKED, draft or published: its
+   * attempts and answers hold keys to it and are the talebe's record.
+   * Starting a set holds its row, and a pool attempt the course's published
+   * sets, so neither begins while this holds it.
+   */
+  async deletePractice(
+    courseId: string,
+    examId: string,
+    actorId: string
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [exam] = await tx
+        .select({ kind: onlineExams.kind, title: onlineExams.title })
+        .from(onlineExams)
+        .where(
+          and(eq(onlineExams.id, examId), eq(onlineExams.courseId, courseId))
+        )
+        .for("update");
+      if (!exam) throw new OnlineExamNotFoundError(examId);
+      if (exam.kind !== ExamKind.PRACTICE) {
+        throw new ExamKindMismatchError(examId, exam.kind, ExamKind.PRACTICE);
+      }
+      if ((await this.startedPracticeIds([examId], tx)).has(examId)) {
+        throw new ExamLockedError(examId);
+      }
+      // Kept to the set's own rows, in the course purge's order: the keys
+      // into a question first, then the questions, then the set.
+      const questionIds = tx
+        .select({ id: examQuestions.id })
+        .from(examQuestions)
+        .where(eq(examQuestions.examId, examId));
+      await tx
+        .delete(examOptions)
+        .where(inArray(examOptions.questionId, questionIds));
+      await tx
+        .delete(examQuestionTopics)
+        .where(inArray(examQuestionTopics.questionId, questionIds));
+      await tx.delete(examQuestions).where(eq(examQuestions.examId, examId));
+      await tx.delete(zerothOptions).where(eq(zerothOptions.examId, examId));
+      await tx
+        .delete(onlineExamTopics)
+        .where(eq(onlineExamTopics.examId, examId));
+      await tx.delete(onlineExams).where(eq(onlineExams.id, examId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "online_exam.delete",
+        entity: "online_exam",
+        entityId: examId,
+        details: { courseId, examId, title: exam.title, kind: exam.kind },
+      });
+    });
   }
 
   /** Every question's own points, for the share; taken under the exam's lock. */

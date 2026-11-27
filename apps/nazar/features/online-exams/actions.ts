@@ -174,6 +174,21 @@ export async function unpublishOnlineExam(
   );
 }
 
+/**
+ * "Seti sil" (MDRS-248): a çalışma seti with its questions. EXAM_LOCKED once
+ * a talebe started it or a pool attempt drew from it.
+ */
+export async function deletePracticeSet(
+  examId: string
+): Promise<ActionOutcome<{ id: string }>> {
+  return outcomeOf(
+    await authenticatedAction(async (api) => {
+      await api.onlineExams.deleteOnlineExam({ examId });
+      return { id: examId };
+    })
+  );
+}
+
 /** A points write's answer; POINTS_OVER_TOTAL carries how many are left to give ("60.00"). */
 export type PointsOutcome =
   | { success: true; data: ExamPointsResponse }

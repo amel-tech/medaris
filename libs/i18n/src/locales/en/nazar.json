@@ -2536,7 +2536,11 @@
     "topicsCount": "{count} topics",
     "minutesShort": "{minutes} min",
     "noDurationShort": "no length",
-    "lockedExam": "The celse has started; the exam can no longer go back to a draft."
+    "lockedExam": "The celse has started; the exam can no longer go back to a draft.",
+    "unsavedTitle": "The open question has unsaved changes",
+    "unsavedBody": "If you go on, the changes to this question are lost. To keep them, press “Back to the question” and save it.",
+    "unsavedDrop": "Discard changes",
+    "unsavedKeep": "Back to the question"
   },
   "Practice": {
     "title": "Practice Questions",
@@ -2577,7 +2581,19 @@
     "publishedTitle": "Status",
     "publishedBody": "The course's students can solve this set whenever they like, with no time limit.",
     "lockedNow": "Students have started this set; it can no longer be unpublished.",
-    "lockedShort": "Cannot be unpublished"
+    "lockedShort": "Cannot be unpublished",
+    "colActions": "Actions",
+    "delete": "Delete",
+    "deleteLabel": "Delete the set “{title}”",
+    "deleteSet": "Delete set",
+    "deleteTitle": "Delete the set “{title}”?",
+    "deleteBody": "Its questions are deleted too. This cannot be undone.",
+    "deleteHelp": "The set is deleted for good, with all its questions. Once a talebe has started it, it cannot be deleted.",
+    "deleteLocked": "A talebe has started this set; it can no longer be deleted.",
+    "deleteLockedShort": "Started, cannot be deleted",
+    "deleteGone": "This set no longer exists; the list was read again.",
+    "deleteFailed": "The set could not be deleted",
+    "deleted": "“{title}” was deleted"
   },
   "ExamResults": {
     "title": "Results",

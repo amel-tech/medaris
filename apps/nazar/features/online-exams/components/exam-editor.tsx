@@ -212,6 +212,10 @@ export function ExamEditor({
     (q) => q.key === editing && q.id === "" && !q.pending && !q.failed
   );
   const [typing, setTyping] = useState(false);
+  const [changed, setChanged] = useState(false);
+  // What waits on "Değişiklikleri bırak": a saved question's form holds a
+  // change, and opening another form would drop it unseen (MDRS-248).
+  const [dropThen, setDropThen] = useState<(() => void) | null>(null);
   const version = useRef(draft.version);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
@@ -527,17 +531,33 @@ export function ExamEditor({
     if (blank) removeQuestion(blank.key);
   };
 
+  /** The caret back in the open question's text. */
+  const focusOpen = () =>
+    document
+      .querySelector<HTMLTextAreaElement>(
+        `form[data-question="${editing}"] textarea`
+      )
+      ?.focus();
+
+  /**
+   * Another form opens only once the open one's change is kept or let go: a
+   * saved question's form with a change asks first; otherwise it goes on.
+   */
+  const leaveOpen = (next: () => void) => {
+    if (editing !== null && editing !== blank?.key && changed) {
+      setDropThen(() => next);
+      return;
+    }
+    next();
+  };
+
   /** "Soru ekle": a new question's form already open takes the caret instead. */
   const addQuestion = () => {
     if (blank) {
-      document
-        .querySelector<HTMLTextAreaElement>(
-          `form[data-question="${blank.key}"] textarea`
-        )
-        ?.focus();
+      focusOpen();
       return;
     }
-    openNewQuestion();
+    leaveOpen(openNewQuestion);
   };
 
   /** A new question's form at the end of the list, the caret in its text. */
@@ -786,6 +806,7 @@ export function ExamEditor({
                   topicOf={topicOf}
                   onAddTopic={(name) => addTopic(name, undefined)}
                   onTyping={setTyping}
+                  onChanged={setChanged}
                   onCancel={() =>
                     q.id === "" && !q.pending && q.text === ""
                       ? removeQuestion(q.key)
@@ -805,10 +826,12 @@ export function ExamEditor({
                   draft={view}
                   topicOf={topicOf}
                   question={q}
-                  onEdit={() => {
-                    leaveBlank();
-                    setEditing(q.key);
-                  }}
+                  onEdit={() =>
+                    leaveOpen(() => {
+                      leaveBlank();
+                      setEditing(q.key);
+                    })
+                  }
                   onRetry={() => {
                     leaveBlank();
                     saveQuestion(q.key, {
@@ -832,6 +855,28 @@ export function ExamEditor({
         <div>
           <Button onClick={addQuestion}>{t("OnlineExams.addQuestion")}</Button>
         </div>
+        <AlertDialog
+          open={dropThen !== null}
+          onOpenChange={(open) => {
+            if (open) return;
+            setDropThen(null);
+            // "Vazgeç": back to the form, its change still there.
+            window.setTimeout(focusOpen, 0);
+          }}
+          title={t("OnlineExams.unsavedTitle")}
+          confirmLabel={t("OnlineExams.unsavedDrop")}
+          cancelLabel={t("OnlineExams.unsavedKeep")}
+          closeLabel={t("Shell.close")}
+          confirmVariant="destructive"
+          onConfirm={() => {
+            const next = dropThen;
+            setDropThen(null);
+            setEditing(null);
+            next?.();
+          }}
+        >
+          {t("OnlineExams.unsavedBody")}
+        </AlertDialog>
       </section>
       {publish ? (
         <PublishSection
@@ -1371,6 +1416,7 @@ function QuestionForm({
   topicOf,
   onAddTopic,
   onTyping,
+  onChanged,
   onCancel,
   onSave,
 }: {
@@ -1384,6 +1430,8 @@ function QuestionForm({
   onAddTopic: (name: string) => string;
   /** Whether anything is typed in the form, so a blank new one holds nothing up. */
   onTyping: (typing: boolean) => void;
+  /** Whether the form differs from the question it opened with: leaving it would lose that. */
+  onChanged: (changed: boolean) => void;
   onCancel: () => void;
   onSave: (body: QuestionBody) => void;
 }) {
@@ -1433,6 +1481,15 @@ function QuestionForm({
   useEffect(() => {
     onTyping(typing);
   }, [typing, onTyping]);
+  // What the form holds against what it opened with: "Soru ekle" or another
+  // question's "Düzenle" asks before a change is dropped (MDRS-248).
+  const now = JSON.stringify([text, options, topicIds, mode, scoring, points]);
+  const [opened] = useState(now);
+  const changed = now !== opened;
+  useEffect(() => {
+    onChanged(changed);
+  }, [changed, onChanged]);
+  useEffect(() => () => onChanged(false), [onChanged]);
   const asksTopic = newTopic !== null;
   useEffect(() => {
     if (asksTopic)

@@ -218,3 +218,52 @@ one pool attempt in progress per course at a time.
 - The 0082 rollback was not run against a database.
 - No load test of a 500-question pool; the reads are bounded to the needed
   columns, but the attempt page renders every question's navigator entry.
+
+## Deleting a set ("Seti sil")
+
+`DELETE online-exams/:examId` (`deleteOnlineExam`, 204), on `exam.prepare` of
+the set's course like every preparing route; another course's team is 403.
+
+- **Only a çalışma seti.** An exam (EXAM) is 409 `EXAM_KIND_MISMATCH`. A
+  published exam has a celse and its lesson row, the talebe were told and
+  got a calendar invitation, and after it opens there are sittings, zeroth
+  answers and results; deleting one means deciding what happens to each of
+  those, which is a decision of its own. "Taslağa al" stays the way back
+  for an exam that has not opened.
+- **Only while it is not locked.** A set a talebe has started (an attempt,
+  finished or not) or a pool attempt drew a question of is 409 `EXAM_LOCKED`,
+  draft or published: those attempts and answers hold keys to the set and its
+  questions and are the talebe's record. This is the same test as the
+  `locked` flag the list and the draft carry, read again under the set's row
+  lock (`startedPracticeIds`), so a start that races the delete waits for it
+  or is refused.
+- **Otherwise everything goes, draft or published**, in one transaction and
+  in the course purge's order: the questions' options and topics, the
+  questions, any zeroth options, the picked topics, the set. `audit_log`
+  gets `online_exam.delete` with the set's title and course.
+- Nazar: "Sil" in each row of "Çalışma Soruları" (off, with "Başlandı,
+  silinemez" beside it, on a locked set; the reason is the button's
+  `aria-describedby`), and "Seti sil" at the foot of the set's page, draft or
+  published. Both ask "“<ad>” seti silinsin mi? Soruları da silinir." first;
+  the row reads the list again, the page goes back to the list, and a short
+  note says "“<ad>” silindi". EXAM_LOCKED and EXAM_NOT_FOUND are worded and
+  read the page again.
+- The editor: "Soru ekle", or another question's "Düzenle", while a saved
+  question's form holds a change, asks first ("Açık sorudaki değişiklikler
+  kaydedilmedi": "Soruya dön" keeps the form, "Değişiklikleri bırak" drops
+  it); with no change it goes on as before.
+
+Verified: `apps/tedrisat/test/unit/online-exam/online-exam-delete.spec.ts`;
+`apps/tedrisat/test/e2e/practice-sets.e2e.spec.ts` › "Seti sil": a draft is
+deleted with its questions and options and written to `audit_log`, a second
+delete is 404; a published set nobody started is deleted and leaves the
+talebe's lists and the pool's count; a started set (open, then finished) and
+a set a pool attempt drew from are 409 EXAM_LOCKED; an exam is 409
+EXAM_KIND_MISMATCH; another course's nazır and a talebe are 403. Nazar
+`test/practice-set-delete.spec.tsx`: the row button and its disabled state
+with the reason, the question, the delete and the refresh or the way back to
+the list, a refusal in words, and the editor's question before a change is
+dropped. The route inventory snapshot carries the route.
+
+Not verified: the rollback of a half-done delete was not forced (it is one
+transaction, nothing outside the database is touched).

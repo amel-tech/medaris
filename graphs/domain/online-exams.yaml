@@ -93,6 +93,7 @@ entities:
       - "scheduled -> draft: unpublishOnlineExam until it opens; the celse is deleted"
       - "open -> closed: the late window has passed and no attempt runs, or closeOnlineExamEarly, or releaseExamResults"
       - "a çalışma seti (PRACTICE): draft -> open with publishOnlineExam, no celse; open -> draft with unpublishOnlineExam until a talebe starts it"
+      - "a çalışma seti (PRACTICE): draft | open -> none with deleteOnlineExam until a talebe starts it or a pool attempt draws from it"
 
   ExamTopic: # a topic an exam has picked from its course's list
     source: apps/tedrisat/src/database/schema/online-exam.schema.ts:124
@@ -928,6 +929,21 @@ actions:
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
     sideEffects:
       - "deletes the celse it was published with (the talebe get the calendar CANCEL); audit:online_exam.unpublish"
+
+  deleteOnlineExam:
+    summary: Seti sil, a çalışma seti with its questions
+    route: DELETE /online-exams/{examId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:200
+    needs: exam.prepare on the exam's course; a çalışma seti (PRACTICE), draft or published, that no talebe started and no pool attempt drew from
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_KIND_MISMATCH: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:188, note: "an exam: its celse, sittings and results make deleting one a decision of its own" }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "a talebe started it, or a pool attempt drew one of its questions" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "deletes its questions with their options and topics, its zeroth options and picked topics, then the set, in one transaction; audit:online_exam.delete"
 
   closeOnlineExamEarly:
     summary: Sınavı erken bitir

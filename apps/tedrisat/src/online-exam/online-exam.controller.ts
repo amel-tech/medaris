@@ -32,6 +32,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -179,6 +180,29 @@ export class OnlineExamController {
     @Body() dto: UpdateOnlineExamDto
   ): Promise<ExamVersionResponse> {
     return this.service.updateExam(examId, dto, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Seti sil: delete a çalışma seti with its questions",
+    description:
+      "A çalışma seti (PRACTICE, MDRS-248), draft or published, goes with its questions, their options and topics, and its picked topics, in one transaction. Once a talebe has started it or a pool attempt drew one of its questions (the summary's and the draft's `locked`), it is 409 EXAM_LOCKED: those attempts are the talebe's record. An exam (EXAM) is 409 EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and deleting one is a decision of its own. Written to `audit_log` as `online_exam.delete`.",
+    operationId: "deleteOnlineExam",
+  })
+  @ApiNoContentResponse({ description: "Deleted." })
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
+  @ApiConflictResponse({
+    description:
+      "EXAM_LOCKED (a talebe started it, or a pool attempt drew from it), EXAM_KIND_MISMATCH (an exam)",
+  })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("online-exams/:examId")
+  deleteExam(
+    @Req() request: AuthorizedRequest,
+    @Param("examId", ParseUUIDPipe) examId: string
+  ): Promise<void> {
+    return this.service.deleteExam(examId, request.user);
   }
 
   @ApiOperation({
