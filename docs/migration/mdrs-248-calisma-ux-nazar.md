@@ -49,7 +49,31 @@ untouched.
 - Screenshots before and after on the local stack (API + nazar on a
   `tedrisat_calisma` copy, local Keycloak), 1440 px and 390 px: list, a
   draft set and a published set. No horizontal overflow at 390 px.
-- The gate, as listed in the pull request.
+- The gate: typecheck, lint, module-boundaries and build green on every
+  project. `-t test`: every project green except `tedrisat` (e2e suites,
+  404s and a 403 from `setup-realm.sh`) and `keycloak-theme` (401 from the
+  admin API), both on a machine where another worktree's Keycloak held
+  port 8080. Neither project is in `nx show projects --affected`
+  (nazar-web, i18n, tedris-web, nizam-web, landing-web), and this change
+  touches neither.
+
+## Review
+
+`/code-review` (medium) on the diff, five findings:
+
+- The lock is read from finished attempts only: a set started but not
+  finished still offers "Yayından kaldır". Deferred (needs a started-attempt
+  figure from the API, see Later); the API's EXAM_LOCKED toast covers it as
+  before this change.
+- "Çözülme sayıları okunamadı" above an empty list: fixed, it shows only
+  when there are sets.
+- Topic names joined into one string without bidi isolation: fixed, each
+  topic is its own `<bdi>` after a "Konular:" label
+  (`OnlineExams.topicsOfQuestionLabel`; `topicsOfQuestion` is gone).
+- Tests that swap a stubbed read put it back in `finally`: fixed.
+- A set's page reads the whole course's stats for one row, drafts included:
+  not changed; the read runs in parallel with the draft's, and a per-set
+  endpoint is an API change.
 
 ## What was not verified
 
