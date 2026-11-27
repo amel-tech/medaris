@@ -13,6 +13,7 @@ import {
   zerothOptions,
 } from "../database/schema/online-exam.schema";
 import { practiceAttempts } from "../database/schema/practice.schema";
+import { questionNotes } from "../database/schema/question-note.schema";
 import {
   type AnswerMode,
   ExamKind,
@@ -51,6 +52,8 @@ export interface IDraftQuestion {
   answerMode: AnswerMode;
   scoring: Scoring | null;
   ownPoints: number | null;
+  /** Whether the talebe may write a note on it (MDRS-248, soru notları). */
+  talebeNotes: boolean;
   topicIds: string[];
   options: Array<{ id: string; text: string; correct: boolean }>;
 }
@@ -316,6 +319,7 @@ export class OnlineExamRepository {
         answerMode: q.answerMode,
         scoring: q.scoring,
         ownPoints: q.ownPoints,
+        talebeNotes: q.talebeNotes,
         topicIds: carried
           .filter((c) => c.questionId === q.id)
           .map((c) => c.topicId),
@@ -838,17 +842,75 @@ export class OnlineExamRepository {
     }
   }
 
-  /** Adds an empty question last; its five option fields are the page's, nothing is stored for them. */
+  /**
+   * Adds an empty question last; its five option fields are the page's,
+   * nothing is stored for them. Its talebe notes are its set's default
+   * (MDRS-248, soru notları): on in a çalışma seti, off in an exam.
+   */
   async addQuestion(tx: Tx, examId: string): Promise<string> {
-    const [last] = await tx
-      .select({ position: max(examQuestions.position) })
-      .from(examQuestions)
-      .where(eq(examQuestions.examId, examId));
+    const [[last], [exam]] = await Promise.all([
+      tx
+        .select({ position: max(examQuestions.position) })
+        .from(examQuestions)
+        .where(eq(examQuestions.examId, examId)),
+      tx
+        .select({ kind: onlineExams.kind })
+        .from(onlineExams)
+        .where(eq(onlineExams.id, examId)),
+    ]);
     const [made] = await tx
       .insert(examQuestions)
-      .values({ examId, position: (last?.position ?? -1) + 1 })
+      .values({
+        examId,
+        position: (last?.position ?? -1) + 1,
+        talebeNotes: exam?.kind === ExamKind.PRACTICE,
+      })
       .returning({ id: examQuestions.id });
     return made.id;
+  }
+
+  /**
+   * Turns the talebe notes of one question of the exam on or off (MDRS-248,
+   * soru notları), draft or published, locked or not: it is no part of the
+   * question's content, so the exam's version stays and nothing a talebe
+   * answered changes. Written to `audit_log` as `exam_question.talebe_notes`
+   * in the same transaction. QUESTION_NOT_FOUND for a question of another
+   * exam.
+   */
+  async setTalebeNotes(
+    courseId: string,
+    examId: string,
+    questionId: string,
+    talebeNotes: boolean,
+    actorId: string
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [exam] = await tx
+        .select({ id: onlineExams.id })
+        .from(onlineExams)
+        .where(
+          and(eq(onlineExams.id, examId), eq(onlineExams.courseId, courseId))
+        );
+      if (!exam) throw new OnlineExamNotFoundError(examId);
+      const changed = await tx
+        .update(examQuestions)
+        .set({ talebeNotes })
+        .where(
+          and(
+            eq(examQuestions.id, questionId),
+            eq(examQuestions.examId, examId)
+          )
+        )
+        .returning({ id: examQuestions.id });
+      if (changed.length === 0) throw new QuestionNotFoundError(questionId);
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "exam_question.talebe_notes",
+        entity: "exam_question",
+        entityId: questionId,
+        details: { courseId, examId, talebeNotes },
+      });
+    });
   }
 
   /** The question of this exam, taken for update; QUESTION_NOT_FOUND otherwise. */
@@ -883,6 +945,7 @@ export class OnlineExamRepository {
       answerMode: AnswerMode;
       scoring: Scoring | null;
       topicIds: string[];
+      talebeNotes?: boolean;
     }
   ): Promise<void> {
     const topicIds = [...new Set(input.topicIds)];
@@ -893,6 +956,9 @@ export class OnlineExamRepository {
         text: input.text,
         answerMode: input.answerMode,
         scoring: input.scoring,
+        ...(input.talebeNotes === undefined
+          ? {}
+          : { talebeNotes: input.talebeNotes }),
         updatedAt: new Date(),
       })
       .where(eq(examQuestions.id, questionId));
@@ -937,8 +1003,11 @@ export class OnlineExamRepository {
     }
   }
 
-  /** Removes a question with its options and topics. */
+  /** Removes a question with its options, topics and talebe notes. */
   async removeQuestion(tx: Tx, questionId: string): Promise<void> {
+    await tx
+      .delete(questionNotes)
+      .where(eq(questionNotes.questionId, questionId));
     await tx.delete(examOptions).where(eq(examOptions.questionId, questionId));
     await tx
       .delete(examQuestionTopics)
@@ -978,7 +1047,9 @@ export class OnlineExamRepository {
         throw new ExamLockedError(examId);
       }
       // Kept to the set's own rows, in the course purge's order: the keys
-      // into a question first, then the questions, then the set.
+      // into a question first, then the questions, then the set. The
+      // talebe's notes (soru notları) do not lock a set: they go with it.
+      await tx.delete(questionNotes).where(eq(questionNotes.examId, examId));
       const questionIds = tx
         .select({ id: examQuestions.id })
         .from(examQuestions)

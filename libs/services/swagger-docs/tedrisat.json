@@ -6244,7 +6244,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, QUESTION_NOTE_SHARED, QUESTION_NOTE_REPLIED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6285,7 +6285,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, QUESTION_NOTE_SHARED, QUESTION_NOTE_REPLIED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6325,7 +6325,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, QUESTION_NOTE_SHARED, QUESTION_NOTE_REPLIED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -15091,6 +15091,70 @@
         ]
       }
     },
+    "/online-exams/{examId}/questions/{questionId}/talebe-notes": {
+      "put": {
+        "description": "The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question's content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.",
+        "operationId": "setExamQuestionTalebeNotes",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTalebeNotesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionTalebeNotesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turn a question's talebe notes on or off",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
     "/online-exams/{examId}/questions/{questionId}/points": {
       "put": {
         "description": "A number with at most two decimals from 0.01 to 100, or null. The points left (100 minus every question's own) are shared equally, kept exact, over the questions with none. Refused (409 POINTS_OVER_TOTAL, with `pointsLeft`) when the total would pass 100 or nothing would be left for the questions that share. Written to `audit_log` as `exam_question.points`.",
@@ -16447,6 +16511,247 @@
         "summary": "The exams that asked one zeroth question, each with its counts",
         "tags": [
           "nizam"
+        ]
+      }
+    },
+    "/exam-questions/{questionId}/my-note": {
+      "put": {
+        "description": "A new note, or the caller's note written again whole, on a question they got in an attempt of their own (a çalışma seti's, the pool's or their sitting of an exam). `sharedWithTeacher: true` sends it to the course's hoca, who is notified (QUESTION_NOTE_SHARED); false keeps it to the caller. An answer the hoca gave stays through a new text. A question the team turned notes off for is 409 NOTES_DISABLED. Sending an exam's note before the exam is over for everyone or its results are open is 409 NOTES_SHARE_LOCKED; the note may be kept to the caller meanwhile.",
+        "operationId": "saveMyQuestionNote",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMyQuestionNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyQuestionNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "QUESTION_NOTES_FORBIDDEN (not a talebe of the course who may write on it)"
+          },
+          "404": {
+            "description": "NOTE_QUESTION_NOT_FOUND (no such question, or one the caller never got in an attempt of their own)"
+          },
+          "409": {
+            "description": "NOTES_DISABLED, NOTES_SHARE_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write the caller's note on a question",
+        "tags": [
+          "question-notes"
+        ]
+      },
+      "delete": {
+        "description": "The note goes with the hoca's answer on it, whether or not the team turned notes off since.",
+        "operationId": "deleteMyQuestionNote",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "description": "QUESTION_NOTES_FORBIDDEN (not a talebe of the course who may write on it)"
+          },
+          "404": {
+            "description": "NOTE_QUESTION_NOT_FOUND (no such question, or one the caller never got in an attempt of their own), QUESTION_NOTE_NOT_FOUND (no note of the caller's on it)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the caller's note on a question",
+        "tags": [
+          "question-notes"
+        ]
+      }
+    },
+    "/courses/{id}/my-question-notes": {
+      "get": {
+        "description": "Every note of the caller's on a question of the course's çalışma setleri and exams, the latest written first, each with its question's text and its set's title. Reading them marks the hoca's answers on them read (`newReply`).",
+        "operationId": "listMyQuestionNotes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyQuestionNoteListItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "QUESTION_NOTES_FORBIDDEN (not a talebe of the course who may write on it)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's question notes in the course",
+        "tags": [
+          "question-notes"
+        ]
+      }
+    },
+    "/online-exams/{examId}/notes": {
+      "get": {
+        "description": "Only the notes sent to the hoca: each with its question's number and text, the talebe's name, the note, the answer and the times, the unanswered first (the longest waiting first), then the answered (the latest answered first). A note kept to its talebe is never listed.",
+        "operationId": "listExamQuestionNotes",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExamQuestionNoteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The notes the talebe sent on a set's or an exam's questions",
+        "tags": [
+          "question-notes"
+        ]
+      }
+    },
+    "/question-notes/{noteId}/reply": {
+      "put": {
+        "description": "Sets the hoca's answer on a note sent to them, replacing an earlier one; an empty `reply` takes it back. The first answer tells the talebe (QUESTION_NOTE_REPLIED). Written to `audit_log` as `question_note.reply`.",
+        "operationId": "replyQuestionNote",
+        "parameters": [
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyQuestionNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamQuestionNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "QUESTION_NOTE_NOT_FOUND (no such note, or one its talebe kept to themselves)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer a talebe's note",
+        "tags": [
+          "question-notes"
         ]
       }
     },
@@ -24291,6 +24596,8 @@
               "EXAM_SCHEDULED",
               "EXAM_REMINDER",
               "EXAM_RESULTS_RELEASED",
+              "QUESTION_NOTE_SHARED",
+              "QUESTION_NOTE_REPLIED",
               "COURSE_BAN_PLACED",
               "KOSK_BAN_PLACED"
             ],
@@ -31536,6 +31843,10 @@
           "updatedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "unansweredNotes": {
+            "type": "number",
+            "description": "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
           }
         },
         "required": [
@@ -31718,6 +32029,10 @@
           "complete": {
             "type": "boolean"
           },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the talebe may write a note on it (MDRS-248, soru notları). A new question takes its set's default: on in a çalışma seti, off in an exam. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
           "lacks": {
             "type": "array",
             "description": "What it still lacks, in the form's order.",
@@ -31880,6 +32195,10 @@
             "items": {
               "$ref": "#/components/schemas/PublishProblemResponse"
             }
+          },
+          "unansweredNotes": {
+            "type": "number",
+            "description": "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
           },
           "version": {
             "type": "number"
@@ -32079,6 +32398,10 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the talebe may write a note on it (MDRS-248, soru notları); left out, it stays as it is. On a published set, `PUT …/talebe-notes` turns it. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
           }
         },
         "required": [
@@ -32087,6 +32410,34 @@
           "options",
           "answerMode",
           "topicIds"
+        ]
+      },
+      "SetTalebeNotesDto": {
+        "type": "object",
+        "properties": {
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the talebe may write a note on the question."
+          }
+        },
+        "required": [
+          "talebeNotes"
+        ]
+      },
+      "QuestionTalebeNotesResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "talebeNotes": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "questionId",
+          "talebeNotes"
         ]
       },
       "SetQuestionPointsDto": {
@@ -32583,6 +32934,57 @@
           "text"
         ]
       },
+      "MyQuestionNoteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sharedWithTeacher": {
+            "type": "boolean",
+            "description": "Whether it was sent to the course's hoca."
+          },
+          "sharedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When it was sent."
+          },
+          "teacherReply": {
+            "type": "string",
+            "nullable": true,
+            "description": "The hoca's answer."
+          },
+          "repliedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "newReply": {
+            "type": "boolean",
+            "description": "An answer the caller has not read yet: `GET /courses/:id/my-question-notes` marks every answer of the course read."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "The caller's last write of it."
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sharedWithTeacher",
+          "sharedAt",
+          "teacherReply",
+          "repliedAt",
+          "newReply",
+          "updatedAt"
+        ]
+      },
       "AttemptQuestionResponse": {
         "type": "object",
         "properties": {
@@ -32614,6 +33016,20 @@
             "items": {
               "$ref": "#/components/schemas/AttemptOptionResponse"
             }
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. A note is kept to the caller during the exam: sending it to the hoca waits until the exam is over for everyone (409 NOTES_SHARE_LOCKED). Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
+          "myNote": {
+            "nullable": true,
+            "description": "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyQuestionNoteResponse"
+              }
+            ]
           }
         },
         "required": [
@@ -33766,6 +34182,20 @@
             "items": {
               "$ref": "#/components/schemas/MyAnsweredOptionResponse"
             }
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
+          "myNote": {
+            "nullable": true,
+            "description": "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyQuestionNoteResponse"
+              }
+            ]
           }
         },
         "required": [
@@ -34082,6 +34512,213 @@
           "exams"
         ]
       },
+      "SaveMyQuestionNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Plain text, trimmed."
+          },
+          "sharedWithTeacher": {
+            "type": "boolean",
+            "description": "true sends it to the course's hoca, who reads and may answer it; false keeps it to the caller. On an exam's question, true is 409 NOTES_SHARE_LOCKED until the exam is over for everyone or its results are open."
+          }
+        },
+        "required": [
+          "body",
+          "sharedWithTeacher"
+        ]
+      },
+      "MyQuestionNoteListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sharedWithTeacher": {
+            "type": "boolean",
+            "description": "Whether it was sent to the course's hoca."
+          },
+          "sharedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When it was sent."
+          },
+          "teacherReply": {
+            "type": "string",
+            "nullable": true,
+            "description": "The hoca's answer."
+          },
+          "repliedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "newReply": {
+            "type": "boolean",
+            "description": "An answer the caller has not read yet: `GET /courses/:id/my-question-notes` marks every answer of the course read."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "The caller's last write of it."
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
+          },
+          "setTitle": {
+            "type": "string",
+            "description": "The çalışma seti's or the exam's title."
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The exam's celse, for its links; null for a çalışma seti."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sharedWithTeacher",
+          "sharedAt",
+          "teacherReply",
+          "repliedAt",
+          "newReply",
+          "updatedAt",
+          "questionId",
+          "questionText",
+          "examId",
+          "examKind",
+          "setTitle",
+          "lessonId",
+          "createdAt"
+        ]
+      },
+      "QuestionNoteTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ExamQuestionNoteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionNumber": {
+            "type": "number",
+            "description": "1 for the first, in the preparer's order."
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "talebe": {
+            "$ref": "#/components/schemas/QuestionNoteTalebeResponse"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sharedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the talebe sent it."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "The talebe's last write of it."
+          },
+          "editedAfterReply": {
+            "type": "boolean",
+            "description": "Whether the talebe wrote it again after it was answered."
+          },
+          "teacherReply": {
+            "type": "string",
+            "nullable": true
+          },
+          "repliedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "repliedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "questionId",
+          "questionNumber",
+          "questionText",
+          "talebe",
+          "body",
+          "sharedAt",
+          "updatedAt",
+          "editedAfterReply",
+          "teacherReply",
+          "repliedAt",
+          "repliedBy"
+        ]
+      },
+      "ReplyQuestionNoteDto": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Plain text, trimmed; empty takes the answer back."
+          }
+        },
+        "required": [
+          "reply"
+        ]
+      },
       "PracticeSetSummaryResponse": {
         "type": "object",
         "properties": {
@@ -34379,6 +35016,20 @@
             "type": "string",
             "example": "0.50",
             "description": "The part of the question the answer got, from 0.00 to 1.00 (a part only under IN_SHARES); only once the attempt is finished."
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
+          "myNote": {
+            "nullable": true,
+            "description": "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyQuestionNoteResponse"
+              }
+            ]
           }
         },
         "required": [

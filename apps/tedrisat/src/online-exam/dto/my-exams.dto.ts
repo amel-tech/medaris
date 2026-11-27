@@ -1,4 +1,5 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { MyQuestionNoteResponse } from "../../question-note/dto/question-note.dto";
 import { AttemptStatus, FinishedBy } from "../domain/exam-attempt";
 import { QuestionOutcome } from "../domain/exam-result";
 import { MyExamFormat, MyExamState } from "../domain/my-exams";
@@ -147,6 +148,18 @@ export class MyAnsweredQuestionResponse {
     description: "In this talebe's order.",
   })
   options!: MyAnsweredOptionResponse[];
+  @ApiPropertyOptional({
+    description:
+      "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  talebeNotes?: boolean;
+  @ApiPropertyOptional({
+    type: MyQuestionNoteResponse,
+    nullable: true,
+    description:
+      "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  myNote?: MyQuestionNoteResponse | null;
 }
 
 /** A talebe's own screen of a past online exam. */

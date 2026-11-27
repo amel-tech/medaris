@@ -2,6 +2,7 @@ import { type AuthenticatedUser, ValidationError } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CourseService } from "../course/course.service";
 import { ExamFormat } from "../course/domain/exam";
+import { QuestionNoteRepository } from "../question-note/question-note.repository";
 import {
   AnswerMode,
   ExamKind,
@@ -75,7 +76,8 @@ export class OnlineExamService {
   constructor(
     private readonly repo: OnlineExamRepository,
     private readonly courses: CourseService,
-    private readonly zeroth: ZerothQuestionRepository
+    private readonly zeroth: ZerothQuestionRepository,
+    private readonly notes: QuestionNoteRepository
   ) {}
 
   /** The course as the caller may write to it: a hidden or draft course they may not see is not found. */
@@ -91,9 +93,12 @@ export class OnlineExamService {
   ): Promise<OnlineExamSummaryResponse[]> {
     await this.course(courseId, user);
     const exams = await this.repo.listExams(courseId, kind);
-    const started = await this.repo.startedPracticeIds(
-      exams.filter((e) => e.kind === ExamKind.PRACTICE).map((e) => e.id)
-    );
+    const [started, unanswered] = await Promise.all([
+      this.repo.startedPracticeIds(
+        exams.filter((e) => e.kind === ExamKind.PRACTICE).map((e) => e.id)
+      ),
+      this.notes.unansweredCounts(exams.map((e) => e.id)),
+    ]);
     const now = new Date();
     return exams.map((e) => ({
       id: e.id,
@@ -107,6 +112,7 @@ export class OnlineExamService {
       locked: isLocked(e, started.has(e.id), now),
       startsAt: e.startsAt,
       updatedAt: e.updatedAt,
+      unansweredNotes: unanswered.get(e.id) ?? 0,
     }));
   }
 
@@ -127,11 +133,12 @@ export class OnlineExamService {
     user: AuthenticatedUser
   ): Promise<OnlineExamDraftResponse> {
     const courseId = await this.courseOf(examId, user);
-    const [draft, topics, hasZeroth, started] = await Promise.all([
+    const [draft, topics, hasZeroth, started, unanswered] = await Promise.all([
       this.repo.findDraft(courseId, examId),
       this.repo.listTopics(courseId),
       this.zerothOfCourse(courseId).then((q) => q !== null),
       this.repo.startedPracticeIds([examId]),
+      this.notes.unansweredCounts([examId]),
     ]);
     if (!draft) throw new OnlineExamNotFoundError(examId);
     const shares = sharePoints(
@@ -172,6 +179,7 @@ export class OnlineExamService {
       problems: draft.publishedAt
         ? []
         : this.problemsOf(draft, pointsTotal, hasZeroth),
+      unansweredNotes: unanswered.get(draft.id) ?? 0,
       version: draft.version,
     };
   }
@@ -427,6 +435,7 @@ export class OnlineExamService {
       answerMode: AnswerMode;
       scoring?: Scoring | null;
       topicIds: string[];
+      talebeNotes?: boolean;
     },
     user: AuthenticatedUser
   ): Promise<ExamQuestionWriteResponse> {
@@ -457,10 +466,35 @@ export class OnlineExamService {
           answerMode: input.answerMode,
           scoring,
           topicIds: input.topicIds,
+          talebeNotes: input.talebeNotes,
         });
       }
     );
     return { question: await this.questionNow(w, questionId), version };
+  }
+
+  /**
+   * The question's talebe notes on or off (MDRS-248, soru notları): the
+   * team's icon on the question. Not a write of the exam's content, so it
+   * names no version, bumps none, and is taken on a published or locked set
+   * as on a draft. What the talebe wrote stays readable when it is turned
+   * off; only new writes are refused.
+   */
+  async setTalebeNotes(
+    examId: string,
+    questionId: string,
+    talebeNotes: boolean,
+    user: AuthenticatedUser
+  ): Promise<{ questionId: string; talebeNotes: boolean }> {
+    const courseId = await this.courseOf(examId, user);
+    await this.repo.setTalebeNotes(
+      courseId,
+      examId,
+      questionId,
+      talebeNotes,
+      user.sub
+    );
+    return { questionId, talebeNotes };
   }
 
   async removeQuestion(
@@ -643,6 +677,7 @@ export class OnlineExamService {
       ownPoints: q.ownPoints === null ? null : pointsText(q.ownPoints),
       points: share ? shareText(share) : pointsText(0),
       complete: lacks.length === 0,
+      talebeNotes: q.talebeNotes,
       lacks,
     };
   }

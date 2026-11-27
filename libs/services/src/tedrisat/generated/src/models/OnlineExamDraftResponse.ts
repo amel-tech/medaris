@@ -158,6 +158,12 @@ export interface OnlineExamDraftResponse {
      */
     problems: Array<PublishProblemResponse>;
     /**
+     * How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {number}
+     * @memberof OnlineExamDraftResponse
+     */
+    unansweredNotes?: number;
+    /**
      * 
      * @type {number}
      * @memberof OnlineExamDraftResponse
@@ -230,6 +236,7 @@ export function OnlineExamDraftResponseFromJSONTyped(json: any, ignoreDiscrimina
         'startsAt': (json['startsAt'] == null ? null : new Date(json['startsAt'])),
         'latestStartAt': (json['latestStartAt'] == null ? null : new Date(json['latestStartAt'])),
         'problems': ((json['problems'] as Array<any>).map(PublishProblemResponseFromJSON)),
+        'unansweredNotes': json['unansweredNotes'] == null ? undefined : json['unansweredNotes'],
         'version': json['version'],
     };
 }
@@ -262,6 +269,7 @@ export function OnlineExamDraftResponseToJSONTyped(value?: OnlineExamDraftRespon
         'startsAt': ((value['startsAt'] as any).toISOString()),
         'latestStartAt': ((value['latestStartAt'] as any).toISOString()),
         'problems': ((value['problems'] as Array<any>).map(PublishProblemResponseToJSON)),
+        'unansweredNotes': value['unansweredNotes'],
         'version': value['version'],
     };
 }

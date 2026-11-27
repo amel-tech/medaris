@@ -30,6 +30,10 @@ export const NOTIFICATION_TYPES = [
   "EXAM_SCHEDULED",
   "EXAM_REMINDER",
   "EXAM_RESULTS_RELEASED",
+  // A talebe sent their note on a question to the hoca, and the hoca
+  // answered it (MDRS-248, soru notları).
+  "QUESTION_NOTE_SHARED",
+  "QUESTION_NOTE_REPLIED",
   // Nizam side (MDRS-179): what a köşk nazımı or Medaris nazımı is told.
   "COURSE_BAN_PLACED",
   "KOSK_BAN_PLACED",

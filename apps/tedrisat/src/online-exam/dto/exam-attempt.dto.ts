@@ -11,6 +11,7 @@ import {
   Min,
   MinLength,
 } from "class-validator";
+import { MyQuestionNoteResponse } from "../../question-note/dto/question-note.dto";
 import {
   AttemptStatus,
   ExamWindow,
@@ -140,6 +141,18 @@ export class AttemptQuestionResponse {
     description: "In this talebe's order.",
   })
   options!: AttemptOptionResponse[];
+  @ApiPropertyOptional({
+    description:
+      "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. A note is kept to the caller during the exam: sending it to the hoca waits until the exam is over for everyone (409 NOTES_SHARE_LOCKED). Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  talebeNotes?: boolean;
+  @ApiPropertyOptional({
+    type: MyQuestionNoteResponse,
+    nullable: true,
+    description:
+      "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  myNote?: MyQuestionNoteResponse | null;
 }
 
 export class AttemptAnswerResponse {

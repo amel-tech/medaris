@@ -67,6 +67,8 @@ export interface IAttemptQuestion {
   answerMode: AnswerMode;
   scoring: Scoring | null;
   ownPoints: number | null;
+  /** Whether the talebe may write a note on it (soru notları). */
+  talebeNotes: boolean;
   options: Array<{ id: string; text: string; correct: boolean }>;
 }
 
@@ -267,6 +269,7 @@ export class PracticeRepository {
           answerMode: examQuestions.answerMode,
           scoring: examQuestions.scoring,
           ownPoints: examQuestions.ownPoints,
+          talebeNotes: examQuestions.talebeNotes,
         })
         .from(examQuestions)
         .innerJoin(onlineExams, eq(onlineExams.id, examQuestions.examId))

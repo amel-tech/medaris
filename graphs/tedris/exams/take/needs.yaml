@@ -103,7 +103,7 @@ needs:
     evidence:
       - state: resuming
       - state: question
-      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:372
+      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:381
       - test: apps/tedris/test/exam-take.spec.ts
         name: "goes on with an attempt in progress where the talebe was"
 
@@ -313,7 +313,7 @@ needs:
       scores the exam. No talebe can read another's order or answers.
     evidence:
       - state: question
-      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:311
+      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:320
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
         name: "starts only with the zeroth question answered, in an order of the talebe's own"
 

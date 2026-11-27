@@ -24,6 +24,7 @@ src/apis/NotificationsApi.ts
 src/apis/OnlineExamAttemptsApi.ts
 src/apis/OnlineExamsApi.ts
 src/apis/PracticeApi.ts
+src/apis/QuestionNotesApi.ts
 src/apis/ResourcesApi.ts
 src/apis/SessionsApi.ts
 src/apis/SubmissionsApi.ts
@@ -201,6 +202,7 @@ src/models/ExamHolderDto.ts
 src/models/ExamKind.ts
 src/models/ExamOptionResponse.ts
 src/models/ExamPointsResponse.ts
+src/models/ExamQuestionNoteResponse.ts
 src/models/ExamQuestionResponse.ts
 src/models/ExamQuestionWriteResponse.ts
 src/models/ExamReleaseResponse.ts
@@ -368,6 +370,8 @@ src/models/MyGradesResponse.ts
 src/models/MyGrantsResponse.ts
 src/models/MyPermissionsResponse.ts
 src/models/MyPublicProfileResponse.ts
+src/models/MyQuestionNoteListItemResponse.ts
+src/models/MyQuestionNoteResponse.ts
 src/models/MyRolesResponse.ts
 src/models/MyStandingResponse.ts
 src/models/MySubmissionSummaryResponse.ts
@@ -450,10 +454,12 @@ src/models/PublishOnlineExamDto.ts
 src/models/PublishProblemResponse.ts
 src/models/QuestionAnswerResponse.ts
 src/models/QuestionAnswererResponse.ts
+src/models/QuestionNoteTalebeResponse.ts
 src/models/QuestionOptionDto.ts
 src/models/QuestionOutcome.ts
 src/models/QuestionPersonResponse.ts
 src/models/QuestionPointsResponse.ts
+src/models/QuestionTalebeNotesResponse.ts
 src/models/ReadAllNotificationsResponse.ts
 src/models/RecordLessonViewDto.ts
 src/models/RecordingAvailabilityResponse.ts
@@ -469,6 +475,7 @@ src/models/RemoveEnrollmentDto.ts
 src/models/RemovedByResponse.ts
 src/models/RemovedEnrollmentResponse.ts
 src/models/ReplaceCourseDto.ts
+src/models/ReplyQuestionNoteDto.ts
 src/models/ResourceFileResponse.ts
 src/models/ResourceResponse.ts
 src/models/ResultsCountsResponse.ts
@@ -490,6 +497,7 @@ src/models/SaveExamAnswerDto.ts
 src/models/SaveExamQuestionDto.ts
 src/models/SaveExamResultDto.ts
 src/models/SaveLessonAssignmentDto.ts
+src/models/SaveMyQuestionNoteDto.ts
 src/models/SavePracticeAnswerDto.ts
 src/models/SaveSubmissionNoteDto.ts
 src/models/SaveZerothQuestionDto.ts
@@ -522,6 +530,7 @@ src/models/SetPartnerKosksDto.ts
 src/models/SetPlatformPolicyDto.ts
 src/models/SetQuestionPointsDto.ts
 src/models/SetRecordingAvailabilityDto.ts
+src/models/SetTalebeNotesDto.ts
 src/models/StartPracticePoolDto.ts
 src/models/StartRecordingUploadDto.ts
 src/models/SubmissionFileResponse.ts

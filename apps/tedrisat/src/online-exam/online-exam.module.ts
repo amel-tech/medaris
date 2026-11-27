@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { CourseModule } from "../course/course.module";
 import { DatabaseModule } from "../database/database.module";
 import { PlatformAccessModule } from "../platform-access/platform-access.service";
+import { QuestionNoteModule } from "../question-note/question-note.module";
 import { ExamAttemptController } from "./exam-attempt.controller";
 import { ExamAttemptRepository } from "./exam-attempt.repository";
 import { ExamAttemptService } from "./exam-attempt.service";
@@ -34,6 +35,9 @@ import { ZerothQuestionService } from "./zeroth-question.service";
     PlatformAccessModule,
     // The results, the early close and the repositories they read.
     OnlineExamResultsModule,
+    // The talebe's notes beside each question and the team's count of the
+    // unanswered ones (MDRS-248, soru notları).
+    QuestionNoteModule,
   ],
   controllers: [
     OnlineExamController,
