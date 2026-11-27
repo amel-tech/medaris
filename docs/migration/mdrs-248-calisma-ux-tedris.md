@@ -64,16 +64,38 @@ Measured on a local stack with the recording data (a copy of the
   updated and extended (status words, one table, the course summary, whole
   percentages, the filter counts, the wrong-choice badge, no "Set:" in a set
   attempt, "Sonraki"/"Bitir" leading in turn, the progress text and the key).
-- The repository gate, on this machine: `typecheck` (18 projects),
-  `lint` (18), `module-boundaries` (18) and `build` (8 projects) green.
-  `test`: `tedris-web` 103 files, 1394 tests green; every other suite green
-  except `tedrisat` and `keycloak-theme`, red in both runs on different
-  Testcontainers e2e cases (Keycloak containers, and 9 unrelated tedrisat
-  e2e cases in the second run). Neither project is in
-  `nx show projects --affected` for this change (tedris-web, i18n,
-  landing-web, nazar-web, nizam-web), and Docker was shared with another
-  worktree's run at the time; not treated as a regression, not verified
-  green here.
+- The repository gate, on this machine, each command run with
+  `env -u NODE_ENV -u DB_PORT -u POSTGRES_DB -u POSTGRES_USER -u POSTGRES_PASSWORD -u DATABASE_URL`
+  on commit `fec56e2a` minus the review fixes (the fixes were re-checked as
+  below):
+  - `pnpm nx run-many -t typecheck --skip-nx-cache`: "Successfully ran
+    target typecheck for 18 projects and 2 tasks they depend on".
+  - `pnpm nx run-many -t lint --skip-nx-cache`: "Successfully ran target lint
+    for 18 projects".
+  - `pnpm nx run-many -t module-boundaries --skip-nx-cache`: "Successfully
+    ran target module-boundaries for 18 projects".
+  - `pnpm nx run-many -t build --skip-nx-cache`: "Successfully ran target
+    build for 8 projects and 8 tasks they depend on".
+  - `pnpm nx run-many -t test --skip-nx-cache`: failed tasks
+    `keycloak-theme:test` (`email.e2e.spec.ts`, "POST → 401" from its
+    Keycloak container) and `tedrisat:test` (five Testcontainers e2e
+    cases). Re-run as
+    `pnpm nx run-many -t test -p tedrisat keycloak-theme tedris-web --skip-nx-cache`:
+    tedris-web "Test Files 103 passed (103), Tests 1394 passed (1394)";
+    keycloak-theme "Test Files 1 failed | 8 passed (9)"; tedrisat "Test
+    Files 12 failed | 225 passed (237), Tests 9 failed | 3912 passed", on
+    other cases than the first run. Neither project is in
+    `pnpm nx show projects --affected --base=origin/main` (it printed
+    tedris-web, i18n, landing-web, nazar-web, nizam-web), and Docker was
+    shared with another worktree's run; not verified green here.
+  - After the review fixes:
+    `pnpm nx run-many -t typecheck lint -p tedris-web i18n --skip-nx-cache`
+    ("Successfully ran targets typecheck, lint for 2 projects and 8 tasks
+    they depend on"), and
+    `pnpm exec vitest run test/practice test/exam-take test/course-page-states`
+    in `apps/tedris` ("Tests 80 passed (80)").
+- CI on the pull request: Verify, Verify (tedrisat), Commit hygiene,
+  Security gates, Traceability and CodeQL passed.
 - Screenshots before and after on the local stack (desktop and 390px).
 
 ## Not verified
