@@ -246,7 +246,7 @@ states:
       FAIL.gone: { target: notFound, source: "apps/nazar/lib/tedrisat-read.ts:46" }
   talebeDetail:
     title: A talebe's answers
-    source: apps/nazar/features/online-exams/components/talebe-answers-view.tsx:44
+    source: apps/nazar/features/online-exams/components/talebe-answers-view.tsx:45
     description: >-
       Under "Sonuçlara dön", the h1 "<name>: cevapları" and the exam's title: "Özet" says how the attempt ended (or that it is in
       progress), the score or "Puan, sınav bitince hesaplanır.", the switches with their times, and the answer to the zeroth question.
