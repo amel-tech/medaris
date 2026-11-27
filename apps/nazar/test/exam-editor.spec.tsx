@@ -1675,6 +1675,17 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
     expect(root.querySelector("form[data-question]")).not.toBeNull();
   });
 
+  it("strikes the bubble through with a line that has a height when notes are off", async () => {
+    const root = await render(
+      wrap(<ExamEditor courseId="c1" draft={saved(false)} />)
+    );
+    const line = icon(root).querySelector("span span span") as HTMLElement;
+    // The system's Tailwind has no spacing multiplier (MDS-TOK-05): h-0.5
+    // drew a line 0px tall, so "off" looked the same as "on".
+    expect(line.className).not.toContain("h-0.5");
+    expect(line.className).toContain("h-[var(--border-width-thick)]");
+  });
+
   it("takes the icon back and says so when the write is refused", async () => {
     actions.setExamQuestionTalebeNotes.mockResolvedValue({
       success: false,
