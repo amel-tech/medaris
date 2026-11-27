@@ -21,7 +21,7 @@ import { fieldsOf, instantOf } from "~/features/sessions/sessions";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { unpublishOnlineExam } from "../actions";
-import { startsArabic } from "../arabic";
+import { boxDir } from "../arabic";
 import { onlineExamErrorKey, READS_AGAIN } from "../online-exams";
 import { ArabicText } from "./arabic-text";
 import { wholePercent } from "./practice-sets-table";
@@ -559,10 +559,7 @@ export function PublishedExam({
               </strong>
               {/* The paragraph takes its text's direction: an Arabic
                   question is laid out right to left, wrapped lines too. */}
-              <p
-                className="mds-body"
-                dir={startsArabic(q.text) ? "rtl" : "auto"}
-              >
+              <p className="mds-body" dir={boxDir(q.text) ?? "auto"}>
                 <ArabicText text={q.text} />
               </p>
               <ol className="mds-body-sm flex flex-col gap-1" type="A">

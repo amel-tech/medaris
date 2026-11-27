@@ -3,6 +3,7 @@ import { resources } from "@medaris/i18n";
 import type { OnlineExamDraftResponse } from "@medaris/services/tedrisat";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExamWorkspace } from "~/features/online-exams/components/exam-workspace";
 import { cleanup, click, render, settle, type as typeInto } from "./dom";
@@ -267,5 +268,95 @@ describe("publishing an online exam (MDRS-299)", () => {
       "Celse başladı; sınav artık taslağa alınamaz."
     );
     expect(button(root, "Taslağa al")).toBeUndefined();
+  });
+  it("gives Yayınla back when the blank form opened by Cmd+Enter is cancelled (MDRS-248)", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 4, question: { id: "q2" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) => ({
+      success: true,
+      data: {
+        version: 5,
+        question: {
+          ...question,
+          ...body,
+          id,
+          number: 2,
+          options: body.options.map((o: object, i: number) => ({
+            id: `${id}-${i}`,
+            ...o,
+          })),
+        },
+      },
+    }));
+    const root = await page(ready);
+    const holding = "Açık soruyu kaydedin ya da vazgeçin";
+    const publish = () => button(root, "Zamanla");
+    expect(publish().disabled).toBe(false);
+    await click(button(root, "Soru ekle"));
+    const text = root.querySelector(
+      'form[aria-label$=". soru"] textarea'
+    ) as HTMLTextAreaElement;
+    await typeInto(text, "İcmanın rüknü nedir?");
+    const option = (n: number) =>
+      [...root.querySelectorAll("input")].find(
+        (i) => i.getAttribute("aria-label") === `${n}. şık`
+      ) as HTMLInputElement;
+    await typeInto(option(1), "Ittifak");
+    await typeInto(option(2), "İhtilaf");
+    await click(
+      root
+        .querySelector("form fieldset li")
+        ?.querySelector("[role=checkbox]") as HTMLElement
+    );
+    await click(
+      [...root.querySelectorAll("form button[aria-pressed]")].find(
+        (b) => b.textContent === "3. Kıyas"
+      ) as HTMLButtonElement
+    );
+    await act(async () => {
+      text.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+    await settle(80);
+    expect(actions.saveExamQuestion).toHaveBeenCalledTimes(1);
+    // The next question's blank form is open; Vazgeç takes it off.
+    expect(
+      root
+        .querySelector('form[aria-label$=". soru"]')
+        ?.getAttribute("aria-label")
+    ).toBe("3. soru");
+    await click(button(root, "Vazgeç"));
+    expect(root.querySelector('form[aria-label$=". soru"]')).toBeNull();
+    expect(root.textContent).not.toContain(holding);
+    expect(publish().disabled).toBe(false);
+  });
+
+  it("gives Yayınla back when a question's form is taken off with Vazgeç or Değişiklikleri bırak (MDRS-248)", async () => {
+    const root = await page(ready);
+    const holding = "Açık soruyu kaydedin ya da vazgeçin";
+    // A blank new form cancelled at once.
+    await click(button(root, "Soru ekle"));
+    await click(button(root, "Vazgeç"));
+    expect(root.textContent).not.toContain(holding);
+    // A saved question opened, changed, then let go for a new one.
+    await click(button(root, "Düzenle"));
+    const text = root.querySelector(
+      'form[aria-label$=". soru"] textarea'
+    ) as HTMLTextAreaElement;
+    await typeInto(text, "Kıyasın kaç rüknü vardır?");
+    await click(button(root, "Soru ekle"));
+    await click(button(dialog(), "Değişiklikleri bırak"));
+    await click(button(root, "Vazgeç"));
+    expect(root.querySelector('form[aria-label$=". soru"]')).toBeNull();
+    expect(root.textContent).not.toContain(holding);
+    expect(button(root, "Zamanla").disabled).toBe(false);
   });
 });

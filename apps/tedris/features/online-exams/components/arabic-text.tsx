@@ -1,32 +1,7 @@
 import type { CSSProperties, ElementType } from "react";
-import { arabicRuns, hasArabic, textProps } from "../arabic";
+import { arabicRuns, isMixed, mixedDir, textProps } from "../arabic";
 
-const LATIN = /\p{Script=Latin}/u;
-const ARABIC = /\p{Script=Arabic}/u;
-
-/**
- * The direction of a text that mixes Turkish and Arabic. Right to left only
- * when it is mostly Arabic and ends in Arabic ("ما معنى X في الآية"); a
- * Turkish frame is left to right whatever it quotes, at its start ("الْحَمْدُ
- * لِلَّهِ … hangi sûrenin ilk âyetidir?") or at its end ("Fiil: فَعَلَ"). It
- * is stated, not inherited, so an Arabic interface does not turn a Turkish
- * question around.
- */
-export const mixedDir = (text: string): "rtl" | "ltr" => {
-  let arabic = 0;
-  let latin = 0;
-  let endsArabic = false;
-  for (const ch of text) {
-    if (ARABIC.test(ch)) {
-      arabic += 1;
-      endsArabic = true;
-    } else if (LATIN.test(ch)) {
-      latin += 1;
-      endsArabic = false;
-    }
-  }
-  return arabic > latin && endsArabic ? "rtl" : "ltr";
-};
+export { mixedDir };
 
 /**
  * A question's, an option's, an answer's or a set's text drawn by the Arabic
@@ -63,7 +38,7 @@ export function ArabicText({
   const heading: CSSProperties | null = weight
     ? { fontWeight: weight, lineHeight: "var(--lh-arabic)" }
     : null;
-  if (!hasArabic(text) || !LATIN.test(text)) {
+  if (!isMixed(text)) {
     const props = textProps(text, size, 1);
     const arabic = props.lang === "ar";
     return (

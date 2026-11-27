@@ -12,5 +12,7 @@ export {
   arabicRuns,
   arabicTextProps as textProps,
   hasArabic,
+  isMixed,
+  mixedDir,
   startsArabic,
 } from "@medaris/tokens/arabic";

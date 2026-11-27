@@ -12,6 +12,7 @@ const ARABIC_EXT = /\p{Script_Extensions=Arabic}/u;
 const LETTER = /\p{L}/u;
 const WORD = /[\p{L}\p{N}]/u;
 const SPACE = /\s/u;
+const LATIN = /\p{Script=Latin}/u;
 
 /** The values of the tokens, for a caller that needs a number (a canvas, a test). */
 export const ARABIC_SCALE = 1.4;
@@ -72,35 +73,113 @@ export const arabicTextProps = (text, size, scale = 1) => {
   };
 };
 
+/** True when the text holds both Arabic and Latin letters: a Turkish sentence quoting Arabic, or the other way round. */
+export const isMixed = (text) => hasArabic(text) && LATIN.test(text);
+
+/**
+ * The direction of a text that mixes Turkish and Arabic. Right to left only
+ * when it is an Arabic sentence quoting a Latin word: it starts and ends in
+ * Arabic and is mostly Arabic ("ما معنى X في الآية"). A Turkish frame is left
+ * to right whatever it quotes, at its start ("قَالَ … bu hadisin konusu
+ * nedir?") or at its end ("Doğru yol: ﴿الصِّرَاطَ الْمُسْتَقِيمَ﴾"). It is
+ * stated, not inherited, so an Arabic interface does not turn a Turkish
+ * question around.
+ */
+export const mixedDir = (text) => {
+  let arabic = 0;
+  let latin = 0;
+  let endsArabic = false;
+  for (const ch of text) {
+    if (ARABIC.test(ch)) {
+      arabic += 1;
+      endsArabic = true;
+    } else if (LATIN.test(ch)) {
+      latin += 1;
+      endsArabic = false;
+    }
+  }
+  return arabic > latin && endsArabic && startsArabic(text) ? "rtl" : "ltr";
+};
+
+// The brackets and quotes that open a pair, and the mark that closes each.
+// ﴿ ﴾ are not here: their Script_Extensions name Arabic, so they are part
+// of an Arabic run already.
+const PAIRS = new Map([
+  ["(", ")"],
+  ["[", "]"],
+  ["{", "}"],
+  ["«", "»"],
+  ["‹", "›"],
+  ["“", "”"],
+  ["‘", "’"],
+  ['"', '"'],
+  ["'", "'"],
+]);
+// A straight quote opens and closes alike, and is an apostrophe in
+// "Fâtiha'daki": it joins an Arabic run only when it touches it.
+const STRAIGHT = new Set(['"', "'"]);
+
 /**
  * A mixed text cut into its Arabic and its other runs, in order, for a
  * Turkish sentence that quotes Arabic: each Arabic run is drawn on its own
- * element with `arabicTextProps`. Spaces and punctuation stay with the run
- * they fall in, except that the spaces closing an Arabic run go to the next.
- * Joined back, the runs are the text.
+ * right-to-left, isolated element with `arabicTextProps`. An Arabic run is
+ * everything from its first Arabic letter to its last, with what lies
+ * between (spaces, ":" after ﷺ, a quoted «…»), plus the brackets and quotes
+ * around it: an opening one before it (a straight quote only when it
+ * touches it) and the closing ones that pair with what it left open. So
+ * «زَيْدٌ» and (قَالَ) are each one run, their marks mirrored the Arabic way,
+ * and ﴿…﴾ stays whole. The spaces and the Latin punctuation after an Arabic
+ * run belong to the Turkish sentence ("» — bu hadisin", "فَعَلَ?"): inside
+ * the run they would land on its left. Joined back, the runs are the text.
  */
 export const arabicRuns = (text) => {
-  const runs = [];
-  let current = null;
-  for (const ch of text) {
-    const arabic = ARABIC_EXT.test(ch) ? true : WORD.test(ch) ? false : null;
-    if (current === null) {
-      current = { text: ch, arabic: arabic ?? false };
-    } else if (arabic === null || arabic === current.arabic) {
-      current.text += ch;
-    } else {
-      // The spaces closing an Arabic run, counted from the end (no regex:
-      // a trailing \s+$ is polynomial on a long run of spaces).
-      let cut = current.text.length;
-      while (current.arabic && cut > 0 && SPACE.test(current.text[cut - 1])) {
-        cut -= 1;
-      }
-      const carried = current.text.slice(cut);
-      current.text = current.text.slice(0, cut);
-      if (current.text) runs.push(current);
-      current = { text: carried + ch, arabic };
+  const chars = [...text];
+  // 1 Arabic, 0 any other letter or number, -1 neither (space, mark, sign).
+  const kind = chars.map((ch) =>
+    ARABIC_EXT.test(ch) ? 1 : WORD.test(ch) ? 0 : -1
+  );
+  const arabic = new Array(chars.length).fill(false);
+  let i = 0;
+  while (i < chars.length) {
+    if (kind[i] !== 1) {
+      i += 1;
+      continue;
     }
+    // From this Arabic letter to the last one before the next other letter.
+    let last = i;
+    let next = i;
+    while (next < chars.length && kind[next] !== 0) {
+      if (kind[next] === 1) last = next;
+      next += 1;
+    }
+    // The opening brackets and quotes before it, with the spaces between.
+    let first = i;
+    for (let k = i - 1; k >= 0 && kind[k] === -1 && !arabic[k]; k -= 1) {
+      const ch = chars[k];
+      if (SPACE.test(ch)) continue;
+      if (!PAIRS.has(ch) || (STRAIGHT.has(ch) && k !== first - 1)) break;
+      first = k;
+    }
+    // What it leaves open, closed by the marks right after it.
+    const open = [];
+    for (let k = first; k <= last; k += 1) {
+      if (open.length > 0 && chars[k] === open.at(-1)) open.pop();
+      else if (PAIRS.has(chars[k])) open.push(PAIRS.get(chars[k]));
+    }
+    for (let k = last + 1; k < next && open.length > 0; k += 1) {
+      if (SPACE.test(chars[k])) continue;
+      if (chars[k] !== open.at(-1)) break;
+      open.pop();
+      last = k;
+    }
+    for (let k = first; k <= last; k += 1) arabic[k] = true;
+    i = next;
   }
-  if (current) runs.push(current);
+  const runs = [];
+  chars.forEach((ch, k) => {
+    const current = runs.at(-1);
+    if (current && current.arabic === arabic[k]) current.text += ch;
+    else runs.push({ text: ch, arabic: arabic[k] });
+  });
   return runs;
 };

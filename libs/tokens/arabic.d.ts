@@ -31,7 +31,11 @@ export declare function arabicTextProps(
   size?: string,
   scale?: number
 ): ArabicTextProps;
-/** A mixed text cut into its Arabic and its other runs, in order. */
+/** True when the text holds both Arabic and Latin letters. */
+export declare function isMixed(text: string): boolean;
+/** A mixed text's direction: rtl only when it is mostly Arabic and ends in Arabic. */
+export declare function mixedDir(text: string): "rtl" | "ltr";
+/** A mixed text cut into its Arabic runs (with their brackets and quotes) and its other runs, in order. */
 export declare function arabicRuns(
   text: string
 ): Array<{ text: string; arabic: boolean }>;

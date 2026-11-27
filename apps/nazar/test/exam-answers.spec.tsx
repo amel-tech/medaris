@@ -112,8 +112,9 @@ describe("a talebe's answers on an online exam (MDRS-299)", () => {
     const root = await render(wrap(<TalebeAnswersView answers={answers} />));
     const second = root.querySelectorAll("article")[1];
     expect(second.textContent).toContain("Atladı, boş kaldı");
-    const arabic = second.querySelector("p[lang=ar]") as HTMLElement;
+    const arabic = second.querySelector("p [lang=ar]") as HTMLElement;
     expect(arabic?.getAttribute("dir")).toBe("rtl");
+    expect(arabic?.parentElement?.getAttribute("dir")).toBe("rtl");
   });
 
   it("opens a talebe's answers from the results row of one who started, and not of one who did not", async () => {

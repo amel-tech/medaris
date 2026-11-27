@@ -46,7 +46,7 @@ import {
   saveExamSettings,
   setExamQuestionPoints,
 } from "../actions";
-import { startsArabic, textProps } from "../arabic";
+import { boxDir, textProps } from "../arabic";
 import {
   type AnswerModeValue,
   lacksOf,
@@ -493,6 +493,9 @@ export function ExamEditor({
     const gone = questions[index];
     removed.current.add(key);
     setQuestions((all) => all.filter((q) => q.key !== key));
+    // The form open on it closes with it: a form left open on a question
+    // no longer listed held "Yayınla" until the page was read again.
+    setEditing((open) => (open === key ? null : open));
     // Never saved: nothing of it is on the server.
     if (idOf(key) === "" && !savesOf.current.has(key)) return;
     const restore = () => {
@@ -1317,7 +1320,7 @@ function QuestionRow({
           type="button"
           tabIndex={-1}
           onClick={onEdit}
-          dir={startsArabic(question.text) ? "rtl" : undefined}
+          dir={boxDir(question.text)}
           className="mds-body min-inline-0 flex-1 basis-[calc(100%-5rem)] cursor-pointer truncate border-0 bg-transparent p-0 text-start text-inherit md:basis-[12rem]"
         >
           {question.text ? (

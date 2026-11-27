@@ -1470,7 +1470,7 @@ describe("the exam editor (MDRS-299)", () => {
     expect(option(root, 2).getAttribute("dir")).toBe("auto");
     expect(option(root, 2).getAttribute("lang")).toBeNull();
     await cleanup();
-    // A Turkish text with an Arabic phrase: its order is the browser's, the phrase an Arabic run.
+    // A Turkish text with an Arabic phrase: a left-to-right frame, stated, the phrase an Arabic run.
     const mixed = await render(
       wrap(
         <ExamEditor
@@ -1482,9 +1482,31 @@ describe("the exam editor (MDRS-299)", () => {
     const line = mixed.querySelector(
       'article[aria-label="1. soru"] button[tabindex="-1"] > span'
     ) as HTMLElement;
-    expect(line.getAttribute("dir")).toBe("auto");
+    expect(line.getAttribute("dir")).toBe("ltr");
     expect(line.getAttribute("lang")).toBeNull();
     expect(line.querySelector("[lang=ar]")?.textContent).toBe("الْحَمْدُ لِلَّهِ");
+    await cleanup();
+    // A Turkish question that opens with a hadith stays left to right; the
+    // hadith, its ﷺ and its « » are one Arabic run, the dash Turkish.
+    const hadith = await render(
+      wrap(
+        <ExamEditor
+          courseId="c1"
+          draft={saved({
+            text: "قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ» — bu hadisin konusu nedir?",
+          })}
+        />
+      )
+    );
+    const box = hadith.querySelector(
+      'article[aria-label="1. soru"] button[tabindex="-1"]'
+    ) as HTMLElement;
+    expect(box.getAttribute("dir")).toBe("ltr");
+    const runs = [...box.querySelectorAll("[lang=ar]")];
+    expect(runs.map((r) => [r.textContent, r.getAttribute("dir")])).toEqual([
+      ["قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ»", "rtl"],
+    ]);
+    expect(box.textContent).toContain("» — bu hadisin konusu nedir?");
   });
 
   it("takes the blank new form off when another question is opened, leaving no empty row (MDRS-248)", async () => {

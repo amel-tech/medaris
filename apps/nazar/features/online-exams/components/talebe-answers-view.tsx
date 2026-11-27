@@ -6,7 +6,8 @@ import type {
 } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
-import { textProps } from "../arabic";
+import { boxDir } from "../arabic";
+import { ArabicText } from "./arabic-text";
 
 /**
  * One talebe's answers, question by question in the exam's order: each
@@ -72,9 +73,7 @@ export function TalebeAnswersView({
           {answers.zeroth.answer === null ? (
             t("ExamResults.noZeroth")
           ) : (
-            <span {...textProps(answers.zeroth.answer)}>
-              {answers.zeroth.answer}
-            </span>
+            <ArabicText text={answers.zeroth.answer} />
           )}
         </p>
       </section>
@@ -128,8 +127,8 @@ function AnswerCard({ question }: { question: TalebeAnswerQuestionResponse }) {
           })}
         </span>
       </div>
-      <p className="mds-body" {...textProps(question.text)}>
-        {question.text}
+      <p className="mds-body" dir={boxDir(question.text) ?? "auto"}>
+        <ArabicText text={question.text} />
       </p>
       {/* The list stays left to right with its letter on the left; each
           option's text is its own run, and the marks are never inside it. */}
@@ -140,12 +139,12 @@ function AnswerCard({ question }: { question: TalebeAnswerQuestionResponse }) {
               <>
                 <strong>
                   <span aria-hidden="true">✓ </span>
-                  <span {...textProps(o.text)}>{o.text}</span>
+                  <ArabicText text={o.text} />
                 </strong>{" "}
                 <span className="mds-caption">{t("ExamAnswers.chosen")}</span>
               </>
             ) : (
-              <span {...textProps(o.text)}>{o.text}</span>
+              <ArabicText text={o.text} />
             )}
             {o.correct ? (
               <>

@@ -12,6 +12,8 @@ import {
   arabicRuns,
   arabicTextProps,
   hasArabic,
+  isMixed,
+  mixedDir,
   startsArabic,
 } from "../arabic.js";
 
@@ -147,10 +149,136 @@ describe("arabicRuns", () => {
       { text: "قَالَ", arabic: true },
       { text: `${spaces}x`, arabic: false },
     ]);
-    // Punctuation before any letter opens a non-Arabic run.
-    expect(arabicRuns("« قَالَ")).toEqual([
-      { text: "« ", arabic: false },
+    // Punctuation before any letter that opens no pair stays out of it.
+    expect(arabicRuns("1. قَالَ")).toEqual([
+      { text: "1. ", arabic: false },
       { text: "قَالَ", arabic: true },
     ]);
+  });
+});
+
+describe("arabicRuns around brackets and quotes (MDRS-248)", () => {
+  /** The runs, as [text, arabic] pairs, checked to join back to the text. */
+  const cut = (text: string) => {
+    const runs = arabicRuns(text);
+    expect(runs.map((r) => r.text).join("")).toBe(text);
+    return runs.map((r) => [r.text, r.arabic]);
+  };
+
+  it("keeps a verse in ﴿ ﴾ whole, the Turkish around it apart", () => {
+    expect(
+      cut("Fâtiha'daki ﴿اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ﴾ ayetinin anlamı nedir?")
+    ).toEqual([
+      ["Fâtiha'daki ", false],
+      ["﴿اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ﴾", true],
+      [" ayetinin anlamı nedir?", false],
+    ]);
+  });
+
+  it("takes « » around an Arabic word into its run", () => {
+    expect(cut("«زَيْدٌ» kelimesinin i'râbı nedir?")).toEqual([
+      ["«زَيْدٌ»", true],
+      [" kelimesinin i'râbı nedir?", false],
+    ]);
+  });
+
+  it("keeps a hadith with its ﷺ, its colon and its quotes in one run, the dash with the Turkish", () => {
+    expect(
+      cut("قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ» — bu hadisin konusu nedir?")
+    ).toEqual([
+      ["قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ»", true],
+      [" — bu hadisin konusu nedir?", false],
+    ]);
+  });
+
+  it("takes ( ), [ ], ‹ ›, “ ” and straight quotes that touch it, spaces inside the pair included", () => {
+    expect(cut("Kök (كَتَبَ) nedir?")).toEqual([
+      ["Kök ", false],
+      ["(كَتَبَ)", true],
+      [" nedir?", false],
+    ]);
+    expect(cut("Bak: [ قَالَ ] ve ‹قِيلَ›")).toEqual([
+      ["Bak: ", false],
+      ["[ قَالَ ]", true],
+      [" ve ", false],
+      ["‹قِيلَ›", true],
+    ]);
+    expect(cut('Söz "قَالَ" ve “قِيلَ” mi?')).toEqual([
+      ["Söz ", false],
+      ['"قَالَ"', true],
+      [" ve ", false],
+      ["“قِيلَ”", true],
+      [" mi?", false],
+    ]);
+  });
+
+  it("leaves a straight quote or an apostrophe that does not touch the Arabic, or pairs with Turkish, to the Turkish", () => {
+    expect(cut("Allah' ın اللَّهُ'ın")).toEqual([
+      ["Allah' ın ", false],
+      ["اللَّهُ", true],
+      ["'ın", false],
+    ]);
+    expect(cut("' قَالَ'")).toEqual([
+      ["' ", false],
+      ["قَالَ", true],
+      ["'", false],
+    ]);
+    // A pair opened in Turkish closes in Turkish.
+    expect(cut("(Kur'an: قَالَ)")).toEqual([
+      ["(Kur'an: ", false],
+      ["قَالَ", true],
+      [")", false],
+    ]);
+  });
+
+  it("leaves Latin sentence punctuation after an Arabic run to the Turkish sentence", () => {
+    expect(cut("Fiil: فَعَلَ?")).toEqual([
+      ["Fiil: ", false],
+      ["فَعَلَ", true],
+      ["?", false],
+    ]);
+    // Two Arabic words with no Turkish between are one Arabic list.
+    expect(cut("Örnek: «زَيْدٌ», «عَمْرٌو».")).toEqual([
+      ["Örnek: ", false],
+      ["«زَيْدٌ», «عَمْرٌو»", true],
+      [".", false],
+    ]);
+  });
+
+  it("closes nested pairs in order, and stops at a mark that closes nothing it opened", () => {
+    expect(cut("Şu: («قَالَ») doğru mu?")).toEqual([
+      ["Şu: ", false],
+      ["(«قَالَ»)", true],
+      [" doğru mu?", false],
+    ]);
+    expect(cut("«قَالَ) yanlış")).toEqual([
+      ["«قَالَ", true],
+      [") yanlış", false],
+    ]);
+  });
+
+  it("keeps an Arabic-only text one run, whatever marks it holds", () => {
+    expect(cut("«زَيْدٌ فِي الدَّارِ»")).toEqual([["«زَيْدٌ فِي الدَّارِ»", true]]);
+    expect(cut("﴿الْحَمْدُ لِلَّهِ﴾")).toEqual([["﴿الْحَمْدُ لِلَّهِ﴾", true]]);
+  });
+});
+
+describe("isMixed and mixedDir (MDRS-248)", () => {
+  it("calls a text mixed only when it has Arabic and Latin letters", () => {
+    expect(isMixed("«زَيْدٌ» kelimesinin i'râbı nedir?")).toBe(true);
+    expect(isMixed("«زَيْدٌ فِي الدَّارِ»")).toBe(false);
+    expect(isMixed("Kıyasın rükünleri")).toBe(false);
+  });
+
+  it("keeps a Turkish frame left to right whatever it quotes, and an Arabic one right to left", () => {
+    expect(
+      mixedDir(
+        "قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ» — bu hadisin konusu nedir?"
+      )
+    ).toBe("ltr");
+    expect(mixedDir("Fiil: فَعَلَ")).toBe("ltr");
+    // Mostly Arabic and ending in it, but a Turkish sentence all the same.
+    expect(mixedDir("Doğru yol: ﴿الصِّرَاطَ الْمُسْتَقِيمَ﴾")).toBe("ltr");
+    expect(mixedDir("مَا مَعْنَى X فِي الْآيَةِ؟")).toBe("rtl");
   });
 });
