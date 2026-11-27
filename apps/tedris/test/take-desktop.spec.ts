@@ -69,13 +69,21 @@ describe("the question screen on a desk (MDRS-248, tek ekran)", () => {
     expect(desk).toMatch(
       /\.take-column \{[^}]*flex: 1 1 0;[^}]*min-block-size: 0;/
     );
-    // The question on one side, its options on the other, the buttons under both.
-    expect(desk).toMatch(/\.take-body \{[^}]*display: grid;/);
-    expect(desk).toContain('"head options"');
-    expect(desk).toContain('"text options"');
-    expect(desk).toContain('"nav nav"');
+    // The question above its options, the buttons at the foot (the owner:
+    // "ekrana sığıyorsa soru yukarıda, şık aşağıda olmalı").
     expect(desk).toMatch(
-      /\.take-question-pane,\s*\.take-options-pane \{[^}]*overflow-y: auto;/
+      /\.take-body \{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, 1fr\);/
+    );
+    expect(desk).toMatch(
+      /\.take-body \{[^}]*"head"\s*"text"\s*"options"\s*"\."\s*"nav";/
+    );
+    // Only a sheet that measured itself too tall turns side by side, each
+    // pane scrolling on its own, the buttons under both.
+    expect(desk).toMatch(
+      /\.take-body\[data-layout="split"\] \{[^}]*"head options"\s*"text options"\s*"nav nav";/
+    );
+    expect(desk).toMatch(
+      /\.take-body\[data-layout="split"\] \.take-question-pane,\s*\.take-body\[data-layout="split"\] \.take-options-pane \{[^}]*overflow-y: auto;/
     );
     // The buttons are in the grid's last row, not held to the screen's bottom.
     expect(desk).toMatch(

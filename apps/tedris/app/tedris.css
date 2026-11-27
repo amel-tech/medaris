@@ -23,9 +23,10 @@
 @import "@medaris/tokens/tailwind-roles.css";
 
 /* The question screen of the çalışma soruları and the online exam (MDRS-248,
-   features/online-exams/components/question-parts.tsx). Outside the layers on
-   purpose: these refine the system's bordered choice row for this one screen
-   and must not lose to its own rules.
+   features/online-exams/components/question-parts.tsx). The question itself,
+   its text and its option tiles, is @medaris/ui's QuestionSheet, which nazar's
+   preview draws too (libs/ui/src/styles/mds/question.css); what is here is
+   how the page lays it out.
 
    One reading column: the bar, the question, its options and the buttons
    under them share the system's reading measure, centred. */
@@ -33,119 +34,6 @@
   inline-size: 100%;
   max-inline-size: var(--layout-measure-prose);
   margin-inline: auto;
-}
-
-/* The option tiles (MDRS-248, the owner: "şıkları kare halinde mi yapsak
-   aynı hizada kalabilmeleri için; butona tıklandığında işaretlenmiş olur,
-   radio ya değil"). A grid of tiles of one width. Two columns on a wide
-   screen when every option is short (optionsLayout in question-parts.tsx),
-   where the two tiles of a row are as tall as each other (the grid's own
-   stretch); one column otherwise and always on a phone, where each tile is
-   as tall as its own text, so one long option does not pad the others with
-   empty space (MDRS-248, uzun soru). The group's name and the
-   multiple-answer hint span the whole width. */
-.take-options {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-2);
-}
-@media (width >= 40rem) {
-  .take-options--grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-.take-options > :not(.mds-choice) {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
-/* A tile looks like a button: the letter, the text, and a ✓ once chosen. The
-   radio or check box stays in the tile for the keyboard, the focus and a
-   screen reader, and is hidden from sight only; the tile's own fill, edge and
-   ✓ say it is chosen, never colour alone. */
-.take-options .mds-choice--bordered {
-  position: relative;
-  align-items: center;
-  block-size: 100%;
-  min-block-size: 56px;
-  padding-block: var(--space-3);
-  padding-inline: var(--space-4);
-  border-radius: var(--radius-control);
-  cursor: pointer;
-}
-.take-options .mds-choice--bordered > :is(.mds-check, .mds-radio) {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-.take-options .mds-choice__icon {
-  margin-block-start: 0;
-}
-.take-options .mds-choice__text {
-  flex: 1;
-  min-inline-size: 0;
-}
-.take-options .mds-choice__label {
-  font-size: var(--fs-body);
-  color: var(--text-neutral-default);
-}
-.take-options .mds-choice--bordered::after {
-  content: "";
-  flex: none;
-  inline-size: 1.25em;
-  text-align: center;
-  font-weight: var(--weight-semibold);
-}
-.take-options
-  .mds-choice--bordered:hover:not(:has(> [data-checked], > [data-disabled])) {
-  background: var(--background-neutral-hover);
-  border-color: var(--border-neutral-strong);
-}
-.take-options .mds-choice--bordered:has(> [data-checked]) {
-  background: var(--background-brand-bold);
-  border-color: var(--background-brand-bold);
-  color: var(--text-neutral-on-bold);
-}
-.take-options .mds-choice--bordered:has(> [data-checked])::after {
-  content: "✓" / "";
-  color: var(--text-neutral-on-bold);
-}
-.take-options .mds-choice--bordered:has(> [data-checked]) .mds-choice__label,
-.take-options .mds-choice--bordered:has(> [data-checked]) .mds-choice__label * {
-  color: var(--text-neutral-on-bold);
-}
-.take-options .mds-choice--bordered:has(> :focus-visible) {
-  box-shadow: var(--ring-focus);
-}
-.take-option__letter {
-  display: inline-grid;
-  place-items: center;
-  inline-size: 28px;
-  block-size: 28px;
-  border: var(--border-width-thin) solid var(--border-neutral-strong);
-  border-radius: var(--radius-full);
-  background: var(--background-neutral-surface);
-  font-family: var(--font-ui);
-  font-size: var(--fs-body-sm);
-  font-weight: var(--weight-semibold);
-  line-height: 1;
-  color: var(--text-neutral-default);
-}
-.take-options .mds-choice--bordered:has(> [data-checked]) .take-option__letter {
-  background: var(--background-neutral-surface);
-  border-color: var(--background-neutral-surface);
-  color: var(--text-brand-default);
-}
-
-/* A question's text keeps the lines and paragraphs it was written in (an
-   âyet on a line of its own) and wraps inside the reading column. */
-.take-question {
-  white-space: pre-line;
-  overflow-wrap: anywhere;
 }
 
 /* The answer cards of a çalışma result and of a past exam (answer-review.tsx,
@@ -288,11 +176,15 @@
 /* The question screen on a desk (MDRS-248, tek ekran: "soru uzun olsa da
    çözme ekranındaki tüm alanlar laptop ekranına kaydırmadan sığmalı"). From
    1024px the page is the window's height and does not scroll: the bar is one
-   thin row; the question's text and its options sit side by side, each
-   scrolling on its own when it runs long; the buttons stay under both; the
-   question list is a drawer behind "Sorular". A− / A+ zoom all of it, and the
-   panes give way, so the buttons stay in the window at every step. Below
-   1024px the page is as it was, the buttons held to the bottom. */
+   thin row; the buttons stay at the sheet's foot; the question list is a
+   drawer behind "Sorular". The question stands above its options, as the
+   owner asked ("standartlara göre soru yukarıda, şıklar sorunun altında";
+   "ekrana sığıyorsa soru yukarıda, şık aşağıda olmalı"); only when that does
+   not fit the window does the sheet turn side by side, the question's text
+   scrolling on its own at the start and the options at the end. The sheet
+   measures which (QuestionSheet's `fit`, data-layout). A− / A+ zoom all of
+   it and it measures again. Below 1024px the page is as it was, the buttons
+   held to the bottom. */
 .take-list-toggle,
 .take-navigator__close {
   display: none;
@@ -371,19 +263,23 @@
     white-space: nowrap;
   }
 
-  /* The question: text | options, the buttons under both. */
+  /* The question above its options, the buttons at the sheet's foot: the
+     row between takes what is left, so a short question leaves its space
+     there and never moves the buttons. */
   .take-body {
     display: grid;
     flex: 1 1 0;
     min-block-size: 0;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "head options"
-      "text options"
-      "nav nav";
-    column-gap: var(--space-6);
+      "head"
+      "text"
+      "options"
+      "."
+      "nav";
     row-gap: var(--space-3);
+    overflow-y: auto;
   }
   .take-body > .question-note-anchor {
     grid-area: head;
@@ -394,8 +290,20 @@
   .take-options-pane {
     grid-area: options;
   }
-  .take-question-pane,
-  .take-options-pane {
+  /* Too tall for the window: text | options, each scrolling on its own,
+     the buttons under both. */
+  .take-body[data-layout="split"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head options"
+      "text options"
+      "nav nav";
+    column-gap: var(--space-6);
+    overflow: hidden;
+  }
+  .take-body[data-layout="split"] .take-question-pane,
+  .take-body[data-layout="split"] .take-options-pane {
     min-block-size: 0;
     overflow-y: auto;
     overscroll-behavior: contain;

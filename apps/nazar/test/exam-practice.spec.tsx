@@ -362,13 +362,24 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("lays a published set's Arabic question out right to left (MDRS-248)", async () => {
+  it("lays a published set's Arabic question out right to left, on the talebe's own sheet (MDRS-248)", async () => {
     const root = await page({
       ...published,
       questions: [{ ...complete, text: "مَا مَعْنَى «الْحَمْدُ»؟" }],
     } as unknown as OnlineExamDraftResponse);
-    const run = root.querySelector("li p [lang=ar]") as HTMLElement;
-    expect(run.textContent).toBe("مَا مَعْنَى «الْحَمْدُ»؟");
-    expect(run.closest("p")?.getAttribute("dir")).toBe("rtl");
+    const text = root.querySelector(
+      'article[aria-label="1. soru"] .take-body .take-question'
+    ) as HTMLElement;
+    expect(text.textContent).toBe("مَا مَعْنَى «الْحَمْدُ»؟");
+    expect(text.getAttribute("lang")).toBe("ar");
+    expect(text.getAttribute("dir")).toBe("rtl");
+    // Read only, and one line of it in the list on the end side.
+    expect(text.closest(".take-body")?.getAttribute("data-readonly")).toBe(
+      "true"
+    );
+    expect(
+      root.querySelector('nav[aria-label="Soru listesi"] [data-question-row]')
+        ?.textContent
+    ).toContain("مَا مَعْنَى «الْحَمْدُ»؟");
   });
 });

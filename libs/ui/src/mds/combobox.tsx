@@ -34,7 +34,8 @@ export interface MultiComboboxProps {
  * before a text field; typing filters the `.mds-popup` list (canvas rule 22:
  * the combobox reuses the select's open list), the arrow keys move in it,
  * Enter takes or drops the highlighted value and leaves the list open,
- * Backspace in an empty field drops the last chip, Escape closes the list.
+ * Backspace in an empty field drops the last chip, Escape closes the list
+ * and never clears what was chosen.
  * A chosen row carries a ✓, never colour alone.
  */
 export function MultiCombobox({
@@ -57,7 +58,14 @@ export function MultiCombobox({
       items={options.map((o) => o.value)}
       multiple
       value={value}
-      onValueChange={(next) => onChange(next as string[])}
+      // Base UI clears every chosen value on Escape while the list is shut;
+      // here Escape only closes the list (MDRS-248, the owner: Esc'e basınca
+      // seçilen konuların hepsi siliniyor). A chip is dropped by its own ×
+      // or Backspace, one at a time.
+      onValueChange={(next, details) => {
+        if (details.reason === "escape-key") return;
+        onChange(next as string[]);
+      }}
       itemToStringLabel={label}
       disabled={disabled}
     >

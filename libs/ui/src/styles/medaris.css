@@ -35,6 +35,10 @@
 
 /* The imam's star, which the system has no part for yet (2026-10-13). */
 @import "./mds/imam-star.css" layer(components);
+/* A question as the talebe sees it (MDRS-248, ortak görünüm), shared by
+   tedris's question screen and nazar's preview. Unlayered on purpose: it
+   refines the bordered choice row and must not lose to the class layer. */
+@import "./mds/question.css";
 
 /* Utilities read the tokens; nothing is written to :root. */
 @import "@medaris/tokens/tailwind.css";

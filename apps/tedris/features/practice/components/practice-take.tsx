@@ -17,8 +17,7 @@ import {
   INDICATOR,
   QuestionListToggle,
   QuestionNavigator,
-  QuestionOptions,
-  ScrollPane,
+  QuestionSheet,
   TakeKeys,
   TextSizeButtons,
   useQuestionList,
@@ -479,58 +478,44 @@ export function PracticeTake(source: PracticeSource) {
       ) : null}
 
       {q ? (
-        // On a desk: the question on the start side, its options on the
-        // end side, each scrolling on its own, the buttons under both.
-        <section
-          className="mds-card take-body flex flex-col gap-3"
-          aria-labelledby="practice-question"
-          data-testid="practice-question"
+        // The question above its options; on a desk side by side only when
+        // that does not fit the window (QuestionSheet's `fit`). nazar's
+        // preview draws the same sheet (MDRS-248, ortak görünüm).
+        <QuestionSheet
+          testId="practice-question"
+          textId="practice-question"
+          text={q.text}
+          question={q}
+          chosen={mine?.optionIds ?? []}
+          onChoose={choose}
+          legend={t("optionsLegend")}
+          multiHint={tb("multiHint")}
+          questionPaneLabel={tb("questionPane")}
+          optionsPaneLabel={tb("optionsPane")}
+          watch={q.id}
+          fit
+          head={
+            // The note icon at the end of this line; its panel opens over the
+            // options, which do not move (soru notları).
+            <>
+              <p className="mds-caption text-neutral-muted">
+                {t("questionNumber", { number: String(index + 1) })}
+              </p>
+              {showsNote(q) ? (
+                <QuestionNote
+                  key={q.id}
+                  questionId={q.id}
+                  questionNumber={index + 1}
+                  note={notes.get(q.id) ?? null}
+                  onChange={(note) =>
+                    setNotes((all) => new Map(all).set(q.id, note))
+                  }
+                  enabled={q.talebeNotes === true}
+                />
+              ) : null}
+            </>
+          }
         >
-          {/* The note icon at the end of this line; its panel opens over the
-              options, which do not move (soru notları). */}
-          <div className="question-note-anchor flex min-h-8 items-center justify-between gap-2">
-            <p className="mds-caption text-neutral-muted">
-              {t("questionNumber", { number: String(index + 1) })}
-            </p>
-            {showsNote(q) ? (
-              <QuestionNote
-                key={q.id}
-                questionId={q.id}
-                questionNumber={index + 1}
-                note={notes.get(q.id) ?? null}
-                onChange={(note) =>
-                  setNotes((all) => new Map(all).set(q.id, note))
-                }
-                enabled={q.talebeNotes === true}
-              />
-            ) : null}
-          </div>
-          <ScrollPane
-            className="take-question-pane"
-            label={tb("questionPane")}
-            watch={q.id}
-          >
-            <ArabicText
-              as="h2"
-              id="practice-question"
-              className="mds-body take-question"
-              size="var(--fs-body)"
-              text={q.text}
-            />
-          </ScrollPane>
-          <ScrollPane
-            className="take-options-pane"
-            label={tb("optionsPane")}
-            watch={q.id}
-          >
-            <QuestionOptions
-              question={q}
-              chosen={mine?.optionIds ?? []}
-              onChoose={choose}
-              legend={t("optionsLegend")}
-              multiHint={tb("multiHint")}
-            />
-          </ScrollPane>
           {/* Right under the options, as wide as they are: back and skip on
               the start side, the one button that leads on the end side. The
               same button says "Bitir" at the end, so the focus stays on it.
@@ -558,7 +543,7 @@ export function PracticeTake(source: PracticeSource) {
               {atEnd ? t("finish") : t("next")}
             </Button>
           </div>
-        </section>
+        </QuestionSheet>
       ) : null}
 
       <QuestionNavigator

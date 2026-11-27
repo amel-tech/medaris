@@ -18,7 +18,6 @@ import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
-import { Tooltip } from "@medaris/ui/mds/tooltip";
 import {
   unstable_isUnrecognizedActionError as isStaleAction,
   useRouter,
@@ -47,7 +46,7 @@ import {
   saveExamSettings,
   setExamQuestionPoints,
 } from "../actions";
-import { paragraphDir, textProps } from "../arabic";
+import { textProps } from "../arabic";
 import { setExamQuestionTalebeNotes } from "../notes-actions";
 import {
   type AnswerModeValue,
@@ -74,8 +73,15 @@ import {
   writeUnsaved,
 } from "../online-exams";
 import { takesNotes } from "../question-notes";
-import { ArabicText } from "./arabic-text";
 import { PublishSection } from "./exam-publish";
+import {
+  HocaSheet,
+  LacksMark,
+  lackingWords,
+  QuestionsBoard,
+  useLacking,
+  usePickedQuestion,
+} from "./question-board";
 import { TalebeNotesToggle } from "./talebe-notes-toggle";
 
 type Outcome =
@@ -207,6 +213,8 @@ export function ExamEditor({
     draft.questions.map((q) => ({ ...q, key: q.id }))
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // The question last picked in the list on the end side (MDRS-248).
+  const { picked, pick, setPicked, placeId } = usePickedQuestion();
   const practice = kind === "PRACTICE";
   const [settings, setSettings] = useState<ExamSettings>(() =>
     settingsOf(draft, practice)
@@ -794,6 +802,19 @@ export function ExamEditor({
   /** A topic made on this page by the id the server gave it, once it has. */
   const topicOf = (id: string) => topicIdOf.current.get(id) ?? id;
 
+  /** What each question lacks, worded, for its line in the list. */
+  const lackingOf = (q: Question) => lackingWords(t, q.lacks, practice);
+
+  /** "Düzenle", or a question's exclamation mark: its form opens in its place. */
+  const editQuestion = (key: string) => {
+    if (notesBusy.has(key)) return;
+    leaveOpen(() => {
+      leaveBlank();
+      setPicked(key);
+      setEditing(key);
+    });
+  };
+
   // What the page knows keeps the exam from being published: its length and
   // the questions as they now stand, and what only the server knows (the
   // points total and the zeroth question) as it was read.
@@ -869,76 +890,99 @@ export function ExamEditor({
             {t("OnlineExams.noQuestions")}
           </p>
         ) : null}
-        {/* Each card says "1. soru": the list draws no number of its own. */}
-        <ol className="flex list-none flex-col gap-2 ps-0">
-          {numbered.map((q) => (
-            <li key={q.key}>
-              {editing === q.key ? (
-                <QuestionForm
-                  practice={practice}
-                  kind={kind}
-                  draft={view}
-                  question={q}
-                  topicOf={topicOf}
-                  onTyping={setTyping}
-                  onChanged={setChanged}
-                  onCancel={() =>
-                    q.id === "" && !q.pending && q.text === ""
-                      ? removeQuestion(q.key)
-                      : setEditing(null)
-                  }
-                  onSave={(body) => {
-                    // A new question saved opens the next one's form; an
-                    // edit to a saved one closes (MDRS-248).
-                    const next = q.key === blank?.key;
-                    saveQuestion(q.key, body);
-                    if (next) openNewQuestion();
-                  }}
-                />
-              ) : (
-                <QuestionCard
-                  practice={practice}
-                  draft={view}
-                  topicOf={topicOf}
-                  question={q}
-                  // Not while its icon is being written: the form would open
-                  // with a state the server may still refuse.
-                  onEdit={() => {
-                    if (notesBusy.has(q.key)) return;
-                    leaveOpen(() => {
+        {/* Two columns on a desk (question-board.tsx): every question as
+            the talebe sees it, or its form while it is written; on the end
+            side every question as one line. */}
+        <QuestionsBoard
+          lines={numbered.map((q) => ({
+            key: q.key,
+            number: q.number,
+            text: q.text,
+            lacking: lackingOf(q),
+            pending: q.pending,
+            failed: q.failed,
+          }))}
+          picked={picked}
+          placeId={placeId}
+          onPick={(key) => pick(key)}
+          onEdit={editQuestion}
+          action={
+            <Button variant="secondary" onClick={addQuestion}>
+              {t("OnlineExams.addQuestion")}
+            </Button>
+          }
+        >
+          {/* Each sheet says "1. soru": the list draws no number of its own. */}
+          <ol className="flex list-none flex-col gap-3 ps-0">
+            {numbered.map((q) => (
+              <li
+                key={q.key}
+                id={placeId(q.key)}
+                className="scroll-mt-4"
+                data-picked={q.key === picked || undefined}
+              >
+                {editing === q.key ? (
+                  <QuestionForm
+                    practice={practice}
+                    kind={kind}
+                    draft={view}
+                    question={q}
+                    topicOf={topicOf}
+                    onTyping={setTyping}
+                    onChanged={setChanged}
+                    onCancel={() =>
+                      q.id === "" && !q.pending && q.text === ""
+                        ? removeQuestion(q.key)
+                        : setEditing(null)
+                    }
+                    onSave={(body) => {
+                      // A new question saved opens the next one's form; an
+                      // edit to a saved one closes (MDRS-248).
+                      const next = q.key === blank?.key;
+                      saveQuestion(q.key, body);
+                      if (next) openNewQuestion();
+                    }}
+                  />
+                ) : (
+                  <QuestionCard
+                    practice={practice}
+                    draft={view}
+                    topicOf={topicOf}
+                    question={q}
+                    picked={q.key === picked}
+                    onEdit={() => editQuestion(q.key)}
+                    onRetry={() => {
                       leaveBlank();
-                      setEditing(q.key);
-                    });
-                  }}
-                  onRetry={() => {
-                    leaveBlank();
-                    saveQuestion(q.key, {
-                      text: q.text,
-                      options: q.options.map((o) => ({
-                        text: o.text,
-                        correct: o.correct,
-                      })),
-                      topicIds: q.topicIds,
-                      answerMode: q.answerMode,
-                      scoring: q.scoring,
-                      points: typedOwnOf(q),
-                      talebeNotes: takesNotes(q, kind),
-                    });
-                  }}
-                  onRemove={() => removeQuestion(q.key)}
-                  notes={{
-                    on: takesNotes(q, kind),
-                    offered: q.id !== "" && !q.pending,
-                    onToggle: () => toggleNotes(q.key),
-                  }}
-                />
-              )}
-            </li>
-          ))}
-        </ol>
-        <div>
-          <Button onClick={addQuestion}>{t("OnlineExams.addQuestion")}</Button>
-        </div>
+                      saveQuestion(q.key, {
+                        text: q.text,
+                        options: q.options.map((o) => ({
+                          text: o.text,
+                          correct: o.correct,
+                        })),
+                        topicIds: q.topicIds,
+                        answerMode: q.answerMode,
+                        scoring: q.scoring,
+                        points: typedOwnOf(q),
+                        talebeNotes: takesNotes(q, kind),
+                      });
+                    }}
+                    onRemove={() => removeQuestion(q.key)}
+                    notes={{
+                      on: takesNotes(q, kind),
+                      offered: q.id !== "" && !q.pending,
+                      onToggle: () => toggleNotes(q.key),
+                    }}
+                  />
+                )}
+              </li>
+            ))}
+          </ol>
+          <div>
+            <Button onClick={addQuestion}>
+              {t("OnlineExams.addQuestion")}
+            </Button>
+          </div>
+        </QuestionsBoard>
         <AlertDialog
           open={dropThen !== null}
           onOpenChange={(open) => {
@@ -1331,37 +1375,23 @@ function TopicsSection({
   );
 }
 
-/** The longest option text, in characters, that still sits in two columns: tedris's SHORT_OPTION. */
-const SHORT_OPTION = 32;
-
 /**
- * How a question's options are laid out, as tedris's `optionsLayout` (MDRS-248):
- * two equal columns from 768px (nazar's one breakpoint) when every option is short, else one.
- * Counted in characters (code points), so Arabic is measured as it reads.
- */
-const optionsLayout = (
-  options: ReadonlyArray<{ text: string }>
-): "grid" | "list" =>
-  options.every((o) => [...o.text.trim()].length <= SHORT_OPTION)
-    ? "grid"
-    : "list";
-
-/**
- * A saved question as the talebe will see it (MDRS-248, the owner: "canlıda
- * nasıl görünecekse o şekilde görülmeli hazırlarken de"): its whole text with
- * its lines kept, by the Arabic text standard, and its options as the tiles
- * of the çalışma screen (tedris's `QuestionOptions`, #477), read only. The
- * correct option is marked for the hoca, with a ✓ and its name, never colour
- * alone. Its topics, the talebe-notes icon, "Düzenle" and "Sil" sit at its
- * top corner. A question that is not ready ends with an exclamation mark that
- * names what it lacks (on hover and focus, and as its name), and its card is
- * tinted red.
+ * The open question as the talebe will see it (MDRS-248, the owner:
+ * "talebenin gördüğü arayüz ile hocaların gördüğü arayüz aynı değil … sorular
+ * da öğrencinin ekranda gördüğü gibi görünmeli ki hoca öğrenciyi daha iyi
+ * anlayabilsin"): tedris's own QuestionSheet from @medaris/ui, the same
+ * number line, text and option tiles, read only. Laid over it for the hoca
+ * only: a ✓ named "Doğru" on the correct options, the topics beside the
+ * number, and the talebe-notes icon, "Düzenle" and "Sil" where the talebe
+ * has the note icon. A question that is not ready is tinted red, its
+ * exclamation mark beside its number.
  */
 function QuestionCard({
   practice,
   draft,
   topicOf,
   question,
+  picked = false,
   onEdit,
   onRetry,
   onRemove,
@@ -1370,7 +1400,12 @@ function QuestionCard({
   practice: boolean;
   draft: OnlineExamDraftResponse;
   topicOf: (id: string) => string;
-  question: Question & { share?: { hundredths: number; own: boolean } };
+  /** picked in the list on the end side: outlined, and focused when it is */
+  picked?: boolean;
+  question: Question & {
+    number: number;
+    share?: { hundredths: number; own: boolean };
+  };
   onEdit: () => void;
   onRetry: () => void;
   onRemove: () => void;
@@ -1388,18 +1423,7 @@ function QuestionCard({
   const ids = question.topicIds.map(topicOf);
   const named = draft.courseTopics.filter((topic) => ids.includes(topic.id));
   const n = question.number;
-  const lacking = question.lacks
-    // A çalışma seti's question needs no topic (MDRS-248).
-    .filter((lack) => !(practice && lack === "topic"))
-    .map((lack) =>
-      lack === "text"
-        ? t("OnlineExams.lackText")
-        : lack === "option"
-          ? t("OnlineExams.lackOption")
-          : lack === "correct"
-            ? t("OnlineExams.lackCorrect")
-            : t("OnlineExams.lackTopic")
-    );
+  const lacking = useLacking(question, practice);
   const facts = [
     ...(question.answerMode === "MULTIPLE"
       ? [
@@ -1422,151 +1446,93 @@ function QuestionCard({
   const lacks = lacking.length > 0;
   return (
     <article
-      className={`mds-card flex flex-col gap-2 p-3 ${lacks ? "border-error-default bg-error-subtle" : ""}`}
+      className="flex flex-col gap-2 focus-visible:outline-none"
       aria-label={t("OnlineExams.questionNumber", { number: n })}
       data-lacks-card={lacks ? "" : undefined}
+      tabIndex={-1}
     >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <strong className="mds-body-sm shrink-0">
-          {t("OnlineExams.questionNumber", { number: n })}
-        </strong>
-        {named.map((topic) => (
-          <Badge key={topic.id} variant="outline">
-            <bdi>
-              {t("OnlineExams.topicChip", {
-                number: topic.number,
-                name: topic.name,
-              })}
-            </bdi>
-          </Badge>
-        ))}
-        {question.pending ? (
-          <span className="mds-body-sm text-neutral-muted">
-            {t("OnlineExams.saving")}
-          </span>
-        ) : null}
-        {question.failed ? (
-          <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
-        ) : null}
-        <div className="ms-auto flex shrink-0 items-center gap-1">
-          <TalebeNotesToggle
-            on={notes.on}
-            disabled={!notes.offered}
-            onToggle={notes.onToggle}
-          />
-          {question.failed ? (
-            <Button size="small" onClick={onRetry}>
-              {t("OnlineExams.retry")}
-            </Button>
-          ) : null}
-          <IconButton
-            size="small"
-            variant="ghost"
-            icon={<Icon name="edit" size="sm" />}
-            label={t("OnlineExams.editQuestion", { number: n })}
-            onClick={onEdit}
-          />
-          {/* Opened by state, as the other nazar dialogs are: a bare `trigger`
-              is not wrapped in the kit's AlertDialogTrigger and opened nothing. */}
-          <IconButton
-            size="small"
-            variant="ghost"
-            icon={<Icon name="trash" size="sm" />}
-            label={t("OnlineExams.removeQuestion", { number: n })}
-            onClick={() => setAsking(true)}
-          />
-        </div>
-        <AlertDialog
-          open={asking}
-          onOpenChange={setAsking}
-          title={t("OnlineExams.removeTitle", { number: n })}
-          confirmLabel={t("OnlineExams.remove")}
-          cancelLabel={t("OnlineExams.cancel")}
-          closeLabel={t("Shell.close")}
-          confirmVariant="destructive"
-          onConfirm={() => {
-            setAsking(false);
-            onRemove();
-          }}
-        >
-          {t("OnlineExams.removeBody")}
-        </AlertDialog>
-      </div>
-      {/* Its lines and paragraphs as written (an âyet on a line of its own),
-          as the talebe's question screen keeps them. */}
-      {/* An Arabic question reads right to left as a whole, its mark at its
-          end; any other takes the page's direction (paragraphDir). */}
-      <p
-        dir={paragraphDir(question.text)}
-        className="mds-body m-0 whitespace-pre-line [overflow-wrap:anywhere]"
-      >
-        {question.text ? (
-          <ArabicText text={question.text} />
-        ) : (
-          <span className="text-neutral-muted">{t("OnlineExams.noText")}</span>
-        )}
-        {lacks ? (
+      <HocaSheet
+        question={question}
+        number={n}
+        className={
+          lacks
+            ? "border-error-default bg-error-subtle"
+            : picked
+              ? "border-brand-default"
+              : undefined
+        }
+        head={
           <>
-            {" "}
-            <Tooltip
-              label={
-                <span className="flex flex-col">
-                  {lacking.map((line) => (
-                    <span key={line}>{line}</span>
-                  ))}
-                </span>
-              }
-            >
-              <button
-                type="button"
-                data-lacks=""
-                aria-label={t("OnlineExams.lacksLabel", {
-                  lacks: lacking.join(", "),
-                })}
-                onClick={onEdit}
-                className="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost inline-flex align-middle text-error-default"
-              >
-                <Icon name="warning" size="sm" />
-              </button>
-            </Tooltip>
-          </>
-        ) : null}
-      </p>
-      {question.options.length > 0 ? (
-        <ul
-          className={`m-0 grid list-none auto-rows-fr grid-cols-1 gap-1 ps-0 ${optionsLayout(question.options) === "grid" ? "md:grid-cols-2" : ""}`}
-          aria-label={t("OnlineExams.optionsLabel")}
-        >
-          {question.options.map((o, i) => (
-            <li
-              key={o.id}
-              data-correct={o.correct ? "" : undefined}
-              className={`flex min-h-control-small items-center gap-2 rounded-control border px-3 py-1 ${o.correct ? "border-success-default bg-success-subtle" : "border-neutral-subtle bg-neutral-surface"}`}
-            >
-              <span
-                aria-hidden="true"
-                className="mds-caption inline-grid size-6 shrink-0 place-items-center rounded-full border border-neutral-strong bg-neutral-surface font-semibold"
-              >
-                {optionLetter(i)}
+            {lacks ? <LacksMark lacking={lacking} onEdit={onEdit} /> : null}
+            {named.map((topic) => (
+              <Badge key={topic.id} variant="outline">
+                <bdi>
+                  {t("OnlineExams.topicChip", {
+                    number: topic.number,
+                    name: topic.name,
+                  })}
+                </bdi>
+              </Badge>
+            ))}
+            {question.pending ? (
+              <span className="mds-body-sm text-neutral-muted">
+                {t("OnlineExams.saving")}
               </span>
-              <span className="mds-visually-hidden">{optionLetter(i)}) </span>
-              <ArabicText text={o.text} className="block min-inline-0 flex-1" />
-              {o.correct ? (
-                <span className="shrink-0 font-semibold text-success-default">
-                  <span aria-hidden="true">✓</span>
-                  <span className="mds-visually-hidden">
-                    {" "}
-                    {t("OnlineExams.correct")}
-                  </span>
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+            ) : null}
+            {question.failed ? (
+              <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
+            ) : null}
+          </>
+        }
+        tools={
+          <>
+            <TalebeNotesToggle
+              on={notes.on}
+              disabled={!notes.offered}
+              onToggle={notes.onToggle}
+            />
+            {question.failed ? (
+              <Button size="small" onClick={onRetry}>
+                {t("OnlineExams.retry")}
+              </Button>
+            ) : null}
+            <IconButton
+              size="small"
+              variant="ghost"
+              icon={<Icon name="edit" size="sm" />}
+              label={t("OnlineExams.editQuestion", { number: n })}
+              onClick={onEdit}
+            />
+            {/* Opened by state, as the other nazar dialogs are: a bare `trigger`
+                is not wrapped in the kit's AlertDialogTrigger and opened nothing. */}
+            <IconButton
+              size="small"
+              variant="ghost"
+              icon={<Icon name="trash" size="sm" />}
+              label={t("OnlineExams.removeQuestion", { number: n })}
+              onClick={() => setAsking(true)}
+            />
+          </>
+        }
+      />
       {facts ? (
         <p className="mds-body-sm m-0 text-neutral-muted">{facts}</p>
       ) : null}
+      <AlertDialog
+        open={asking}
+        onOpenChange={setAsking}
+        title={t("OnlineExams.removeTitle", { number: n })}
+        confirmLabel={t("OnlineExams.remove")}
+        cancelLabel={t("OnlineExams.cancel")}
+        closeLabel={t("Shell.close")}
+        confirmVariant="destructive"
+        onConfirm={() => {
+          setAsking(false);
+          onRemove();
+        }}
+      >
+        {t("OnlineExams.removeBody")}
+      </AlertDialog>
     </article>
   );
 }

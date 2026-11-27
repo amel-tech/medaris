@@ -26,3 +26,7 @@
 @import "./mds/datepicker.css" layer(components);
 /* The imam's star (2026-10-13), as medaris.css brings it. */
 @import "./mds/imam-star.css" layer(components);
+/* A question as the talebe sees it (MDRS-248, ortak görünüm), shared by
+   tedris's question screen and nazar's preview. Unlayered on purpose: it
+   refines the bordered choice row and must not lose to the class layer. */
+@import "./mds/question.css";

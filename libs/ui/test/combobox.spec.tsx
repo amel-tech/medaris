@@ -51,6 +51,21 @@ async function typeInto(input: HTMLInputElement, text: string) {
   await settle(60);
 }
 
+/** Escape in the field, as the browser sends it. */
+async function pressEscape(el: HTMLElement) {
+  await act(async () => {
+    el.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        code: "Escape",
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+  });
+  await settle(30);
+}
+
 const input = () =>
   document.querySelector("input[role=combobox]") as HTMLInputElement;
 const optionsShown = () =>
@@ -104,5 +119,23 @@ describe("MultiCombobox", () => {
     await click(remove);
     await settle(30);
     expect(chosen()).toBe("t7");
+  });
+
+  it("closes the list on Escape and keeps every chosen value, open or shut (MDRS-248)", async () => {
+    await render(<Harness start={["t3", "t7"]} />);
+    // Open: the first Escape closes the list.
+    await typeInto(input(), "icma");
+    expect(document.querySelector("[role=listbox]")).not.toBeNull();
+    await pressEscape(input());
+    expect(chosen()).toBe("t3,t7");
+    // Shut: Base UI would clear every chip here; it must not.
+    await pressEscape(input());
+    await pressEscape(input());
+    expect(chosen()).toBe("t3,t7");
+    expect(
+      [...document.querySelectorAll(".mds-combobox__chip")].map(
+        (c) => c.textContent
+      )
+    ).toEqual(["3. Kıyas", "7. Kur'an ilimleri"]);
   });
 });
