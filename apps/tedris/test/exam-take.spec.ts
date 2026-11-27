@@ -5,7 +5,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, key, render, settle } from "./dom";
 
 /**
  * The exam page of tedris (MDRS-299, `graphs/tedris/exams/take`): a choice
@@ -118,10 +118,14 @@ const button = (host: HTMLElement, label: string) =>
   [...host.querySelectorAll("button")].find(
     (b) => b.textContent?.trim() === label
   ) as HTMLButtonElement;
+/** An option's card, the <label>, found by the option's text (its letter aside). */
+const card = (host: HTMLElement, label: string) =>
+  [...host.querySelectorAll("label")].find(
+    (l) =>
+      (l.querySelector(".mds-choice__label") ?? l).textContent?.trim() === label
+  ) as HTMLLabelElement | undefined;
 const radio = (host: HTMLElement, label: string) =>
-  [...host.querySelectorAll("label")]
-    .find((l) => l.textContent?.trim() === label)
-    ?.querySelector("[role=radio]") as HTMLElement;
+  card(host, label)?.querySelector("[role=radio]") as HTMLElement;
 
 const mount = async (b: ExamBriefingResponse) => {
   const { ExamTake } = await import(
@@ -508,6 +512,50 @@ describe("the exam page (MDRS-299)", () => {
     );
     const list = host.querySelector("nav") as HTMLElement;
     expect(list.querySelector("[aria-label='1. soru, Atlandı']")).toBeTruthy();
+  });
+
+  it("keeps Bitir in the bar, leads with Sonraki under the options, Bitir at the end, and takes the keys", async () => {
+    mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+    mocks.saveExamAnswer.mockResolvedValue(
+      ok({ written: true, secondsLeft: 1700 })
+    );
+    const host = await mount(briefing());
+    // Nothing is picked by a key on the briefing.
+    await key(document.body, "1");
+    await click(button(host, "Sınava başla"));
+    await settle();
+    expect(mocks.saveExamAnswer).not.toHaveBeenCalled();
+    const bar = host.querySelector("[data-testid=exam-clock]")
+      ?.parentElement as HTMLElement;
+    expect(
+      bar.querySelector("[data-testid=finish-in-bar]")?.className
+    ).toContain("mds-btn--secondary");
+    const nav = host.querySelector("[data-testid=take-nav]") as HTMLElement;
+    const lead = nav.querySelector(".take-nav__go") as HTMLButtonElement;
+    expect(lead.textContent).toBe("Sonraki");
+    expect(lead.className).toContain("mds-btn--primary");
+    expect(
+      card(host, "Be")?.querySelector(".take-option__letter")?.textContent
+    ).toBe("B");
+    await key(document.body, "b");
+    await settle();
+    expect(radio(host, "Be").getAttribute("aria-checked")).toBe("true");
+    expect(mocks.saveExamAnswer).toHaveBeenLastCalledWith(
+      "l1",
+      "q1",
+      expect.objectContaining({ optionIds: ["b"] })
+    );
+    await key(document.body, "Enter");
+    await settle();
+    expect(host.textContent).toContain("İkinci soru");
+    expect(lead.textContent).toBe("Sınavı bitir");
+    await key(document.body, "Enter");
+    await settle();
+    expect(document.querySelector("[role=alertdialog]")).toBeTruthy();
+    // The dialog keeps its keys: a digit picks nothing under it.
+    await key(document.querySelector("[role=alertdialog]") as Element, "1");
+    await settle();
+    expect(radio(host, "Cim").getAttribute("aria-checked")).toBe("false");
   });
 
   it("names the list's colours among what to know before the start", async () => {

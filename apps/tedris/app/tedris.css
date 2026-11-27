@@ -21,3 +21,119 @@
 @import "@medaris/ui/globals.css";
 @import "@medaris/ui/medaris-components.css";
 @import "@medaris/tokens/tailwind-roles.css";
+
+/* The question screen of the çalışma soruları and the online exam (MDRS-248,
+   features/online-exams/components/question-parts.tsx). Outside the layers on
+   purpose: these refine the system's bordered choice row for this one screen
+   and must not lose to its own rules.
+
+   One reading column: the bar, the question, its options and the buttons
+   under them share the system's reading measure, centred. */
+.take-column {
+  inline-size: 100%;
+  max-inline-size: var(--layout-measure-prose);
+  margin-inline: auto;
+}
+
+/* An option card: a whole row, at least 48px, its letter in front. Chosen, it
+   fills, its edge thickens and its letter and control fill: never colour alone. */
+.take-options .mds-choice--bordered {
+  align-items: center;
+  min-block-size: 48px;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+}
+.take-options .mds-choice--bordered > :is(.mds-check, .mds-radio) {
+  margin-block-start: 0;
+}
+.take-options .mds-choice__icon {
+  margin-block-start: 0;
+}
+.take-options .mds-choice__text {
+  flex: 1;
+}
+.take-options .mds-choice__label {
+  font-size: var(--fs-body);
+  color: var(--text-neutral-default);
+}
+.take-options
+  .mds-choice--bordered:hover:not(:has(> [data-checked], > [data-disabled])) {
+  background: var(--background-neutral-hover);
+  border-color: var(--border-neutral-strong);
+}
+.take-options .mds-choice--bordered:has(> [data-checked]) {
+  background: var(--background-brand-subtle);
+  border-color: var(--border-brand-default);
+  box-shadow: inset 0 0 0 1px var(--border-brand-default);
+}
+.take-options .mds-choice--bordered:has(> :focus-visible) {
+  box-shadow: var(--ring-focus);
+}
+.take-options
+  .mds-choice--bordered:has(> [data-checked]):has(> :focus-visible) {
+  box-shadow:
+    inset 0 0 0 1px var(--border-brand-default),
+    var(--ring-focus);
+}
+.take-option__letter {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border: var(--border-width-thin) solid var(--border-neutral-strong);
+  border-radius: var(--radius-full);
+  background: var(--background-neutral-surface);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  color: var(--text-neutral-default);
+}
+.take-options .mds-choice--bordered:has(> [data-checked]) .take-option__letter {
+  background: var(--background-brand-bold);
+  border-color: var(--background-brand-bold);
+  color: var(--text-neutral-on-bold);
+}
+
+/* The buttons right under the options: back and skip at the start, the one
+   that leads at the end. On a phone they hold to the bottom of the screen,
+   the leading one on a row of its own, under the thumb. */
+.take-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-block-start: var(--space-2);
+}
+.take-nav__back {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+@media (width < 40rem) {
+  .take-nav {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 1;
+    padding-block: var(--space-3);
+    background: var(--background-neutral-surface);
+    border-block-start: var(--border-width-thin) solid
+      var(--border-neutral-subtle);
+  }
+  .take-nav__back {
+    inline-size: 100%;
+    flex-wrap: nowrap;
+  }
+  .take-nav__back > *,
+  .take-nav__go {
+    flex: 1;
+  }
+  .take-nav__go {
+    flex-basis: 100%;
+  }
+  /* No keyboard to speak of on a phone. */
+  .take-keys {
+    display: none;
+  }
+}

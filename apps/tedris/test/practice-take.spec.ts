@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import type { PracticeAttemptResponse } from "@medaris/services/tedrisat";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, key, render, settle } from "./dom";
 
 /**
  * Solving a çalışma seti (MDRS-248, Faz 3): the open attempt goes on at the
@@ -88,10 +88,14 @@ const button = (label: string) =>
   [...document.querySelectorAll("button")].find(
     (b) => b.textContent?.trim() === label
   ) as HTMLButtonElement;
+/** An option's card, the <label>, found by the option's text (its letter aside). */
+const card = (host: HTMLElement, label: string) =>
+  [...host.querySelectorAll("label")].find(
+    (l) =>
+      (l.querySelector(".mds-choice__label") ?? l).textContent?.trim() === label
+  ) as HTMLLabelElement | undefined;
 const radio = (host: HTMLElement, label: string) =>
-  [...host.querySelectorAll("label")]
-    .find((l) => l.textContent?.trim() === label)
-    ?.querySelector("[role=radio]") as HTMLElement;
+  card(host, label)?.querySelector("[role=radio]") as HTMLElement;
 
 const mount = async (
   source:
@@ -231,29 +235,168 @@ describe("solving a çalışma seti (MDRS-248)", () => {
     expect(router.push).toHaveBeenCalledWith("/calisma-sorulari/deneme/a1");
   });
 
-  it("leads with Sonraki while there is a next question, and with Bitir after the last", async () => {
+  it("keeps Bitir in the bar, and puts it in Sonraki's place under the options at the end", async () => {
     mocks.startPractice.mockResolvedValue(ok(attempt()));
     mocks.savePracticeChoice.mockImplementation(async (_a, questionId, ids) =>
       ok({ questionId, optionIds: ids, savedAt: new Date() })
     );
     const host = await mount();
-    // "Bitir" is there from the start, but quiet beside "Sonraki".
-    expect(button("Sonraki").className).toContain("mds-btn--primary");
-    expect(button("Bitir").className).toContain("mds-btn--outline");
+    const bar = host.querySelector(
+      "[aria-label='Çalışma durumu']"
+    ) as HTMLElement;
+    const nav = host.querySelector("[data-testid=take-nav]") as HTMLElement;
+    const inBar = bar.querySelector(
+      "[data-testid=finish-in-bar]"
+    ) as HTMLElement;
+    // "Bitir" waits in the bar, quiet; under the options "Sonraki" leads alone.
+    expect(inBar.textContent).toBe("Bitir");
+    expect(inBar.className).toContain("mds-btn--secondary");
+    const lead = nav.querySelector(".take-nav__go") as HTMLButtonElement;
+    expect(lead.textContent).toBe("Sonraki");
+    expect(lead.className).toContain("mds-btn--primary");
+    expect(nav.textContent).not.toContain("Bitir");
+    // Right under the options, in the same card.
+    const question = host.querySelector("[data-testid=practice-question]");
+    expect(nav.closest("[data-testid=practice-question]")).toBe(question);
     expect(host.textContent).toContain("0/2 cevaplandı");
     expect(host.textContent).toContain("Cevaplanmadı (2)");
     await click(radio(host, "Elif"));
     await settle();
     expect(host.textContent).toContain("1/2 cevaplandı");
     expect(host.textContent).toContain("Cevaplandı (1)");
-    await click(button("Sonraki"));
+    await click(lead);
     await settle();
-    await click(radio(host, "Dal"));
+    // The last question: the same button now says "Bitir" and leads.
+    const last = nav.querySelector(".take-nav__go") as HTMLButtonElement;
+    expect(last).toBe(lead);
+    expect(last.textContent).toBe("Bitir");
+    expect(last.className).toContain("mds-btn--primary");
+    expect(
+      [...nav.querySelectorAll("button")].map((b) => b.textContent)
+    ).not.toContain("Sonraki");
+    await click(last);
     await settle();
-    // Every question answered: nothing comes next, and "Bitir" leads.
-    expect(button("Sonraki").disabled).toBe(true);
-    expect(button("Bitir").className).toContain("mds-btn--primary");
-    expect(host.textContent).toContain("2/2 cevaplandı");
+    expect(document.body.textContent).toContain(
+      "1 soruyu boş bıraktın. Bitirmek istiyor musun?"
+    );
+  });
+
+  it("draws each option as a card with its letter, chosen by a click anywhere on it", async () => {
+    mocks.startPractice.mockResolvedValue(ok(attempt()));
+    mocks.savePracticeChoice.mockResolvedValue(
+      ok({ questionId: "q1", optionIds: ["b"], savedAt: new Date() })
+    );
+    const host = await mount();
+    const be = card(host, "Be") as HTMLLabelElement;
+    expect(be.className).toContain("mds-choice--bordered");
+    expect(be.closest(".take-options")).toBeTruthy();
+    expect(be.querySelector(".take-option__letter")?.textContent).toBe("B");
+    expect(
+      card(host, "Elif")?.querySelector(".take-option__letter")?.textContent
+    ).toBe("A");
+    // Still a radio group underneath: the keyboard and a screen reader see one.
+    expect(
+      host.querySelectorAll("[role=radiogroup] [role=radio]")
+    ).toHaveLength(2);
+    await click(be.querySelector(".mds-choice__label") as HTMLElement);
+    await settle();
+    expect(radio(host, "Be").getAttribute("aria-checked")).toBe("true");
+    expect(mocks.savePracticeChoice).toHaveBeenCalledWith("a1", "q1", ["b"]);
+  });
+
+  it("picks an option with 1–9 or A–Z and goes on with Enter, and Enter at the end asks before Bitir", async () => {
+    mocks.startPractice.mockResolvedValue(ok(attempt()));
+    mocks.savePracticeChoice.mockImplementation(async (_a, questionId, ids) =>
+      ok({ questionId, optionIds: ids, savedAt: new Date() })
+    );
+    const host = await mount();
+    expect(host.textContent).toContain(
+      "Kısayollar: şık seçmek için 1–9 ya da A–Z, sonraki soru için Enter."
+    );
+    await key(document.body, "2");
+    await settle();
+    expect(radio(host, "Be").getAttribute("aria-checked")).toBe("true");
+    await key(document.body, "a");
+    await settle();
+    expect(radio(host, "Elif").getAttribute("aria-checked")).toBe("true");
+    // A key past the last option does nothing.
+    await key(document.body, "c");
+    await key(document.body, "9");
+    await settle();
+    expect(radio(host, "Elif").getAttribute("aria-checked")).toBe("true");
+    expect(mocks.savePracticeChoice.mock.calls.map((c) => c[2])).toEqual([
+      ["b"],
+      ["a"],
+    ]);
+    await key(document.body, "Enter");
+    await settle();
+    expect(host.textContent).toContain("İkinci soru");
+    await key(document.body, "B");
+    await settle();
+    expect(radio(host, "Dal").getAttribute("aria-checked")).toBe("true");
+    await key(document.body, "Enter");
+    await settle();
+    expect(document.body.textContent).toContain(
+      "Bütün soruları cevapladın. Bitirmek istiyor musun?"
+    );
+  });
+
+  it("leaves the keys to a field, to a button's own Enter and to Ctrl", async () => {
+    mocks.startPractice.mockResolvedValue(ok(attempt()));
+    mocks.savePracticeChoice.mockResolvedValue(
+      ok({ questionId: "q1", optionIds: ["a"], savedAt: new Date() })
+    );
+    const host = await mount();
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+    await key(field, "1");
+    await key(field, "Enter");
+    const previous = button("Önceki");
+    await key(button("Soruyu atla"), "Enter");
+    await act(async () => {
+      document.body.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "1", ctrlKey: true, bubbles: true })
+      );
+    });
+    await settle();
+    expect(previous.disabled).toBe(true);
+    expect(mocks.savePracticeChoice).not.toHaveBeenCalled();
+    expect(host.textContent).toContain("Birinci soru");
+  });
+
+  it("shows check boxes on cards when more than one option may be right, and a key turns one over", async () => {
+    const multi = attempt();
+    multi.questions[0].answerMode = "MULTIPLE";
+    multi.questions[0].options.push({ id: "e", text: "Cim" });
+    mocks.startPractice.mockResolvedValue(ok(multi));
+    mocks.savePracticeChoice.mockImplementation(async (_a, questionId, ids) =>
+      ok({ questionId, optionIds: ids, savedAt: new Date() })
+    );
+    const host = await mount();
+    expect(host.querySelector("[role=radio]")).toBeNull();
+    const boxes = host.querySelectorAll(".take-options [role=checkbox]");
+    expect(boxes).toHaveLength(3);
+    expect(
+      card(host, "Cim")?.querySelector(".take-option__letter")?.textContent
+    ).toBe("C");
+    await key(document.body, "1");
+    await settle();
+    await key(document.body, "c");
+    await settle();
+    expect(mocks.savePracticeChoice).toHaveBeenLastCalledWith("a1", "q1", [
+      "a",
+      "e",
+    ]);
+    await key(document.body, "1");
+    await settle();
+    expect(mocks.savePracticeChoice).toHaveBeenLastCalledWith("a1", "q1", [
+      "e",
+    ]);
+    expect(
+      card(host, "Cim")
+        ?.querySelector("[role=checkbox]")
+        ?.getAttribute("aria-checked")
+    ).toBe("true");
   });
 
   it("has A− / A+ once, in the top bar, and keeps its step across questions and a reload", async () => {
@@ -303,6 +446,12 @@ describe("solving a çalışma seti (MDRS-248)", () => {
       (el) => el.textContent === "فَاعِلٌ"
     ) as HTMLElement;
     expect(option.getAttribute("dir")).toBe("rtl");
+    // A block filling its card, so it lines up on the right; its letter stays.
+    expect(option.className).toContain("block");
+    expect(
+      option.closest("label")?.querySelector(".take-option__letter")
+        ?.textContent
+    ).toBe("A");
     // The mixed option: Turkish at its own size, the Arabic word on its own.
     const run = [...host.querySelectorAll("[lang=ar]")].find(
       (el) => el.textContent === "مَفْعُولٌ"

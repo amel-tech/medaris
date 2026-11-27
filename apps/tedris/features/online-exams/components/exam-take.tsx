@@ -43,6 +43,7 @@ import { ArabicText } from "./arabic-text";
 import {
   QuestionNavigator,
   QuestionOptions,
+  TakeKeys,
   TextSizeButtons,
 } from "./question-parts";
 
@@ -515,6 +516,16 @@ export function ExamTake({
     // A− / A+ zoom the whole exam: the bar, the question, its buttons and the
     // list. The area widens with each step past the page's column, and the
     // largest step spans the whole width of the screen.
+    // The end: the last question, or every one answered. "Bitir" then takes
+    // "Sonraki"'s place under the options; the bar has it all along.
+    const following = nextIndex(ids, answers, index);
+    const atEnd =
+      following === null || index === questions.length - 1 || unanswered === 0;
+    const goOn = () => {
+      if (atEnd) setAsking(true);
+      else go(following, following !== null && following <= index);
+    };
+
     const scale = TEXT_SCALES[textStep];
     const widest = textStep === TEXT_SCALES.length - 1;
 
@@ -540,10 +551,17 @@ export function ExamTake({
           }}
         >
           <div
-            className="flex flex-col gap-section"
+            className="take-column flex flex-col gap-section"
             style={{ zoom: scale }}
             data-text-scale={scale}
           >
+            <TakeKeys
+              question={q}
+              chosen={mine?.optionIds ?? []}
+              onChoose={choose}
+              onEnter={goOn}
+              off={asking}
+            />
             <section
               className="mds-card flex flex-wrap items-center justify-between gap-3"
               aria-label={t("barLabel")}
@@ -584,6 +602,15 @@ export function ExamTake({
                 biggerLabel={t("textBigger")}
                 groupLabel={tb("textSizeLabel")}
               />
+              {/* Up here, away from "Sonraki": ending is never one slip from going on. */}
+              <Button
+                size="small"
+                variant="secondary"
+                onClick={() => setAsking(true)}
+                data-testid="finish-in-bar"
+              >
+                {t("finish")}
+              </Button>
             </section>
 
             {offline && stale ? (
@@ -629,29 +656,29 @@ export function ExamTake({
                   onChoose={choose}
                   legend={t("optionsLegend")}
                 />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    disabled={index === 0}
-                    onClick={() => go(index - 1)}
-                  >
-                    {t("previous")}
+                {/* As on the çalışma soruları (practice-take.tsx): right under
+                    the options, back and skip on the start side, the one
+                    button that leads on the end side, "Bitir" at the end. */}
+                <div className="take-nav" data-testid="take-nav">
+                  <div className="take-nav__back">
+                    <Button
+                      variant="outline"
+                      disabled={index === 0}
+                      onClick={() => go(index - 1)}
+                    >
+                      {t("previous")}
+                    </Button>
+                    <Button variant="ghost" onClick={skip}>
+                      {t("skip")}
+                    </Button>
+                  </div>
+                  <Button className="take-nav__go" onClick={goOn}>
+                    {atEnd ? t("finish") : t("next")}
                   </Button>
-                  <Button variant="ghost" onClick={skip}>
-                    {t("skip")}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={nextIndex(ids, answers, index) === null}
-                    onClick={() => {
-                      const to = nextIndex(ids, answers, index);
-                      go(to, to !== null && to <= index);
-                    }}
-                  >
-                    {t("next")}
-                  </Button>
-                  <Button onClick={() => setAsking(true)}>{t("finish")}</Button>
                 </div>
+                <p className="take-keys mds-caption text-neutral-muted">
+                  {tb("keysHint")}
+                </p>
               </section>
             ) : null}
 
