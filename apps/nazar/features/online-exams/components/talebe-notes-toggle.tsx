@@ -49,7 +49,7 @@ export function TalebeNotesToggle({
           <Icon name="chat" size="sm" />
           {on ? null : (
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="block h-0.5 w-[130%] shrink-0 rotate-45 rounded-full bg-current" />
+              <span className="block h-[var(--border-width-thick)] w-[130%] shrink-0 rotate-45 rounded-full bg-current" />
             </span>
           )}
         </span>
