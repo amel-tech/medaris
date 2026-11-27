@@ -27,22 +27,23 @@ import { intlMock } from "./intl-mock";
  * catalogue.
  */
 
-const text = (key: string) =>
-  key
-    .split(".")
-    .reduce<unknown>(
-      (node, part) => (node as Record<string, unknown>)?.[part],
-      resources.tr.tedris.Practice
-    ) as string;
-const lookup = (key: string, values: Record<string, unknown> = {}) =>
-  Object.entries(values).reduce(
-    (acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)),
-    text(key)
-  );
+const textIn = (namespace: string) => (key: string) =>
+  [...namespace.split(".").slice(1), ...key.split(".")].reduce<unknown>(
+    (node, part) => (node as Record<string, unknown>)?.[part],
+    resources.tr.tedris
+  ) as string;
+const lookupIn =
+  (namespace: string) =>
+  (key: string, values: Record<string, unknown> = {}) =>
+    Object.entries(values).reduce(
+      (acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)),
+      textIn(namespace)(key)
+    );
 // The result's body is a client component: the real catalogue behind useTranslations.
 vi.mock("next-intl", async (orig) => intlMock(await orig()));
 vi.mock("next-intl/server", () => ({
-  getTranslations: async () => lookup,
+  // Each namespace its own part of the catalogue (the list also reads tedris.QuestionNotes).
+  getTranslations: async (namespace = "tedris.Practice") => lookupIn(namespace),
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
 }));

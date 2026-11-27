@@ -10,7 +10,9 @@ import { pgClient } from "./pg-client";
  * E2E_TALEBE_PASSWORD, E2E_TALEBE_SUB). A published set of two questions on
  * the celse-states course: the course page links to it, the list offers
  * "Başla", one answer and "Bitir" end on the result with one correct and one
- * blank. Skipped without the account.
+ * blank. Then a note on a question (soru notları): written and sent to the
+ * hoca from the solving screen, answered by the hoca, and read under
+ * "Notlarım". Skipped without the account.
  */
 let fixture: CelseStatesFixture;
 let client: pg.Client;
@@ -45,8 +47,8 @@ test.beforeAll(async () => {
   );
   for (const [i, q] of questions.entries()) {
     await client.query(
-      `insert into exam_questions(id, exam_id, position, text, answer_mode)
-       values ($1, $2, $3, $4, 'SINGLE')`,
+      `insert into exam_questions(id, exam_id, position, text, answer_mode, talebe_notes)
+       values ($1, $2, $3, $4, 'SINGLE', true)`,
       [q.id, setId, i, q.text]
     );
     await client.query(
@@ -64,6 +66,9 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (client) {
     const ids = questions.map((q) => q.id);
+    await client.query("delete from question_notes where exam_id = $1", [
+      setId,
+    ]);
     await client.query(
       "delete from practice_answers where attempt_id in (select id from practice_attempts where set_id = $1)",
       [setId]
@@ -148,4 +153,46 @@ test("Başla, one answer, Bitir: the result with the correct options", async ({
   await expect(page.getByTestId("practice-blank")).toHaveText("1");
   await expect(page.getByText("Doğru şık")).toHaveCount(2);
   await expect(page.getByRole("link", { name: "Tekrar çöz" })).toBeVisible();
+});
+
+test("a note on a question: written, sent, answered, read under Notlarım (soru notları)", async ({
+  page,
+}) => {
+  await page.goto("/calisma-sorulari");
+  const card = page.getByTestId("practice-set").filter({ hasText: setTitle });
+  // The test before solved the set once: this is the second attempt.
+  await card.getByRole("link", { name: `${setTitle}: tekrar çöz` }).click();
+  const question = page.getByTestId("practice-question");
+  await expect(question).toBeVisible();
+  const text = (await question.locator("h2").textContent())?.trim();
+  const q = questions.find((it) => it.text === text);
+
+  const icon = question.getByTestId("question-note-button");
+  await icon.click();
+  const panel = page.getByRole("dialog");
+  await expect(panel.getByRole("textbox")).toBeFocused();
+  await panel.getByRole("textbox").fill("Bu fiilin babını nasıl bulurum?");
+  await panel.getByText("Hocaya gönder").click();
+  await panel.getByRole("button", { name: "Kaydet" }).click();
+  await expect(panel).toContainText("Notun kaydedildi.");
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(icon).toBeFocused();
+
+  // The hoca answers (nazar's screen is not this app's).
+  await client.query(
+    `update question_notes set teacher_reply = $1, replied_by = $2, replied_at = now()
+     where question_id = $3`,
+    ["Mâzi ile muzârinin aynel fiillerine bak.", randomUUID(), q?.id]
+  );
+
+  await page.goto("/calisma-sorulari");
+  await page.getByTestId("practice-notes-link").first().click();
+  await expect(page).toHaveURL(/\/calisma-sorulari\/notlar\?ders=/);
+  const item = page.getByTestId("notes-item").filter({ hasText: text ?? "" });
+  await expect(item).toContainText("Bu fiilin babını nasıl bulurum?");
+  await expect(item).toContainText("Hocaya gönderildi");
+  await expect(item).toContainText("Hocanın cevabı:");
+  await expect(item).toContainText("Mâzi ile muzârinin aynel fiillerine bak.");
+  await expect(item).toContainText("Yeni cevap");
 });

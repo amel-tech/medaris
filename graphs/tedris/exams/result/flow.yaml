@@ -95,7 +95,7 @@ states:
       FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read fails" }
   loaded:
     title: The screen is drawn as the read says
-    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:107
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:108
     description: A step with no screen of its own.
     always:
       - { guard: "attempt == 'inProgress'", target: inProgress, say: "the attempt has not ended" }
@@ -103,37 +103,37 @@ states:
       - { target: resultShown, say: "the results are released" }
   notFound:
     title: No such exam
-    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:65
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:66
     description: >-
       A neutral alert "Böyle bir sınav yok", "Bu sınav, girdiğin sınavlar arasında değil."; the breadcrumb "Sınavlarım" above it, on
       every state of the page, leads back.
     by: human
     on:
-      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:49" }
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:50" }
       NAVIGATE: left
   loadFailed:
     title: The result could not be read
-    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:66
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:67
     description: An alert "Sonuç okunamadı", "Sınavının sonucu okunamadı. Biraz sonra yeniden dene.", with "Yeniden dene", a link to the page's own address.
     by: human
     on:
-      RETRY: { target: opening, say: "they press Yeniden dene: the page is loaded again", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:74" }
+      RETRY: { target: opening, say: "they press Yeniden dene: the page is loaded again", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:75" }
       BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   inProgress:
     title: The exam is still in progress
-    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:111
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:112
     description: >-
       The talebe's attempt has not ended (an address opened by hand, or a page left open): the course and the title, an alert "Sınavın
       sürüyor", "Bu sınava başladın ve henüz bitmedi.", and "Devam et" to the exam's own page.
     by: human
     on:
-      CONTINUE: { target: exam_opened, say: "they press Devam et", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:114" }
+      CONTINUE: { target: exam_opened, say: "they press Devam et", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:115" }
       BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   awaitingRelease:
     title: Sonuç henüz açıklanmadı
-    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:165
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:166
     description: >-
       The course and the title (h1), a line saying when it ended and how (handed in, ended by the time, or closed early by the team),
       "Sonuç henüz açıklanmadı" (h2) and "Dersin ekibi sonuçları açıkladığında puanın ve konulara göre durumun burada görünür."; no
@@ -144,7 +144,7 @@ states:
       NAVIGATE: left
   resultShown:
     title: The talebe's result
-    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:142
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:143
     description: >-
       One page, read top to bottom: the line of when and how it ended, "100 üzerinden {score}" (h2), the right, wrong and blank counts,
       and the standing ("Sınava {taken} kişi girdi. Puanın {score}. {taken} kişi içinde {rank}. sıradasın", with how many share it).

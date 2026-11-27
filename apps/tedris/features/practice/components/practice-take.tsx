@@ -1,6 +1,9 @@
 "use client";
 
-import type { PracticeAttemptResponse } from "@medaris/services/tedrisat";
+import type {
+  MyQuestionNoteResponse,
+  PracticeAttemptResponse,
+} from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Button } from "@medaris/ui/mds/button";
@@ -25,6 +28,8 @@ import {
   TEXT_SCALES,
   writeTextScale,
 } from "~/features/online-exams/take-model";
+import { QuestionNote } from "~/features/question-notes/components/question-note";
+import { notesOf, showsNote } from "~/features/question-notes/note-model";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   finishPractice,
@@ -87,6 +92,10 @@ export function PracticeTake(source: PracticeSource) {
   const [finishFailed, setFinishFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [textStep, setTextStep] = useState(0);
+  // The talebe's note of each question (soru notları), as the icon shows it.
+  const [notes, setNotes] = useState<
+    Map<string, MyQuestionNoteResponse | null>
+  >(new Map());
 
   const scaleKey = `practice:${setId ?? `pool-${courseId}`}`;
   useEffect(() => {
@@ -147,6 +156,7 @@ export function PracticeTake(source: PracticeSource) {
           ])
         )
       );
+      setNotes(notesOf(a.questions));
       setIndex(startIndex(a));
       setPhase("running");
     } catch {
@@ -465,9 +475,25 @@ export function PracticeTake(source: PracticeSource) {
           aria-labelledby="practice-question"
           data-testid="practice-question"
         >
-          <p className="mds-caption text-neutral-muted">
-            {t("questionNumber", { number: String(index + 1) })}
-          </p>
+          {/* The note icon at the end of this line; its panel opens over the
+              options, which do not move (soru notları). */}
+          <div className="question-note-anchor flex min-h-8 items-center justify-between gap-2">
+            <p className="mds-caption text-neutral-muted">
+              {t("questionNumber", { number: String(index + 1) })}
+            </p>
+            {showsNote(q) ? (
+              <QuestionNote
+                key={q.id}
+                questionId={q.id}
+                questionNumber={index + 1}
+                note={notes.get(q.id) ?? null}
+                onChange={(note) =>
+                  setNotes((all) => new Map(all).set(q.id, note))
+                }
+                enabled={q.talebeNotes === true}
+              />
+            ) : null}
+          </div>
           <ArabicText
             as="h2"
             id="practice-question"

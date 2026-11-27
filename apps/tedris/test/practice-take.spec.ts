@@ -39,6 +39,11 @@ vi.mock("next-intl", async () => {
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("~/lib/send-to-sign-in", () => ({ sendToSignIn: () => false }));
 vi.mock("~/features/practice/actions", () => mocks);
+// The note icon's Server Actions (soru notları), never called here.
+vi.mock("~/features/question-notes/actions", () => ({
+  saveMyQuestionNote: vi.fn(),
+  deleteMyQuestionNote: vi.fn(),
+}));
 
 const ok = <T>(data: T) => ({ success: true as const, data });
 

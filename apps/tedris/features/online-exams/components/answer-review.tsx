@@ -1,5 +1,6 @@
 "use client";
 
+import type { MyQuestionNoteResponse } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
 import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Icon, type IconName } from "@medaris/ui/mds/icon";
@@ -14,6 +15,10 @@ import {
   useMemo,
   useState,
 } from "react";
+import {
+  QuestionNote,
+  QuestionNoteSummary,
+} from "~/features/question-notes/components/question-note";
 import { ArabicText } from "./arabic-text";
 
 export type ReviewOutcome = "correct" | "wrong" | "blank";
@@ -35,6 +40,12 @@ export interface ReviewItem {
   setTitle?: string | null;
   /** a line of the caller's beside the badge (an exam's points) */
   meta?: ReactNode;
+  /**
+   * The talebe's note on it (soru notları): the icon, and the note with the
+   * hoca's answer under the options. Absent where notes are off and none
+   * was written.
+   */
+  note?: { enabled: boolean; initial: MyQuestionNoteResponse | null } | null;
 }
 
 /**
@@ -262,6 +273,8 @@ const AnswerCard = memo(function AnswerCard({
   const look = LOOK[question.outcome];
   // Only what the talebe needs to see: the choice and the correct option.
   const lines = question.options.filter((o) => o.chosen || o.correct);
+  // The card keeps its note: the icon's panel writes it, the summary shows it.
+  const [note, setNote] = useState(question.note?.initial ?? null);
   return (
     <article
       id={id}
@@ -280,7 +293,7 @@ const AnswerCard = memo(function AnswerCard({
         ...(targeted ? TARGETED : null),
       }}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="question-note-anchor flex flex-wrap items-center gap-2">
         <strong className="mds-body-sm">
           {t("questionNumber", { number: question.number })}
         </strong>
@@ -290,6 +303,17 @@ const AnswerCard = memo(function AnswerCard({
         {question.meta ? (
           <span className="mds-caption text-neutral-muted">
             {question.meta}
+          </span>
+        ) : null}
+        {question.note ? (
+          <span className="ms-auto inline-flex">
+            <QuestionNote
+              questionId={question.id}
+              questionNumber={question.number}
+              note={note}
+              onChange={setNote}
+              enabled={question.note.enabled}
+            />
           </span>
         ) : null}
       </div>
@@ -336,6 +360,7 @@ const AnswerCard = memo(function AnswerCard({
       {question.outcome === "blank" ? (
         <p className="mds-caption text-neutral-muted">{t("noAnswer")}</p>
       ) : null}
+      {question.note ? <QuestionNoteSummary note={note} /> : null}
     </article>
   );
 });

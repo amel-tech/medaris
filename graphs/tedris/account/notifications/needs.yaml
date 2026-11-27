@@ -38,7 +38,7 @@ needs:
       - source: apps/tedrisat/src/notification/notification.controller.ts:88
       - source: apps/tedrisat/src/notification/notification.controller.ts:135
       - source: apps/tedris/features/notifications/components/notifications-page.tsx:204
-      - source: apps/tedris/features/notifications/notification-view.ts:216
+      - source: apps/tedris/features/notifications/notification-view.ts:226
 
   - id: open-what-it-is-about
     need: >-
@@ -51,7 +51,7 @@ needs:
       - state: celse_opened
       - state: deck_opened
       - state: kosk_opened
-      - source: apps/tedris/features/notifications/notification-view.ts:60
+      - source: apps/tedris/features/notifications/notification-view.ts:64
       - source: apps/tedris/features/notifications/components/notification-row.tsx:54
 
   - id: narrow-to-unread

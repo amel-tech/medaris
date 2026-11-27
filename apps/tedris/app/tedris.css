@@ -137,3 +137,67 @@
     display: none;
   }
 }
+
+/* A question's note (MDRS-248, soru notları,
+   features/question-notes/components/question-note.tsx): an icon in the
+   question's top line, and a small panel that opens over what is under it,
+   so the options and the buttons never move. The line that holds the icon is
+   the panel's anchor; the panel is as wide as that line allows, never wider
+   than a note needs. */
+.question-note-anchor {
+  position: relative;
+}
+.question-note__button {
+  position: relative;
+  flex: none;
+}
+/* A note written: the icon sits on the brand's tint, so "there is a note" is
+   a filled shape, not a colour alone. */
+.question-note__button[data-look]:not([data-look="empty"]) {
+  background: var(--background-brand-subtle);
+  color: var(--text-brand-default);
+  border-color: var(--border-brand-default);
+}
+/* The hoca answered: a dot on the icon's corner; filled while not read. */
+.question-note__dot {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--background-brand-bold);
+  background: var(--background-neutral-surface);
+}
+.question-note__dot[data-new] {
+  background: var(--background-brand-bold);
+}
+.question-note__panel {
+  position: absolute;
+  z-index: 20;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: 0;
+  inline-size: min(24rem, 100%);
+  padding: var(--space-4);
+  border: var(--border-width-thin) solid var(--border-neutral-subtle);
+  border-radius: var(--radius-surface);
+  background: var(--background-neutral-surface);
+  color: var(--text-neutral-default);
+  box-shadow: var(--elevation-overlay);
+  text-align: start;
+}
+.question-note__reply,
+.question-note__summary {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-tag);
+  background: var(--background-neutral-sunken);
+}
+.question-note__summary .question-note__reply {
+  padding: 0;
+  background: none;
+}
+@media (forced-colors: active) {
+  .question-note__dot[data-new] {
+    background: Highlight;
+  }
+}
