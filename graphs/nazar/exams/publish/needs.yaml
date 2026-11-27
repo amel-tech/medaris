@@ -17,7 +17,7 @@ needs:
       - state: closed
       - node: scheduledBadge
       - node: openBadge
-      - source: apps/nazar/features/online-exams/components/exams-page.tsx:51
+      - source: apps/nazar/features/online-exams/components/exams-page.tsx:55
     note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"."
 
   - id: checked-before-it-is-published
@@ -27,7 +27,7 @@ needs:
       nothing is published.
     evidence:
       - node: problemLink
-      - source: apps/nazar/features/online-exams/components/exam-publish.tsx:42
+      - source: apps/nazar/features/online-exams/components/exam-publish.tsx:43
       - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
         name: "lists every problem of an exam that is not ready, and plans nothing"
       - test: apps/nazar/test/exam-publish.spec.tsx
