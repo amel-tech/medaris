@@ -10,6 +10,96 @@ export const segmentOf = (kind: ExamKind): string =>
 /** The option fields a new question shows (the owner: five). */
 export const OPTION_FIELDS = 5;
 
+/** The most options a question takes: the API's `@ArrayMaxSize(50)` on them. */
+export const OPTIONS_MAX = 50;
+
+/** An option's longest text: the API's `OPTION_TEXT_MAX`. */
+export const OPTION_TEXT_MAX = 1000;
+
+/** "A", "B", … "Z", "AA", "AB": the option's mark, as `<ol type="A">` counts. */
+export const optionLetter = (index: number): string => {
+  let n = index + 1;
+  let letters = "";
+  while (n > 0) {
+    letters = String.fromCharCode(65 + ((n - 1) % 26)) + letters;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letters;
+};
+
+// "A) ", "b. ", "(3) ", "12. ", "Ç) ": the mark a list copied from a document starts each line with.
+const LINE_MARK = /^\(?(\d{1,2}|\p{L})[.)]\s+/u;
+const TURKISH = "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ";
+
+/** Whether the marks count on one by one: 1, 2, 3… or A, B, C… (Latin or Turkish order). */
+function counting(marks: readonly string[]): boolean {
+  const steps = (order: (mark: string) => number, of = marks) =>
+    of.every(
+      (mark, k) => k === 0 || order(mark) === order(of[k - 1] ?? "") + 1
+    );
+  if (marks.every((mark) => /^\d+$/.test(mark))) return steps(Number);
+  if (marks.every((mark) => /^[A-Za-z]$/.test(mark)))
+    return steps((mark) => mark.charCodeAt(0));
+  const upper = marks.map((mark) => mark.toLocaleUpperCase("tr-TR"));
+  return (
+    upper.every((mark) => TURKISH.includes(mark)) &&
+    steps((mark) => TURKISH.indexOf(mark), upper)
+  );
+}
+
+/**
+ * The lines of a paste, one option each: blank lines dropped, cut to an
+ * option's longest text, and the marks taken off only when every line
+ * carries one and they count on (A, B, C… or 1, 2, 3…), so "I. Dünya
+ * Savaşı" and "V. Murad" keep theirs. One line or none is not a list: the
+ * caller lets the paste through.
+ */
+export function pastedOptions(text: string): string[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  if (lines.length < 2) return lines;
+  const marks = lines.map((line) => LINE_MARK.exec(line)?.[1]);
+  const strip =
+    marks.every((mark) => mark !== undefined) && counting(marks as string[]);
+  return lines.map((line) =>
+    (strip ? line.replace(LINE_MARK, "").trim() : line).slice(
+      0,
+      OPTION_TEXT_MAX
+    )
+  );
+}
+
+/**
+ * The options after `lines` are pasted into the empty one at `at`: the
+ * lines go, in order, into it and the empty options after it, skipping any
+ * that already hold text (nothing typed is overwritten), then into new
+ * options, up to `max`; lines past it are left out. `last` is the option
+ * the last line went into.
+ */
+export function spreadOptions<O extends { text: string; correct: boolean }>(
+  options: readonly O[],
+  at: number,
+  lines: readonly string[],
+  max: number = OPTIONS_MAX
+): { options: Array<O | { text: string; correct: boolean }>; last: number } {
+  const next: Array<O | { text: string; correct: boolean }> = [...options];
+  let i = at;
+  let last = at;
+  for (const line of lines) {
+    while (i < next.length && next[i]?.text.trim() !== "") i += 1;
+    if (i >= max) break;
+    next[i] =
+      i < next.length
+        ? { ...(next[i] as O), text: line }
+        : { text: line, correct: false };
+    last = i;
+    i += 1;
+  }
+  return { options: next, last };
+}
+
 /** "3, 7" → the topics of those numbers, and the numbers no topic has. */
 export function topicsByNumbers(
   text: string,

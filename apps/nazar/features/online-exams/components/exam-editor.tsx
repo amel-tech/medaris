@@ -22,7 +22,16 @@ import {
   useRouter,
 } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
-import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
+import {
+  type ClipboardEvent,
+  type FormEvent,
+  Fragment,
+  type KeyboardEvent,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import {
@@ -45,14 +54,19 @@ import {
   nextFreeNumber,
   numbersOf,
   OPTION_FIELDS,
+  OPTION_TEXT_MAX,
+  OPTIONS_MAX,
   onlineExamErrorKey,
+  optionLetter,
   ownHundredthsOf,
+  pastedOptions,
   pointsFromText,
   pointsText,
   READS_AGAIN,
   readUnsaved,
   type ScoringValue,
   sharesOf,
+  spreadOptions,
   topicsByNumbers,
   type UnsavedQuestion,
   writeUnsaved,
@@ -1214,6 +1228,42 @@ function QuestionForm({
   );
   const setOption = (i: number, change: Partial<(typeof options)[number]>) =>
     setOptions((all) => all.map((o, j) => (j === i ? { ...o, ...change } : o)));
+  const formRef = useRef<HTMLFormElement>(null);
+  const uid = useId().replace(/[^\w-]/g, "");
+  // The option to put the caret in once it is drawn (Enter on the last one adds it).
+  const [focusAt, setFocusAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusAt === null) return;
+    formRef.current
+      ?.querySelectorAll<HTMLInputElement>("input[data-option]")
+      [focusAt]?.focus();
+    setFocusAt(null);
+  }, [focusAt]);
+  // Enter goes on to the next option, and past the last one adds one, so a
+  // question's options are typed one after another without the mouse.
+  const onOptionKey = (i: number, event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    // On the last option there can be, Enter sends the form, as before.
+    if (i + 1 >= OPTIONS_MAX) return;
+    event.preventDefault();
+    if (i + 1 >= options.length)
+      setOptions((all) => [...all, { text: "", correct: false }]);
+    setFocusAt(i + 1);
+  };
+  // A list pasted into an empty option fills it and the empty ones after it, a line each.
+  const onOptionPaste = (
+    i: number,
+    event: ClipboardEvent<HTMLInputElement>
+  ) => {
+    // Into an option that holds text, a paste goes in at the caret, as typed.
+    if (event.currentTarget.value.trim() !== "") return;
+    const lines = pastedOptions(event.clipboardData.getData("text"));
+    if (lines.length < 2) return;
+    event.preventDefault();
+    const spread = spreadOptions(options, i, lines);
+    setOptions(spread.options);
+    setFocusAt(spread.last);
+  };
   const filled = options
     .filter((o) => o.text.trim() !== "")
     .map((o) => ({ text: o.text.trim(), correct: o.correct }));
@@ -1242,7 +1292,10 @@ function QuestionForm({
 
   return (
     <form
-      className="mds-card flex flex-col gap-3 p-4"
+      ref={formRef}
+      // The card keeps the list's width; what is typed in it keeps a reading
+      // measure, so an option and its "Doğru" are never a screen apart.
+      className="mds-card flex flex-col gap-3 p-4 [&>*]:max-inline-measure"
       onSubmit={submit}
       noValidate
       aria-label={t("OnlineExams.questionNumber", { number: question.number })}
@@ -1254,40 +1307,65 @@ function QuestionForm({
           rows={3}
           {...textProps(text)}
           maxLength={4000}
+          // Grows with what is typed where the browser can (field-sizing).
+          className="field-sizing-content"
         />
       </Field>
-      <fieldset className="flex flex-col gap-2">
+      <fieldset
+        className="flex flex-col gap-2"
+        aria-describedby={`${uid}-options-help`}
+      >
         <legend className="mds-label">{t("OnlineExams.optionsLabel")}</legend>
-        {options.map((o, i) => (
-          <div key={i} className="flex flex-wrap items-center gap-2">
-            <Input
-              aria-label={t("OnlineExams.optionLabel", { n: i + 1 })}
-              value={o.text}
-              onChange={(e) => setOption(i, { text: e.target.value })}
-              {...textProps(o.text)}
-              maxLength={1000}
-              className="min-inline-0 flex-1"
-            />
-            <Checkbox
-              label={t("OnlineExams.correct")}
-              checked={o.correct}
-              onCheckedChange={(checked) =>
-                setOption(i, { correct: checked === true })
-              }
-            />
+        <p id={`${uid}-options-help`} className="mds-help">
+          {t("OnlineExams.optionsHelp")}
+        </p>
+        <ol className="flex list-none flex-col gap-1 ps-0">
+          {options.map((o, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <span
+                id={`${uid}-letter-${i}`}
+                className="mds-label inline-5 shrink-0 text-center"
+              >
+                {optionLetter(i)}
+              </span>
+              <Checkbox
+                label={t("OnlineExams.correct")}
+                aria-describedby={`${uid}-letter-${i}`}
+                checked={o.correct}
+                onCheckedChange={(checked) =>
+                  setOption(i, { correct: checked === true })
+                }
+                className="shrink-0"
+              />
+              <Input
+                aria-label={t("OnlineExams.optionLabel", { n: i + 1 })}
+                data-option=""
+                value={o.text}
+                onChange={(e) => setOption(i, { text: e.target.value })}
+                onKeyDown={(e) => onOptionKey(i, e)}
+                onPaste={(e) => onOptionPaste(i, e)}
+                {...textProps(o.text)}
+                maxLength={OPTION_TEXT_MAX}
+                enterKeyHint="next"
+                className="min-inline-0 flex-1"
+              />
+            </li>
+          ))}
+        </ol>
+        {options.length < OPTIONS_MAX ? (
+          <div>
+            <Button
+              size="small"
+              variant="ghost"
+              onClick={() => {
+                setOptions((all) => [...all, { text: "", correct: false }]);
+                setFocusAt(options.length);
+              }}
+            >
+              {t("OnlineExams.addOption")}
+            </Button>
           </div>
-        ))}
-        <div>
-          <Button
-            size="small"
-            variant="ghost"
-            onClick={() =>
-              setOptions((all) => [...all, { text: "", correct: false }])
-            }
-          >
-            {t("OnlineExams.addOption")}
-          </Button>
-        </div>
+        ) : null}
       </fieldset>
       {several ? (
         <RadioGroup

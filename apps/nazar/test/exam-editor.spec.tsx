@@ -3,11 +3,13 @@ import { resources } from "@medaris/i18n";
 import type { OnlineExamDraftResponse } from "@medaris/services/tedrisat";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExamEditor } from "~/features/online-exams/components/exam-editor";
 import {
   cleanup,
   click,
+  key,
   render,
   rerender,
   settle,
@@ -557,6 +559,131 @@ describe("the exam editor (MDRS-299)", () => {
     expect(root.textContent).toContain("Çoklu seçim · Kesirli, yanlış düşer");
     // No own points typed: no points write.
     expect(actions.setExamQuestionPoints).not.toHaveBeenCalled();
+  });
+
+  /** A paste of `text`, as the browser fires it, with what the clipboard holds. */
+  const paste = async (element: HTMLElement, text: string) => {
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", {
+      value: { getData: () => text },
+    });
+    await act(async () => {
+      element.dispatchEvent(event);
+    });
+    return event;
+  };
+  const options = (root: HTMLElement) =>
+    [...root.querySelectorAll("input")].filter((i) =>
+      /^\d+\. şık$/.test(i.getAttribute("aria-label") ?? "")
+    );
+
+  it("puts each option's letter and Doğru before it, and says how to type them quickly", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    const rows = [...root.querySelectorAll("form fieldset li")];
+    expect(rows).toHaveLength(5);
+    const first = rows[0] as HTMLElement;
+    expect(first.textContent).toBe("ADoğru");
+    // The letter, the box, then the field: the box is beside its option.
+    const box = first.querySelector("[role=checkbox]") as HTMLElement;
+    const input = first.querySelector("input[aria-label='1. şık']");
+    expect(
+      box.compareDocumentPosition(input as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    // Each "Doğru" is told apart by its option's letter.
+    const letter = document.getElementById(
+      box.getAttribute("aria-describedby") ?? ""
+    );
+    expect(letter?.textContent).toBe("A");
+    expect(rows[1]?.textContent).toBe("BDoğru");
+    const fieldset = root.querySelector("form fieldset") as HTMLElement;
+    expect(
+      document.getElementById(fieldset.getAttribute("aria-describedby") ?? "")
+        ?.textContent
+    ).toContain("Enter ile sonraki şıkka geçin");
+  });
+
+  it("goes on to the next option with Enter, and adds one after the last", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(option(root, 1), "Asıl");
+    await key(option(root, 1), "Enter");
+    expect(document.activeElement).toBe(option(root, 2));
+    // Enter does not send the form.
+    expect(actions.saveExamQuestion).not.toHaveBeenCalled();
+    await key(option(root, 5), "Enter");
+    expect(options(root)).toHaveLength(6);
+    expect(document.activeElement).toBe(option(root, 6));
+  });
+
+  it("spreads a pasted list over the options, a line each, marks taken off", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    actions.saveExamQuestion.mockImplementation(async (_e, id, body) =>
+      echo(id, body, 3)
+    );
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    await typeInto(textOf(root), "Kıyasın rükünleri hangileridir?");
+    const event = await paste(
+      option(root, 1),
+      "A) Asıl\nB) Fer\n\nC) Illet\nD) Hüküm\nE) Rivayet\nF) Hadis"
+    );
+    expect(event.defaultPrevented).toBe(true);
+    expect(options(root).map((i) => i.value)).toEqual([
+      "Asıl",
+      "Fer",
+      "Illet",
+      "Hüküm",
+      "Rivayet",
+      "Hadis",
+    ]);
+    expect(document.activeElement).toBe(option(root, 6));
+    await click(control(root, "checkbox", "Doğru", 0));
+    await typeInto(topicNumbers(root), "3");
+    await click(button(root, "Kaydet"));
+    await settle();
+    expect(actions.saveExamQuestion).toHaveBeenCalledWith(
+      "e1",
+      "q1",
+      expect.objectContaining({
+        options: [
+          { text: "Asıl", correct: true },
+          { text: "Fer", correct: false },
+          { text: "Illet", correct: false },
+          { text: "Hüküm", correct: false },
+          { text: "Rivayet", correct: false },
+          { text: "Hadis", correct: false },
+        ],
+      })
+    );
+  });
+
+  it("lets a one-line paste, or one into a typed option, through as it is", async () => {
+    actions.addExamQuestion.mockResolvedValue({
+      success: true,
+      data: { version: 2, question: { id: "q1" } },
+    });
+    const root = await render(wrap(<ExamEditor courseId="c1" draft={draft} />));
+    await click(button(root, "Soru ekle"));
+    const event = await paste(option(root, 2), "Fer");
+    expect(event.defaultPrevented).toBe(false);
+    // Into an option that holds text, even a list goes in at the caret.
+    await typeInto(option(root, 1), "Asıl");
+    const into = await paste(option(root, 1), "Fer\nİllet");
+    expect(into.defaultPrevented).toBe(false);
+    expect(option(root, 2).value).toBe("");
   });
 
   it("offers check boxes where any correct one is enough, and sends it", async () => {

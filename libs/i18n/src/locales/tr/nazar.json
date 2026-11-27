@@ -2399,6 +2399,7 @@
     "removeBody": "Soru şıklarıyla birlikte silinir.",
     "questionTextLabel": "Soru",
     "optionsLabel": "Şıklar",
+    "optionsHelp": "Enter ile sonraki şıkka geçin. Alt alta yazılmış şıkları yapıştırırsanız her satır bir şık olur.",
     "optionLabel": "{n}. şık",
     "addOption": "Şık ekle",
     "topicNumbersLabel": "Konu numaraları",
