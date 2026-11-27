@@ -10,9 +10,11 @@ So the setting is a small icon on the question and takes no line or field of its
 
 ## What changed
 
-- **The icon** (`components/talebe-notes-toggle.tsx`). It is an `IconButton` with
-  `aria-pressed`. The tooltip and the name are "Talebe not ekleyebilir" when the icon is on and
-  "Talebe notu kapalı" when it is off. On, it is the `chat` bubble. Off, the bubble is struck
+- **The icon** (`components/talebe-notes-toggle.tsx`). It is IconButton's markup with
+  `aria-pressed` and one name, "Talebe notları", in both states (a toggle's name must not
+  change with its state). The tooltip says the state: "Talebe not ekleyebilir" when the icon is
+  on, "Talebe notu kapalı" when it is off. It does not use `IconButton` itself, because
+  `IconButton` names the button by its tooltip. On, it is the `chat` bubble. Off, the bubble is struck
   through, so the state is never shown by colour alone.
   - In the question form, it sits in the row of "Kaydet" / "Vazgeç". It goes into the save as
     `SaveExamQuestionDto.talebeNotes`. A new question starts with the API's default: on in a
@@ -21,7 +23,9 @@ So the setting is a small icon on the question and takes no line or field of its
     `onlineExams.setExamQuestionTalebeNotes` at once. It runs outside the version queue, because
     the route takes no version. The page shows the new state before the API answers. A refusal
     or a throw takes it back and shows a toast. The icon is disabled while the question is not
-    on the server yet or is being saved.
+    on the server yet or is being saved. While the write is on its way, the row's form does not
+    open, and a newer read of the page waits. Each state a write left is laid over later reads,
+    because a read can predate the write.
   - On a published or locked set or exam (`PublishedExam`), every question card has the same
     icon (`QuestionNotesSwitch`). It works the same way: optimistic, with a rollback.
   - When an older response leaves `talebeNotes` out, the page reads it as the API's default
@@ -38,7 +42,8 @@ So the setting is a small icon on the question and takes no line or field of its
     değişti" (`editedAfterReply`).
   - Each note has a short answer field in place, with "Cevapla", then "Cevabı düzenle" and
     "Cevabı kaldır" (an empty `reply`). A removed answer stays in the field, so it can be sent
-    again.
+    again. One answer write runs at a time. A successful one reads the page again, so the
+    header's count follows.
   - When no note has been sent, the part says so.
   - The page header links to the part when `unansweredNotes > 0`.
 - **The badge.** In the Çalışma Soruları table and the exam list, a set or exam with
@@ -63,6 +68,17 @@ So the setting is a small icon on the question and takes no line or field of its
 - On a local stack (a copy of the recording database with `0083` applied and four notes added),
   the icon was clicked on a published set and the database showed `talebe_notes = false`. A note
   was answered from the page and was stored, and the part then showed "1 cevapsız".
+
+## Review
+
+`/code-review` (medium) found six issues, and all six were fixed:
+
+- A row's form opened during an icon write kept a state the API then refused.
+- A read that predated an icon write showed the old state.
+- The header count did not change after an answer.
+- The toggle's name changed with its state.
+- "Cevabı düzenle" could be clicked while "Cevabı kaldır" was on its way.
+- The notes read's log label always said "set", on an exam page too.
 
 ## Not verified
 
