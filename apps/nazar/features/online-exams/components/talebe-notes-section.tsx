@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
-import { startsArabic, textProps } from "../arabic";
+import { boxDir, textProps } from "../arabic";
 import { replyQuestionNote } from "../notes-actions";
 import {
   NOTE_TEXT_MAX,
@@ -163,7 +163,7 @@ function NoteCard({
         {/* The question cut to one line: the note is what is read here. */}
         <span
           className="mds-body-sm min-inline-0 flex-1 basis-[12rem] truncate text-neutral-muted"
-          dir={startsArabic(note.questionText) ? "rtl" : undefined}
+          dir={boxDir(note.questionText)}
         >
           <ArabicText text={note.questionText} />
         </span>
@@ -185,7 +185,7 @@ function NoteCard({
       </p>
       <p
         className="mds-body whitespace-pre-wrap"
-        dir={startsArabic(note.body) ? "rtl" : "auto"}
+        dir={boxDir(note.body) ?? "auto"}
       >
         <ArabicText text={note.body} />
       </p>
@@ -198,7 +198,7 @@ function NoteCard({
           </p>
           <p
             className="mds-body whitespace-pre-wrap"
-            dir={startsArabic(note.teacherReply ?? "") ? "rtl" : "auto"}
+            dir={boxDir(note.teacherReply ?? "") ?? "auto"}
           >
             <ArabicText text={note.teacherReply ?? ""} />
           </p>
