@@ -8,6 +8,7 @@ import {
 import type { OnlineExamRepository } from "../../../src/online-exam/online-exam.repository";
 import { OnlineExamService } from "../../../src/online-exam/online-exam.service";
 import type { ZerothQuestionRepository } from "../../../src/online-exam/zeroth-question.repository";
+import type { QuestionNoteRepository } from "../../../src/question-note/question-note.repository";
 
 const user = { sub: "u-1" } as AuthenticatedUser;
 
@@ -23,7 +24,8 @@ const serviceOf = (
   const service = new OnlineExamService(
     repo as unknown as OnlineExamRepository,
     courses as unknown as CourseService,
-    {} as ZerothQuestionRepository
+    {} as ZerothQuestionRepository,
+    {} as QuestionNoteRepository
   );
   return { service, repo, courses };
 };

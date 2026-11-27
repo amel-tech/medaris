@@ -280,6 +280,14 @@ export class SaveExamQuestionDto extends VersionedDto {
   @ArrayMaxSize(50)
   @IsUUID("all", { each: true })
   topicIds!: string[];
+
+  @ApiPropertyOptional({
+    description:
+      "Whether the talebe may write a note on it (MDRS-248, soru notları); left out, it stays as it is. On a published set, `PUT …/talebe-notes` turns it. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  @IsOptional()
+  @IsBoolean()
+  talebeNotes?: boolean;
 }
 
 /** A question's own points, or null to put it back into the equal share. */
@@ -345,6 +353,11 @@ export class ExamQuestionResponse {
   })
   points!: string;
   @ApiProperty() complete!: boolean;
+  @ApiPropertyOptional({
+    description:
+      "Whether the talebe may write a note on it (MDRS-248, soru notları). A new question takes its set's default: on in a çalışma seti, off in an exam. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  talebeNotes?: boolean;
   @ApiProperty({
     type: [String],
     enum: ["text", "option", "correct", "topic"],
@@ -434,6 +447,11 @@ export class OnlineExamDraftResponse {
     description: "What keeps it from being published; empty when it can be.",
   })
   problems!: PublishProblemResponse[];
+  @ApiPropertyOptional({
+    description:
+      "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  unansweredNotes?: number;
   @ApiProperty() version!: number;
 }
 
@@ -504,6 +522,11 @@ export class OnlineExamSummaryResponse {
   })
   startsAt!: Date | null;
   @ApiProperty() updatedAt!: Date;
+  @ApiPropertyOptional({
+    description:
+      "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  unansweredNotes?: number;
 }
 
 export class OnlineExamCreatedResponse {

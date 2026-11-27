@@ -20,6 +20,13 @@ import {
     AttemptOptionResponseToJSON,
     AttemptOptionResponseToJSONTyped,
 } from './AttemptOptionResponse';
+import type { MyQuestionNoteResponse } from './MyQuestionNoteResponse';
+import {
+    MyQuestionNoteResponseFromJSON,
+    MyQuestionNoteResponseFromJSONTyped,
+    MyQuestionNoteResponseToJSON,
+    MyQuestionNoteResponseToJSONTyped,
+} from './MyQuestionNoteResponse';
 import type { AnswerMode } from './AnswerMode';
 import {
     AnswerModeFromJSON,
@@ -70,6 +77,18 @@ export interface AttemptQuestionResponse {
      * @memberof AttemptQuestionResponse
      */
     options: Array<AttemptOptionResponse>;
+    /**
+     * Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. A note is kept to the caller during the exam: sending it to the hoca waits until the exam is over for everyone (409 NOTES_SHARE_LOCKED). Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {boolean}
+     * @memberof AttemptQuestionResponse
+     */
+    talebeNotes?: boolean;
+    /**
+     * The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {MyQuestionNoteResponse}
+     * @memberof AttemptQuestionResponse
+     */
+    myNote?: MyQuestionNoteResponse | null;
 }
 
 
@@ -103,6 +122,8 @@ export function AttemptQuestionResponseFromJSONTyped(json: any, ignoreDiscrimina
         'answerMode': AnswerModeFromJSON(json['answerMode']),
         'points': json['points'],
         'options': ((json['options'] as Array<any>).map(AttemptOptionResponseFromJSON)),
+        'talebeNotes': json['talebeNotes'] == null ? undefined : json['talebeNotes'],
+        'myNote': json['myNote'] == null ? undefined : MyQuestionNoteResponseFromJSON(json['myNote']),
     };
 }
 
@@ -123,6 +144,8 @@ export function AttemptQuestionResponseToJSONTyped(value?: AttemptQuestionRespon
         'answerMode': AnswerModeToJSON(value['answerMode']),
         'points': value['points'],
         'options': ((value['options'] as Array<any>).map(AttemptOptionResponseToJSON)),
+        'talebeNotes': value['talebeNotes'],
+        'myNote': MyQuestionNoteResponseToJSON(value['myNote']),
     };
 }
 

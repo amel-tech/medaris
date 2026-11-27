@@ -143,4 +143,4 @@ needs:
       - node: forbiddenAlert
       - test: apps/tedrisat/test/e2e/online-exam-publish.e2e.spec.ts
         name: "publishes only with exam.prepare"
-      - source: apps/tedrisat/src/online-exam/online-exam.service.ts:181
+      - source: apps/tedrisat/src/online-exam/online-exam.service.ts:189

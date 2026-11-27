@@ -11,6 +11,7 @@ import {
   Min,
 } from "class-validator";
 import { AnswerMode } from "../../online-exam/domain/online-exam";
+import { MyQuestionNoteResponse } from "../../question-note/dto/question-note.dto";
 import {
   PoolMode,
   PracticeAttemptStatus,
@@ -140,6 +141,18 @@ export class PracticeQuestionResponse {
       "The part of the question the answer got, from 0.00 to 1.00 (a part only under IN_SHARES); only once the attempt is finished.",
   })
   part?: string;
+  @ApiPropertyOptional({
+    description:
+      "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  talebeNotes?: boolean;
+  @ApiPropertyOptional({
+    type: MyQuestionNoteResponse,
+    nullable: true,
+    description:
+      "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  myNote?: MyQuestionNoteResponse | null;
 }
 
 /** How a finished attempt went: every question weighs the same. */

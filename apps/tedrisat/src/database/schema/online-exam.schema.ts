@@ -176,6 +176,11 @@ export const examQuestions = table(
       .notNull(),
     scoring: examScoring("scoring"),
     ownPoints: integer("own_points"),
+    // Whether the talebe may write a note on it (MDRS-248, soru notları):
+    // the team's per question icon. A new question takes its set's default
+    // (a çalışma seti's on, an exam's off; `addQuestion`), and it is no part
+    // of the question's content, so turning it is no write of the exam.
+    talebeNotes: boolean("talebe_notes").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

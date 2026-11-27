@@ -4,6 +4,7 @@ import { CourseModule } from "../course/course.module";
 import { DatabaseModule } from "../database/database.module";
 import { OnlineExamResultsModule } from "../online-exam/online-exam-results.module";
 import { PlatformAccessModule } from "../platform-access/platform-access.service";
+import { QuestionNoteModule } from "../question-note/question-note.module";
 import { PracticeController } from "./practice.controller";
 import { PracticeRepository } from "./practice.repository";
 import { PracticeService } from "./practice.service";
@@ -21,6 +22,8 @@ import { PracticeService } from "./practice.service";
     DatabaseModule,
     PlatformAccessModule,
     OnlineExamResultsModule,
+    // The caller's note beside each question (soru notları).
+    QuestionNoteModule,
   ],
   controllers: [PracticeController],
   providers: [PracticeService, PracticeRepository],

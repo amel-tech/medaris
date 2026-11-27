@@ -75,6 +75,12 @@ export interface OnlineExamSummaryResponse {
      * @memberof OnlineExamSummaryResponse
      */
     updatedAt: Date;
+    /**
+     * How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {number}
+     * @memberof OnlineExamSummaryResponse
+     */
+    unansweredNotes?: number;
 }
 
 
@@ -123,6 +129,7 @@ export function OnlineExamSummaryResponseFromJSONTyped(json: any, ignoreDiscrimi
         'locked': json['locked'],
         'startsAt': (json['startsAt'] == null ? null : new Date(json['startsAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
+        'unansweredNotes': json['unansweredNotes'] == null ? undefined : json['unansweredNotes'],
     };
 }
 
@@ -145,6 +152,7 @@ export function OnlineExamSummaryResponseToJSONTyped(value?: OnlineExamSummaryRe
         'locked': value['locked'],
         'startsAt': ((value['startsAt'] as any).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
+        'unansweredNotes': value['unansweredNotes'],
     };
 }
 

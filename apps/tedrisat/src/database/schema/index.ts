@@ -29,6 +29,7 @@ export * from "./partner-enrollment.schema";
 export * from "./permission.schema";
 export * from "./platform-policy.schema";
 export * from "./practice.schema";
+export * from "./question-note.schema";
 export * from "./role-assignment.schema";
 export * from "./storage.schema";
 export * from "./user.schema";

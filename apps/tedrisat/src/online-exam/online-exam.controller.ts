@@ -40,6 +40,10 @@ import {
 } from "@nestjs/swagger";
 import type { AuthorizedRequest } from "../course/interfaces/authorized-request.interface";
 import {
+  QuestionTalebeNotesResponse,
+  SetTalebeNotesDto,
+} from "../question-note/dto/question-note.dto";
+import {
   CourseTopicResponse,
   CreateCourseTopicDto,
   CreateOnlineExamDto,
@@ -299,6 +303,33 @@ export class OnlineExamController {
     @Body() dto: SaveExamQuestionDto
   ): Promise<ExamQuestionWriteResponse> {
     return this.service.saveQuestion(examId, questionId, dto, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Turn a question's talebe notes on or off",
+    description:
+      "The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question's content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.",
+    operationId: "setExamQuestionTalebeNotes",
+  })
+  @ApiOkResponse({ type: QuestionTalebeNotesResponse })
+  @ApiBadRequestResponse({ description: "VALIDATION_ERROR" })
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND, QUESTION_NOT_FOUND" })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @Put("online-exams/:examId/questions/:questionId/talebe-notes")
+  setTalebeNotes(
+    @Req() request: AuthorizedRequest,
+    @Param("examId", ParseUUIDPipe) examId: string,
+    @Param("questionId", ParseUUIDPipe) questionId: string,
+    @Body() dto: SetTalebeNotesDto
+  ): Promise<QuestionTalebeNotesResponse> {
+    return this.service.setTalebeNotes(
+      examId,
+      questionId,
+      dto.talebeNotes,
+      request.user
+    );
   }
 
   @ApiOperation({

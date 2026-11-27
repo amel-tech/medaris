@@ -4,6 +4,8 @@ import { CourseRepository } from "../course/course.repository";
 import { CourseService } from "../course/course.service";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { ExamFormat } from "../course/domain/exam";
+import { noteOf } from "../question-note/domain/question-note";
+import { QuestionNoteRepository } from "../question-note/question-note.repository";
 import {
   AttemptStatus,
   latestStartOf,
@@ -82,7 +84,8 @@ export class MyExamsService {
     private readonly attempts: ExamAttemptRepository,
     private readonly exams: OnlineExamRepository,
     private readonly courses: CourseService,
-    private readonly courseRepo: CourseRepository
+    private readonly courseRepo: CourseRepository,
+    private readonly notes: QuestionNoteRepository
   ) {}
 
   /** Sınavlarım: the open and coming exams first, soonest first, then the past ones, latest first. */
@@ -217,10 +220,12 @@ export class MyExamsService {
     };
     if (!released) return base;
 
-    const [questions, answers, topics] = await Promise.all([
+    const [questions, answers, topics, notes] = await Promise.all([
       this.questionsOf(exam.courseId, exam.examId),
       this.attempts.answersOf(attempt.id),
       this.repo.topicsOf(exam.courseId),
+      // The talebe's own notes (soru notları).
+      this.notes.mineByQuestion(user.sub, attempt.questionOrder),
     ]);
     const chosen = new Map(answers.map((a) => [a.questionId, a.optionIds]));
     const results = questionResults(questions.map(scored), chosen);
@@ -298,6 +303,8 @@ export class MyExamsService {
                       ]
                     : [];
                 }),
+                talebeNotes: q.talebeNotes,
+                myNote: noteOf(notes, id),
               },
             ];
           })

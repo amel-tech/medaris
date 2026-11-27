@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { MyQuestionNoteResponse } from './MyQuestionNoteResponse';
+import {
+    MyQuestionNoteResponseFromJSON,
+    MyQuestionNoteResponseFromJSONTyped,
+    MyQuestionNoteResponseToJSON,
+    MyQuestionNoteResponseToJSONTyped,
+} from './MyQuestionNoteResponse';
 import type { PracticeOutcome } from './PracticeOutcome';
 import {
     PracticeOutcomeFromJSON,
@@ -95,6 +102,18 @@ export interface PracticeQuestionResponse {
      * @memberof PracticeQuestionResponse
      */
     part?: string;
+    /**
+     * Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {boolean}
+     * @memberof PracticeQuestionResponse
+     */
+    talebeNotes?: boolean;
+    /**
+     * The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {MyQuestionNoteResponse}
+     * @memberof PracticeQuestionResponse
+     */
+    myNote?: MyQuestionNoteResponse | null;
 }
 
 
@@ -132,6 +151,8 @@ export function PracticeQuestionResponseFromJSONTyped(json: any, ignoreDiscrimin
         'chosenOptionIds': json['chosenOptionIds'],
         'outcome': json['outcome'] == null ? undefined : PracticeOutcomeFromJSON(json['outcome']),
         'part': json['part'] == null ? undefined : json['part'],
+        'talebeNotes': json['talebeNotes'] == null ? undefined : json['talebeNotes'],
+        'myNote': json['myNote'] == null ? undefined : MyQuestionNoteResponseFromJSON(json['myNote']),
     };
 }
 
@@ -155,6 +176,8 @@ export function PracticeQuestionResponseToJSONTyped(value?: PracticeQuestionResp
         'chosenOptionIds': value['chosenOptionIds'],
         'outcome': PracticeOutcomeToJSON(value['outcome']),
         'part': value['part'],
+        'talebeNotes': value['talebeNotes'],
+        'myNote': MyQuestionNoteResponseToJSON(value['myNote']),
     };
 }
 

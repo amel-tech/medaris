@@ -13,6 +13,8 @@ import {
   type IDraftQuestion,
   OnlineExamRepository,
 } from "../online-exam/online-exam.repository";
+import { noteOf } from "../question-note/domain/question-note";
+import { QuestionNoteRepository } from "../question-note/question-note.repository";
 import {
   drawPool,
   isCompleteCounted,
@@ -110,7 +112,8 @@ export class PracticeService {
   constructor(
     private readonly repo: PracticeRepository,
     private readonly exams: OnlineExamRepository,
-    private readonly courses: CourseService
+    private readonly courses: CourseService,
+    private readonly notes: QuestionNoteRepository
   ) {}
 
   /** Whether the caller may solve the course's sets: they see the course and write on it as a talebe. */
@@ -507,12 +510,14 @@ export class PracticeService {
     attempt: IPracticeAttempt,
     title?: string
   ): Promise<PracticeAttemptResponse> {
-    const [questions, answers, set] = await Promise.all([
+    const [questions, answers, set, notes] = await Promise.all([
       this.questionsOf(attempt),
       this.repo.answersOf(attempt.id),
       title === undefined && attempt.setId !== null
         ? this.repo.findSet(attempt.setId)
         : Promise.resolve(null),
+      // The talebe's own notes (soru notları): nothing of the answer.
+      this.notes.mineByQuestion(attempt.userId, attempt.questionOrder),
     ]);
     const byId = new Map(questions.map((q) => [q.id, q]));
     const chosen = new Map(answers.map((a) => [a.questionId, a.optionIds]));
@@ -552,6 +557,8 @@ export class PracticeService {
           }),
           chosenOptionIds: chosen.get(q.id) ?? [],
           ...(r ? { outcome: r.outcome, part: partText(r.part) } : {}),
+          talebeNotes: q.talebeNotes,
+          myNote: noteOf(notes, q.id),
         };
       }),
       result: resultOf(attempt),

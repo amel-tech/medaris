@@ -1190,7 +1190,7 @@ invariants:
       findSeatHolders selects ENROLLED only and says why: a request is not a seat, a completion has finished the course, a revoked seat is out
       (course-notification.repository.ts:104-118; exam.repository.ts reminderRecipients). The inventory listed the COMPLETED case as a finding;
       it is the code's own decision, so it is written as a rule and not as one the code breaks.
-    source: apps/tedrisat/src/course/course-notification.repository.ts:107
+    source: apps/tedrisat/src/course/course-notification.repository.ts:119
 
   - id: staff-hand-in-list-holds-more-than-its-counts
     rule: >-

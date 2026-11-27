@@ -4,6 +4,8 @@ import { Injectable } from "@nestjs/common";
 import { CourseRepository } from "../course/course.repository";
 import { CourseService } from "../course/course.service";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
+import { noteOf } from "../question-note/domain/question-note";
+import { QuestionNoteRepository } from "../question-note/question-note.repository";
 import {
   AttemptStatus,
   answerFits,
@@ -80,7 +82,8 @@ export class ExamAttemptService {
     private readonly results: ExamResultsRepository,
     private readonly exams: OnlineExamRepository,
     private readonly courses: CourseService,
-    private readonly courseRepo: CourseRepository
+    private readonly courseRepo: CourseRepository,
+    private readonly notes: QuestionNoteRepository
   ) {}
 
   /** The published exam of the celse, for an ENROLLED talebe who may write on its course. */
@@ -201,7 +204,11 @@ export class ExamAttemptService {
       questions.map((q) => ({ id: q.id, ownHundredths: q.ownPoints }))
     );
     const byId = new Map(questions.map((q) => [q.id, q]));
-    const answers = await this.repo.answersOf(attempt.id);
+    const [answers, notes] = await Promise.all([
+      this.repo.answersOf(attempt.id),
+      // The talebe's own notes (soru notları), kept to them while they sit it.
+      this.notes.mineByQuestion(attempt.userId, attempt.questionOrder),
+    ]);
     return {
       ...base,
       questions: attempt.questionOrder.flatMap((id, i) => {
@@ -221,6 +228,8 @@ export class ExamAttemptService {
                 ? [{ id: optionId, text: options.get(optionId) as string }]
                 : []
             ),
+            talebeNotes: q.talebeNotes,
+            myNote: noteOf(notes, id),
           },
         ];
       }),

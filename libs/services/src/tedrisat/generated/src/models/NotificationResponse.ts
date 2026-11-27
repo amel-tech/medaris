@@ -83,6 +83,8 @@ export const NotificationResponseTypeEnum = {
     ExamScheduled: 'EXAM_SCHEDULED',
     ExamReminder: 'EXAM_REMINDER',
     ExamResultsReleased: 'EXAM_RESULTS_RELEASED',
+    QuestionNoteShared: 'QUESTION_NOTE_SHARED',
+    QuestionNoteReplied: 'QUESTION_NOTE_REPLIED',
     CourseBanPlaced: 'COURSE_BAN_PLACED',
     KoskBanPlaced: 'KOSK_BAN_PLACED'
 } as const;

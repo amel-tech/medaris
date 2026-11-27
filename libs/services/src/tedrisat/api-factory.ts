@@ -21,6 +21,7 @@ import {
   OnlineExamAttemptsApi,
   OnlineExamsApi,
   PracticeApi,
+  QuestionNotesApi,
   ResourcesApi,
   SessionsApi,
   SubmissionsApi,
@@ -108,6 +109,7 @@ export type {
   ExamClockResponse,
   ExamKind,
   ExamOptionResponse,
+  ExamQuestionNoteResponse,
   ExamQuestionResponse,
   ExamQuestionWriteResponse,
   ExamWindow,
@@ -181,6 +183,8 @@ export type {
   MyGrantsResponse,
   MyPermissionsResponse,
   MyPublicProfileResponse,
+  MyQuestionNoteListItemResponse,
+  MyQuestionNoteResponse,
   MyRolesResponse,
   MySubmissionSummaryResponse,
   MySubmissionsResponse,
@@ -216,17 +220,21 @@ export type {
   ProfileVisibility,
   PublicProfileResponse,
   QuestionAnswerResponse,
+  QuestionNoteTalebeResponse,
   QuestionOutcome,
   QuestionPersonResponse,
+  QuestionTalebeNotesResponse,
   ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
+  ReplyQuestionNoteDto,
   ResourceFileResponse,
   ResourceResponse,
   RosterEnrollmentResponse,
   SaveEvaluationDto,
   SaveExamQuestionDto,
   SaveLessonAssignmentDto,
+  SaveMyQuestionNoteDto,
   SaveSubmissionNoteDto,
   ScheduleSessionResponse,
   Scoring,
@@ -234,6 +242,7 @@ export type {
   SetEnrollmentStatusDto,
   SetMadrasahCourseMuderrisDto,
   SetNazimGrantsDto,
+  SetTalebeNotesDto,
   SubmissionFileResponse,
   SubmissionReviewerResponse,
   SubmissionReviewResponse,
@@ -354,6 +363,9 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     // A talebe's çalışma soruları (MDRS-248): the published çalışma setleri of
     // their courses and their attempts at them.
     practice: new PracticeApi(configuration),
+    // Soru notları (MDRS-248): a talebe's note on a question, kept or sent to
+    // the hoca, and the hoca's list and answer.
+    questionNotes: new QuestionNotesApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

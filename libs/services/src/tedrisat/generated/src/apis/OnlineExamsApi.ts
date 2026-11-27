@@ -30,9 +30,11 @@ import type {
   OnlineExamResultsResponse,
   OnlineExamSummaryResponse,
   PublishOnlineExamDto,
+  QuestionTalebeNotesResponse,
   SaveExamQuestionDto,
   SaveZerothQuestionDto,
   SetQuestionPointsDto,
+  SetTalebeNotesDto,
   TalebeAnswersResponse,
   TopicRemovedResponse,
   UpdateCourseTopicDto,
@@ -70,12 +72,16 @@ import {
     OnlineExamSummaryResponseToJSON,
     PublishOnlineExamDtoFromJSON,
     PublishOnlineExamDtoToJSON,
+    QuestionTalebeNotesResponseFromJSON,
+    QuestionTalebeNotesResponseToJSON,
     SaveExamQuestionDtoFromJSON,
     SaveExamQuestionDtoToJSON,
     SaveZerothQuestionDtoFromJSON,
     SaveZerothQuestionDtoToJSON,
     SetQuestionPointsDtoFromJSON,
     SetQuestionPointsDtoToJSON,
+    SetTalebeNotesDtoFromJSON,
+    SetTalebeNotesDtoToJSON,
     TalebeAnswersResponseFromJSON,
     TalebeAnswersResponseToJSON,
     TopicRemovedResponseFromJSON,
@@ -181,6 +187,12 @@ export interface SetExamQuestionPointsRequest {
     examId: string;
     questionId: string;
     setQuestionPointsDto: SetQuestionPointsDto;
+}
+
+export interface SetExamQuestionTalebeNotesRequest {
+    examId: string;
+    questionId: string;
+    setTalebeNotesDto: SetTalebeNotesDto;
 }
 
 export interface UnpublishOnlineExamRequest {
@@ -1215,6 +1227,68 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async setExamQuestionPoints(requestParameters: SetExamQuestionPointsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExamPointsResponse> {
         const response = await this.setExamQuestionPointsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question\'s content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.
+     * Turn a question\'s talebe notes on or off
+     */
+    async setExamQuestionTalebeNotesRaw(requestParameters: SetExamQuestionTalebeNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<QuestionTalebeNotesResponse>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling setExamQuestionTalebeNotes().'
+            );
+        }
+
+        if (requestParameters['questionId'] == null) {
+            throw new runtime.RequiredError(
+                'questionId',
+                'Required parameter "questionId" was null or undefined when calling setExamQuestionTalebeNotes().'
+            );
+        }
+
+        if (requestParameters['setTalebeNotesDto'] == null) {
+            throw new runtime.RequiredError(
+                'setTalebeNotesDto',
+                'Required parameter "setTalebeNotesDto" was null or undefined when calling setExamQuestionTalebeNotes().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}/questions/{questionId}/talebe-notes`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+        urlPath = urlPath.replace(`{${"questionId"}}`, encodeURIComponent(String(requestParameters['questionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetTalebeNotesDtoToJSON(requestParameters['setTalebeNotesDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => QuestionTalebeNotesResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question\'s content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.
+     * Turn a question\'s talebe notes on or off
+     */
+    async setExamQuestionTalebeNotes(requestParameters: SetExamQuestionTalebeNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<QuestionTalebeNotesResponse> {
+        const response = await this.setExamQuestionTalebeNotesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

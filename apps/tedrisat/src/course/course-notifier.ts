@@ -231,6 +231,75 @@ export class CourseNotifier {
     );
   }
 
+  /**
+   * A talebe sent their note on a question to the hoca (MDRS-248, soru
+   * notları): the course's müderris are told, the talebe never of their own
+   * note. The target is the course; `examId` and `setTitle` name the set or
+   * exam, where nazar lists its notes.
+   */
+  async questionNoteShared(
+    note: { courseId: string; examId: string; setTitle: string; kind: string },
+    actorId: string
+  ): Promise<void> {
+    try {
+      const course = await this.repo.findCourse(note.courseId);
+      if (!course) return;
+      const recipients = (
+        await this.repo.findMuderrisIds(note.courseId)
+      ).filter((id) => id !== actorId);
+      if (recipients.length === 0) return;
+      const params = {
+        ...courseParams(course),
+        courseId: note.courseId,
+        examId: note.examId,
+        setTitle: note.setTitle,
+        examKind: note.kind,
+      };
+      await this.notifications.notify(
+        ...recipients.map((userId) => ({
+          userId,
+          type: "QUESTION_NOTE_SHARED" as const,
+          targetType: "COURSE" as const,
+          targetId: note.courseId,
+          params,
+        }))
+      );
+    } catch (error) {
+      this.logger.error(
+        `Could not notify of QUESTION_NOTE_SHARED in ${note.courseId}`,
+        error
+      );
+    }
+  }
+
+  /**
+   * The hoca answered a talebe's note for the first time (MDRS-248, soru
+   * notları); a rewrite of the answer is not news again.
+   */
+  questionNoteReplied(
+    note: {
+      courseId: string;
+      examId: string;
+      setTitle: string;
+      kind: string;
+      talebeId: string;
+    },
+    actorId: string
+  ): Promise<void> {
+    return this.tellTalebe(
+      "QUESTION_NOTE_REPLIED",
+      note.courseId,
+      note.talebeId,
+      actorId,
+      {
+        courseId: note.courseId,
+        examId: note.examId,
+        setTitle: note.setTitle,
+        examKind: note.kind,
+      }
+    );
+  }
+
   private async tellTalebe(
     type: NotificationInput["type"],
     courseId: string,
