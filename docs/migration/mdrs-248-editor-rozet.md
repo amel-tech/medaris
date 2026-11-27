@@ -3,7 +3,9 @@
 Date: 27 November 2026. Scope: `apps/nazar` (`features/online-exams`),
 `apps/tedris` (`features/practice`) and `libs/i18n` (`nazar.json` only).
 Builds on the UX passes in `mdrs-248-calisma-ux-nazar.md` and
-`mdrs-248-calisma-ux-tedris.md`. The API and `libs/ui` are untouched.
+`mdrs-248-calisma-ux-tedris.md`. The API and `libs/ui` are untouched:
+`git diff --name-only origin/main -- apps/tedrisat apps/teskilat libs/ui`
+prints nothing.
 
 ## What changed
 
@@ -38,7 +40,9 @@ Builds on the UX passes in `mdrs-248-calisma-ux-nazar.md` and
   the column lines up: nazar's set table (Taslak/Yayında,
   `min-inline-20`), tedris's set table (Yeni/Devam ediyor/Çözüldü,
   `min-inline-24`, also in the phone card layout) and the exam results'
-  talebe table (its state column). The tedris row buttons (Başla/Devam
+  talebe table (its state column, `min-inline-20`: nazar builds its
+  utilities from the system's spacing steps only, where 24 does not exist;
+  tedris builds them on the kit's theme, where `min-inline-24` is 6rem). The tedris row buttons (Başla/Devam
   et/Tekrar çöz) get the same minimum width. The width is set where the
   badge is used; the kit's `Badge` is unchanged, so badges elsewhere keep
   their own width. A longer translation grows past the minimum.

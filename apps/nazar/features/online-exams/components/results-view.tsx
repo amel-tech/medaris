@@ -235,8 +235,9 @@ export function ResultsView({ initial }: { initial: Results }) {
       render: (row) => (
         <Badge
           variant={row.state === "IN_PROGRESS" ? "brand" : "secondary"}
-          // One width for every state, so the column lines up (MDRS-248).
-          className="min-inline-24 justify-center"
+          // One width for every state, so the column lines up (MDRS-248);
+          // nazar has only the system's spacing steps, so 20 (80px), not 24.
+          className="min-inline-20 justify-center"
         >
           {stateOf(row)}
         </Badge>
