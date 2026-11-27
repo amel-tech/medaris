@@ -14,6 +14,8 @@ export interface ArabicTextStyle {
 export interface ArabicTextProps {
   lang?: "ar";
   dir: "rtl" | "auto";
+  /** On an Arabic block: lang="ar" here does not re-point the Latin size tokens. */
+  "data-arabic-block"?: "";
   style?: ArabicTextStyle;
 }
 

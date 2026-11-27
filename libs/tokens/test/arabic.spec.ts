@@ -16,8 +16,12 @@ import {
 } from "../arabic.js";
 
 const css = readFileSync(new URL("../medaris.css", import.meta.url), "utf8");
+/** A token's default: its last declaration, the :root one (MDS-TOK-02). */
 const token = (name: string) =>
-  new RegExp(`^\\s*${name}:\\s*([^;]+);`, "m").exec(css)?.[1]?.trim();
+  [...css.matchAll(new RegExp(`^\\s*${name}:\\s*([^;]+);`, "gm"))]
+    .at(-1)?.[1]
+    ?.trim();
+const regionBlock = /html:lang\(ar\)[^{]*\{([^}]*)\}/.exec(css)?.[1] ?? "";
 
 describe("the Arabic tokens (MDRS-248)", () => {
   it("are declared once in medaris.css with the values the module names", () => {
@@ -25,6 +29,16 @@ describe("the Arabic tokens (MDRS-248)", () => {
     expect(token("--fs-arabic-text-min")).toBe(`${ARABIC_TEXT_MIN_PX}px`);
     expect(token("--lh-arabic-text")).toBe(String(ARABIC_LINE_HEIGHT));
     expect(token("--font-arabic")).toMatch(/^"Noto Naskh Arabic"/);
+  });
+
+  it("leaves an Arabic block's Latin size alone, and does not scale it inside an Arabic region", () => {
+    expect(css).toContain(
+      "html:lang(ar), :lang(ar):not([data-arabic-block]), :lang(ota-Arab) {"
+    );
+    expect(regionBlock).toMatch(/--arabic-scale:\s*1;/);
+    expect(css).toMatch(
+      /\[data-arabic-block\] \{ font-family: var\(--font-arabic\)/
+    );
   });
 
   it("keeps Naskh's leading at or above the measured clip-safe 1.70", () => {
@@ -82,6 +96,7 @@ describe("arabicTextProps", () => {
     expect(arabicTextProps("زَيْدٌ", "var(--fs-body)", 1)).toEqual({
       lang: "ar",
       dir: "rtl",
+      "data-arabic-block": "",
       style: {
         fontFamily: "var(--font-arabic)",
         fontSize: arabicFontSize("var(--fs-body)", 1),

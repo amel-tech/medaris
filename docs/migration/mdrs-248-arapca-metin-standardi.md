@@ -34,12 +34,19 @@ Alan, yazma korumasıyla aynı sorguyu kullanır (`OnlineExamRepository.startedP
 | `--lh-arabic-text` | `2` | Hareke satır aralığı (mevcut token, kullanılarak bağlandı) |
 | `--font-arabic` | `"Noto Naskh Arabic", "Geeza Pro", "Traditional Arabic", serif` | Mevcut token |
 
-CSS sınıfı: `.mds-arabic-block`. Boyut formülü:
+CSS sınıfı `.mds-arabic-block` ya da öznitelik `[data-arabic-block]`. Arapça bölge kuralı (`:lang(ar)`, tüm `--fs-*` adımlarını büyütür) artık `[data-arabic-block]` taşıyan elemanı kapsamaz. Kapsasaydı, `lang="ar"` olan elemanda `var(--fs-body)` 18px'e çözülür ve Arapça 1.4 yerine 1.575 kat büyürdü. CodeRabbit bunu PR #466'da buldu. Tümüyle Arapça bir sayfada ya da bölgede (`html:lang(ar)`) arayüz zaten Arapça olduğundan `--arabic-scale` 1'e düşer: Arapça ikinci kez büyütülmez. Boyut formülü:
 `max(--fs-arabic-text-min × A, Latin boyut × --arabic-scale × A)`. Buradaki `A`, A−/A+ çarpanıdır. Tedris A−/A+ ölçeğini CSS `zoom` ile kapsayıcıya uyguladığından, çarpan hem Arapçayı hem Türkçeyi aynı oranda büyütür. Arapça, her adımda Türkçenin 1.4 katı kalır.
 
 ### Neden 1.4
 
-Ölçüm, Google Fonts'un `ofl/` dosyalarında fontTools ile yapıldı (`unitsPerEm` 1000):
+Ölçüm fontTools 4.60.2 ile yapıldı. Kaynak, 2026-11-27'de `github.com/google/fonts` `main` dalından indirilen `ofl/notonaskharabic/NotoNaskhArabic[wght].ttf` ve `ofl/instrumentsans/InstrumentSans[wdth,wght].ttf` dosyalarıdır (varsayılan örnek, `unitsPerEm` 1000). Her harfin değeri, glifin `BoundsPen` ile bulunan `yMax` değerinin `unitsPerEm`'e bölümüdür. Komut çıktısı şuydu:
+
+```
+InstrumentSans: sxHeight 510, x 0.51, o 0.52, e 0.52, sCapHeight 720
+NotoNaskhArabic: sxHeight 0, ص 0.357, م 0.349, و 0.34, ر 0.341, س 0.34, ى 0.34, ه 0.433, ط 0.671, ا 0.671, ل 0.671, ك 0.671
+```
+
+Bu çıktıdan:
 
 - Instrument Sans `OS/2.sxHeight` = 0.510 em; `x`, `o`, `e` harflerinin tepesi 0.51–0.52 em
 - Literata x-yüksekliği 0.506 em. Bu değer sistemde zaten yazılıydı (`--fs-arabic` notu: 18px'te 9.1px).
@@ -53,7 +60,7 @@ Satır aralığında W3C *Arabic & Persian Layout Requirements* (alreq, https://
 
 - Tokenlar: `design-system/medaris-unified/tokens/typography.css`, `tools/design-system/sync-libs.mjs` ile `libs/tokens/medaris.css`'e kopyalanır. `regen.mjs` `_ds_manifest.json` ve `_adherence.oxlintrc.json`'u yeniden üretti. `rules.md` MDS-TYPE-04 maddesine `.mds-arabic-block` eklendi.
 - Ortak modül: `libs/tokens/arabic.js` (+ `arabic.d.ts`), `@medaris/tokens/arabic`. Derleme gerektirmeyen JS'tir, `medaris-fonts.js` ile aynı desen.
-  - `arabicTextProps(text, size?, scale = 1)` → `{ lang?: "ar", dir, style? }`, bir elemana spread edilir
+  - `arabicTextProps(text, size?, scale = 1)` → `{ lang?: "ar", dir, "data-arabic-block"?, style? }`, bir elemana spread edilir
   - `arabicFontSize(size = "1em", scale = 1)`
   - `startsArabic(text)` (ilk harf Arapça mı), `hasArabic(text)` (metnin herhangi bir yerinde Arapça var mı)
   - `arabicRuns(text)`: karışık TR+AR metni sıralı parçalara böler; harekeler `Script_Extensions=Arabic` ile parçaya dahil edilir

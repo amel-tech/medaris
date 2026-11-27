@@ -51,6 +51,10 @@ export const arabicTextProps = (text, size, scale = 1) => {
     return {
       lang: "ar",
       dir: "rtl",
+      // Keeps lang="ar" from re-pointing the Latin size tokens on this
+      // element (the Arabic region rule of tokens/typography.css), so `size`
+      // is read as the Latin size it stands for.
+      "data-arabic-block": "",
       style: {
         fontFamily: "var(--font-arabic)",
         fontSize: arabicFontSize(size ?? "1em", scale),
