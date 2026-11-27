@@ -10,6 +10,7 @@ import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
+import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { IconButton } from "@medaris/ui/mds/icon-button";
@@ -25,8 +26,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import {
   type ClipboardEvent,
   type FormEvent,
-  Fragment,
   type KeyboardEvent,
+  type ReactNode,
   useEffect,
   useId,
   useRef,
@@ -45,19 +46,19 @@ import {
   saveExamSettings,
   setExamQuestionPoints,
 } from "../actions";
-import { textProps } from "../arabic";
+import { startsArabic, textProps } from "../arabic";
 import {
   type AnswerModeValue,
   lacksOf,
   minutesFromText,
   modeFits,
   nextFreeNumber,
-  numbersOf,
   OPTION_FIELDS,
   OPTION_TEXT_MAX,
   OPTIONS_MAX,
   onlineExamErrorKey,
   optionLetter,
+  optionsToSave,
   ownHundredthsOf,
   pastedOptions,
   pointsFromText,
@@ -67,10 +68,10 @@ import {
   type ScoringValue,
   sharesOf,
   spreadOptions,
-  topicsByNumbers,
   type UnsavedQuestion,
   writeUnsaved,
 } from "../online-exams";
+import { ArabicText } from "./arabic-text";
 import { PublishSection } from "./exam-publish";
 
 type Outcome =
@@ -122,10 +123,14 @@ const ownOf = (q: Question): number | null =>
  * laid over them: an edit to a question over it, a new question at the end,
  * each marked "Kaydedilemedi" to try again.
  */
-function keptOver(base: Question[], kept: UnsavedQuestion[]): Question[] {
+function keptOver(
+  base: Question[],
+  kept: UnsavedQuestion[],
+  kind: ExamKind
+): Question[] {
   const next = [...base];
   for (const item of kept) {
-    const lacks = lacksOf(item);
+    const lacks = lacksOf(item, kind);
     const shown = {
       text: item.text,
       options: item.options.map((o, i) => ({ id: `kept-${i}`, ...o })),
@@ -201,6 +206,12 @@ export function ExamEditor({
     "saved" | "pending" | "failed"
   >("saved");
   const [inFlight, setInFlight] = useState(0);
+  // The form open for a new question nothing was typed into yet: after a
+  // save the next one opens by itself (MDRS-248), and it holds nothing up.
+  const blank = questions.find(
+    (q) => q.key === editing && q.id === "" && !q.pending && !q.failed
+  );
+  const [typing, setTyping] = useState(false);
   const version = useRef(draft.version);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
@@ -220,12 +231,12 @@ export function ExamEditor({
     restored.current = true;
     const kept = readUnsaved(draft.id, window.localStorage);
     if (kept.length === 0) return;
-    setQuestions((all) => keptOver(all, kept));
+    setQuestions((all) => keptOver(all, kept, kind));
     notify({
       tone: "info",
       title: t("OnlineExams.restored", { count: kept.length }),
     });
-  }, [draft.id, notify, t]);
+  }, [draft.id, notify, t, kind]);
   useEffect(() => {
     if (!restored.current) return;
     const unsaved: UnsavedQuestion[] = questions
@@ -247,21 +258,23 @@ export function ExamEditor({
   // after EXAM_STALE. It is taken only when nothing of the page's own is on
   // its way or open, since the queue carries the page's version; what was
   // typed and not saved is laid over it again.
+  // The form of a new question stays open over it, under the questions read.
   useEffect(() => {
     if (draft.version <= version.current) return;
-    if (inFlight > 0 || editing !== null) return;
+    if (inFlight > 0 || (editing !== null && editing !== blank?.key)) return;
     version.current = draft.version;
     setTopics(draft.courseTopics);
     setQuestions(
       keptOver(
         draft.questions.map((q) => ({ ...q, key: q.id })),
-        readUnsaved(draft.id, window.localStorage)
-      )
+        readUnsaved(draft.id, window.localStorage),
+        kind
+      ).concat(blank ? [blank] : [])
     );
     if (settingsState !== "failed" && settingsState !== "pending") {
       setSettings(settingsOf(draft, practice));
     }
-  }, [draft, inFlight, editing, settingsState, practice]);
+  }, [draft, inFlight, editing, blank, settingsState, practice, kind]);
 
   /** A refusal, worded; false when the write did not go through. */
   const went = (result: Outcome): boolean => {
@@ -341,7 +354,7 @@ export function ExamEditor({
     const failed = () => {
       if (latest()) patch(key, { pending: false, failed: true });
     };
-    const lacks = lacksOf(body);
+    const lacks = lacksOf(body, kind);
     patch(key, {
       text: body.text,
       options: body.options.map((o, i) => ({ id: `${key}-${i}`, ...o })),
@@ -506,7 +519,29 @@ export function ExamEditor({
     });
   };
 
+  /**
+   * The new question's form, never saved, is taken off when another
+   * question is opened or sent again: it would stay as an empty "Eksik" row.
+   */
+  const leaveBlank = () => {
+    if (blank) removeQuestion(blank.key);
+  };
+
+  /** "Soru ekle": a new question's form already open takes the caret instead. */
   const addQuestion = () => {
+    if (blank) {
+      document
+        .querySelector<HTMLTextAreaElement>(
+          `form[data-question="${blank.key}"] textarea`
+        )
+        ?.focus();
+      return;
+    }
+    openNewQuestion();
+  };
+
+  /** A new question's form at the end of the list, the caret in its text. */
+  const openNewQuestion = () => {
     const key = localKey();
     setQuestions((all) => [
       ...all,
@@ -522,13 +557,15 @@ export function ExamEditor({
         ownPoints: null,
         points: "",
         complete: false,
-        lacks: ["text", "option", "correct", "topic"],
+        lacks: lacksOf({ text: "", options: [], topicIds: [] }, kind),
       },
     ]);
+    setTyping(false);
     setEditing(key);
   };
 
-  const addTopic = (name: string, number: number | undefined) => {
+  /** Shows the topic at once and makes it in the queue; its local id until then. */
+  const addTopic = (name: string, number: number | undefined): string => {
     const key = localKey();
     const shown = number ?? nextFreeNumber(topics.map((topic) => topic.number));
     setTopics((all) =>
@@ -571,6 +608,7 @@ export function ExamEditor({
         drop();
       }
     });
+    return key;
   };
 
   const removeTopic = (key: string) => {
@@ -643,6 +681,11 @@ export function ExamEditor({
     share: practice ? undefined : shares.get(q.key),
   }));
   const view = { ...draft, courseTopics: topics };
+  // What the page counts and checks: the questions, without a new one's
+  // form that nothing was typed into.
+  const listed = numbered.filter((q) => q.key !== blank?.key || typing);
+  /** A topic made on this page by the id the server gave it, once it has. */
+  const topicOf = (id: string) => topicIdOf.current.get(id) ?? id;
 
   // What the page knows keeps the exam from being published: its length and
   // the questions as they now stand, and what only the server knows (the
@@ -652,7 +695,7 @@ export function ExamEditor({
     ? []
     : practice
       ? // A question kept here after a failed save is not on the server.
-        numbered.some(
+        listed.some(
           (q) => q.lacks.length === 0 && !q.failed && (q.id !== "" || q.pending)
         )
         ? []
@@ -661,8 +704,8 @@ export function ExamEditor({
           ...(settings.durationMinutes === null
             ? [{ kind: "NO_DURATION" as const }]
             : []),
-          ...(numbered.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
-          ...numbered
+          ...(listed.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
+          ...listed
             .filter((q) => q.lacks.length > 0)
             .map((q) => ({
               kind: "QUESTION" as const,
@@ -707,26 +750,32 @@ export function ExamEditor({
         onSave={saveSettings}
         onRetry={() => saveSettings(settings)}
       />
-      <TopicsSection topics={topics} onAdd={addTopic} onRemove={removeTopic} />
+      <TopicsSection
+        topics={topics}
+        onAdd={(name, number) => {
+          addTopic(name, number);
+        }}
+        onRemove={removeTopic}
+      />
       <section
         className="flex flex-col gap-3"
         aria-labelledby="questions-title"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="questions-title" className="mds-h2">
-            {t("OnlineExams.questionsTitle", { count: numbered.length })}
+            {t("OnlineExams.questionsTitle", { count: listed.length })}
           </h2>
           <span className="mds-body-sm text-neutral-muted" aria-live="polite">
             {inFlight > 0 ? t("OnlineExams.saving") : ""}
           </span>
         </div>
-        {numbered.length === 0 ? (
+        {listed.length === 0 && editing === null ? (
           <p className="mds-body-sm text-neutral-muted">
             {t("OnlineExams.noQuestions")}
           </p>
         ) : null}
-        {/* Each card says "1. soru": the list draws no number of its own. */}
-        <ol className="flex list-none flex-col gap-3 ps-0">
+        {/* Each row says "1. soru": the list draws no number of its own. */}
+        <ol className="flex list-none flex-col gap-2 ps-0">
           {numbered.map((q) => (
             <li key={q.key}>
               {editing === q.key ? (
@@ -734,19 +783,34 @@ export function ExamEditor({
                   practice={practice}
                   draft={view}
                   question={q}
+                  topicOf={topicOf}
+                  onAddTopic={(name) => addTopic(name, undefined)}
+                  onTyping={setTyping}
                   onCancel={() =>
                     q.id === "" && !q.pending && q.text === ""
                       ? removeQuestion(q.key)
                       : setEditing(null)
                   }
-                  onSave={(body) => saveQuestion(q.key, body)}
+                  onSave={(body) => {
+                    // A new question saved opens the next one's form; an
+                    // edit to a saved one closes (MDRS-248).
+                    const next = q.key === blank?.key;
+                    saveQuestion(q.key, body);
+                    if (next) openNewQuestion();
+                  }}
                 />
               ) : (
                 <QuestionRow
+                  practice={practice}
                   draft={view}
+                  topicOf={topicOf}
                   question={q}
-                  onEdit={() => setEditing(q.key)}
-                  onRetry={() =>
+                  onEdit={() => {
+                    leaveBlank();
+                    setEditing(q.key);
+                  }}
+                  onRetry={() => {
+                    leaveBlank();
                     saveQuestion(q.key, {
                       text: q.text,
                       options: q.options.map((o) => ({
@@ -757,8 +821,8 @@ export function ExamEditor({
                       answerMode: q.answerMode,
                       scoring: q.scoring,
                       points: typedOwnOf(q),
-                    })
-                  }
+                    });
+                  }}
                   onRemove={() => removeQuestion(q.key)}
                 />
               )}
@@ -773,11 +837,11 @@ export function ExamEditor({
         <PublishSection
           kind={kind}
           problems={problems}
-          questionCount={numbered.length}
-          incompleteCount={numbered.filter((q) => q.lacks.length > 0).length}
+          questionCount={listed.length}
+          incompleteCount={listed.filter((q) => q.lacks.length > 0).length}
           durationMinutes={settings.durationMinutes ?? null}
           timeZone={publish.timeZone}
-          holding={editing !== null}
+          holding={editing !== null && (editing !== blank?.key || typing)}
           sending={sending}
           onPublish={publishNow}
         />
@@ -839,21 +903,45 @@ function SettingsSection({
     setProblem(null);
     if (typed && !unchanged) onSave(typed);
   };
+  // Filled in, it starts folded to one line: the questions are the work.
+  const [startOpen] = useState(
+    () =>
+      settings.title.trim() === "" ||
+      (!practice && settings.durationMinutes == null)
+  );
+  const summary = [
+    settings.title,
+    ...(practice
+      ? []
+      : [
+          settings.durationMinutes == null
+            ? t("OnlineExams.noDurationShort")
+            : t("OnlineExams.minutesShort", {
+                minutes: settings.durationMinutes,
+              }),
+        ]),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <section className="flex flex-col gap-3" aria-labelledby="settings-title">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 id="settings-title" className="mds-h2">
-          {t("OnlineExams.settingsTitle")}
-        </h2>
-        {state === "pending" ? (
-          <span className="mds-body-sm text-neutral-muted">
-            {t("OnlineExams.saving")}
-          </span>
-        ) : null}
-        {state === "failed" ? (
-          <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
-        ) : null}
-      </div>
+    <FoldingSection
+      id="settings-title"
+      title={t("OnlineExams.settingsTitle")}
+      summary={summary}
+      startOpen={startOpen}
+      aside={
+        <>
+          {state === "pending" ? (
+            <span className="mds-body-sm text-neutral-muted">
+              {t("OnlineExams.saving")}
+            </span>
+          ) : null}
+          {state === "failed" ? (
+            <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
+          ) : null}
+        </>
+      }
+    >
       <form
         className="mds-card flex max-inline-measure flex-col gap-3 p-4"
         onSubmit={submit}
@@ -921,6 +1009,70 @@ function SettingsSection({
           ) : null}
         </div>
       </form>
+    </FoldingSection>
+  );
+}
+
+/**
+ * A part of the editor's top that folds away (MDRS-248): it starts open
+ * while it wants filling in, else as its title and a one-line summary
+ * ("Konular · 13 konu"), so the questions are what the page shows first.
+ * Its heading holds a button with `aria-expanded`, so the heading stays in
+ * the outline and the part opens by keyboard.
+ */
+function FoldingSection({
+  id,
+  title,
+  summary,
+  startOpen,
+  aside,
+  children,
+}: {
+  id: string;
+  title: string;
+  summary: string;
+  startOpen: boolean;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(startOpen);
+  const panel = `${id}-panel`;
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby={id}>
+      <div className="flex flex-wrap items-center gap-2">
+        {/* The heading stays a heading (the outline finds it); the button in
+            it opens and folds the part, as the disclosure pattern has it. */}
+        <h2 id={id} className="mds-h2">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={panel}
+            onClick={() => setOpen((was) => !was)}
+            className="inline-flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-inherit [font:inherit]"
+          >
+            <span
+              aria-hidden="true"
+              className={`inline-flex transition-transform ${open ? "" : "-rotate-90"}`}
+            >
+              <Icon name="chevronDown" size="sm" />
+            </span>
+            {title}
+          </button>
+        </h2>
+        <span className="mds-body-sm min-inline-0 truncate text-neutral-muted">
+          <bdi>{summary}</bdi>
+        </span>
+        {aside}
+      </div>
+      {/* Folded, it stays drawn (hidden): what was typed in it is kept. */}
+      {/* `hidden` alone loses to the flex class: the class goes with it. */}
+      <div
+        id={panel}
+        hidden={!open}
+        className={open ? "flex flex-col gap-3" : "hidden"}
+      >
+        {children}
+      </div>
     </section>
   );
 }
@@ -945,11 +1097,14 @@ function TopicsSection({
     setName("");
     setNumber("");
   };
+  const [startOpen] = useState(() => topics.length === 0);
   return (
-    <section className="flex flex-col gap-3" aria-labelledby="topics-title">
-      <h2 id="topics-title" className="mds-h2">
-        {t("OnlineExams.topicsTitle")}
-      </h2>
+    <FoldingSection
+      id="topics-title"
+      title={t("OnlineExams.topicsTitle")}
+      summary={t("OnlineExams.topicsCount", { count: topics.length })}
+      startOpen={startOpen}
+    >
       <p className="mds-body-sm text-neutral-muted">
         {t("OnlineExams.topicsIntro")}
       </p>
@@ -1020,24 +1175,36 @@ function TopicsSection({
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
+            dir="auto"
           />
         </Field>
         <Button type="submit" variant="secondary" disabled={name.trim() === ""}>
           {t("OnlineExams.addTopic")}
         </Button>
       </form>
-    </section>
+    </FoldingSection>
   );
 }
 
+/**
+ * A saved question as one row (MDRS-248): its number, its text cut to one
+ * line, how many options and which is correct, its topics, Tamam or Eksik,
+ * and Düzenle / Sil; what it still lacks goes on a second line. A click on
+ * its text opens it in place, as "Düzenle" does (the text is not a Tab stop
+ * of its own: "Düzenle" is the keyboard's way in).
+ */
 function QuestionRow({
+  practice,
   draft,
+  topicOf,
   question,
   onEdit,
   onRetry,
   onRemove,
 }: {
+  practice: boolean;
   draft: OnlineExamDraftResponse;
+  topicOf: (id: string) => string;
   question: Question & { share?: { hundredths: number; own: boolean } };
   onEdit: () => void;
   onRetry: () => void;
@@ -1051,42 +1218,87 @@ function QuestionRow({
     : "";
   const [asking, setAsking] = useState(false);
   // Its topics by number and name: "11" alone sends the reader up the page.
-  // Each name is its own run, so an Arabic one does not reorder the line.
-  const named = draft.courseTopics.filter((topic) =>
-    question.topicIds.includes(topic.id)
-  );
+  const ids = question.topicIds.map(topicOf);
+  const named = draft.courseTopics.filter((topic) => ids.includes(topic.id));
   const n = question.number;
-  const missing = question.lacks.map((lack) =>
-    lack === "text"
-      ? t("OnlineExams.problemNoText", { n })
-      : lack === "option"
-        ? t("OnlineExams.problemFewOptions", { n })
-        : lack === "correct"
-          ? t("OnlineExams.problemNoCorrect", { n })
-          : t("OnlineExams.problemNoTopic", { n })
-  );
+  const missing = question.lacks
+    // A çalışma seti's question needs no topic (MDRS-248).
+    .filter((lack) => !(practice && lack === "topic"))
+    .map((lack) =>
+      lack === "text"
+        ? t("OnlineExams.problemNoText", { n })
+        : lack === "option"
+          ? t("OnlineExams.problemFewOptions", { n })
+          : lack === "correct"
+            ? t("OnlineExams.problemNoCorrect", { n })
+            : t("OnlineExams.problemNoTopic", { n })
+    );
+  const letters = question.options
+    .flatMap((o, i) => (o.correct ? [optionLetter(i)] : []))
+    .join(", ");
+  const facts = [
+    t("OnlineExams.optionCount", { count: question.options.length }),
+    ...(letters ? [t("OnlineExams.correctLetters", { letters })] : []),
+    ...(question.answerMode === "MULTIPLE"
+      ? [
+          t("OnlineExams.modeMultiple"),
+          question.scoring === "IN_SHARES"
+            ? t("OnlineExams.scoringShares")
+            : question.scoring === "ANY_CORRECT"
+              ? t("OnlineExams.scoringAny")
+              : t("OnlineExams.scoringAll"),
+        ]
+      : []),
+    ...(share
+      ? [
+          share.own
+            ? t("OnlineExams.pointsOwn", { points: shown })
+            : t("OnlineExams.pointsShare", { points: shown }),
+        ]
+      : []),
+  ].join(" · ");
   return (
-    <article className="mds-card flex flex-col gap-2 p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <strong>
-          {t("OnlineExams.questionNumber", { number: question.number })}
+    <article
+      className="mds-card flex flex-col gap-1 px-4 py-2"
+      aria-label={t("OnlineExams.questionNumber", { number: n })}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <strong className="shrink-0">
+          {t("OnlineExams.questionNumber", { number: n })}
         </strong>
-        <Badge variant={question.complete ? "success" : "warning"}>
-          {question.complete
+        {/* Beside its number on a phone, its facts on the line under it.
+            An Arabic text is cut at its end, so the box takes its direction. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={onEdit}
+          dir={startsArabic(question.text) ? "rtl" : undefined}
+          className="mds-body min-inline-0 flex-1 basis-[calc(100%-5rem)] cursor-pointer truncate border-0 bg-transparent p-0 text-start text-inherit md:basis-[12rem]"
+        >
+          {question.text ? (
+            <ArabicText text={question.text} />
+          ) : (
+            <span className="text-neutral-muted">
+              {t("OnlineExams.noText")}
+            </span>
+          )}
+        </button>
+        <span className="mds-body-sm shrink-0 text-neutral-muted">{facts}</span>
+        {named.map((topic) => (
+          <Badge key={topic.id} variant="outline">
+            <bdi>
+              {t("OnlineExams.topicChip", {
+                number: topic.number,
+                name: topic.name,
+              })}
+            </bdi>
+          </Badge>
+        ))}
+        <Badge variant={missing.length === 0 ? "success" : "warning"}>
+          {missing.length === 0
             ? t("OnlineExams.complete")
             : t("OnlineExams.incomplete")}
         </Badge>
-        {named.length > 0 ? (
-          <span className="mds-body-sm text-neutral-muted">
-            {t("OnlineExams.topicsOfQuestionLabel")}{" "}
-            {named.map((topic, i) => (
-              <Fragment key={topic.id}>
-                {i > 0 ? ", " : ""}
-                <bdi>{`${topic.number}. ${topic.name}`}</bdi>
-              </Fragment>
-            ))}
-          </span>
-        ) : null}
         {question.pending ? (
           <span className="mds-body-sm text-neutral-muted">
             {t("OnlineExams.saving")}
@@ -1095,75 +1307,25 @@ function QuestionRow({
         {question.failed ? (
           <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
         ) : null}
-      </div>
-      {missing.length > 0 ? (
-        // What "Eksik" means, so the hoca need not guess which part is wanting.
-        <ul className="mds-body-sm flex list-disc flex-col gap-1 ps-5">
-          {missing.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      ) : null}
-      <p className="mds-body-sm text-neutral-muted">
-        {question.answerMode === "MULTIPLE"
-          ? `${t("OnlineExams.modeMultiple")} · ${
-              question.scoring === "IN_SHARES"
-                ? t("OnlineExams.scoringShares")
-                : question.scoring === "ANY_CORRECT"
-                  ? t("OnlineExams.scoringAny")
-                  : t("OnlineExams.scoringAll")
-            }`
-          : t("OnlineExams.modeSingle")}
-        {share
-          ? ` · ${
-              share.own
-                ? t("OnlineExams.pointsOwn", { points: shown })
-                : t("OnlineExams.pointsShare", { points: shown })
-            }`
-          : ""}
-      </p>
-      {question.text ? (
-        <p className="mds-body" {...textProps(question.text)}>
-          {question.text}
-        </p>
-      ) : (
-        <p className="mds-body">{t("OnlineExams.noText")}</p>
-      )}
-      {question.options.length > 0 ? (
-        // The list stays left to right with its letter on the left; each
-        // option's text is its own run, and "Doğru" is never inside it.
-        <ol className="mds-body-sm flex flex-col gap-1" type="A">
-          {question.options.map((o) => (
-            <li key={o.id}>
-              <span {...textProps(o.text)}>{o.text}</span>
-              {o.correct ? (
-                <>
-                  {" "}
-                  <Badge variant="success">{t("OnlineExams.correct")}</Badge>
-                </>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      <div className="flex gap-2">
-        {question.failed ? (
-          <Button size="small" onClick={onRetry}>
-            {t("OnlineExams.retry")}
+        <div className="ms-auto flex shrink-0 gap-1">
+          {question.failed ? (
+            <Button size="small" onClick={onRetry}>
+              {t("OnlineExams.retry")}
+            </Button>
+          ) : null}
+          <Button size="small" variant="outline" onClick={onEdit}>
+            {t("OnlineExams.edit")}
           </Button>
-        ) : null}
-        <Button size="small" variant="outline" onClick={onEdit}>
-          {t("OnlineExams.edit")}
-        </Button>
-        {/* Opened by state, as the other nazar dialogs are: a bare `trigger`
-            is not wrapped in the kit's AlertDialogTrigger and opened nothing. */}
-        <Button size="small" variant="ghost" onClick={() => setAsking(true)}>
-          {t("OnlineExams.remove")}
-        </Button>
+          {/* Opened by state, as the other nazar dialogs are: a bare `trigger`
+              is not wrapped in the kit's AlertDialogTrigger and opened nothing. */}
+          <Button size="small" variant="ghost" onClick={() => setAsking(true)}>
+            {t("OnlineExams.remove")}
+          </Button>
+        </div>
         <AlertDialog
           open={asking}
           onOpenChange={setAsking}
-          title={t("OnlineExams.removeTitle", { number: question.number })}
+          title={t("OnlineExams.removeTitle", { number: n })}
           confirmLabel={t("OnlineExams.remove")}
           cancelLabel={t("OnlineExams.cancel")}
           closeLabel={t("Shell.close")}
@@ -1176,21 +1338,52 @@ function QuestionRow({
           {t("OnlineExams.removeBody")}
         </AlertDialog>
       </div>
+      {missing.length > 0 ? (
+        // What "Eksik" means, so the hoca need not guess which part is wanting.
+        <p className="mds-body-sm text-neutral-muted">{missing.join(" ")}</p>
+      ) : null}
     </article>
   );
 }
 
+/** Alt (Option on a Mac) + D, read by the key's place: Option+D types "∂". */
+const marksCorrect = (event: KeyboardEvent<HTMLElement>) =>
+  event.altKey &&
+  !event.ctrlKey &&
+  !event.metaKey &&
+  (event.code === "KeyD" || event.key.toLowerCase() === "d");
+
+/**
+ * A question typed fast (MDRS-248). The caret starts in "Soru"; Tab goes
+ * Soru → A → B → … one stop per option, since each "Doğru" box is out of
+ * the Tab order (tabIndex -1) and marked from its option instead with
+ * Alt/Option + D (named in the help and in `aria-keyshortcuts`). The box is
+ * still a labelled check box beside its option: a screen reader finds it
+ * and a click or Space on it marks it. Cmd/Ctrl + Enter saves from any
+ * field. The topics are chips (one Tab stop, arrows between them) with a
+ * "+ Konu" to make one; empty options are left out on save, which the form
+ * says before it happens.
+ */
 function QuestionForm({
   practice,
   draft,
   question,
+  topicOf,
+  onAddTopic,
+  onTyping,
   onCancel,
   onSave,
 }: {
-  /** A çalışma seti's question has no points of its own (MDRS-248). */
+  /** A çalışma seti's question has no points of its own and needs no topic (MDRS-248). */
   practice: boolean;
   draft: OnlineExamDraftResponse;
   question: Question;
+  /** A topic made on this page by the id the server gave it, once it has. */
+  topicOf: (id: string) => string;
+  /** Makes a course topic; its id on the page until the server answers. */
+  onAddTopic: (name: string) => string;
+  /** Whether anything is typed in the form, so a blank new one holds nothing up. */
+  onTyping: (typing: boolean) => void;
   onCancel: () => void;
   onSave: (body: QuestionBody) => void;
 }) {
@@ -1219,17 +1412,34 @@ function QuestionForm({
       filled.push({ text: "", correct: false });
     return filled;
   });
-  const [numbers, setNumbers] = useState(
-    numbersOf(question.topicIds, draft.courseTopics)
+  const [topicIds, setTopicIds] = useState<string[]>(question.topicIds);
+  // The topics as the chips have them: by the server's id once it is known,
+  // and only those the course still has.
+  const known = new Set(draft.courseTopics.map((topic) => topic.id));
+  const picked = [...new Set(topicIds.map(topicOf))].filter((id) =>
+    known.has(id)
   );
-  const picked = topicsByNumbers(numbers, draft.courseTopics);
-  const named = draft.courseTopics.filter((topic) =>
-    picked.ids.includes(topic.id)
-  );
+  const [newTopic, setNewTopic] = useState<string | null>(null);
   const setOption = (i: number, change: Partial<(typeof options)[number]>) =>
     setOptions((all) => all.map((o, j) => (j === i ? { ...o, ...change } : o)));
   const formRef = useRef<HTMLFormElement>(null);
   const uid = useId().replace(/[^\w-]/g, "");
+  // The caret starts in "Soru": a form opened after a save is typed into at once.
+  useEffect(() => {
+    formRef.current?.querySelector("textarea")?.focus();
+  }, []);
+  const typing =
+    text.trim() !== "" || options.some((o) => o.text.trim() !== "");
+  useEffect(() => {
+    onTyping(typing);
+  }, [typing, onTyping]);
+  const asksTopic = newTopic !== null;
+  useEffect(() => {
+    if (asksTopic)
+      formRef.current
+        ?.querySelector<HTMLInputElement>("input[data-new-topic]")
+        ?.focus();
+  }, [asksTopic]);
   // The option to put the caret in once it is drawn (Enter on the last one adds it).
   const [focusAt, setFocusAt] = useState<number | null>(null);
   useEffect(() => {
@@ -1242,7 +1452,14 @@ function QuestionForm({
   // Enter goes on to the next option, and past the last one adds one, so a
   // question's options are typed one after another without the mouse.
   const onOptionKey = (i: number, event: KeyboardEvent<HTMLInputElement>) => {
+    if (marksCorrect(event)) {
+      event.preventDefault();
+      setOption(i, { correct: !options[i]?.correct });
+      return;
+    }
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    // Cmd/Ctrl + Enter is the form's: it saves.
+    if (event.metaKey || event.ctrlKey) return;
     // On the last option there can be, Enter sends the form, as before.
     if (i + 1 >= OPTIONS_MAX) return;
     event.preventDefault();
@@ -1264,10 +1481,16 @@ function QuestionForm({
     setOptions(spread.options);
     setFocusAt(spread.last);
   };
-  const filled = options
-    .filter((o) => o.text.trim() !== "")
-    .map((o) => ({ text: o.text.trim(), correct: o.correct }));
-  const correctCount = filled.filter((o) => o.correct).length;
+  const addTopic = () => {
+    const name = (newTopic ?? "").trim();
+    if (name === "") return;
+    const id = onAddTopic(name);
+    setTopicIds((all) => [...all, id]);
+    // Open for one more; Escape or Tab moves on.
+    setNewTopic("");
+  };
+  const { kept, gaps, blankCorrect } = optionsToSave(options);
+  const correctCount = kept.filter((o) => o.correct).length;
   // How it is answered is asked only with two correct options or more; with
   // one it is radio buttons, as the API's modeFits has it.
   const several = correctCount >= 2;
@@ -1276,29 +1499,55 @@ function QuestionForm({
   const own = practice || points.trim() === "" ? null : pointsFromText(points);
   const pointsInvalid = !practice && points.trim() !== "" && own === null;
   const fits = modeFits(answerMode, answerScoring, correctCount);
+  // Nothing typed is not a question: Cmd+Enter pressed once too often
+  // sends no empty one (and opens no form after it).
+  const empty = text.trim() === "" && kept.length === 0;
+  const blocked = pointsInvalid || !fits || blankCorrect >= 0 || empty;
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (picked.unknown.length > 0 || pointsInvalid || !fits) return;
+  const save = () => {
+    if (blocked) return;
+    // A topic typed in "+ Konu" and not yet added goes with the question.
+    const pending = (newTopic ?? "").trim();
+    const topics = pending === "" ? picked : [...picked, onAddTopic(pending)];
+    if (pending !== "") setNewTopic(null);
     onSave({
       text: text.trim(),
-      options: filled,
-      topicIds: picked.ids,
+      options: kept,
+      topicIds: topics,
       answerMode,
       scoring: answerScoring,
       points: own,
     });
   };
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    save();
+  };
+  // Cmd/Ctrl + Enter saves from any field of the form.
+  const onFormKey = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (
+      event.key === "Enter" &&
+      (event.metaKey || event.ctrlKey) &&
+      !event.repeat &&
+      !event.nativeEvent.isComposing
+    ) {
+      event.preventDefault();
+      save();
+    }
+  };
 
   return (
     <form
       ref={formRef}
+      data-question={question.key}
       // The card keeps the list's width; what is typed in it keeps a reading
       // measure, so an option and its "Doğru" are never a screen apart.
       className="mds-card flex flex-col gap-3 p-4 [&>*]:max-inline-measure"
       onSubmit={submit}
+      onKeyDown={onFormKey}
       noValidate
       aria-label={t("OnlineExams.questionNumber", { number: question.number })}
+      aria-keyshortcuts="Meta+Enter Control+Enter"
     >
       <Field label={t("OnlineExams.questionTextLabel")}>
         <Textarea
@@ -1335,10 +1584,13 @@ function QuestionForm({
                 onCheckedChange={(checked) =>
                   setOption(i, { correct: checked === true })
                 }
+                // One Tab stop per option: the box is marked with Alt+D from it.
+                tabIndex={-1}
                 className="shrink-0"
               />
               <Input
                 aria-label={t("OnlineExams.optionLabel", { n: i + 1 })}
+                aria-keyshortcuts="Alt+D"
                 data-option=""
                 value={o.text}
                 onChange={(e) => setOption(i, { text: e.target.value })}
@@ -1352,6 +1604,17 @@ function QuestionForm({
             </li>
           ))}
         </ol>
+        {blankCorrect >= 0 ? (
+          <p className="mds-error" role="alert">
+            {t("OnlineExams.blankCorrect", {
+              letter: optionLetter(blankCorrect),
+            })}
+          </p>
+        ) : gaps ? (
+          <p className="mds-help" aria-live="polite">
+            {t("OnlineExams.blankDropped")}
+          </p>
+        ) : null}
         {options.length < OPTIONS_MAX ? (
           <div>
             <Button
@@ -1424,38 +1687,95 @@ function QuestionForm({
           />
         </Field>
       )}
-      <Field
-        label={t("OnlineExams.topicNumbersLabel")}
-        help={
-          named.length > 0
-            ? named.map((topic) => `${topic.number}. ${topic.name}`).join(" · ")
-            : t("OnlineExams.topicNumbersHelp")
-        }
-        error={
-          picked.unknown.length > 0
-            ? t("OnlineExams.topicNumbersUnknown", {
-                numbers: picked.unknown.join(", "),
-              })
-            : undefined
-        }
-      >
-        <Input
-          value={numbers}
-          onChange={(e) => setNumbers(e.target.value)}
-          placeholder="3, 7"
-          inputMode="numeric"
-        />
-      </Field>
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          disabled={picked.unknown.length > 0 || pointsInvalid || !fits}
-        >
-          {t("OnlineExams.save")}
-        </Button>
-        <Button variant="ghost" onClick={onCancel}>
-          {t("OnlineExams.cancel")}
-        </Button>
+      <div className="flex flex-col gap-2">
+        {draft.courseTopics.length > 0 ? (
+          <ChoiceChips
+            multiple
+            legendVisible
+            legend={
+              practice
+                ? t("OnlineExams.topicsOptional")
+                : t("OnlineExams.topicsTitle")
+            }
+            value={picked}
+            onChange={setTopicIds}
+            options={draft.courseTopics.map((topic) => ({
+              value: topic.id,
+              label: (
+                <bdi>
+                  {t("OnlineExams.topicChip", {
+                    number: topic.number,
+                    name: topic.name,
+                  })}
+                </bdi>
+              ),
+            }))}
+          />
+        ) : (
+          <p className="mds-body-sm text-neutral-muted">
+            {t("OnlineExams.topicsNone")}
+          </p>
+        )}
+        {newTopic === null ? (
+          <div>
+            <Button
+              size="small"
+              variant="ghost"
+              onClick={() => setNewTopic("")}
+            >
+              {t("OnlineExams.addTopicShort")}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              data-new-topic=""
+              aria-label={t("OnlineExams.newTopicLabel")}
+              value={newTopic}
+              onChange={(e) => setNewTopic(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setNewTopic(null);
+                }
+                // Enter makes the topic here; it never sends the question.
+                if (
+                  e.key === "Enter" &&
+                  !e.metaKey &&
+                  !e.ctrlKey &&
+                  !e.nativeEvent.isComposing
+                ) {
+                  e.preventDefault();
+                  addTopic();
+                }
+              }}
+              maxLength={60}
+              dir="auto"
+              className="w-[12rem]"
+            />
+            <Button
+              size="small"
+              variant="secondary"
+              onClick={addTopic}
+              disabled={newTopic.trim() === ""}
+            >
+              {t("OnlineExams.newTopicAdd")}
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-2">
+          <Button type="submit" disabled={blocked}>
+            {t("OnlineExams.save")}
+          </Button>
+          <Button variant="ghost" onClick={onCancel}>
+            {t("OnlineExams.cancel")}
+          </Button>
+        </div>
+        <p className="mds-caption text-neutral-muted">
+          {t("OnlineExams.shortcutHint")}
+        </p>
       </div>
     </form>
   );

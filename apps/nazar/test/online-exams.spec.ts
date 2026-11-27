@@ -1,41 +1,65 @@
 import { describe, expect, it } from "vitest";
 import {
+  lacksOf,
   modeFits,
-  numbersOf,
   onlineExamErrorKey,
   optionLetter,
+  optionsToSave,
   pastedOptions,
   pointsFromText,
   sharesOf,
   spreadOptions,
-  topicsByNumbers,
 } from "~/features/online-exams/online-exams";
 
-const topics = [
-  { id: "a", number: 3, name: "Kıyas", picked: true, questionCount: 1 },
-  { id: "b", number: 7, name: "İcma", picked: false, questionCount: 0 },
-];
-
 describe("online exams (MDRS-299)", () => {
-  it("picks the topics a hoca types by number, and names the unknown ones", () => {
-    expect(topicsByNumbers("3, 7", topics)).toEqual({
-      ids: ["a", "b"],
-      unknown: [],
-    });
-    expect(topicsByNumbers(" 7;3 3 ", topics)).toEqual({
-      ids: ["b", "a"],
-      unknown: [],
-    });
-    expect(topicsByNumbers("3, 9", topics)).toEqual({
-      ids: ["a"],
-      unknown: [9],
-    });
-    expect(topicsByNumbers("", topics)).toEqual({ ids: [], unknown: [] });
+  it("asks a topic of an exam's question only, not of a çalışma seti's (MDRS-248)", () => {
+    const q = {
+      text: "Soru",
+      options: [
+        { text: "A", correct: true },
+        { text: "B", correct: false },
+      ],
+      topicIds: [],
+    };
+    expect(lacksOf(q)).toEqual(["topic"]);
+    expect(lacksOf(q, "EXAM")).toEqual(["topic"]);
+    expect(lacksOf(q, "PRACTICE")).toEqual([]);
   });
 
-  it("shows a question's topics as their numbers", () => {
-    expect(numbersOf(["b", "a"], topics)).toBe("3, 7");
-    expect(numbersOf([], topics)).toBe("");
+  it("leaves the empty options out, each correct mark with its own option (MDRS-248)", () => {
+    const saved = optionsToSave([
+      { text: "Üç", correct: false },
+      { text: " ", correct: false },
+      { text: "Dört", correct: true },
+      { text: "", correct: false },
+    ]);
+    // "Dört" was C and is B now, and still the correct one.
+    expect(saved.kept).toEqual([
+      { text: "Üç", correct: false },
+      { text: "Dört", correct: true },
+    ]);
+    expect(saved.gaps).toBe(true);
+    expect(saved.blankCorrect).toBe(-1);
+    // A form with nothing typed yet moves no letter either.
+    expect(
+      optionsToSave([
+        { text: "", correct: false },
+        { text: "", correct: false },
+      ]).gaps
+    ).toBe(false);
+    // Empty options after the last typed one move no letter.
+    expect(
+      optionsToSave([
+        { text: "Üç", correct: true },
+        { text: "", correct: false },
+      ]).gaps
+    ).toBe(false);
+    expect(
+      optionsToSave([
+        { text: "Üç", correct: false },
+        { text: "", correct: true },
+      ]).blankCorrect
+    ).toBe(1);
   });
 
   it("words a refusal by its code", () => {

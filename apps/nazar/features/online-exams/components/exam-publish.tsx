@@ -21,7 +21,9 @@ import { fieldsOf, instantOf } from "~/features/sessions/sessions";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { unpublishOnlineExam } from "../actions";
+import { startsArabic } from "../arabic";
 import { onlineExamErrorKey, READS_AGAIN } from "../online-exams";
+import { ArabicText } from "./arabic-text";
 import { wholePercent } from "./practice-sets-table";
 
 const MINUTE = 60_000;
@@ -383,8 +385,11 @@ export function PublishedExam({
 }) {
   const t = useTranslations("nazar");
   const format = useFormatter();
-  // A finished attempt was started first: the API refuses to unpublish it.
-  const solved = (practiceStats?.attemptCount ?? 0) > 0;
+  // The API's `locked` (MDRS-248): a set a talebe started or a pool trial
+  // drew from, an exam whose celse began. It refuses to unpublish those
+  // (EXAM_LOCKED), so the page offers no button. A finished attempt was
+  // started first, so the figures say it too when an older read lacks it.
+  const locked = draft.locked || (practiceStats?.attemptCount ?? 0) > 0;
   const words = t as unknown as Messages;
   const router = useRouter();
   const practice = kind === "PRACTICE";
@@ -476,7 +481,7 @@ export function PublishedExam({
             })}
           </p>
         ) : null}
-        {practice && solved ? (
+        {practice && locked ? (
           <p className="mds-body-sm text-neutral-muted">
             {t("Practice.lockedNow")}
           </p>
@@ -506,6 +511,10 @@ export function PublishedExam({
               {t("Practice.unpublishBody")}
             </AlertDialog>
           </>
+        ) : locked ? (
+          <p className="mds-body-sm text-neutral-muted">
+            {t("OnlineExams.lockedExam")}
+          </p>
         ) : draft.status === "SCHEDULED" ? (
           <>
             <p className="mds-help">{t("OnlineExams.notifiedNote")}</p>
@@ -548,13 +557,18 @@ export function PublishedExam({
               <strong>
                 {t("OnlineExams.questionNumber", { number: q.number })}
               </strong>
-              <p className="mds-body" dir="auto">
-                {q.text}
+              {/* The paragraph takes its text's direction: an Arabic
+                  question is laid out right to left, wrapped lines too. */}
+              <p
+                className="mds-body"
+                dir={startsArabic(q.text) ? "rtl" : "auto"}
+              >
+                <ArabicText text={q.text} />
               </p>
               <ol className="mds-body-sm flex flex-col gap-1" type="A">
                 {q.options.map((o) => (
                   <li key={o.id}>
-                    <span dir="auto">{o.text}</span>
+                    <ArabicText text={o.text} />
                     {o.correct ? (
                       <>
                         {" "}

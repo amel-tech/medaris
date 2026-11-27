@@ -15,6 +15,7 @@ const sets = [
     title: "Kıyas tekrarı",
     questionCount: 4,
     status: "OPEN",
+    locked: false,
     startsAt: null,
     updatedAt: new Date("2026-11-27T08:00:00Z"),
   },
@@ -24,6 +25,7 @@ const sets = [
     title: "Tarifler",
     questionCount: 0,
     status: "DRAFT",
+    locked: false,
     startsAt: null,
     updatedAt: new Date("2026-11-27T07:00:00Z"),
   },
@@ -125,6 +127,23 @@ describe("Çalışma Soruları (MDRS-248)", () => {
       method: "listOnlineExams",
       request: { id: "c1", kind: "PRACTICE" },
     });
+  });
+
+  it("marks a set the talebe started as one that cannot be unpublished", async () => {
+    const [open] = sets;
+    if (!open) throw new Error("no set");
+    open.locked = true;
+    let markup: string;
+    try {
+      markup = await html(<ExamsPage courseId="c1" kind="PRACTICE" />);
+    } finally {
+      open.locked = false;
+    }
+    expect(textOf(markup)).toContain(
+      "Kıyas tekrarı Yayında Yayından kaldırılamaz 4"
+    );
+    // Only the started one.
+    expect(textOf(markup)).not.toContain("Tarifler Taslak Yayından");
   });
 
   it("shows a dash for a published set nobody solved yet", async () => {

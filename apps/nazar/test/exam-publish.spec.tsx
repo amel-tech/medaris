@@ -257,4 +257,15 @@ describe("publishing an online exam (MDRS-299)", () => {
     expect(actions.unpublishOnlineExam).toHaveBeenCalledWith("e1", 4);
     expect(button(root, "Soru ekle")).toBeTruthy();
   });
+
+  it("offers no Taslağa al once the API calls the exam locked, and says why (MDRS-248)", async () => {
+    const root = await page({
+      ...scheduled("2026-12-02T17:00:00.000Z", "2026-12-02T17:10:00.000Z"),
+      locked: true,
+    } as unknown as OnlineExamDraftResponse);
+    expect(root.textContent).toContain(
+      "Celse başladı; sınav artık taslağa alınamaz."
+    );
+    expect(button(root, "Taslağa al")).toBeUndefined();
+  });
 });

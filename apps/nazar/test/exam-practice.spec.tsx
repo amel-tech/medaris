@@ -282,7 +282,9 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
 
   it("says which part a question lacks, and that the talebe never gets it", async () => {
     const root = await page(set);
-    expect(root.textContent).toContain("Konular: 3. Kıyas");
+    expect(
+      root.querySelector('article[aria-label="1. soru"]')?.textContent
+    ).toContain("3. Kıyas");
     expect(root.textContent).toContain(
       "2. sorunun doğru şıkkı işaretli değil."
     );
@@ -303,7 +305,18 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
     });
     expect(root.textContent).toContain("1 talebe 2 kez çözdü · ortalama %73");
     expect(root.textContent).toContain(
-      "Talebeler bu seti çözdü; artık yayından kaldırılamaz."
+      "Talebeler bu seti başlattı; artık yayından kaldırılamaz."
+    );
+    expect(button(root, "Yayından kaldır")).toBeUndefined();
+  });
+
+  it("offers no Yayından kaldır on a set the API calls locked, before anyone finished it (MDRS-248)", async () => {
+    const root = await page({
+      ...published,
+      locked: true,
+    } as unknown as OnlineExamDraftResponse);
+    expect(root.textContent).toContain(
+      "Talebeler bu seti başlattı; artık yayından kaldırılamaz."
     );
     expect(button(root, "Yayından kaldır")).toBeUndefined();
   });
@@ -339,5 +352,15 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
       "Bir talebe bu seti çözmeye başladı; yayından kaldırılamaz."
     );
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("lays a published set's Arabic question out right to left (MDRS-248)", async () => {
+    const root = await page({
+      ...published,
+      questions: [{ ...complete, text: "مَا مَعْنَى «الْحَمْدُ»؟" }],
+    } as unknown as OnlineExamDraftResponse);
+    const run = root.querySelector("li p [lang=ar]") as HTMLElement;
+    expect(run.textContent).toBe("مَا مَعْنَى «الْحَمْدُ»؟");
+    expect(run.closest("p")?.getAttribute("dir")).toBe("rtl");
   });
 });

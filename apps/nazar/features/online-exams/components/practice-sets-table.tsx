@@ -2,6 +2,7 @@
 
 import { Badge } from "@medaris/ui/mds/badge";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
+import { Icon } from "@medaris/ui/mds/icon";
 import { Table } from "@medaris/ui/mds/table";
 import { useFormatter, useTranslations } from "next-intl";
 
@@ -10,6 +11,8 @@ export interface PracticeSetRow {
   id: string;
   title: string;
   draft: boolean;
+  /** Published and started (the API's `locked`): it can no longer be unpublished. */
+  locked: boolean;
   questionCount: number;
   talebeCount: number | null;
   attemptCount: number | null;
@@ -107,9 +110,23 @@ export function PracticeSetsTable({
                 {t("statusDraft")}
               </Badge>
             ) : (
-              <Badge variant="success" className={STATUS_BADGE}>
-                {t("statusOpen")}
-              </Badge>
+              <span className="inline-flex items-center gap-1">
+                <Badge variant="success" className={STATUS_BADGE}>
+                  {t("statusOpen")}
+                </Badge>
+                {/* Started: the set page offers no "Yayından kaldır" (MDRS-248). */}
+                {r.locked ? (
+                  <span
+                    className="inline-flex text-neutral-muted"
+                    title={t("lockedShort")}
+                  >
+                    <Icon name="lock" size="sm" />
+                    <span className="mds-visually-hidden">
+                      {t("lockedShort")}
+                    </span>
+                  </span>
+                ) : null}
+              </span>
             ),
         },
         {

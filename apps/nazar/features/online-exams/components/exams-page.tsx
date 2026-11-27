@@ -70,6 +70,7 @@ export async function ExamsPage({
         id: exam.id,
         title: exam.title,
         draft: exam.status === "DRAFT",
+        locked: exam.locked,
         questionCount: exam.questionCount,
         talebeCount: s?.talebeCount ?? null,
         attemptCount: s?.attemptCount ?? null,
