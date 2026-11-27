@@ -24,7 +24,12 @@ import {
   tallyAttempt,
   verdictOf,
 } from "./domain/exam-results";
-import { pointsText, sharePoints, shareText } from "./domain/online-exam";
+import {
+  ExamKind,
+  pointsText,
+  sharePoints,
+  shareText,
+} from "./domain/online-exam";
 import type {
   OnlineExamClosedResponse,
   OnlineExamResultsResponse,
@@ -35,7 +40,10 @@ import {
   ExamNotOpenError,
   TalebeAttemptNotFoundError,
 } from "./errors/exam-results.errors";
-import { OnlineExamNotFoundError } from "./errors/online-exam.errors";
+import {
+  ExamKindMismatchError,
+  OnlineExamNotFoundError,
+} from "./errors/online-exam.errors";
 import type { IAttempt, Tx } from "./exam-attempt.repository";
 import {
   ExamResultsRepository,
@@ -98,11 +106,23 @@ export class ExamResultsService {
     private readonly authz: AuthzService
   ) {}
 
+  /**
+   * EXAM_KIND_MISMATCH for a çalışma seti (MDRS-248): it has no results for
+   * the team, no early close and no celse to release.
+   */
+  private async assertExamKind(examId: string): Promise<void> {
+    const kind = await this.exams.kindOf(examId);
+    if (kind === ExamKind.PRACTICE) {
+      throw new ExamKindMismatchError(examId, kind, ExamKind.EXAM);
+    }
+  }
+
   async results(
     examId: string,
     user: AuthenticatedUser,
     now: Date = new Date()
   ): Promise<OnlineExamResultsResponse> {
+    await this.assertExamKind(examId);
     const exam = await this.repo.findExam(examId);
     if (!exam) throw new OnlineExamNotFoundError(examId);
     const [draft, topics, seated, attempts, zerothAnswers, zerothOptions] =
@@ -303,6 +323,7 @@ export class ExamResultsService {
     examId: string,
     userId: string
   ): Promise<TalebeAnswersResponse> {
+    await this.assertExamKind(examId);
     const exam = await this.repo.findExam(examId);
     if (!exam) throw new OnlineExamNotFoundError(examId);
     const [draft, seated, attempt] = await Promise.all([
@@ -389,6 +410,7 @@ export class ExamResultsService {
     user: AuthenticatedUser,
     now: Date = new Date()
   ): Promise<OnlineExamClosedResponse> {
+    await this.assertExamKind(examId);
     const questions = await this.questionsToScore(examId);
     return this.repo.transaction(async (tx) => {
       const held = await this.hold(tx, examId);

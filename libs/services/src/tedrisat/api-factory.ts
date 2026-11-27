@@ -20,6 +20,7 @@ import {
   NotificationsApi,
   OnlineExamAttemptsApi,
   OnlineExamsApi,
+  PracticeApi,
   ResourcesApi,
   SessionsApi,
   SubmissionsApi,
@@ -105,6 +106,7 @@ export type {
   ExamAttemptResponse,
   ExamBriefingResponse,
   ExamClockResponse,
+  ExamKind,
   ExamOptionResponse,
   ExamQuestionResponse,
   ExamQuestionWriteResponse,
@@ -202,6 +204,15 @@ export type {
   PermissionCatalogResponse,
   PermissionGroupResponse,
   PermissionGroupScope,
+  PracticeAnswerSavedResponse,
+  PracticeAttemptResponse,
+  PracticeAttemptStatus,
+  PracticeAttemptSummaryResponse,
+  PracticeOptionResponse,
+  PracticeOutcome,
+  PracticeQuestionResponse,
+  PracticeResultResponse,
+  PracticeSetSummaryResponse,
   ProfileVisibility,
   PublicProfileResponse,
   QuestionAnswerResponse,
@@ -340,6 +351,9 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     onlineExamAttempts: new OnlineExamAttemptsApi(configuration),
     // A talebe's own exams (MDRS-299): Sınavlarım and the screen of a past one.
     myExams: new MyExamsApi(configuration),
+    // A talebe's çalışma soruları (MDRS-248): the published çalışma setleri of
+    // their courses and their attempts at them.
+    practice: new PracticeApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

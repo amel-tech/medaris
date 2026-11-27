@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ExamKind } from './ExamKind';
+import {
+    ExamKindFromJSON,
+    ExamKindFromJSONTyped,
+    ExamKindToJSON,
+    ExamKindToJSONTyped,
+} from './ExamKind';
 import type { ExamQuestionResponse } from './ExamQuestionResponse';
 import {
     ExamQuestionResponseFromJSON,
@@ -60,6 +67,12 @@ export interface OnlineExamDraftResponse {
      * @memberof OnlineExamDraftResponse
      */
     courseId: string;
+    /**
+     * An exam, or a çalışma seti (PRACTICE), which has no celse, no length, no points and no zeroth question; its `status` is DRAFT or OPEN.
+     * @type {ExamKind}
+     * @memberof OnlineExamDraftResponse
+     */
+    kind: ExamKind;
     /**
      * 
      * @type {string}
@@ -165,6 +178,7 @@ export type OnlineExamDraftResponseStatusEnum = typeof OnlineExamDraftResponseSt
 export function instanceOfOnlineExamDraftResponse(value: object): value is OnlineExamDraftResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
+    if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('durationMinutes' in value) || value['durationMinutes'] === undefined) return false;
     if (!('instructions' in value) || value['instructions'] === undefined) return false;
@@ -194,6 +208,7 @@ export function OnlineExamDraftResponseFromJSONTyped(json: any, ignoreDiscrimina
         
         'id': json['id'],
         'courseId': json['courseId'],
+        'kind': ExamKindFromJSON(json['kind']),
         'title': json['title'],
         'durationMinutes': json['durationMinutes'],
         'instructions': json['instructions'],
@@ -224,6 +239,7 @@ export function OnlineExamDraftResponseToJSONTyped(value?: OnlineExamDraftRespon
         
         'id': value['id'],
         'courseId': value['courseId'],
+        'kind': ExamKindToJSON(value['kind']),
         'title': value['title'],
         'durationMinutes': value['durationMinutes'],
         'instructions': value['instructions'],

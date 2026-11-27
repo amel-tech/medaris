@@ -25,7 +25,7 @@ needs:
     evidence:
       - node: talebeTable
       - node: rowState
-      - source: apps/tedrisat/src/online-exam/exam-results.controller.ts:56
+      - source: apps/tedrisat/src/online-exam/exam-results.controller.ts:60
       - test: apps/nazar/test/exam-results.spec.tsx
         name: "draws a talebe's state, switches and zeroth answer"
     missing: "MDRS-299, EXM-RSLT-4: the overview lists every talebe with where they are, the score and the right, wrong and blank answers, but the table does not sort"
@@ -144,7 +144,7 @@ needs:
       - node: releaseEndsExam
       - node: releaseStillIn
       - node: releaseButton
-      - source: apps/tedrisat/src/online-exam/exam-results.service.ts:429
+      - source: apps/tedrisat/src/online-exam/exam-results.service.ts:451
       - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts
         name: "ends the exam for everyone when its results are released: an attempt in progress ends with its saved answers, and the talebe reads their answers with the correct ones"
       - test: apps/tedrisat/test/e2e/online-exam-results.e2e.spec.ts

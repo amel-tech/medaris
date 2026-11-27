@@ -6,6 +6,18 @@
  * Everything here is pure: the rules the service and the page share.
  */
 
+/**
+ * What a row of `online_exams` is (MDRS-248): an exam, sat once with its
+ * celse and its clock, or a çalışma seti (PRACTICE), which the talebe solve
+ * whenever they like, as often as they like, with no celse, no clock, no
+ * points editor and no zeroth question. Both keep their questions in the
+ * same tables.
+ */
+export enum ExamKind {
+  EXAM = "EXAM",
+  PRACTICE = "PRACTICE",
+}
+
 /** "Tek seçim" (radio buttons) or "Çoklu seçim" (check boxes). */
 export enum AnswerMode {
   SINGLE = "SINGLE",
@@ -261,6 +273,22 @@ export const publishTimeProblem = (
 };
 
 export type OnlineExamStatus = "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
+
+/**
+ * What keeps a çalışma seti from being published (MDRS-248): one complete
+ * question at least. An incomplete question is no problem of its own: the
+ * talebe never get it, as a set is solved from its complete questions.
+ */
+export const practiceProblems = (
+  questions: ReadonlyArray<QuestionShape>
+): PublishProblem[] =>
+  questions.some((q) => lacksOf(q).length === 0)
+    ? []
+    : [{ kind: "NO_QUESTION" }];
+
+/** A çalışma seti is a draft until it is published, and open from then on: it has no celse and no clock. */
+export const practiceStatus = (publishedAt: Date | null): OnlineExamStatus =>
+  publishedAt ? "OPEN" : "DRAFT";
 
 /**
  * Where an exam stands: a draft until it is published; scheduled until its

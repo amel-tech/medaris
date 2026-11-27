@@ -12,8 +12,10 @@ import {
   onlineExamTopics,
   zerothOptions,
 } from "../database/schema/online-exam.schema";
+import { practiceAttempts } from "../database/schema/practice.schema";
 import {
   type AnswerMode,
+  ExamKind,
   nextFreeTopicNumber,
   type Scoring,
   topicNameKey,
@@ -54,6 +56,7 @@ export interface IDraftQuestion {
 
 export interface IOnlineExamSummary {
   id: string;
+  kind: ExamKind;
   title: string;
   questionCount: number;
   /** Null until the team types it; a published exam always has it. */
@@ -69,6 +72,7 @@ export interface IOnlineExamSummary {
 export interface IOnlineExamDraft {
   id: string;
   courseId: string;
+  kind: ExamKind;
   title: string;
   /** Null until the team types it; a published exam always has it. */
   durationMinutes: number | null;
@@ -157,11 +161,25 @@ export class OnlineExamRepository {
     return exam?.courseId ?? null;
   }
 
-  /** The course's online exams, the latest changed first. */
-  async listExams(courseId: string): Promise<IOnlineExamSummary[]> {
+  /** The kind of an exam (MDRS-248); null when there is no such exam. */
+  async kindOf(examId: string): Promise<ExamKind | null> {
+    const [exam] = await this.db
+      .select({ kind: onlineExams.kind })
+      .from(onlineExams)
+      .where(eq(onlineExams.id, examId))
+      .limit(1);
+    return exam?.kind ?? null;
+  }
+
+  /** The course's online exams of one kind, the latest changed first. */
+  async listExams(
+    courseId: string,
+    kind: ExamKind
+  ): Promise<IOnlineExamSummary[]> {
     return this.db
       .select({
         id: onlineExams.id,
+        kind: onlineExams.kind,
         title: onlineExams.title,
         questionCount: count(examQuestions.id),
         durationMinutes: onlineExams.durationMinutes,
@@ -174,28 +192,31 @@ export class OnlineExamRepository {
       .from(onlineExams)
       .leftJoin(examQuestions, eq(examQuestions.examId, onlineExams.id))
       .leftJoin(lessons, eq(lessons.id, onlineExams.lessonId))
-      .where(eq(onlineExams.courseId, courseId))
+      .where(
+        and(eq(onlineExams.courseId, courseId), eq(onlineExams.kind, kind))
+      )
       .groupBy(onlineExams.id, lessons.id)
       .orderBy(desc(onlineExams.updatedAt));
   }
 
-  /** Opens a draft: 60 minutes, no question, no celse. */
+  /** Opens a draft, an exam or a çalışma seti: no length, no question, no celse. */
   async createExam(
     courseId: string,
     title: string,
+    kind: ExamKind,
     actorId: string
   ): Promise<string> {
     return this.db.transaction(async (tx) => {
       const [made] = await tx
         .insert(onlineExams)
-        .values({ courseId, title, createdBy: actorId })
+        .values({ courseId, title, kind, createdBy: actorId })
         .returning({ id: onlineExams.id });
       await tx.insert(auditLog).values({
         actorId,
         action: "online_exam.create",
         entity: "online_exam",
         entityId: made.id,
-        details: { courseId, title },
+        details: { courseId, title, kind },
       });
       return made.id;
     });
@@ -250,6 +271,7 @@ export class OnlineExamRepository {
     return {
       id: exam.id,
       courseId: exam.courseId,
+      kind: exam.kind,
       title: exam.title,
       durationMinutes: exam.durationMinutes,
       instructions: exam.instructions,
@@ -617,6 +639,7 @@ export class OnlineExamRepository {
   ): Promise<{ result: T; version: number }> {
     const [exam] = await tx
       .select({
+        kind: onlineExams.kind,
         version: onlineExams.version,
         publishedAt: onlineExams.publishedAt,
         lessonId: onlineExams.lessonId,
@@ -630,7 +653,20 @@ export class OnlineExamRepository {
     if (of === "draft" && exam.publishedAt !== null) {
       throw new ExamLockedError(w.examId);
     }
-    if (of === "published") {
+    if (of === "published" && exam.kind === ExamKind.PRACTICE) {
+      if (exam.publishedAt === null) {
+        throw new ExamNotPublishedError(w.examId);
+      }
+      // A çalışma seti has no celse to open: it is locked once a talebe has
+      // started it. Starting one holds the set's row (`practice`), so no
+      // attempt begins while this write holds it.
+      const [started] = await tx
+        .select({ id: practiceAttempts.id })
+        .from(practiceAttempts)
+        .where(eq(practiceAttempts.setId, w.examId))
+        .limit(1);
+      if (started) throw new ExamLockedError(w.examId);
+    } else if (of === "published") {
       if (exam.publishedAt === null || exam.lessonId === null) {
         throw new ExamNotPublishedError(w.examId);
       }
@@ -697,6 +733,14 @@ export class OnlineExamRepository {
         text,
       }))
     );
+  }
+
+  /** Publishes a çalışma seti inside its write: no celse, no window, no zeroth question. */
+  async publishPractice(tx: Tx, examId: string): Promise<void> {
+    await tx
+      .update(onlineExams)
+      .set({ publishedAt: new Date() })
+      .where(eq(onlineExams.id, examId));
   }
 
   /** Makes the exam a draft again, its celse's key cleared before the celse goes. */

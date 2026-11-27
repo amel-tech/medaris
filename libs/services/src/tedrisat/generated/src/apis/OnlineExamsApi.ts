@@ -19,6 +19,7 @@ import type {
   CourseZerothQuestionResponse,
   CreateCourseTopicDto,
   CreateOnlineExamDto,
+  ExamKind,
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   ExamVersionResponse,
@@ -47,6 +48,8 @@ import {
     CreateCourseTopicDtoToJSON,
     CreateOnlineExamDtoFromJSON,
     CreateOnlineExamDtoToJSON,
+    ExamKindFromJSON,
+    ExamKindToJSON,
     ExamPointsResponseFromJSON,
     ExamPointsResponseToJSON,
     ExamQuestionWriteResponseFromJSON,
@@ -131,6 +134,7 @@ export interface ListCourseTopicsRequest {
 
 export interface ListOnlineExamsRequest {
     id: string;
+    kind?: ExamKind;
 }
 
 export interface PublishOnlineExamRequest {
@@ -349,7 +353,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * \"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.
+     * \"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.
      * Open a new online exam
      */
     async createOnlineExamRaw(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamCreatedResponse>> {
@@ -394,7 +398,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * \"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.
+     * \"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.
      * Open a new online exam
      */
     async createOnlineExam(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamCreatedResponse> {
@@ -675,7 +679,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.
+     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.
      * The course\'s online exams
      */
     async listOnlineExamsRaw(requestParameters: ListOnlineExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OnlineExamSummaryResponse>>> {
@@ -687,6 +691,10 @@ export class OnlineExamsApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['kind'] != null) {
+            queryParameters['kind'] = requestParameters['kind'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -710,7 +718,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.
+     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.
      * The course\'s online exams
      */
     async listOnlineExams(requestParameters: ListOnlineExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OnlineExamSummaryResponse>> {

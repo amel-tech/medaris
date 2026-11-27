@@ -23,6 +23,7 @@ src/apis/NizamApi.ts
 src/apis/NotificationsApi.ts
 src/apis/OnlineExamAttemptsApi.ts
 src/apis/OnlineExamsApi.ts
+src/apis/PracticeApi.ts
 src/apis/ResourcesApi.ts
 src/apis/SessionsApi.ts
 src/apis/SubmissionsApi.ts
@@ -197,6 +198,7 @@ src/models/ExamBriefingResponse.ts
 src/models/ExamClockResponse.ts
 src/models/ExamFormat.ts
 src/models/ExamHolderDto.ts
+src/models/ExamKind.ts
 src/models/ExamOptionResponse.ts
 src/models/ExamPointsResponse.ts
 src/models/ExamQuestionResponse.ts
@@ -429,6 +431,15 @@ src/models/PlatformPolicyKey.ts
 src/models/PlatformPolicyListResponse.ts
 src/models/PlatformPolicyResponse.ts
 src/models/PolicyPersonResponse.ts
+src/models/PracticeAnswerSavedResponse.ts
+src/models/PracticeAttemptResponse.ts
+src/models/PracticeAttemptStatus.ts
+src/models/PracticeAttemptSummaryResponse.ts
+src/models/PracticeOptionResponse.ts
+src/models/PracticeOutcome.ts
+src/models/PracticeQuestionResponse.ts
+src/models/PracticeResultResponse.ts
+src/models/PracticeSetSummaryResponse.ts
 src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
 src/models/PublishOnlineExamDto.ts
@@ -475,6 +486,7 @@ src/models/SaveExamAnswerDto.ts
 src/models/SaveExamQuestionDto.ts
 src/models/SaveExamResultDto.ts
 src/models/SaveLessonAssignmentDto.ts
+src/models/SavePracticeAnswerDto.ts
 src/models/SaveSubmissionNoteDto.ts
 src/models/SaveZerothQuestionDto.ts
 src/models/ScheduleSessionResponse.ts

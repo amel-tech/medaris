@@ -50,6 +50,10 @@ import {
   partnerCourseCodes,
   partnerEnrollmentLinks,
 } from "../database/schema/partner-enrollment.schema";
+import {
+  practiceAnswers,
+  practiceAttempts,
+} from "../database/schema/practice.schema";
 import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
 import {
   type DeletionReason,
@@ -207,7 +211,8 @@ export async function purgeCourses(
 
 /**
  * Deletes the online exams of the given courses (MDRS-299), uncounted: the
- * talebe's attempts with their answers and switches and their zeroth answers,
+ * talebe's solving of the çalışma setleri with their answers (MDRS-248),
+ * the talebe's attempts with their answers and switches and their zeroth answers,
  * the questions with options and topics, the zeroth options and picked
  * topics, then the courses' topic lists.
  */
@@ -215,6 +220,18 @@ export async function deleteCourseOnlineExams(
   tx: Tx,
   courseIds: string[]
 ): Promise<void> {
+  // The çalışma setleri's attempts first (MDRS-248): they hold keys to the
+  // sets and their questions.
+  const practiceIds = tx
+    .select({ id: practiceAttempts.id })
+    .from(practiceAttempts)
+    .where(inArray(practiceAttempts.courseId, courseIds));
+  await tx
+    .delete(practiceAnswers)
+    .where(inArray(practiceAnswers.attemptId, practiceIds));
+  await tx
+    .delete(practiceAttempts)
+    .where(inArray(practiceAttempts.courseId, courseIds));
   const examIds = tx
     .select({ id: onlineExams.id })
     .from(onlineExams)

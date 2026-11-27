@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ExamKind } from './ExamKind';
+import {
+    ExamKindFromJSON,
+    ExamKindFromJSONTyped,
+    ExamKindToJSON,
+    ExamKindToJSONTyped,
+} from './ExamKind';
+
 /**
  * 
  * @export
@@ -25,6 +33,12 @@ export interface OnlineExamSummaryResponse {
      * @memberof OnlineExamSummaryResponse
      */
     id: string;
+    /**
+     * 
+     * @type {ExamKind}
+     * @memberof OnlineExamSummaryResponse
+     */
+    kind: ExamKind;
     /**
      * 
      * @type {string}
@@ -75,6 +89,7 @@ export type OnlineExamSummaryResponseStatusEnum = typeof OnlineExamSummaryRespon
  */
 export function instanceOfOnlineExamSummaryResponse(value: object): value is OnlineExamSummaryResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
+    if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('questionCount' in value) || value['questionCount'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
@@ -94,6 +109,7 @@ export function OnlineExamSummaryResponseFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'id': json['id'],
+        'kind': ExamKindFromJSON(json['kind']),
         'title': json['title'],
         'questionCount': json['questionCount'],
         'status': json['status'],
@@ -114,6 +130,7 @@ export function OnlineExamSummaryResponseToJSONTyped(value?: OnlineExamSummaryRe
     return {
         
         'id': value['id'],
+        'kind': ExamKindToJSON(value['kind']),
         'title': value['title'],
         'questionCount': value['questionCount'],
         'status': value['status'],
