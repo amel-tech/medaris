@@ -50,7 +50,7 @@ export async function ExamPage({
           api.practice.listPracticeSetStats({ id: courseId })
         )
       : null,
-    readOnce("the set's talebe notes", (api) =>
+    readOnce(`the ${practice ? "set" : "exam"}'s talebe notes`, (api) =>
       api.questionNotes.listExamQuestionNotes({ examId })
     ),
   ]);

@@ -7,6 +7,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
+import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
@@ -95,6 +96,7 @@ function NoteCard({
   const t = useTranslations("nazar.QuestionNotes");
   const format = useFormatter();
   const { notify } = useToaster();
+  const router = useRouter();
   const uid = useId();
   const answered = note.teacherReply !== null;
   const [editing, setEditing] = useState(false);
@@ -105,6 +107,7 @@ function NoteCard({
   const name = note.talebe.name ?? t("noName");
 
   const send = async (reply: string, how: "reply" | "remove") => {
+    if (sending) return;
     setSending(how);
     try {
       const result = await replyQuestionNote(note.id, reply);
@@ -124,6 +127,9 @@ function NoteCard({
       // A removed answer stays in the field, so a slip is typed back at once.
       if (how === "reply") setText(result.data.teacherReply ?? "");
       onAnswered(result.data);
+      // The page's own count ("N cevapsız talebe notu" under the title) is
+      // the server's: it is read again.
+      router.refresh();
       notify({
         tone: "success",
         title: how === "remove" ? t("removed") : t("replied"),
@@ -200,6 +206,7 @@ function NoteCard({
             <Button
               size="small"
               variant="outline"
+              disabled={sending !== null}
               onClick={() => {
                 setText(note.teacherReply ?? "");
                 setEditing(true);

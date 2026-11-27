@@ -2,8 +2,8 @@
 
 import type { ExamKind } from "@medaris/services/tedrisat";
 import { Icon } from "@medaris/ui/mds/icon";
-import { IconButton } from "@medaris/ui/mds/icon-button";
 import { useToaster } from "@medaris/ui/mds/toast";
+import { Tooltip } from "@medaris/ui/mds/tooltip";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
@@ -13,10 +13,12 @@ import { takesNotes } from "../question-notes";
 /**
  * The talebe-notes icon of one question (MDRS-248): a small toggle beside
  * the question, never a field of its own ("ikon olarak dursun, tıklanırsa
- * soruya eklensin, gereksiz yer kaplamasın"). `aria-pressed` says the state
- * to a screen reader; to the eye, a bubble when on and the bubble struck
- * through when off, so the state is never only a colour. The tooltip says
- * which: "Talebe not ekleyebilir" / "Talebe notu kapalı".
+ * soruya eklensin, gereksiz yer kaplamasın"). Its name stays "Talebe
+ * notları" and `aria-pressed` says the state, as a toggle's name must not
+ * change with it; to the eye, a bubble when on and the bubble struck through
+ * when off, so the state is never only a colour. The tooltip says which:
+ * "Talebe not ekleyebilir" / "Talebe notu kapalı". It is IconButton's markup
+ * written out, since IconButton names the button by its tooltip.
  *
  * The system's IconButton draws a pressed toggle with its glyph's fill twin,
  * and the sprite has one only for star, play and bookmark; the stroke is
@@ -33,15 +35,16 @@ export function TalebeNotesToggle({
 }) {
   const t = useTranslations("nazar.QuestionNotes");
   return (
-    <IconButton
-      size="small"
-      variant="ghost"
-      aria-pressed={on}
-      data-talebe-notes={on ? "on" : "off"}
-      disabled={disabled}
-      label={on ? t("toggleOn") : t("toggleOff")}
-      onClick={onToggle}
-      icon={
+    <Tooltip label={on ? t("toggleOn") : t("toggleOff")}>
+      <button
+        type="button"
+        className="mds-btn mds-icon-btn mds-btn--small mds-btn--ghost"
+        aria-label={t("toggleName")}
+        aria-pressed={on}
+        data-talebe-notes={on ? "on" : "off"}
+        disabled={disabled}
+        onClick={onToggle}
+      >
         <span className="relative inline-flex" aria-hidden="true">
           <Icon name="chat" size="sm" />
           {on ? null : (
@@ -50,8 +53,8 @@ export function TalebeNotesToggle({
             </span>
           )}
         </span>
-      }
-    />
+      </button>
+    </Tooltip>
   );
 }
 

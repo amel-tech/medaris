@@ -226,6 +226,12 @@ export function ExamEditor({
   const [dropThen, setDropThen] = useState<(() => void) | null>(null);
   const version = useRef(draft.version);
   const queue = useRef<Promise<void>>(Promise.resolve());
+  // The rows whose talebe-notes icon is being written, and the state each
+  // write left on the server (by question id), laid over a later read.
+  const [notesBusy, setNotesBusy] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const notesSet = useRef(new Map<string, boolean>());
 
   // Leaving while a write is on its way loses it: the browser asks first.
   useEffect(() => {
@@ -272,14 +278,22 @@ export function ExamEditor({
   // its way or open, since the queue carries the page's version; what was
   // typed and not saved is laid over it again.
   // The form of a new question stays open over it, under the questions read.
+  // A talebe-notes write of a row (outside the queue) holds it too, and the
+  // icons this page set are laid over the read, which may predate them.
   useEffect(() => {
     if (draft.version <= version.current) return;
     if (inFlight > 0 || (editing !== null && editing !== blank?.key)) return;
+    if (notesBusy.size > 0) return;
     version.current = draft.version;
     setTopics(draft.courseTopics);
     setQuestions(
       keptOver(
-        draft.questions.map((q) => ({ ...q, key: q.id })),
+        draft.questions.map((q) => {
+          const set = notesSet.current.get(q.id);
+          return set === undefined
+            ? { ...q, key: q.id }
+            : { ...q, key: q.id, talebeNotes: set };
+        }),
         readUnsaved(draft.id, window.localStorage),
         kind
       ).concat(blank ? [blank] : [])
@@ -287,7 +301,16 @@ export function ExamEditor({
     if (settingsState !== "failed" && settingsState !== "pending") {
       setSettings(settingsOf(draft, practice));
     }
-  }, [draft, inFlight, editing, blank, settingsState, practice, kind]);
+  }, [
+    draft,
+    inFlight,
+    editing,
+    blank,
+    settingsState,
+    practice,
+    kind,
+    notesBusy,
+  ]);
 
   /** A refusal, worded; false when the write did not go through. */
   const went = (result: Outcome): boolean => {
@@ -544,12 +567,20 @@ export function ExamEditor({
    * does not hold yet, or one being saved, offers it off.
    */
   const notesWrites = useRef(new Set<string>());
+  const busy = (key: string, on: boolean) =>
+    setNotesBusy((all) => {
+      const next = new Set(all);
+      if (on) next.add(key);
+      else next.delete(key);
+      return next;
+    });
   const toggleNotes = (key: string) => {
     const q = questions.find((it) => it.key === key);
     const id = idOf(key);
     if (!q || id === "" || q.pending || notesWrites.current.has(key)) return;
     const next = !takesNotes(q, kind);
     notesWrites.current.add(key);
+    busy(key, true);
     patch(key, { talebeNotes: next });
     const back = () => patch(key, { talebeNotes: !next });
     const refused = () =>
@@ -562,6 +593,7 @@ export function ExamEditor({
           back();
           return refused();
         }
+        notesSet.current.set(id, result.data.talebeNotes);
         patch(key, { talebeNotes: result.data.talebeNotes });
       } catch (error) {
         back();
@@ -569,6 +601,7 @@ export function ExamEditor({
         else refused();
       } finally {
         notesWrites.current.delete(key);
+        busy(key, false);
       }
     })();
   };
@@ -879,12 +912,15 @@ export function ExamEditor({
                   draft={view}
                   topicOf={topicOf}
                   question={q}
-                  onEdit={() =>
+                  // Not while its icon is being written: the form would open
+                  // with a state the server may still refuse.
+                  onEdit={() => {
+                    if (notesBusy.has(q.key)) return;
                     leaveOpen(() => {
                       leaveBlank();
                       setEditing(q.key);
-                    })
-                  }
+                    });
+                  }}
                   onRetry={() => {
                     leaveBlank();
                     saveQuestion(q.key, {

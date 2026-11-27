@@ -2681,6 +2681,7 @@
     "chosen": "(seçtiği)"
   },
   "QuestionNotes": {
+    "toggleName": "Talebe notları",
     "toggleOn": "Talebe not ekleyebilir",
     "toggleOff": "Talebe notu kapalı",
     "toggleFailed": "Talebe notu ayarı kaydedilemedi",

@@ -2681,6 +2681,7 @@
     "chosen": "(chosen)"
   },
   "QuestionNotes": {
+    "toggleName": "Talebe notes",
     "toggleOn": "Talebe can add a note",
     "toggleOff": "Talebe notes off",
     "toggleFailed": "The talebe note setting could not be saved",

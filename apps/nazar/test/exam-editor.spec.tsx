@@ -1637,13 +1637,15 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
       wrap(<ExamEditor courseId="c1" draft={saved(false)} />)
     );
     expect(icon(root).getAttribute("aria-pressed")).toBe("false");
-    expect(icon(root).getAttribute("aria-label")).toBe("Talebe notu kapalı");
+    // One name in both states: aria-pressed says which.
+    expect(icon(root).getAttribute("aria-label")).toBe("Talebe notları");
     await click(icon(root));
     // Shown before the server answers.
     expect(icon(root).getAttribute("aria-pressed")).toBe("true");
-    expect(icon(root).getAttribute("aria-label")).toBe(
-      "Talebe not ekleyebilir"
-    );
+    expect(icon(root).getAttribute("aria-label")).toBe("Talebe notları");
+    // The row's form does not open while the icon is being written.
+    await click(button(root, "Düzenle"));
+    expect(root.querySelector("form[data-question]")).toBeNull();
     expect(actions.setExamQuestionTalebeNotes).toHaveBeenCalledWith(
       "e1",
       "q1",
@@ -1654,6 +1656,19 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
     expect(icon(root).getAttribute("aria-pressed")).toBe("true");
     // It names no version: no question write went out.
     expect(actions.saveExamQuestion).not.toHaveBeenCalled();
+    // A newer read that predates the write keeps the state the page set.
+    await rerender(
+      root,
+      wrap(
+        <ExamEditor
+          courseId="c1"
+          draft={{ ...saved(false), version: 5 } as OnlineExamDraftResponse}
+        />
+      )
+    );
+    expect(icon(root).getAttribute("aria-pressed")).toBe("true");
+    await click(button(root, "Düzenle"));
+    expect(root.querySelector("form[data-question]")).not.toBeNull();
   });
 
   it("takes the icon back and says so when the write is refused", async () => {
