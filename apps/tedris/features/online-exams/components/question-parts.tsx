@@ -4,8 +4,8 @@ import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import type { CSSProperties, ReactNode } from "react";
-import { textProps } from "../arabic";
 import { type QuestionState, TEXT_SCALES } from "../take-model";
+import { ArabicText } from "./arabic-text";
 
 /**
  * The parts of a question screen the online exam (MDRS-299) and the çalışma
@@ -13,7 +13,9 @@ import { type QuestionState, TEXT_SCALES } from "../take-model";
  * Each takes its words from its caller, so each screen keeps its own catalogue.
  */
 
-const optionText = (text: string) => textProps(text, "var(--fs-body)", 1);
+const optionText = (text: string) => (
+  <ArabicText text={text} size="var(--fs-body)" />
+);
 
 /** A question's options: radio buttons, or check boxes when more than one may be right. */
 export function QuestionOptions({
@@ -37,7 +39,7 @@ export function QuestionOptions({
         {question.options.map((o) => (
           <Checkbox
             key={o.id}
-            label={<span {...optionText(o.text)}>{o.text}</span>}
+            label={optionText(o.text)}
             checked={chosen.includes(o.id)}
             onCheckedChange={(on) =>
               onChoose(
@@ -56,26 +58,36 @@ export function QuestionOptions({
       onChange={(value) => onChoose([value])}
       options={question.options.map((o) => ({
         value: o.id,
-        label: <span {...optionText(o.text)}>{o.text}</span>,
+        label: optionText(o.text),
       }))}
     />
   );
 }
 
-/** A− / A+ over `TEXT_SCALES`. */
+/**
+ * A− / A+ over `TEXT_SCALES`, once per screen, in its top bar (MDRS-248):
+ * the step is the page's, not a question's.
+ */
 export function TextSizeButtons({
   step,
   onStep,
   smallerLabel,
   biggerLabel,
+  groupLabel,
 }: {
   step: number;
   onStep: (by: -1 | 1) => void;
   smallerLabel: string;
   biggerLabel: string;
+  /** the pair's name, "Yazı boyutu" */
+  groupLabel: string;
 }) {
   return (
-    <div className="flex gap-1">
+    <fieldset
+      className="m-0 flex min-w-0 gap-1 border-0 p-0"
+      aria-label={groupLabel}
+      data-testid="text-size"
+    >
       <Button
         size="small"
         variant="outline"
@@ -94,7 +106,7 @@ export function TextSizeButtons({
       >
         A+
       </Button>
-    </div>
+    </fieldset>
   );
 }
 

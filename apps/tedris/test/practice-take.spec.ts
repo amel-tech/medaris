@@ -256,6 +256,64 @@ describe("solving a çalışma seti (MDRS-248)", () => {
     expect(host.textContent).toContain("2/2 cevaplandı");
   });
 
+  it("has A− / A+ once, in the top bar, and keeps its step across questions and a reload", async () => {
+    mocks.startPractice.mockResolvedValue(ok(attempt()));
+    const host = await mount();
+    const groups = host.querySelectorAll("[data-testid=text-size]");
+    expect(groups).toHaveLength(1);
+    expect(groups[0].getAttribute("aria-label")).toBe("Yazı boyutu");
+    // In the bar with the counter, not on the question's card.
+    expect(groups[0].closest("[aria-label='Çalışma durumu']")).toBeTruthy();
+    expect(groups[0].closest("[data-testid=practice-question]")).toBeNull();
+    await click(button("A+"));
+    const zoomed = () =>
+      (host.querySelector("[data-text-scale]") as HTMLElement).dataset
+        .textScale;
+    const step = zoomed();
+    expect(step).not.toBe("1");
+    await click(button("Sonraki"));
+    expect(host.textContent).toContain("İkinci soru");
+    expect(zoomed()).toBe(step);
+    expect(host.querySelectorAll("[data-testid=text-size]")).toHaveLength(1);
+    await cleanup();
+    mocks.startPractice.mockResolvedValue(ok(attempt()));
+    const again = await mount();
+    expect(
+      (again.querySelector("[data-text-scale]") as HTMLElement).dataset
+        .textScale
+    ).toBe(step);
+  });
+
+  it("draws an Arabic question and option by the standard, and only the Arabic run of a mixed one", async () => {
+    const arabic = attempt();
+    arabic.questions[0].text = "مَا إِعْرَابُ زَيْدٍ؟";
+    arabic.questions[0].options = [
+      { id: "a", text: "فَاعِلٌ" },
+      { id: "b", text: "Mef'ûl: مَفْعُولٌ" },
+    ];
+    mocks.startPractice.mockResolvedValue(ok(arabic));
+    const host = await mount();
+    const question = host.querySelector("#practice-question") as HTMLElement;
+    expect(question.getAttribute("lang")).toBe("ar");
+    expect(question.getAttribute("dir")).toBe("rtl");
+    // happy-dom drops the max() size; the face and the leading are the standard's.
+    expect(question.style.fontFamily).toBe("var(--font-arabic)");
+    expect(question.style.lineHeight).toBe("var(--lh-arabic-text)");
+    const option = [...host.querySelectorAll("[lang=ar]")].find(
+      (el) => el.textContent === "فَاعِلٌ"
+    ) as HTMLElement;
+    expect(option.getAttribute("dir")).toBe("rtl");
+    // The mixed option: Turkish at its own size, the Arabic word on its own.
+    const run = [...host.querySelectorAll("[lang=ar]")].find(
+      (el) => el.textContent === "مَفْعُولٌ"
+    ) as HTMLElement;
+    expect(run.getAttribute("data-arabic-block")).toBe("");
+    expect(run.parentElement?.getAttribute("lang")).toBeNull();
+    expect(run.parentElement?.hasAttribute("dir")).toBe(false);
+    expect(run.parentElement?.hasAttribute("data-mixed-arabic")).toBe(true);
+    expect(run.parentElement?.textContent).toBe("Mef'ûl: مَفْعُولٌ");
+  });
+
   it("says the set is not there when the API refuses it", async () => {
     mocks.startPractice.mockResolvedValue({
       success: false,

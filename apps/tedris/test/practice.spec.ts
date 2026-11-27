@@ -315,7 +315,7 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
     expect(html).toMatch(/data-testid="practice-blank">1</);
     // The wrong one: the choice in the error colour with its cross, the
     // correct option in success with its tick; a right choice stays info.
-    expect(html).toContain('data-outcome="WRONG"');
+    expect(html).toContain('data-outcome="wrong"');
     expect(html).toMatch(
       /data-chosen="true"[^>]*>(?:(?!<\/li>).)*?İkinci bab(?:(?!<\/li>).)*?mds-badge--error(?:(?!<\/li>).)*?<svg(?:(?!<\/li>).)*?Senin seçimin/
     );
@@ -325,8 +325,15 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
     expect(html).toMatch(
       /data-chosen="true" data-correct="true"[^>]*>(?:(?!<\/li>).)*?mds-badge--info[^>]*>Senin seçimin/
     );
-    // Every question, and a filter by outcome with the counts.
+    // Every question as a card in the grid, a tile each on the strip, and a
+    // filter by outcome with the counts.
     expect(html.match(/data-testid="practice-answer"/g)).toHaveLength(3);
+    expect(html).toContain('data-testid="answer-grid"');
+    expect(html).toContain('aria-label="1. soru: Yanlış"');
+    expect(html).toContain('aria-label="2. soru: Doğru"');
+    expect(html).toContain('aria-label="3. soru: Boş"');
+    // A card lists only the choice and the correct option.
+    expect(html).not.toContain("Dördüncü bab");
     expect(html).toContain("Tümü (3)");
     expect(html).toContain("Doğru (1)");
     expect(html).toContain("Yanlış (1)");
@@ -348,7 +355,7 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
     });
     expect(html).toContain(">Karışık deneme<");
     expect(html).toMatch(
-      /data-testid="practice-answer-set"[^>]*>Set: Birinci bab</
+      /data-testid="practice-answer-set"[^>]*>Set: <span dir="auto">Birinci bab</
     );
     expect(html).toContain('href="/calisma-sorulari#ders-c1"');
   });

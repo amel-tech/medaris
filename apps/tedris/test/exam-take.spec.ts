@@ -527,6 +527,8 @@ describe("the exam page (MDRS-299)", () => {
     expect(sample.closest("li")?.textContent).toContain(
       "Soruların yazısını büyütüp küçültebilirsin"
     );
+    // The buttons now sit once in the exam's top bar, and the sentence says so.
+    expect(sample.closest("li")?.textContent).toContain("üst çubuktaki");
   });
 
   it("zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload", async () => {
@@ -544,6 +546,13 @@ describe("the exam page (MDRS-299)", () => {
     // The timer, the question and the list are all inside the zoomed area.
     expect(card().querySelector("[data-testid=exam-clock]")).toBeTruthy();
     expect(card().querySelector("nav")).toBeTruthy();
+    // A− / A+ once, in the bar beside the timer, not on the question.
+    const sizes = host.querySelectorAll("[data-testid=text-size]");
+    expect(sizes).toHaveLength(1);
+    expect(
+      sizes[0].closest("section")?.querySelector("[data-testid=exam-clock]")
+    ).toBeTruthy();
+    expect(sizes[0].closest("[aria-labelledby=exam-question]")).toBeNull();
     expect(card().parentElement?.style.maxInlineSize).not.toBe("none");
     expect(button(host, "A−").disabled).toBe(true);
     for (let i = 0; i < 3; i++) await click(button(host, "A+"));

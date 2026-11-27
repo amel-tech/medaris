@@ -3,28 +3,17 @@ import type {
   MyExamResultResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
-import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { scoreText, takeHref } from "../my-exams-model";
 import type { MyResultRead } from "../my-reads";
+import { AnswerReview, type ReviewItem } from "./answer-review";
+import { ArabicText } from "./arabic-text";
 
 // Narrow on purpose: the full translator type hits TS2589 (MDRS-176).
 type Translate = LooseTranslator;
-
-const OUTCOME: Record<MyAnsweredQuestionResponse["outcome"], string> = {
-  RIGHT: "outcomeRight",
-  WRONG: "outcomeWrong",
-  BLANK: "outcomeBlank",
-};
-
-const OUTCOME_BADGE = {
-  RIGHT: "success",
-  WRONG: "error",
-  BLANK: "secondary",
-} as const;
 
 /**
  * A talebe's own screen of a past online exam (MDRS-299,
@@ -98,9 +87,12 @@ function Result({
       <p className="mds-caption" dir="auto">
         {result.courseTitle}
       </p>
-      <h1 className="mds-h1" dir="auto">
-        {result.title}
-      </h1>
+      <ArabicText
+        as="h1"
+        className="mds-h1"
+        size="var(--fs-h1)"
+        text={result.title}
+      />
     </div>
   );
 
@@ -252,75 +244,55 @@ function Result({
       ) : null}
 
       {result.released ? (
-        <section
-          className="flex flex-col gap-3"
-          aria-labelledby="my-result-answers"
-        >
-          <h2 id="my-result-answers" className="mds-h2">
-            {t("myAnswers")}
-          </h2>
-          {result.questions === null ? (
+        result.questions === null ? (
+          <section
+            className="flex flex-col gap-3"
+            aria-labelledby="my-result-answers"
+          >
+            <h2 id="my-result-answers" className="mds-h2">
+              {t("myAnswers")}
+            </h2>
             <p className="mds-body-sm">{t("answersLater")}</p>
-          ) : (
-            <ol className="flex flex-col gap-3">
-              {result.questions.map((q) => (
-                <li key={q.id}>
-                  <AnsweredQuestion question={q} t={t} locale={locale} />
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+          </section>
+        ) : (
+          <AnswerReview
+            items={result.questions.map((q) => reviewItemOf(q, t, locale))}
+            heading={t("myAnswers")}
+            headingId="my-result-answers"
+            cardTestId="my-answer"
+          />
+        )
       ) : null}
     </>
   );
 }
+const REVIEW_OUTCOME = {
+  RIGHT: "correct",
+  WRONG: "wrong",
+  BLANK: "blank",
+} as const satisfies Record<
+  MyAnsweredQuestionResponse["outcome"],
+  ReviewItem["outcome"]
+>;
 
-function AnsweredQuestion({
-  question,
-  t,
-  locale,
-}: {
-  question: MyAnsweredQuestionResponse;
-  t: Translate;
-  locale: string;
-}) {
-  return (
-    <article className="mds-card flex flex-col gap-2" data-testid="my-answer">
-      <div className="flex flex-wrap items-center gap-2">
-        <strong>{t("questionNumber", { number: question.number })}</strong>
-        <Badge variant={OUTCOME_BADGE[question.outcome]}>
-          {t(OUTCOME[question.outcome])}
-        </Badge>
-        <span className="mds-body-sm text-neutral-muted">
-          {t("pointsGot", {
-            got: scoreText(question.got, locale),
-            points: scoreText(question.points, locale),
-          })}
-        </span>
-      </div>
-      <p className="mds-body" dir="auto">
-        {question.text}
-      </p>
-      <ul className="flex flex-col gap-1">
-        {question.options.map((o) => (
-          <li
-            key={o.id}
-            className="mds-body-sm flex flex-wrap items-center gap-2"
-            data-chosen={o.chosen ? "true" : undefined}
-            data-correct={o.correct ? "true" : undefined}
-          >
-            <span dir="auto">{o.text}</span>
-            {o.chosen ? <Badge variant="info">{t("chosen")}</Badge> : null}
-            {o.correct ? (
-              <Badge variant="success">{t("correctOption")}</Badge>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {question.outcome === "BLANK" ? (
-        <p className="mds-body-sm text-neutral-muted">{t("noAnswer")}</p>
-      ) : null}
-    </article>
-  );
-}
+/** An exam question as the shared answer cards take it, with its points. */
+const reviewItemOf = (
+  q: MyAnsweredQuestionResponse,
+  t: Translate,
+  locale: string
+): ReviewItem => ({
+  id: q.id,
+  number: q.number,
+  text: q.text,
+  outcome: REVIEW_OUTCOME[q.outcome],
+  options: q.options.map((o) => ({
+    id: o.id,
+    text: o.text,
+    chosen: o.chosen,
+    correct: o.correct,
+  })),
+  meta: t("pointsGot", {
+    got: scoreText(q.got, locale),
+    points: scoreText(q.points, locale),
+  }),
+});

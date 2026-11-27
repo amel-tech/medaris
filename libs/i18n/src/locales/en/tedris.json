@@ -1097,9 +1097,6 @@
     "blank": "Blank",
     "answersTitle": "Your answers",
     "questionNumber": "Question {number}",
-    "chosen": "Your choice",
-    "correctOption": "Correct option",
-    "noAnswer": "You left this question blank.",
     "inProgressTitle": "This attempt is in progress",
     "inProgress": "You can continue from where you left off.",
     "resultNotFoundTitle": "This attempt was not found",
@@ -1115,7 +1112,6 @@
     "poolContinue": "Continue the mixed practice",
     "poolNotFoundTitle": "The mixed practice could not be opened",
     "poolNotFound": "The number may be more than the course's questions, or you are not a student of this course.",
-    "fromSet": "Set: {title}",
     "courseSummary": "{sets, plural, one {# set} other {# sets}} · {solved} solved",
     "tableCaption": "{course} practice sets",
     "colSet": "Set",
@@ -1132,11 +1128,27 @@
     "progressText": "{answered}/{count} answered",
     "legendLabel": "Colour key",
     "legendItem": "{state} ({count})",
+    "progressComplete": "complete"
+  },
+  "AnswerReview": {
+    "stripLabel": "Result of each question",
+    "tileLabel": "Question {number}: {outcome}",
+    "questionNumber": "Question {number}",
+    "correct": "Correct",
+    "wrong": "Wrong",
+    "blank": "Blank",
+    "chosen": "Your choice",
+    "correctOption": "Correct option",
+    "noAnswer": "You left this question blank.",
     "filterLegend": "Filter the answers",
     "filterAll": "All",
     "filterItem": "{label} ({count})",
     "filterShown": "{count, plural, one {# question shown} other {# questions shown}}",
     "filterEmpty": "No question matches this filter.",
-    "progressComplete": "complete"
+    "fromSetLabel": "Set:"
+  },
+  "TakeBar": {
+    "textSizeLabel": "Text size",
+    "textSizeFact": "You can make the questions’ text bigger or smaller: during the exam, the A− and A+ buttons in the top bar do it."
   }
 }
