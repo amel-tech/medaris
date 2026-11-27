@@ -126,7 +126,8 @@ const STRAIGHT = new Set(['"', "'"]);
  * everything from its first Arabic letter to its last, with what lies
  * between (spaces, ":" after ﷺ, a quoted «…»), plus the brackets and quotes
  * around it: an opening one before it (a straight quote only when it
- * touches it) and the closing ones that pair with what it left open. So
+ * touches it) whose pair closes right after it, and the closing ones that
+ * pair with what it left open. So
  * «زَيْدٌ» and (قَالَ) are each one run, their marks mirrored the Arabic way,
  * and ﴿…﴾ stays whole. The spaces and the Latin punctuation after an Arabic
  * run belong to the Turkish sentence ("» — bu hadisin", "فَعَلَ?"): inside
@@ -160,17 +161,27 @@ export const arabicRuns = (text) => {
       if (!PAIRS.has(ch) || (STRAIGHT.has(ch) && k !== first - 1)) break;
       first = k;
     }
-    // What it leaves open, closed by the marks right after it.
+    // What it leaves open, closed by the marks right after it: each as the
+    // mark that closes it and the place it opens.
     const open = [];
     for (let k = first; k <= last; k += 1) {
-      if (open.length > 0 && chars[k] === open.at(-1)) open.pop();
-      else if (PAIRS.has(chars[k])) open.push(PAIRS.get(chars[k]));
+      if (open.length > 0 && chars[k] === open.at(-1).close) open.pop();
+      else if (PAIRS.has(chars[k]))
+        open.push({ close: PAIRS.get(chars[k]), at: k });
     }
     for (let k = last + 1; k < next && open.length > 0; k += 1) {
       if (SPACE.test(chars[k])) continue;
-      if (chars[k] !== open.at(-1)) break;
+      if (chars[k] !== open.at(-1).close) break;
       open.pop();
       last = k;
+    }
+    // An opening mark before it whose pair closes in the Turkish ("(قَالَ
+    // fiili)") stays in the Turkish with its pair: split, the two would be
+    // drawn in two directions.
+    const unclosed = open.filter((pair) => pair.at < i).at(-1);
+    if (unclosed) {
+      first = unclosed.at + 1;
+      while (first < i && SPACE.test(chars[first])) first += 1;
     }
     for (let k = first; k <= last; k += 1) arabic[k] = true;
     i = next;

@@ -21,7 +21,10 @@ Testler (`apps/nazar/test/exam-publish.spec.tsx`):
 - Cmd+Enter → boş form → Vazgeç → "Yayınla"/"Zamanla" açık, bekleme notu yok.
 - "Soru ekle" → Vazgeç; "Düzenle" → değişiklik → "Soru ekle" → "Değişiklikleri bırak" → Vazgeç → düğme açık.
 
-İki test de düzeltme geri alınınca kırmızı, düzeltmeyle yeşil (yerelde denendi).
+Komut: `apps/nazar` içinde `env -u NODE_ENV pnpm exec vitest run test/exam-publish.spec.tsx`.
+
+- Düzeltmeyle: `Tests  8 passed (8)`.
+- `exam-editor.tsx` değişikliği geri alınınca (`git stash push -- features/online-exams/components/exam-editor.tsx`): `Tests  2 failed | 6 passed (8)`. Düşen iki test, bu PR'da eklenen iki testtir.
 
 ## 2. Karışık Türkçe + Arapça metinde parantez ve tırnaklar (tedris, nazar)
 
@@ -38,6 +41,7 @@ Karar ve düzeltme (`libs/tokens/arabic.js`, `@medaris/tokens/arabic`):
   - önündeki açılış işaretleri: `(`, `[`, `{`, `«`, `‹`, `“`, `‘`. Arada boşluk olabilir. Düz tırnak (`"`, `'`) yalnız parçaya bitişikse eklenir, çünkü `Fâtiha'daki` örneğindeki gibi kesme işareti de olabilir.
   - parçanın açık bıraktığı çiftleri kapatan, hemen ardından gelen kapanış işaretleri.
   - ﴿ ﴾'nin `Script_Extensions` değeri Arapçadır, bu yüzden zaten parçanın içindedir.
+- Önündeki açılış işaretinin çifti Türkçe metinde kapanıyorsa (`(قَالَ fiili)`), o açılış işareti Türkçe metinde, kendi çiftinin yanında kalır. Böylece bir çiftin iki işareti iki ayrı yönde çizilmez.
 - Parça kendi elemanında `dir="rtl"` ve `unicode-bidi: isolate` ile çizilir (`arabicTextProps`). Böylece `( ) [ ] « » ‹ ›` tarayıcının bidi aynalamasıyla doğru yöne döner. ﴿ ﴾ aynalanmaz; Kur'an kullanımındaki mantıksal sırayla RTL bağlamda doğru görünür.
 - Arapça parçanın ardından gelen boşluklar ve Latin noktalama (`?`, `.`, `,`, `—`) Türkçe cümlede kalır. Bu, verilen kararın tek istisnasıdır: parçanın içine girselerdi RTL parçanın soluna düşerlerdi (`Fiil: فَعَلَ?` → `Fiil: ?فعل`). Arapça noktalama (`؟`, `،`) zaten Arapça yazı sistemindedir ve parçanın içinde kalır.
 - `mixedDir` ve `isMixed` tedris'ten ortak modüle taşındı. `mixedDir` artık RTL yalnız metin Arapçayla başlayıp Arapçayla bitiyorsa ve çoğunluğu Arapçaysa döner (`ما معنى X في الآية`). Türkçe çerçeve her durumda LTR kalır.
@@ -48,7 +52,15 @@ Testler: `libs/tokens/test/arabic.spec.ts` (üç örnek; ( ) [ ] ‹ › “ ”
 
 ## Doğrulananlar
 
-- Gate: `typecheck`, `test`, `build`, `lint`, `module-boundaries` (PR gövdesindeki çıktılar).
+- Gate, yerelde `env -u NODE_ENV pnpm nx run-many -t <hedef> --skip-nx-cache` ile:
+  - `typecheck`: `20 tasks: 20 succeeded`
+  - `lint`: `18 tasks: 18 succeeded`
+  - `module-boundaries`: `18 tasks: 18 succeeded`
+  - `build`: `16 tasks: 16 succeeded`
+  - `test`: `16 tasks: 14 succeeded, 2 failed`. Diğer bütün test hedefleri yeşil.
+    - `keycloak-theme:test`: `email.e2e.spec.ts` düştü; Keycloak container'ı `401` döndü. Bu dosyaya bu PR'da dokunulmadı.
+    - `tedrisat:test`: `Test Files  15 failed | 223 passed (238)`. Düşenler Keycloak container'ı kullanan e2e dosyaları ve dosya yüklenirken `Cannot find module './auth-guard'` hatası veren dosyalar. `tedrisat` bu PR'dan etkilenen projeler arasında değil (`nx show projects --affected --base=origin/main`).
+    - CI'da `Verify` ve `Verify (tedrisat)` yeşil.
 - `delurio check graphs --strict --baseline graphs/delurio.baseline.sarif` yerelde yeşil. `exam-editor.tsx` ve `talebe-answers-view.tsx` satır kaydığı için `graphs/**` ve `graphs/FINDINGS.md` içindeki satır referansları yeni satırlara taşındı. `nazar/exams/edit/ui.yaml` ve `nazar/exams/results/ui.yaml` içindeki `arabic-runs` kuralı yeni davranışa göre yazıldı.
 - Ekran görüntüleri (Playwright, yerel stack, kopya veritabanı) ÖNCE/SONRA: tedris soru kartı (üç örnek), tedris sonuç sayfası, nazar editör satırları, nazar yayınlanmış set listesi.
 

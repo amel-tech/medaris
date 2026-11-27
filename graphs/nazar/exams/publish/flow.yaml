@@ -190,7 +190,7 @@ states:
     title: The exam is checked
     source: apps/nazar/features/online-exams/components/exam-publish.tsx:177
     description: >-
-      The page checks the exam itself as it now stands, from the editor (exam-editor.tsx:621): the length, at least one question, and
+      The page checks the exam itself as it now stands, from the editor (exam-editor.tsx:717): the length, at least one question, and
       each question's text, two options, a correct one and a topic; the points total and the zeroth question as the read gave them. It
       checks again as the team writes. The API checks it again when it is published.
     always:
@@ -245,14 +245,14 @@ states:
       CANCEL: { target: choose, say: "they press Vazgeç" }
   publishingNow:
     title: Publish it now
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:649
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:744
     description: >-
       The button is busy. Once every write the editor queued before it has run, publishOnlineExam, POST /online-exams/{examId}/publish,
       names the version they left, with no earliest start (the server's now) and the late window in minutes, counted from that now.
       The exam celse is made at that time. Its answer is the exam as it now stands, and the page turns to it without reading it again.
     invoke: { action: publishOnlineExam }
     on:
-      DONE: { target: open, effect: [nowOpen], say: "the exam is open; the talebe are told", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:655" }
+      DONE: { target: open, effect: [nowOpen], say: "the exam is open; the talebe are told", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:758" }
       FAIL.timePassed: { target: choose, effect: [timePassed], say: "the latest start is not after now" }
       FAIL.readAgain: { target: reading, effect: [readAgain], say: "the exam changed or is not ready: the toast says so and the page is read again", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:249" }
       FAIL.forbidden: { target: choose, effect: [refused], say: "the person may not publish it: a toast" }
@@ -260,7 +260,7 @@ states:
       FAIL.other: { target: choose, effect: [failed] }
   scheduling:
     title: Schedule it
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:649
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:744
     description: >-
       As publishing now, with the earliest start chosen. The exam celse is made at that day and time, and its 24-hour reminder runs as
       for every exam celse.

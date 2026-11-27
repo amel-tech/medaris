@@ -252,8 +252,26 @@ describe("arabicRuns around brackets and quotes (MDRS-248)", () => {
       [" doğru mu?", false],
     ]);
     expect(cut("«قَالَ) yanlış")).toEqual([
-      ["«قَالَ", true],
+      ["«", false],
+      ["قَالَ", true],
       [") yanlış", false],
+    ]);
+  });
+
+  it("leaves an opening mark whose pair closes in the Turkish to the Turkish, with its pair", () => {
+    expect(cut("Örnek: (قَالَ fiili)")).toEqual([
+      ["Örnek: (", false],
+      ["قَالَ", true],
+      [" fiili)", false],
+    ]);
+    expect(cut("Örnek: ( «قَالَ» fiili)")).toEqual([
+      ["Örnek: ( ", false],
+      ["«قَالَ»", true],
+      [" fiili)", false],
+    ]);
+    expect(cut("Örnek: (قَالَ)")).toEqual([
+      ["Örnek: ", false],
+      ["(قَالَ)", true],
     ]);
   });
 
