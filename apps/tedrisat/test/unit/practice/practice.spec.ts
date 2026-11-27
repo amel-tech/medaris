@@ -116,13 +116,13 @@ describe("çalışma soruları (MDRS-248)", () => {
     expect(partText({ numerator: 0, denominator: 1 })).toBe("0.00");
   });
 
-  it("counts a question complete by the exam's own rule", () => {
+  it("counts a question complete by the set's rule, where a topic is not needed", () => {
     const base = { text: "Soru", options: 2, correct: 1, topics: 1 };
     expect(isCompleteCounted(base)).toBe(true);
     expect(isCompleteCounted({ ...base, text: "  " })).toBe(false);
     expect(isCompleteCounted({ ...base, options: 1 })).toBe(false);
     expect(isCompleteCounted({ ...base, correct: 0 })).toBe(false);
-    expect(isCompleteCounted({ ...base, topics: 0 })).toBe(false);
+    expect(isCompleteCounted({ ...base, topics: 0 })).toBe(true);
   });
 
   it("publishes a set with one complete question, whatever the others lack", () => {
@@ -138,6 +138,8 @@ describe("çalışma soruları (MDRS-248)", () => {
     expect(practiceProblems([])).toEqual([{ kind: "NO_QUESTION" }]);
     expect(practiceProblems([empty])).toEqual([{ kind: "NO_QUESTION" }]);
     expect(practiceProblems([empty, complete])).toEqual([]);
+    // A set's question needs no topic (MDRS-248).
+    expect(practiceProblems([{ ...complete, topicIds: [] }])).toEqual([]);
   });
 
   it("is a draft until published, and open from then on", () => {

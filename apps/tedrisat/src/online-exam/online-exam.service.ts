@@ -6,6 +6,7 @@ import {
   AnswerMode,
   ExamKind,
   examStatus,
+  isLocked,
   LATEST_START_DEFAULT_MINUTES,
   lacksOf,
   modeFits,
@@ -90,6 +91,9 @@ export class OnlineExamService {
   ): Promise<OnlineExamSummaryResponse[]> {
     await this.course(courseId, user);
     const exams = await this.repo.listExams(courseId, kind);
+    const started = await this.repo.startedPracticeIds(
+      exams.filter((e) => e.kind === ExamKind.PRACTICE).map((e) => e.id)
+    );
     const now = new Date();
     return exams.map((e) => ({
       id: e.id,
@@ -100,6 +104,7 @@ export class OnlineExamService {
         e.kind === ExamKind.PRACTICE
           ? practiceStatus(e.publishedAt)
           : examStatus(e, now),
+      locked: isLocked(e, started.has(e.id), now),
       startsAt: e.startsAt,
       updatedAt: e.updatedAt,
     }));
@@ -122,10 +127,11 @@ export class OnlineExamService {
     user: AuthenticatedUser
   ): Promise<OnlineExamDraftResponse> {
     const courseId = await this.courseOf(examId, user);
-    const [draft, topics, hasZeroth] = await Promise.all([
+    const [draft, topics, hasZeroth, started] = await Promise.all([
       this.repo.findDraft(courseId, examId),
       this.repo.listTopics(courseId),
       this.zerothOfCourse(courseId).then((q) => q !== null),
+      this.repo.startedPracticeIds([examId]),
     ]);
     if (!draft) throw new OnlineExamNotFoundError(examId);
     const shares = sharePoints(
@@ -153,13 +159,14 @@ export class OnlineExamService {
       })),
       topicIds: draft.topicIds,
       questions: draft.questions.map((q, i) =>
-        this.questionOf(q, i, shares.points.get(q.id))
+        this.questionOf(q, i, shares.points.get(q.id), draft.kind)
       ),
       pointsTotal,
       status:
         draft.kind === ExamKind.PRACTICE
           ? practiceStatus(draft.publishedAt)
           : examStatus(draft, new Date()),
+      locked: isLocked(draft, started.has(draft.id), new Date()),
       startsAt: draft.startsAt,
       latestStartAt: draft.latestStartAt,
       problems: draft.publishedAt
@@ -603,16 +610,18 @@ export class OnlineExamService {
     return this.questionOf(
       draft.questions[index],
       index,
-      shares.points.get(questionId)
+      shares.points.get(questionId),
+      draft.kind
     );
   }
 
   private questionOf(
     q: IOnlineExamDraft["questions"][number],
     index: number,
-    share: { numerator: number; denominator: number } | undefined
+    share: { numerator: number; denominator: number } | undefined,
+    kind: ExamKind
   ): ExamQuestionResponse {
-    const lacks = lacksOf(q);
+    const lacks = lacksOf(q, kind);
     return {
       id: q.id,
       number: index + 1,

@@ -490,13 +490,109 @@ describe("çalışma setleri (e2e)", () => {
     expect(back.body.status).toBe("DRAFT");
     set.version = back.body.version;
     await publish(set);
+    const lockedNow = async () => ({
+      draft: (
+        await http()
+          .get(`/online-exams/${set.id}`)
+          .set("Authorization", muderris)
+          .expect(200)
+      ).body.locked,
+      listed: (
+        (
+          await http()
+            .get(`/courses/${ids.courseId}/online-exams?kind=PRACTICE`)
+            .set("Authorization", muderris)
+            .expect(200)
+        ).body as Array<{ id: string; locked: boolean }>
+      ).find((e) => e.id === set.id)?.locked,
+    });
+    expect(await lockedNow()).toEqual({ draft: false, listed: false });
     await start(set.id).expect(201);
+    // Started, not finished (MDRS-248): the stats have no row for it, yet
+    // the set is locked, and both of nazar's reads say so.
+    expect(
+      (
+        await http()
+          .get(`/courses/${ids.courseId}/practice-set-stats`)
+          .set("Authorization", muderris)
+          .expect(200)
+      ).body
+    ).toEqual([]);
+    expect(await lockedNow()).toEqual({ draft: true, listed: true });
     const locked = await http()
       .post(`/online-exams/${set.id}/unpublish`)
       .set("Authorization", muderris)
       .send({ version: set.version })
       .expect(409);
     expect(locked.body.code).toBe("EXAM_LOCKED");
+  });
+
+  it("publishes and solves a set whose question has no topic, while an exam's still lacks one (MDRS-248)", async () => {
+    const question = {
+      text: "Kıyasın rükünleri kaç tanedir?",
+      options: [
+        { text: "Doğru", correct: true },
+        { text: "Yanlış", correct: false },
+      ],
+      answerMode: "SINGLE",
+      topicIds: [],
+    };
+    const withUntopiced = async (kind: "EXAM" | "PRACTICE") => {
+      const id = (
+        await http()
+          .post(`/courses/${ids.courseId}/online-exams`)
+          .set("Authorization", muderris)
+          .send({ title: `Konusuz ${kind}`, kind })
+          .expect(201)
+      ).body.id as string;
+      const added = await http()
+        .post(`/online-exams/${id}/questions`)
+        .set("Authorization", muderris)
+        .send({ version: 1 })
+        .expect(201);
+      const saved = await http()
+        .put(`/online-exams/${id}/questions/${added.body.question.id}`)
+        .set("Authorization", muderris)
+        .send({ version: added.body.version, ...question })
+        .expect(200);
+      return { id, version: saved.body.version, saved: saved.body.question };
+    };
+
+    const exam = await withUntopiced("EXAM");
+    expect(exam.saved).toMatchObject({ complete: false, lacks: ["topic"] });
+    const examDraft = await http()
+      .get(`/online-exams/${exam.id}`)
+      .set("Authorization", muderris)
+      .expect(200);
+    expect(examDraft.body.problems).toContainEqual({
+      kind: "QUESTION",
+      number: 1,
+      lacks: ["topic"],
+    });
+
+    const set = await withUntopiced("PRACTICE");
+    expect(set.saved).toMatchObject({ complete: true, lacks: [] });
+    const published = await http()
+      .post(`/online-exams/${set.id}/publish`)
+      .set("Authorization", muderris)
+      .send({ version: set.version })
+      .expect(200);
+    expect(published.body.status).toBe("OPEN");
+    expect(
+      (
+        (await courseSets().expect(200)).body as Array<{
+          id: string;
+          questionCount: number;
+        }>
+      ).find((s) => s.id === set.id)?.questionCount
+    ).toBe(1);
+    const attempt = (await start(set.id).expect(201)).body;
+    expect(attempt.questions).toHaveLength(1);
+    const q = attempt.questions[0] as IAttemptQuestion;
+    await answer(attempt.id, q.id, [optionOf(q, "Doğru")]).expect(200);
+    const done = await finish(attempt.id).expect(200);
+    expect(done.body.status).toBe("FINISHED");
+    expect(done.body.result).toMatchObject({ correct: 1, percent: "100.00" });
   });
 
   it("goes with its course, attempts and answers first", async () => {

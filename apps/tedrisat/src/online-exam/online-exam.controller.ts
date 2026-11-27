@@ -184,7 +184,7 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "Yayınla: now, or at a day and time, with a latest start",
     description:
-      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.",
+      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question, for which a topic is not needed (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.",
     operationId: "publishOnlineExam",
   })
   @ApiOkResponse({ type: OnlineExamDraftResponse })
@@ -255,7 +255,7 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "Save a question as the preparer writes it",
     description:
-      "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or a topic is kept as incomplete, and the answer says what it lacks. Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
+      "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or, in an exam, a topic is kept as incomplete, and the answer says what it lacks; a çalışma seti's question needs no topic (MDRS-248). Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
     operationId: "saveExamQuestion",
   })
   @ApiOkResponse({ type: ExamQuestionWriteResponse })

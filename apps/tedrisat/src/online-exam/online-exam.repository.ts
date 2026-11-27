@@ -1,15 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  inArray,
-  isNull,
-  max,
-  sql,
-} from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
 import { lessons } from "../database/schema/course.schema";
@@ -179,6 +169,32 @@ export class OnlineExamRepository {
       .where(eq(onlineExams.id, examId))
       .limit(1);
     return exam?.kind ?? null;
+  }
+
+  /**
+   * Of the given çalışma setleri, those a talebe has started (an attempt at
+   * the set, finished or not) or a pool attempt of the course drew a
+   * question of: unpublishing them is EXAM_LOCKED (MDRS-248).
+   */
+  async startedPracticeIds(
+    examIds: readonly string[],
+    tx?: Tx
+  ): Promise<Set<string>> {
+    if (examIds.length === 0) return new Set();
+    const db = tx ?? this.db;
+    const rows = await db
+      .select({ id: onlineExams.id })
+      .from(onlineExams)
+      .where(
+        and(
+          inArray(onlineExams.id, [...examIds]),
+          eq(onlineExams.kind, ExamKind.PRACTICE),
+          sql`(exists (select 1 from ${practiceAttempts} where ${practiceAttempts.setId} = ${onlineExams.id})
+            or exists (select 1 from ${practiceAttempts} where ${practiceAttempts.courseId} = ${onlineExams.courseId} and ${practiceAttempts.setId} is null
+              and jsonb_exists_any(${practiceAttempts.questionOrder}, array(select ${examQuestions.id}::text from ${examQuestions} where ${examQuestions.examId} = ${onlineExams.id}))))`
+        )
+      );
+    return new Set(rows.map((r) => r.id));
   }
 
   /** The course's online exams of one kind, the latest changed first. */
@@ -672,28 +688,13 @@ export class OnlineExamRepository {
         throw new ExamNotPublishedError(w.examId);
       }
       // A çalışma seti has no celse to open: it is locked once a talebe has
-      // started it. Starting one holds the set's row (`practice`), so no
-      // attempt begins while this write holds it.
-      const [started] = await tx
-        .select({ id: practiceAttempts.id })
-        .from(practiceAttempts)
-        .where(eq(practiceAttempts.setId, w.examId))
-        .limit(1);
-      if (started) throw new ExamLockedError(w.examId);
-      // Nor once a pool attempt of the course drew one of its questions:
-      // starting one holds the course's published sets for share.
-      const [drawn] = await tx
-        .select({ id: practiceAttempts.id })
-        .from(practiceAttempts)
-        .where(
-          and(
-            eq(practiceAttempts.courseId, w.courseId),
-            isNull(practiceAttempts.setId),
-            sql`jsonb_exists_any(${practiceAttempts.questionOrder}, array(select ${examQuestions.id}::text from ${examQuestions} where ${examQuestions.examId} = ${w.examId}))`
-          )
-        )
-        .limit(1);
-      if (drawn) throw new ExamLockedError(w.examId);
+      // started it, or a pool attempt drew one of its questions. Starting
+      // one holds the set's row (`practice`), and a pool attempt the
+      // course's published sets for share, so none begins while this write
+      // holds it.
+      if ((await this.startedPracticeIds([w.examId], tx)).has(w.examId)) {
+        throw new ExamLockedError(w.examId);
+      }
     } else if (of === "published") {
       if (exam.publishedAt === null || exam.lessonId === null) {
         throw new ExamNotPublishedError(w.examId);

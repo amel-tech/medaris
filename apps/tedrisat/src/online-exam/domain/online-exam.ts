@@ -86,13 +86,18 @@ export interface QuestionShape {
   topicIds: readonly string[];
 }
 
-/** A question is complete with its text, two options at least, one correct at least and a topic. */
-export const lacksOf = (q: QuestionShape): QuestionLack[] => {
+/**
+ * A question is complete with its text, two options at least and one correct
+ * at least, and, in an exam, a topic. A çalışma seti's question needs no
+ * topic (MDRS-248, the owner: a set's topic is not required): the topic
+ * feeds the exam's results by topic, which a set does not have.
+ */
+export const lacksOf = (q: QuestionShape, kind: ExamKind): QuestionLack[] => {
   const lacks: QuestionLack[] = [];
   if (q.text.trim() === "") lacks.push("text");
   if (q.options.length < 2) lacks.push("option");
   if (!q.options.some((o) => o.correct)) lacks.push("correct");
-  if (q.topicIds.length === 0) lacks.push("topic");
+  if (kind === ExamKind.EXAM && q.topicIds.length === 0) lacks.push("topic");
   return lacks;
 };
 
@@ -222,7 +227,7 @@ export const publishProblems = (exam: {
   if (exam.durationMinutes === null) problems.push({ kind: "NO_DURATION" });
   if (exam.questions.length === 0) problems.push({ kind: "NO_QUESTION" });
   exam.questions.forEach((q, i) => {
-    const lacks = lacksOf(q);
+    const lacks = lacksOf(q, ExamKind.EXAM);
     if (lacks.length > 0) {
       problems.push({ kind: "QUESTION", number: i + 1, lacks });
     }
@@ -276,13 +281,14 @@ export type OnlineExamStatus = "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
 
 /**
  * What keeps a çalışma seti from being published (MDRS-248): one complete
- * question at least. An incomplete question is no problem of its own: the
- * talebe never get it, as a set is solved from its complete questions.
+ * question at least, where a topic is not needed. An incomplete question is
+ * no problem of its own: the talebe never get it, as a set is solved from
+ * its complete questions.
  */
 export const practiceProblems = (
   questions: ReadonlyArray<QuestionShape>
 ): PublishProblem[] =>
-  questions.some((q) => lacksOf(q).length === 0)
+  questions.some((q) => lacksOf(q, ExamKind.PRACTICE).length === 0)
     ? []
     : [{ kind: "NO_QUESTION" }];
 
@@ -312,4 +318,24 @@ export const examStatus = (
     (exam.latestStartAt ?? exam.startsAt).getTime() +
     publishedMinutes(exam.durationMinutes) * 60_000;
   return now.getTime() < lastEnd ? "OPEN" : "CLOSED";
+};
+
+/**
+ * Whether a published exam or çalışma seti can no longer be taken back to a
+ * draft (unpublishing it is 409 EXAM_LOCKED): an exam once its celse has
+ * started, a set once a talebe has started it or a pool attempt drew one of
+ * its questions (`practiceStarted`, finished or not). A draft is never locked.
+ */
+export const isLocked = (
+  exam: {
+    kind: ExamKind;
+    publishedAt: Date | null;
+    startsAt: Date | null;
+  },
+  practiceStarted: boolean,
+  now: Date
+): boolean => {
+  if (exam.publishedAt === null) return false;
+  if (exam.kind === ExamKind.PRACTICE) return practiceStarted;
+  return exam.startsAt === null || exam.startsAt.getTime() <= now.getTime();
 };

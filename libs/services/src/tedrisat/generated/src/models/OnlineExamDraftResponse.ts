@@ -134,6 +134,12 @@ export interface OnlineExamDraftResponse {
      */
     status: OnlineExamDraftResponseStatusEnum;
     /**
+     * Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft.
+     * @type {boolean}
+     * @memberof OnlineExamDraftResponse
+     */
+    locked: boolean;
+    /**
      * The earliest start, its celse's time; null for a draft, which has no celse.
      * @type {Date}
      * @memberof OnlineExamDraftResponse
@@ -189,6 +195,7 @@ export function instanceOfOnlineExamDraftResponse(value: object): value is Onlin
     if (!('questions' in value) || value['questions'] === undefined) return false;
     if (!('pointsTotal' in value) || value['pointsTotal'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('locked' in value) || value['locked'] === undefined) return false;
     if (!('startsAt' in value) || value['startsAt'] === undefined) return false;
     if (!('latestStartAt' in value) || value['latestStartAt'] === undefined) return false;
     if (!('problems' in value) || value['problems'] === undefined) return false;
@@ -219,6 +226,7 @@ export function OnlineExamDraftResponseFromJSONTyped(json: any, ignoreDiscrimina
         'questions': ((json['questions'] as Array<any>).map(ExamQuestionResponseFromJSON)),
         'pointsTotal': json['pointsTotal'],
         'status': json['status'],
+        'locked': json['locked'],
         'startsAt': (json['startsAt'] == null ? null : new Date(json['startsAt'])),
         'latestStartAt': (json['latestStartAt'] == null ? null : new Date(json['latestStartAt'])),
         'problems': ((json['problems'] as Array<any>).map(PublishProblemResponseFromJSON)),
@@ -250,6 +258,7 @@ export function OnlineExamDraftResponseToJSONTyped(value?: OnlineExamDraftRespon
         'questions': ((value['questions'] as Array<any>).map(ExamQuestionResponseToJSON)),
         'pointsTotal': value['pointsTotal'],
         'status': value['status'],
+        'locked': value['locked'],
         'startsAt': ((value['startsAt'] as any).toISOString()),
         'latestStartAt': ((value['latestStartAt'] as any).toISOString()),
         'problems': ((value['problems'] as Array<any>).map(PublishProblemResponseToJSON)),
