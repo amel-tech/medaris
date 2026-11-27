@@ -98,7 +98,10 @@ export function usePickedQuestion() {
   const listId = useId();
   const [picked, setPicked] = useState<string | null>(null);
   const placeId = useCallback((key: string) => `${listId}-${key}`, [listId]);
-  /** Marks the question and brings its sheet to the top of the window, focused. */
+  /**
+   * Marks the question and brings it to the top of the window, focused: its
+   * sheet, or the text of its form while it is being written.
+   */
   const pick = useCallback(
     (key: string, scroll = true) => {
       setPicked(key);
@@ -106,14 +109,15 @@ export function usePickedQuestion() {
       window.setTimeout(() => {
         const place = document.getElementById(placeId(key));
         place?.scrollIntoView?.({ block: "start", behavior: "smooth" });
-        place
-          ?.querySelector<HTMLElement>("article")
-          ?.focus({ preventScroll: true });
+        (
+          place?.querySelector<HTMLElement>("article") ??
+          place?.querySelector<HTMLElement>("form textarea")
+        )?.focus({ preventScroll: true });
       }, 0);
     },
     [placeId]
   );
-  return { picked, pick, setPicked, placeId };
+  return { picked, pick, placeId };
 }
 
 export interface QuestionLine {
@@ -263,6 +267,7 @@ export function HocaSheet({
   number,
   head,
   tools,
+  picked = false,
   className,
 }: {
   question: {
@@ -277,6 +282,8 @@ export function HocaSheet({
   head?: ReactNode;
   /** at the line's end: the notes icon, edit, delete */
   tools?: ReactNode;
+  /** picked in the list: a brand ring, over a lacking question's red too */
+  picked?: boolean;
   className?: string;
 }) {
   const t = useTranslations("nazar");
@@ -300,7 +307,12 @@ export function HocaSheet({
       questionPaneLabel={t("OnlineExams.questionPane")}
       optionsPaneLabel={t("OnlineExams.optionsLabel")}
       watch={question.key ?? question.id}
-      className={className}
+      className={[
+        className,
+        picked ? "shadow-[0_0_0_2px_var(--border-brand-default)]" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       head={
         <>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">

@@ -569,7 +569,7 @@ export function PublishedExam({
             {draft.questions.map((q) => (
               <li key={q.id} id={placeId(q.id)} className="scroll-mt-4">
                 <article
-                  className="flex flex-col gap-2 focus-visible:outline-none"
+                  className="flex flex-col gap-2"
                   aria-label={t("OnlineExams.questionNumber", {
                     number: q.number,
                   })}
@@ -578,9 +578,7 @@ export function PublishedExam({
                   <HocaSheet
                     question={q}
                     number={q.number}
-                    className={
-                      q.id === picked ? "border-brand-default" : undefined
-                    }
+                    picked={q.id === picked}
                     tools={
                       // The talebe-notes icon works on a published and a
                       // locked set or exam too (MDRS-248): it is not the

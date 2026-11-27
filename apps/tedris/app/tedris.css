@@ -279,7 +279,6 @@
       "."
       "nav";
     row-gap: var(--space-3);
-    overflow-y: auto;
   }
   .take-body > .question-note-anchor {
     grid-area: head;
@@ -300,7 +299,6 @@
       "text options"
       "nav nav";
     column-gap: var(--space-6);
-    overflow: hidden;
   }
   .take-body[data-layout="split"] .take-question-pane,
   .take-body[data-layout="split"] .take-options-pane {
@@ -310,16 +308,6 @@
     /* Room for a chosen tile's focus ring inside the scrolling edge. */
     padding: 4px;
     margin: -4px;
-  }
-  /* Two columns of short options only while the pane is wide enough for
-     them; at A+ a narrow pane lays them in one. */
-  .take-options-pane {
-    container-type: inline-size;
-  }
-  @container (width < 30rem) {
-    .take-options--grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
   }
   .take-body > .take-nav {
     grid-area: nav;

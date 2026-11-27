@@ -42,8 +42,12 @@ const sheet = (props: Partial<Parameters<typeof QuestionSheet>[0]> = {}) => (
   />
 );
 
-/** A desk (or not), and a sheet whose content is `content` px tall in a `box` px window. */
-const lay = (desk: boolean, content: number, box: number) => {
+/**
+ * A desk (or not), and a sheet `box` px tall whose last row in the flow ends
+ * at `content` px; with `panel`, an absolutely placed child (a note's panel)
+ * ends at `panel` px.
+ */
+const lay = (desk: boolean, content: number, box: number, panel = 0) => {
   vi.stubGlobal(
     "matchMedia",
     (query: string) =>
@@ -54,14 +58,16 @@ const lay = (desk: boolean, content: number, box: number) => {
         removeEventListener: () => {},
       }) as unknown as MediaQueryList
   );
-  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(
-    function (this: HTMLElement) {
-      return this.classList.contains("take-body") ? content : 0;
-    }
-  );
-  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(
-    function (this: HTMLElement) {
-      return this.classList.contains("take-body") ? box : 0;
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: Element) {
+      const bottom = this.classList.contains("take-body")
+        ? box
+        : this.hasAttribute("data-panel")
+          ? panel
+          : this.parentElement?.classList.contains("take-body")
+            ? content
+            : 0;
+      return { bottom } as DOMRect;
     }
   );
 };
@@ -102,6 +108,23 @@ describe("QuestionSheet", () => {
     expect(body(host).dataset.layout).toBe("stack");
   });
 
+  it("does not count what is laid over it, such as an open note's panel", async () => {
+    lay(true, 500, 600, 900);
+    const host = await render(
+      sheet({
+        fit: true,
+        head: (
+          <>
+            <p>1. soru</p>
+            <div data-panel="" style={{ position: "absolute" }} />
+          </>
+        ),
+      })
+    );
+    // The panel is in the head line, not a row of the sheet: still `stack`.
+    expect(body(host).dataset.layout).toBe("stack");
+  });
+
   it("measures nothing without `fit` (nazar's preview)", async () => {
     lay(true, 900, 600);
     const host = await render(sheet());
@@ -127,6 +150,14 @@ describe("QuestionSheet", () => {
     );
     await click(section.querySelector(".mds-choice") as HTMLElement);
     expect(onChoose).not.toHaveBeenCalled();
+    // The tiles are for the eye only, out of the tab order; a plain list
+    // tells a screen reader the options and the correct one.
+    expect(section.querySelector("[inert] .take-options")).not.toBeNull();
+    expect(
+      [...section.querySelectorAll("ol.mds-visually-hidden li")].map(
+        (li) => li.textContent
+      )
+    ).toEqual(["A) Yardım dileriz", "B) İbadet ederiz (Doğru)"]);
   });
 
   it("is imported by both CSS entries, outside the layers", () => {

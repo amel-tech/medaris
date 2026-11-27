@@ -214,7 +214,7 @@ export function ExamEditor({
   );
   const [editing, setEditing] = useState<string | null>(null);
   // The question last picked in the list on the end side (MDRS-248).
-  const { picked, pick, setPicked, placeId } = usePickedQuestion();
+  const { picked, pick, placeId } = usePickedQuestion();
   const practice = kind === "PRACTICE";
   const [settings, setSettings] = useState<ExamSettings>(() =>
     settingsOf(draft, practice)
@@ -810,8 +810,9 @@ export function ExamEditor({
     if (notesBusy.has(key)) return;
     leaveOpen(() => {
       leaveBlank();
-      setPicked(key);
       setEditing(key);
+      // Its form opens in its place, which may be far down the page.
+      pick(key);
     });
   };
 
@@ -1446,7 +1447,7 @@ function QuestionCard({
   const lacks = lacking.length > 0;
   return (
     <article
-      className="flex flex-col gap-2 focus-visible:outline-none"
+      className="flex flex-col gap-2"
       aria-label={t("OnlineExams.questionNumber", { number: n })}
       data-lacks-card={lacks ? "" : undefined}
       tabIndex={-1}
@@ -1454,13 +1455,8 @@ function QuestionCard({
       <HocaSheet
         question={question}
         number={n}
-        className={
-          lacks
-            ? "border-error-default bg-error-subtle"
-            : picked
-              ? "border-brand-default"
-              : undefined
-        }
+        picked={picked}
+        className={lacks ? "border-error-default bg-error-subtle" : undefined}
         head={
           <>
             {lacks ? <LacksMark lacking={lacking} onEdit={onEdit} /> : null}

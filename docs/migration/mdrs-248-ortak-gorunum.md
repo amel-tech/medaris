@@ -18,14 +18,16 @@ Sahibin geri bildirimi (28 Kasım 2026, #480 ve #481'den sonra):
 
 - `practice-take.tsx` ve `exam-take.tsx` soruyu `QuestionSheet` ile çizer.
 - Masaüstünde (≥1024px) varsayılan düzen **soru üstte, şıklar altta, düğmeler kartın dibinde**. Kısa soruda aradaki boşluk şıklarla düğmeler arasında kalır.
-- Yalnız bu düzen pencereye sığmıyorsa sheet kendini ikiye böler: solda soru kendi içinde kayar, sağda şıklar. Karar ölçülerek verilir: `QuestionSheet`'in `fit` özelliği sheet'i önce `stack` yapar, `scrollHeight > clientHeight` ise `split` yazar (`data-layout`). Soru, pencere boyu, A−/A+ adımı ya da geç yüklenen bir yazı tipi bir boyutu değiştirdiğinde (`ResizeObserver`, `matchMedia`) yeniden ölçer. Değer React dışında DOM'a yazılır, ölçüm sayfayı yeniden çizdirmez.
+- Yalnız bu düzen pencereye sığmıyorsa sheet kendini ikiye böler: solda soru kendi içinde kayar, sağda şıklar. Karar ölçülerek verilir: `QuestionSheet`'in `fit` özelliği sheet'i önce `stack` yapar. Akıştaki son satırın altı kartın iç altını geçiyorsa `split` yazar (`data-layout`, `overflows()`). Üstüne açılan şeyler (not paneli, tooltip) akış dışında olduğu için hesaba girmez. Kartın kendisi kaymaz (`overflow` görünür), bu yüzden not paneli kesilmez; yalnız `split`'teki iki bölme kayar. Soru, pencere boyu, A−/A+ adımı ya da geç yüklenen bir yazı tipi bir boyutu değiştirdiğinde (`ResizeObserver`, `matchMedia`) yeniden ölçer. Değer React dışında DOM'a yazılır, ölçüm sayfayı yeniden çizdirmez.
 - 1024px altında düzen eskisi gibi: tek sütun, düğmeler ekranın dibine yapışık, soru listesi sayfanın sonunda. 100dvh, ince üst çubuk ve "Sorular" çekmecesi aynı kaldı.
 
 ### Nazar soru editörü ve yayındaki set/sınav
 
 - Yeni `apps/nazar/features/online-exams/components/question-board.tsx`. Masaüstünde (≥1024px) iki sütun var. Solda her soru talebenin gördüğü `QuestionSheet` ile çizilir, salt okunurdur. Düzenlenen sorunun yerinde formu açılır. Sağda her soru tek satırdır: "3. soru · metnin başı…". Metnin satırları birleştirilir ve taşan kısım `text-overflow: ellipsis` ile kesilir. Liste ekranda sabit kalır (`sticky`).
-- Satıra tıklayınca soru sola kaydırılır ve odaklanır. Hem satır hem kart işaretlenir (`aria-current`, marka kenarlığı). Eksik bir sorunun satırı ve kartı kırmızımsıdır. Ünlem ve tooltip satırda da kartta da durur. Not, düzenle ve sil ikonları kartın numara satırının ucundadır, talebenin not ikonunun yerinde. "Soru ekle" hem soruların altında hem satır listesinin altındadır.
-- Hocaya özel ek katman: doğru şıkta yeşil ✓, adı "Doğru". Numaranın yanında konular, ünlem ve "Kaydediliyor…" durur. Bunların dışında kart talebeninkiyle aynıdır. Şıklar tıklanmaz.
+- Satıra tıklayınca soru sola kaydırılır ve odaklanır. Formu açıksa formun metin alanı odaklanır. Hem satır hem kart işaretlenir: satırda `aria-current`, kartta marka halkası. Halka eksik bir sorunun kırmızısının üstünde de görünür. Satırdaki ünlem ya da kalem formu açar ve oraya kaydırır. Eksik bir sorunun satırı ve kartı kırmızımsıdır. Ünlem ve tooltip satırda da kartta da durur. Not, düzenle ve sil ikonları kartın numara satırının ucundadır, talebenin not ikonunun yerinde. "Soru ekle" hem soruların altında hem satır listesinin altındadır.
+- Hocaya özel ek katman: doğru şıkta yeşil ✓, adı "Doğru". Numaranın yanında konular, ünlem ve "Kaydediliyor…" durur. Bunların dışında kart talebeninkiyle aynıdır.
+- Şıklar tıklanmaz. Karolar `inert` bir kabın içindedir: sekme sırasında durmazlar, ekran okuyucu da onları duymaz. Aynı şıkları ve doğru olanı görünmeyen düz bir liste söyler.
+- Kısa şıkların iki sütunu, şık bölmesi 30rem'den darsa tek sütuna iner (`@container`). Bu kural tedris.css'ten `question.css`'e taşındı, iki uygulamada da aynı eşik geçerli.
 - Telefonda tek sütun var: yalnız sorular görünür, satır listesi gizlenir.
 - `exam-publish.tsx` (yayındaki ya da kilitli set/sınav) aynı `QuestionsBoard` + `HocaSheet` düzenini kullanır. Daha önce düz bir `<ol type="A">` listesiydi.
 - **Yorum (orkestratör):** "akordiyon mantığında" sözü, sağdaki tek satırlık ve tıklanınca soruyu açıp işaretleyen bir liste olarak yorumlandı. Sol sütunda "hazırladığı sorular" çoğul olduğu için seçili tek soru değil bütün sorular gösterilir. Seçilen soru kaydırılıp işaretlenir.
@@ -64,6 +66,18 @@ Sahibin geri bildirimi (28 Kasım 2026, #480 ve #481'den sonra):
   Masaüstünde sayfa hiçbir soruda kaymaz. Uzun soru 1440×789'da üst üste sığdığı için ikiye bölünmez. 1366×657'de sığmaz ve bölünür.
 - Hoca ve talebe kartı aynı soru için yan yana karşılaştırıldı. Kart kenarı, köşe yarıçapı, zemin, 24px dolgu, 12px aralık, metin (16/24), "Şıklar" etiketi (14, 500), karo (dolgu 12/16, yarıçap 6, 56px yükseklik), harf rozeti ve şık metni (16/22.88) hesaplanan stillerde birebir aynı çıktı. Fark yalnız hocaya özel katmandadır: ✓, konu rozeti ve ikonlar.
 - Konu listesinde Esc (yerel tarayıcı): bir konu seçili form açıldı, alana yazılıp üç kez Esc'e basıldı. Önce de sonra da "11. Fâtiha" seçili kaldı.
+
+- Not paneli (1366×657, uzun soru, `split`): panel tamamen görünüyor. Panelin altı 539px, kartın altı 592px, `overflow: visible`, düzen `split` kaldı.
+- Sonuç kartları (#481): set bitirildi, "Cevapların" ızgarası (harf rozeti, ✓, "Devamını göster") değişmeden çiziliyor.
+- `/code-review` (medium): 8 bulgu, hepsi düzeltildi.
+  - Not panelinin kesilmesi.
+  - Ölçümün paneli sayması.
+  - Ünlemin forma kaydırmaması.
+  - Eksik soruda seçim izinin görünmemesi.
+  - Salt okunur karoların sekme sırasında durması.
+  - Dar bölmede 2×2 farkı.
+  - Değişen öğenin gözlenmemesi.
+  - Form açıkken odak.
 
 ## Doğrulanamadı
 

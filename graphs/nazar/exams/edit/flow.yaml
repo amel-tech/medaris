@@ -510,8 +510,8 @@ states:
     goal: true
     on:
       SAVE_SETTINGS:
-        - { guard: "settingsTyped == 'noTitle'", target: editor, effect: [titleMissing], say: "they press Ayarları kaydet with no title", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:882" }
-        - { guard: "settingsTyped == 'zeroMinutes'", target: editor, effect: [durationInvalid], say: "they press Ayarları kaydet with a length of 0", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:883" }
+        - { guard: "settingsTyped == 'noTitle'", target: editor, effect: [titleMissing], say: "they press Ayarları kaydet with no title", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:883" }
+        - { guard: "settingsTyped == 'zeroMinutes'", target: editor, effect: [durationInvalid], say: "they press Ayarları kaydet with a length of 0", source: "apps/nazar/features/online-exams/components/exam-editor.tsx:884" }
         - { guard: "settingsTyped == 'fit'", target: savingSettings, effect: [settingsSent], say: "they press Ayarları kaydet" }
       TYPE_SETTINGS: { target: editor, effect: [settingsTypedAgain], say: "they type in a setting" }
       RETRY_SETTINGS: { guard: "settingsSaved == 'no'", target: savingSettings, effect: [clearNotice], say: "they press Yeniden dene under the settings" }
@@ -564,7 +564,7 @@ states:
       FAIL.other: { target: editor, effect: [failed, topicBack] }
   removeTopicAsk:
     title: Delete the topic?
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1061
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1062
     description: >-
       An alert dialog "<number>. <name> silinsin mi?" says the topic leaves the course's list and that one a question carries is not
       deleted.
@@ -657,7 +657,7 @@ states:
       FAIL.other: { target: editor, effect: [questionFailed] }
   removeAsk:
     title: Delete the question?
-    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1216
+    source: apps/nazar/features/online-exams/components/exam-editor.tsx:1217
     description: An alert dialog "<n>. soru silinsin mi?" says the question goes with its options.
     by: human
     on:

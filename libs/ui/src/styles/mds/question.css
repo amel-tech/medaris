@@ -166,3 +166,15 @@
     --space-inset-card: var(--space-4);
   }
 }
+
+/* Two columns of short options only while the options are wide enough for
+   them (a narrow pane, a large A+ step, the hoca's column beside his list):
+   then one, in tedris and in nazar alike. */
+.take-options-pane {
+  container-type: inline-size;
+}
+@container (width < 30rem) {
+  .take-options--grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

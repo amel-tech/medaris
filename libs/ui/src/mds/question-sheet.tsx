@@ -208,16 +208,36 @@ export const DESK_QUERY = "(min-width: 64rem)";
  * yukarıda, şık aşağıda olmalı"): the question above its options, as
  * everywhere; only when that does not fit the sheet's height does it turn
  * to `split`, the question on one side scrolling on its own and the options
- * on the other. Measured, not guessed: the sheet is put in `stack`, and its
- * content's height is read against its own. Again when the question, the
+ * on the other. Measured, not guessed: the sheet is put in `stack`, and the
+ * bottom of its last row in the flow is read against its own inner bottom.
+ * What is laid over it (the note's panel, a tooltip) is out of the flow and
+ * never counts. Again when the question, the
  * window, the A− / A+ step or a face that loads late changes a size. Written
  * on the element as `data-layout`, outside React, so a measure never draws
  * the page again.
  */
+/** True when the sheet's rows in the flow run past its inner bottom. */
+export function overflows(el: HTMLElement): boolean {
+  const box = el.getBoundingClientRect();
+  const style = getComputedStyle(el);
+  const inner =
+    box.bottom -
+    (Number.parseFloat(style.borderBottomWidth) || 0) -
+    (Number.parseFloat(style.paddingBottom) || 0);
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const child of el.children) {
+    const position = getComputedStyle(child).position;
+    if (position === "absolute" || position === "fixed") continue;
+    bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
+  }
+  return bottom > inner + 1;
+}
+
 function useFitLayout(
   ref: { current: HTMLElement | null },
   on: boolean,
-  watch: unknown
+  watch: unknown,
+  shape: string
 ) {
   useLayoutEffect(() => {
     const el = ref.current;
@@ -229,20 +249,24 @@ function useFitLayout(
     const fit = () => {
       el.dataset.layout = "stack";
       if (!desk?.matches) return;
-      if (el.scrollHeight > el.clientHeight + 1) el.dataset.layout = "split";
+      if (overflows(el)) el.dataset.layout = "split";
     };
     fit();
     desk?.addEventListener("change", fit);
     const observer =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
     observer?.observe(el);
-    for (const part of el.querySelectorAll(".take-question, .take-options"))
+    // Its rows and what they hold: the panes stay, their content may not
+    // (`shape` runs this again when it is replaced).
+    for (const part of el.querySelectorAll(
+      ":scope > *, .take-question, .take-options"
+    ))
       observer?.observe(part);
     return () => {
       observer?.disconnect();
       desk?.removeEventListener("change", fit);
     };
-  }, [on, watch, ref]);
+  }, [on, watch, shape, ref]);
 }
 
 /**
@@ -302,7 +326,9 @@ export function QuestionSheet({
   children?: ReactNode;
 }) {
   const ref = useRef<HTMLElement>(null);
-  useFitLayout(ref, fit, watch);
+  // What replaces the text's or the options' element without a new `watch`.
+  const shape = `${text ? "text" : "empty"}|${question.answerMode}|${question.options.length}`;
+  useFitLayout(ref, fit, watch, shape);
   const Text = textAs;
   return (
     <section
@@ -343,15 +369,40 @@ export function QuestionSheet({
           label={optionsPaneLabel}
           watch={watch}
         >
-          <QuestionOptions
-            question={question}
-            chosen={chosen}
-            onChoose={onChoose}
-            legend={legend}
-            multiHint={multiHint}
-            correct={correct}
-            readOnly={readOnly}
-          />
+          {readOnly ? (
+            <>
+              {/* The hoca's preview: the talebe's tiles for the eye, out of
+                  the tab order and the accessibility tree (they take no
+                  choice); a plain list of the options says the same. */}
+              <div inert>
+                <QuestionOptions
+                  question={question}
+                  chosen={chosen}
+                  onChoose={onChoose}
+                  legend={legend}
+                  multiHint={multiHint}
+                  correct={correct}
+                  readOnly
+                />
+              </div>
+              <ol className="mds-visually-hidden" aria-label={legend}>
+                {question.options.map((o, i) => (
+                  <li key={o.id}>
+                    {optionLetter(i)}) {o.text}
+                    {correct?.ids.includes(o.id) ? ` (${correct.label})` : ""}
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <QuestionOptions
+              question={question}
+              chosen={chosen}
+              onChoose={onChoose}
+              legend={legend}
+              multiHint={multiHint}
+            />
+          )}
         </ScrollPane>
       ) : null}
       {children}
