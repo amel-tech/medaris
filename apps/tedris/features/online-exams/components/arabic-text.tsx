@@ -1,17 +1,18 @@
 import type { CSSProperties, ElementType } from "react";
-import { arabicRuns, isMixed, mixedDir, textProps } from "../arabic";
+import { arabicRuns, isMixed, paragraphDir, textProps } from "../arabic";
 
-export { mixedDir };
+export { paragraphDir };
 
 /**
  * A question's, an option's, an answer's or a set's text drawn by the Arabic
  * text standard (MDRS-248, `@medaris/tokens/arabic`). An Arabic text is one
  * Arabic block (`textProps`). A text that mixes Turkish and Arabic, in
- * either order, takes the direction of its frame (`mixedDir`) and its own
- * size, and only its Arabic runs grow, each on its own isolated element
+ * either order, takes the page's direction (`paragraphDir`: "إِيَّاكَ
+ * نَعْبُدُ: …" is a Turkish sentence on a Turkish page) and its own size, and
+ * only its Arabic runs grow, each on its own isolated right-to-left element
  * (`arabicRuns`), at the short-run leading (--lh-arabic) so a line with one
- * Arabic word does not open up to the block's. Any other text is
- * `dir="auto"`. `size` is the Latin size the text stands for; the page's
+ * Arabic word does not open up to the block's. Any other text takes the
+ * page's direction too. `size` is the Latin size the text stands for; the page's
  * A− / A+ zoom multiplies both. A heading passes its `weight`, which the
  * Arabic block's book weight would otherwise replace, and gets the
  * short-run leading too.
@@ -56,7 +57,7 @@ export function ArabicText({
     <Tag
       id={id}
       className={className}
-      dir={mixedDir(text)}
+      dir={paragraphDir(text)}
       data-mixed-arabic=""
       style={size ? { ...style, fontSize: size } : style}
     >

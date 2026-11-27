@@ -147,7 +147,9 @@ describe("the answers' strip and cards (MDRS-248)", () => {
     const run = [...card.querySelectorAll("[lang=ar]")].find(
       (el) => el.textContent === "فَعَلَ"
     ) as HTMLElement;
-    expect(run.parentElement?.getAttribute("dir")).toBe("ltr");
+    // A text with a Latin letter states no direction: it takes the page's
+    // (<html dir>, ltr in Turkish).
+    expect(run.parentElement?.hasAttribute("dir")).toBe(false);
     expect(run.parentElement?.hasAttribute("data-mixed-arabic")).toBe(true);
     expect(run.parentElement?.getAttribute("lang")).toBeNull();
     // Arabic first, Turkish after: still the page's direction, only the
@@ -156,18 +158,21 @@ describe("the answers' strip and cards (MDRS-248)", () => {
       (el) => el.textContent === "اِسْمٌ"
     ) as HTMLElement;
     expect(lead.getAttribute("dir")).toBe("rtl");
-    expect(lead.parentElement?.getAttribute("dir")).toBe("ltr");
+    expect(lead.parentElement?.hasAttribute("dir")).toBe(false);
     expect(card.querySelector("[data-testid=answer-set]")?.textContent).toBe(
       "Set: Emsile"
     );
   });
 
-  it("gives a mixed text the direction it ends in, and keeps a heading's weight on its Arabic", async () => {
-    const { ArabicText, mixedDir } = await import(
+  it("gives a mixed text the page's direction, and keeps a heading's weight on its Arabic", async () => {
+    const { ArabicText, paragraphDir } = await import(
       "~/features/online-exams/components/arabic-text"
     );
-    expect(mixedDir("الْحَمْدُ لِلَّهِ hangi sûrenin ilk âyetidir?")).toBe("ltr");
-    expect(mixedDir("مَا مَعْنَى X فِي الْآيَةِ؟")).toBe("rtl");
+    expect(paragraphDir("الْحَمْدُ لِلَّهِ hangi sûrenin ilk âyetidir?", "ltr")).toBe(
+      "ltr"
+    );
+    expect(paragraphDir("مَا مَعْنَى X فِي الْآيَةِ؟", "ltr")).toBe("ltr");
+    expect(paragraphDir("الْحَمْدُ لِلَّهِ", "ltr")).toBe("rtl");
     const host = await render(
       createElement(ArabicText, {
         as: "h1",

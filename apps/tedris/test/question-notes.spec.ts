@@ -239,7 +239,8 @@ describe("the note icon on the solving screen (soru notları)", () => {
     expect(panel()?.getAttribute("role")).toBe("dialog");
     expect(open.getAttribute("aria-controls")).toBe(panel()?.id);
     expect(document.activeElement).toBe(textarea());
-    expect(textarea().getAttribute("dir")).toBe("auto");
+    // Empty, or quoting Arabic: the page's direction (MDRS-248).
+    expect(textarea().hasAttribute("dir")).toBe(false);
     expect(textarea().maxLength).toBe(1000);
     // Nothing to save yet.
     expect(

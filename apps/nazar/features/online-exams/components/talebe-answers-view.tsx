@@ -6,7 +6,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
-import { boxDir } from "../arabic";
+import { paragraphDir } from "../arabic";
 import { ArabicText } from "./arabic-text";
 
 /**
@@ -127,7 +127,7 @@ function AnswerCard({ question }: { question: TalebeAnswerQuestionResponse }) {
           })}
         </span>
       </div>
-      <p className="mds-body" dir={boxDir(question.text) ?? "auto"}>
+      <p className="mds-body" dir={paragraphDir(question.text)}>
         <ArabicText text={question.text} />
       </p>
       {/* The list stays left to right with its letter on the left; each

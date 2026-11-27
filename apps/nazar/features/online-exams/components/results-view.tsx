@@ -13,7 +13,9 @@ import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { releaseExamResults } from "~/features/evaluation/actions";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
+import { paragraphDir } from "../arabic";
 import { closeExamEarly, readExamResults } from "../results-actions";
+import { ArabicText } from "./arabic-text";
 
 type Results = OnlineExamResultsResponse;
 
@@ -291,7 +293,7 @@ export function ResultsView({ initial }: { initial: Results }) {
         row.zerothOptionId === null ? (
           t("ExamResults.noZeroth")
         ) : (
-          <span dir="auto">
+          <span dir={paragraphDir(zerothText.get(row.zerothOptionId) ?? "")}>
             {zerothText.get(row.zerothOptionId) ?? t("ExamResults.none")}
           </span>
         ),
@@ -433,13 +435,13 @@ export function ResultsView({ initial }: { initial: Results }) {
                   })}
                 </span>
               </div>
-              <p className="mds-body" dir="auto">
-                {q.text}
+              <p className="mds-body" dir={paragraphDir(q.text)}>
+                <ArabicText text={q.text} />
               </p>
               <ul className="mds-body-sm flex flex-col gap-1">
                 {q.options.map((o) => (
                   <li key={o.id} className="flex flex-wrap items-center gap-2">
-                    <span dir="auto">
+                    <span dir={paragraphDir(o.text)}>
                       {t("ExamResults.optionChosen", {
                         option: o.text,
                         chosen: o.chosen,
@@ -462,15 +464,15 @@ export function ResultsView({ initial }: { initial: Results }) {
         <h2 id="results-zeroth" className="mds-h2">
           {t("ExamResults.zerothTitle")}
         </h2>
-        <p className="mds-body" dir="auto">
-          {results.zeroth.question}
+        <p className="mds-body" dir={paragraphDir(results.zeroth.question)}>
+          <ArabicText text={results.zeroth.question} />
         </p>
         <p className="mds-body-sm text-neutral-muted">
           {t("ExamResults.zerothNoScore")}
         </p>
         <ul className="mds-body-sm flex flex-col gap-1">
           {results.zeroth.options.map((o) => (
-            <li key={o.id} dir="auto">
+            <li key={o.id} dir={paragraphDir(o.text)}>
               {t("ExamResults.zerothOptionCount", {
                 option: o.text,
                 count: o.count,

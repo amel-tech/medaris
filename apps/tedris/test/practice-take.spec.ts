@@ -463,7 +463,7 @@ describe("solving a çalışma seti (MDRS-248)", () => {
     ) as HTMLElement;
     expect(run.getAttribute("data-arabic-block")).toBe("");
     expect(run.parentElement?.getAttribute("lang")).toBeNull();
-    expect(run.parentElement?.getAttribute("dir")).toBe("ltr");
+    expect(run.parentElement?.hasAttribute("dir")).toBe(false);
     expect(run.parentElement?.hasAttribute("data-mixed-arabic")).toBe(true);
     expect(run.parentElement?.textContent).toBe("Mef'ûl: مَفْعُولٌ");
   });

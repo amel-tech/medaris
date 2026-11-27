@@ -87,3 +87,5 @@ Satır aralığında W3C *Arabic & Persian Layout Requirements* (alreq, https://
 - nazar: "Yayından kaldır" düğmesi `draft.locked` değerini okumalı, set tablosu da `locked` değerini göstermeli. Editördeki "konu eksik" ipucu çalışma setinde gösterilmemeli (API artık `lacks` içine koymuyor).
 - nazar ve tedris: soru, şık ve sonuç bileşenlerinde karışık metin için `arabicRuns` kullanılmalı.
 - `libs/ui/src/styles/mds/*.css` ile `design-system/medaris-unified/` arasında bu PR'dan önce de bir sapma vardı (`.mds-logo`, `.mds-badge--error`, `medrese.css`). `sync-libs.mjs` bu dosyaları geri yazacağı için bu PR'da yeniden üretilmediler.
+
+Paragraf yönü kuralı 2026-11-27 itibarıyla ilk harfe değil Latin harf olup olmadığına bakar: bkz. [mdrs-248-karisik-yon.md](mdrs-248-karisik-yon.md).

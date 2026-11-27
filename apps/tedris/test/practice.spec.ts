@@ -356,7 +356,7 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
     });
     expect(html).toContain(">Karışık deneme<");
     expect(html).toMatch(
-      /data-testid="practice-answer-set"[^>]*>Set: <span dir="auto">Birinci bab</
+      /data-testid="practice-answer-set"[^>]*>Set: <span>Birinci bab</
     );
     expect(html).toContain('href="/calisma-sorulari#ders-c1"');
   });

@@ -12,8 +12,10 @@ import {
   arabicRuns,
   arabicTextProps,
   hasArabic,
+  hasLatin,
+  isArabicOnly,
   isMixed,
-  mixedDir,
+  paragraphDir,
   startsArabic,
 } from "../arabic.js";
 
@@ -109,20 +111,32 @@ describe("arabicTextProps", () => {
     expect(arabicTextProps("زَيْدٌ").style?.fontSize).toBe(arabicFontSize());
   });
 
-  it("leaves a Latin text to the browser, with its size only when one is given", () => {
-    expect(arabicTextProps("Kıyas")).toEqual({ dir: "auto" });
+  it("gives a Latin text the interface's direction, with its size only when one is given", () => {
+    expect(arabicTextProps("Kıyas")).toEqual({});
+    expect(arabicTextProps("Kıyas", undefined, 1, "ltr")).toEqual({
+      dir: "ltr",
+    });
     expect(arabicTextProps("Kıyas", "var(--fs-body)", 1)).toEqual({
-      dir: "auto",
       style: { fontSize: "var(--fs-body)" },
     });
-    expect(arabicTextProps("Kıyas", "16px", 1.3)).toEqual({
-      dir: "auto",
+    expect(arabicTextProps("Kıyas", "16px", 1.3, "rtl")).toEqual({
+      dir: "rtl",
       style: { fontSize: "calc(16px * 1.3)" },
     });
     expect(arabicTextProps("Kıyas", undefined, 1.3)).toEqual({
-      dir: "auto",
       style: { fontSize: "calc(1em * 1.3)" },
     });
+  });
+
+  it("draws a mixed text that starts in Arabic as the interface's, not as an Arabic block", () => {
+    expect(
+      arabicTextProps(
+        'إِيَّاكَ نَعْبُدُ: "iyyâke" neden başta geliyor?',
+        undefined,
+        1,
+        "ltr"
+      )
+    ).toEqual({ dir: "ltr" });
   });
 });
 
@@ -281,22 +295,55 @@ describe("arabicRuns around brackets and quotes (MDRS-248)", () => {
   });
 });
 
-describe("isMixed and mixedDir (MDRS-248)", () => {
+describe("isMixed and paragraphDir (MDRS-248)", () => {
+  const IYYAKE = 'إِيَّاكَ نَعْبُدُ: "iyyâke" neden başta geliyor?';
+  const HADITH =
+    "قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ» — bu hadisin konusu nedir?";
+  const ZAYD = "«زَيْدٌ» kelimesinin i'râbı nedir?";
+
   it("calls a text mixed only when it has Arabic and Latin letters", () => {
-    expect(isMixed("«زَيْدٌ» kelimesinin i'râbı nedir?")).toBe(true);
+    expect(isMixed(ZAYD)).toBe(true);
     expect(isMixed("«زَيْدٌ فِي الدَّارِ»")).toBe(false);
     expect(isMixed("Kıyasın rükünleri")).toBe(false);
+    expect(hasLatin(IYYAKE)).toBe(true);
+    expect(isArabicOnly(IYYAKE)).toBe(false);
+    expect(isArabicOnly("1. «قَالَ» ...")).toBe(true);
+    expect(isArabicOnly("123 ?")).toBe(false);
   });
 
-  it("keeps a Turkish frame left to right whatever it quotes, and an Arabic one right to left", () => {
-    expect(
-      mixedDir(
-        "قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ» — bu hadisin konusu nedir?"
-      )
-    ).toBe("ltr");
-    expect(mixedDir("Fiil: فَعَلَ")).toBe("ltr");
-    // Mostly Arabic and ending in it, but a Turkish sentence all the same.
-    expect(mixedDir("Doğru yol: ﴿الصِّرَاطَ الْمُسْتَقِيمَ﴾")).toBe("ltr");
-    expect(mixedDir("مَا مَعْنَى X فِي الْآيَةِ؟")).toBe("rtl");
+  it("gives a mixed text that starts in Arabic the interface's direction, its Arabic an isolated rtl run", () => {
+    for (const text of [IYYAKE, HADITH, ZAYD, "مَا مَعْنَى X فِي الْآيَةِ؟"]) {
+      expect(paragraphDir(text, "ltr")).toBe("ltr");
+      expect(paragraphDir(text)).toBeUndefined();
+    }
+    const [arabic, turkish] = arabicRuns(IYYAKE);
+    expect(arabic).toEqual({ text: "إِيَّاكَ نَعْبُدُ", arabic: true });
+    expect(arabicTextProps(arabic?.text ?? "").dir).toBe("rtl");
+    expect(turkish).toEqual({
+      text: ': "iyyâke" neden başta geliyor?',
+      arabic: false,
+    });
+    expect(arabicRuns(HADITH)[0]).toEqual({
+      text: "قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ»",
+      arabic: true,
+    });
+  });
+
+  it("gives a Turkish text the interface's direction", () => {
+    expect(paragraphDir("Doğru yol: ﴿الصِّرَاطَ الْمُسْتَقِيمَ﴾", "ltr")).toBe("ltr");
+    expect(paragraphDir("Kıyasın rükünleri", "ltr")).toBe("ltr");
+    expect(paragraphDir("Kıyasın rükünleri")).toBeUndefined();
+  });
+
+  it("draws an Arabic-only text right to left whatever the interface", () => {
+    expect(paragraphDir("زَيْدٌ فِي الدَّارِ", "ltr")).toBe("rtl");
+    expect(paragraphDir("«زَيْدٌ فِي الدَّارِ»")).toBe("rtl");
+    expect(paragraphDir("مَرْفُوعٌ لِأَنَّهُ مُبْتَدَأٌ", "rtl")).toBe("rtl");
+  });
+
+  it("gives a mixed text a right-to-left base on an Arabic interface", () => {
+    expect(paragraphDir(IYYAKE, "rtl")).toBe("rtl");
+    expect(paragraphDir(ZAYD, "rtl")).toBe("rtl");
+    expect(arabicTextProps(ZAYD, undefined, 1, "rtl")).toEqual({ dir: "rtl" });
   });
 });

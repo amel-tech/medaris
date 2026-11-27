@@ -40,15 +40,37 @@ export const hasArabic = (text) => ARABIC.test(text);
 export const arabicFontSize = (size = "1em", scale = 1) =>
   `max(calc(var(--fs-arabic-text-min) * ${scale}), calc(${size} * var(--arabic-scale) * ${scale}))`;
 
+/** True when the text holds a Latin letter: a Turkish or an English word, alone or quoting Arabic. */
+export const hasLatin = (text) => LATIN.test(text);
+
+/** True when the text holds Arabic script and no Latin letter: it is drawn as an Arabic block. */
+export const isArabicOnly = (text) => hasArabic(text) && !hasLatin(text);
+
+/**
+ * The direction of a text's paragraph (its base direction): right to left
+ * only for a text with Arabic and no Latin letter; any text with a Latin
+ * letter, whatever it starts with, takes the interface's direction, `uiDir`
+ * ("ltr" for tr and en, "rtl" for ar). Its Arabic runs keep their own
+ * direction on their own isolated elements (`arabicRuns`). Not the first
+ * strong letter, as `dir="auto"` does: "إِيَّاكَ نَعْبُدُ: "iyyâke" neden
+ * başta geliyor?" is a Turkish sentence and reads left to right on a Turkish
+ * page. Without `uiDir`, undefined for a text that is not Arabic only: the
+ * element then states no direction and takes the page's, which <html dir>
+ * sets from the interface language.
+ */
+export const paragraphDir = (text, uiDir) =>
+  isArabicOnly(text) ? "rtl" : uiDir;
+
 /**
  * The attributes of a question's, an option's or an answer's text. Arabic
- * (its first letter is): lang="ar" dir="rtl" on the element itself, Naskh at
+ * only (`isArabicOnly`): lang="ar" dir="rtl" on the element itself, Naskh at
  * `arabicFontSize`, the harakat leading, isolated so the marks beside it (a
- * list letter, "Doğru") keep their place. Otherwise dir="auto", and the size
- * only when one is given.
+ * list letter, "Doğru") keep their place. Any other text, a mixed one
+ * included: the interface's direction (`paragraphDir`), and the size only
+ * when one is given.
  */
-export const arabicTextProps = (text, size, scale = 1) => {
-  if (startsArabic(text)) {
+export const arabicTextProps = (text, size, scale = 1, uiDir) => {
+  if (isArabicOnly(text)) {
     return {
       lang: "ar",
       dir: "rtl",
@@ -64,9 +86,10 @@ export const arabicTextProps = (text, size, scale = 1) => {
       },
     };
   }
-  if (size === undefined && scale === 1) return { dir: "auto" };
+  const dir = uiDir ? { dir: uiDir } : {};
+  if (size === undefined && scale === 1) return dir;
   return {
-    dir: "auto",
+    ...dir,
     style: {
       fontSize: scale === 1 ? size : `calc(${size ?? "1em"} * ${scale})`,
     },
@@ -74,32 +97,7 @@ export const arabicTextProps = (text, size, scale = 1) => {
 };
 
 /** True when the text holds both Arabic and Latin letters: a Turkish sentence quoting Arabic, or the other way round. */
-export const isMixed = (text) => hasArabic(text) && LATIN.test(text);
-
-/**
- * The direction of a text that mixes Turkish and Arabic. Right to left only
- * when it is an Arabic sentence quoting a Latin word: it starts and ends in
- * Arabic and is mostly Arabic ("ما معنى X في الآية"). A Turkish frame is left
- * to right whatever it quotes, at its start ("قَالَ … bu hadisin konusu
- * nedir?") or at its end ("Doğru yol: ﴿الصِّرَاطَ الْمُسْتَقِيمَ﴾"). It is
- * stated, not inherited, so an Arabic interface does not turn a Turkish
- * question around.
- */
-export const mixedDir = (text) => {
-  let arabic = 0;
-  let latin = 0;
-  let endsArabic = false;
-  for (const ch of text) {
-    if (ARABIC.test(ch)) {
-      arabic += 1;
-      endsArabic = true;
-    } else if (LATIN.test(ch)) {
-      latin += 1;
-      endsArabic = false;
-    }
-  }
-  return arabic > latin && endsArabic && startsArabic(text) ? "rtl" : "ltr";
-};
+export const isMixed = (text) => hasArabic(text) && hasLatin(text);
 
 // The brackets and quotes that open a pair, and the mark that closes each.
 // ﴿ ﴾ are not here: their Script_Extensions name Arabic, so they are part

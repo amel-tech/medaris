@@ -412,7 +412,7 @@ states:
       FAIL.other: { target: examsList, effect: [failed] }
   zerothForm:
     title: The course's zeroth question
-    source: apps/nazar/features/online-exams/components/course-zeroth-section.tsx:125
+    source: apps/nazar/features/online-exams/components/course-zeroth-section.tsx:127
     description: >-
       In the section "Sıfırıncı soru", in place of the question shown, a form started from the course's own question or else the
       medrese's: above it the hadith, fixed, "مَنْ غَشَّنَا فَلَيْسَ مِنَّا" in Arabic and its meaning "Bizi aldatan bizden
@@ -425,13 +425,13 @@ states:
       ADD_ZEROTH_OPTION: { target: zerothForm, say: "they press Seçenek ekle" }
       REMOVE_ZEROTH_OPTION: { target: zerothForm, say: "they remove an option, down to two" }
       SAVE_ZEROTH:
-        - { guard: "zerothTyped == 'unfit'", target: zerothForm, effect: [zerothInvalid], say: "they press Kaydet with something missing", source: "apps/nazar/features/online-exams/components/course-zeroth-section.tsx:79" }
+        - { guard: "zerothTyped == 'unfit'", target: zerothForm, effect: [zerothInvalid], say: "they press Kaydet with something missing", source: "apps/nazar/features/online-exams/components/course-zeroth-section.tsx:81" }
         - { target: savingZeroth, effect: [zerothSending], say: "they press Kaydet" }
       CANCEL: { target: examsList, effect: [zerothClosed], say: "they press Vazgeç" }
       CLOSE_TOAST: { guard: toasting, target: zerothForm, effect: [clearNotice], say: "they close the toast" }
   savingZeroth:
     title: Save the course's zeroth question
-    source: apps/nazar/features/online-exams/components/course-zeroth-section.tsx:82
+    source: apps/nazar/features/online-exams/components/course-zeroth-section.tsx:84
     description: >-
       The form stays open and its Kaydet is busy ("Kaydediliyor…"), Vazgeç off: saveCourseZerothQuestion, PUT
       /courses/{id}/exam-zeroth-question. Its answer closes the form and shows the course's own question; a refusal keeps what was

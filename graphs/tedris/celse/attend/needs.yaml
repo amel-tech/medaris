@@ -157,7 +157,7 @@ needs:
       - node: agendaCard
       - node: agendaStep
       - node: agendaNow
-      - source: apps/tedris/features/courses/components/session-agenda.tsx:62
+      - source: apps/tedris/features/courses/components/session-agenda.tsx:63
       - source: apps/tedris/features/courses/session-model.ts:169
 
   - id: the-kaynak-and-resources-are-listed
@@ -166,7 +166,7 @@ needs:
       - node: resourcesCard
       - node: kaynakLine
       - node: resourceRow
-      - source: apps/tedris/features/courses/components/session-resources.tsx:76
+      - source: apps/tedris/features/courses/components/session-resources.tsx:77
 
   - id: the-exam-is-read
     need: An exam celse says that it is an exam, its form, its score, its place and its topics.
