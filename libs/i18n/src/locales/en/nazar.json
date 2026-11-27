@@ -240,7 +240,8 @@
       "DECK_PUBLISH_RESULT": "{outcome, select, approved {Deck published} unpublished {Deck unpublished} proposal_rejected {Deck proposal rejected} other {Deck publish request rejected}}",
       "SUBMISSION_REVIEWED": "Your homework was reviewed",
       "COURSE_BAN_PLACED": "New course ban",
-      "KOSK_BAN_PLACED": "New köşk ban"
+      "KOSK_BAN_PLACED": "New köşk ban",
+      "QUESTION_NOTE_SHARED": "{kind, select, PRACTICE {A talebe note on the set “{setTitle}”} EXAM {A talebe note on the exam “{setTitle}”} other {A talebe note arrived}}"
     }
   },
   "Problems": {
@@ -2678,5 +2679,39 @@
     "verdictSkipped": "Skipped, left blank",
     "earned": "Earned {earned} of {points} points",
     "chosen": "(chosen)"
+  },
+  "QuestionNotes": {
+    "toggleName": "Talebe notes",
+    "toggleOn": "Talebe can add a note",
+    "toggleOff": "Talebe notes off",
+    "toggleFailed": "The talebe note setting could not be saved",
+    "title": "Talebe notes",
+    "waiting": "{count} unanswered",
+    "intro": "Notes talebe wrote on the questions of this set and sent to you. Turn a question's notes on or off with the speech bubble beside it.",
+    "loadFailed": "Talebe notes could not be read right now.",
+    "empty": "No talebe note has been sent to you yet. When a talebe writes a note on a question and sends it to you, it shows here.",
+    "questionNumber": "Question {number}",
+    "answered": "Answered",
+    "unanswered": "Unanswered",
+    "editedAfterReply": "Changed after your answer",
+    "noName": "Talebe without a shown name",
+    "sentAt": "Sent {when}",
+    "yourReply": "Your answer",
+    "yourReplyAt": "Your answer · {when}",
+    "editReply": "Edit answer",
+    "removeReply": "Remove answer",
+    "reply": "Answer",
+    "saveReply": "Save answer",
+    "cancel": "Cancel",
+    "replyLabel": "Answer to {name} on question {number}",
+    "replyPlaceholder": "Write a short answer",
+    "replied": "Answer sent",
+    "removed": "Answer removed",
+    "replyFailed": "The answer could not be sent",
+    "removeFailed": "The answer could not be removed",
+    "noteGone": "The talebe no longer sends you this note.",
+    "badge": "{count} {count, plural, one {note} other {notes}}",
+    "badgeLabel": "“{title}”: {count} unanswered talebe {count, plural, one {note} other {notes}}",
+    "headerLink": "{count} unanswered talebe {count, plural, one {note} other {notes}}"
   }
 }

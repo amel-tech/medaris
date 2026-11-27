@@ -505,7 +505,7 @@ assertions:
   - id: a-row-without-address-leads-nowhere
     never: "state == 'tedris_opened' and row == 'button'"
     say: A row with no address is not a link, so the person cannot leave for Tedris by it.
-    source: apps/nazar/features/notifications/notifications.ts:59
+    source: apps/nazar/features/notifications/notifications.ts:74
   - id: only-a-link-marks-and-leaves
     never: "state == 'markingLink' and row == 'button'"
     say: Only a link row marks and then leaves; a button row marks and stays.

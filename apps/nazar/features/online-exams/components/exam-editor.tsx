@@ -47,6 +47,7 @@ import {
   setExamQuestionPoints,
 } from "../actions";
 import { boxDir, textProps } from "../arabic";
+import { setExamQuestionTalebeNotes } from "../notes-actions";
 import {
   type AnswerModeValue,
   lacksOf,
@@ -71,8 +72,10 @@ import {
   type UnsavedQuestion,
   writeUnsaved,
 } from "../online-exams";
+import { takesNotes } from "../question-notes";
 import { ArabicText } from "./arabic-text";
 import { PublishSection } from "./exam-publish";
+import { TalebeNotesToggle } from "./talebe-notes-toggle";
 
 type Outcome =
   | { success: true; data: unknown }
@@ -98,6 +101,8 @@ type QuestionBody = {
   scoring: ScoringValue | null;
   /** Own points in hundredths; null shares what the others leave. */
   points: number | null;
+  /** Whether its talebe may write a note on it (MDRS-248). */
+  talebeNotes: boolean;
 };
 
 /** The settings the page holds; a çalışma seti's leave the length out (MDRS-248). */
@@ -138,6 +143,9 @@ function keptOver(
       answerMode: item.answerMode,
       scoring: item.scoring,
       wantedPoints: item.points,
+      ...(item.talebeNotes === undefined
+        ? {}
+        : { talebeNotes: item.talebeNotes }),
       lacks,
       complete: lacks.length === 0,
       pending: false,
@@ -218,6 +226,12 @@ export function ExamEditor({
   const [dropThen, setDropThen] = useState<(() => void) | null>(null);
   const version = useRef(draft.version);
   const queue = useRef<Promise<void>>(Promise.resolve());
+  // The rows whose talebe-notes icon is being written, and the state each
+  // write left on the server (by question id), laid over a later read.
+  const [notesBusy, setNotesBusy] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const notesSet = useRef(new Map<string, boolean>());
 
   // Leaving while a write is on its way loses it: the browser asks first.
   useEffect(() => {
@@ -253,9 +267,10 @@ export function ExamEditor({
         answerMode: q.answerMode as AnswerModeValue,
         scoring: (q.scoring ?? null) as ScoringValue | null,
         points: typedOwnOf(q),
+        talebeNotes: takesNotes(q, kind),
       }));
     writeUnsaved(draft.id, unsaved, window.localStorage);
-  }, [draft.id, questions]);
+  }, [draft.id, questions, kind]);
 
   // A newer read of the exam reaches this editor without remounting it: the
   // router draws the page again after a save that renewed the session, or
@@ -263,14 +278,22 @@ export function ExamEditor({
   // its way or open, since the queue carries the page's version; what was
   // typed and not saved is laid over it again.
   // The form of a new question stays open over it, under the questions read.
+  // A talebe-notes write of a row (outside the queue) holds it too, and the
+  // icons this page set are laid over the read, which may predate them.
   useEffect(() => {
     if (draft.version <= version.current) return;
     if (inFlight > 0 || (editing !== null && editing !== blank?.key)) return;
+    if (notesBusy.size > 0) return;
     version.current = draft.version;
     setTopics(draft.courseTopics);
     setQuestions(
       keptOver(
-        draft.questions.map((q) => ({ ...q, key: q.id })),
+        draft.questions.map((q) => {
+          const set = notesSet.current.get(q.id);
+          return set === undefined
+            ? { ...q, key: q.id }
+            : { ...q, key: q.id, talebeNotes: set };
+        }),
         readUnsaved(draft.id, window.localStorage),
         kind
       ).concat(blank ? [blank] : [])
@@ -278,7 +301,16 @@ export function ExamEditor({
     if (settingsState !== "failed" && settingsState !== "pending") {
       setSettings(settingsOf(draft, practice));
     }
-  }, [draft, inFlight, editing, blank, settingsState, practice, kind]);
+  }, [
+    draft,
+    inFlight,
+    editing,
+    blank,
+    settingsState,
+    practice,
+    kind,
+    notesBusy,
+  ]);
 
   /** A refusal, worded; false when the write did not go through. */
   const went = (result: Outcome): boolean => {
@@ -366,6 +398,7 @@ export function ExamEditor({
       answerMode: body.answerMode,
       scoring: body.scoring,
       wantedPoints: body.points,
+      talebeNotes: body.talebeNotes,
       lacks,
       complete: lacks.length === 0,
       pending: true,
@@ -396,6 +429,7 @@ export function ExamEditor({
           topicIds,
           answerMode: body.answerMode,
           scoring: body.scoring,
+          talebeNotes: body.talebeNotes,
           version: version.current,
         });
         if (!went(saved) || !("data" in saved)) return failed();
@@ -527,6 +561,52 @@ export function ExamEditor({
   };
 
   /**
+   * The talebe-notes icon of a saved question's row (MDRS-248): it shows the
+   * new state at once and writes it outside the queue, since it names no
+   * version and moves none; a refusal takes it back. A question the server
+   * does not hold yet, or one being saved, offers it off.
+   */
+  const notesWrites = useRef(new Set<string>());
+  const busy = (key: string, on: boolean) =>
+    setNotesBusy((all) => {
+      const next = new Set(all);
+      if (on) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  const toggleNotes = (key: string) => {
+    const q = questions.find((it) => it.key === key);
+    const id = idOf(key);
+    if (!q || id === "" || q.pending || notesWrites.current.has(key)) return;
+    const next = !takesNotes(q, kind);
+    notesWrites.current.add(key);
+    busy(key, true);
+    patch(key, { talebeNotes: next });
+    const back = () => patch(key, { talebeNotes: !next });
+    const refused = () =>
+      notify({ tone: "error", title: t("QuestionNotes.toggleFailed") });
+    void (async () => {
+      try {
+        const result = await setExamQuestionTalebeNotes(draft.id, id, next);
+        if (handleUnauthenticated(result as never)) return back();
+        if (!("data" in result)) {
+          back();
+          return refused();
+        }
+        notesSet.current.set(id, result.data.talebeNotes);
+        patch(key, { talebeNotes: result.data.talebeNotes });
+      } catch (error) {
+        back();
+        if (isStaleAction(error)) threw(error);
+        else refused();
+      } finally {
+        notesWrites.current.delete(key);
+        busy(key, false);
+      }
+    })();
+  };
+
+  /**
    * The new question's form, never saved, is taken off when another
    * question is opened or sent again: it would stay as an empty "Eksik" row.
    */
@@ -579,6 +659,8 @@ export function ExamEditor({
         topicIds: [],
         ownPoints: null,
         points: "",
+        // The API's default for a new question: on in a set, off in an exam.
+        talebeNotes: practice,
         complete: false,
         lacks: lacksOf({ text: "", options: [], topicIds: [] }, kind),
       },
@@ -804,6 +886,7 @@ export function ExamEditor({
               {editing === q.key ? (
                 <QuestionForm
                   practice={practice}
+                  kind={kind}
                   draft={view}
                   question={q}
                   topicOf={topicOf}
@@ -829,12 +912,15 @@ export function ExamEditor({
                   draft={view}
                   topicOf={topicOf}
                   question={q}
-                  onEdit={() =>
+                  // Not while its icon is being written: the form would open
+                  // with a state the server may still refuse.
+                  onEdit={() => {
+                    if (notesBusy.has(q.key)) return;
                     leaveOpen(() => {
                       leaveBlank();
                       setEditing(q.key);
-                    })
-                  }
+                    });
+                  }}
                   onRetry={() => {
                     leaveBlank();
                     saveQuestion(q.key, {
@@ -847,9 +933,15 @@ export function ExamEditor({
                       answerMode: q.answerMode,
                       scoring: q.scoring,
                       points: typedOwnOf(q),
+                      talebeNotes: takesNotes(q, kind),
                     });
                   }}
                   onRemove={() => removeQuestion(q.key)}
+                  notes={{
+                    on: takesNotes(q, kind),
+                    offered: q.id !== "" && !q.pending,
+                    onToggle: () => toggleNotes(q.key),
+                  }}
                 />
               )}
             </li>
@@ -1249,6 +1341,7 @@ function QuestionRow({
   onEdit,
   onRetry,
   onRemove,
+  notes,
 }: {
   practice: boolean;
   draft: OnlineExamDraftResponse;
@@ -1257,6 +1350,8 @@ function QuestionRow({
   onEdit: () => void;
   onRetry: () => void;
   onRemove: () => void;
+  /** The talebe-notes icon (MDRS-248); `offered` is false until the server holds the question. */
+  notes: { on: boolean; offered: boolean; onToggle: () => void };
 }) {
   const t = useTranslations("nazar");
   const format = useFormatter();
@@ -1355,7 +1450,12 @@ function QuestionRow({
         {question.failed ? (
           <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
         ) : null}
-        <div className="ms-auto flex shrink-0 gap-1">
+        <div className="ms-auto flex shrink-0 items-center gap-1">
+          <TalebeNotesToggle
+            on={notes.on}
+            disabled={!notes.offered}
+            onToggle={notes.onToggle}
+          />
           {question.failed ? (
             <Button size="small" onClick={onRetry}>
               {t("OnlineExams.retry")}
@@ -1414,6 +1514,7 @@ const marksCorrect = (event: KeyboardEvent<HTMLElement>) =>
  */
 function QuestionForm({
   practice,
+  kind,
   draft,
   question,
   topicOf,
@@ -1425,6 +1526,7 @@ function QuestionForm({
 }: {
   /** A çalışma seti's question has no points of its own and needs no topic (MDRS-248). */
   practice: boolean;
+  kind: ExamKind;
   draft: OnlineExamDraftResponse;
   question: Question;
   /** A topic made on this page by the id the server gave it, once it has. */
@@ -1464,6 +1566,8 @@ function QuestionForm({
     return filled;
   });
   const [topicIds, setTopicIds] = useState<string[]>(question.topicIds);
+  // The talebe-notes icon (MDRS-248): it goes with the save, as `talebeNotes`.
+  const [notes, setNotes] = useState(() => takesNotes(question, kind));
   // The topics as the chips have them: by the server's id once it is known,
   // and only those the course still has.
   const known = new Set(draft.courseTopics.map((topic) => topic.id));
@@ -1495,6 +1599,7 @@ function QuestionForm({
     scoring,
     points,
     (newTopic ?? "").trim(),
+    notes,
   ]);
   const [opened] = useState(now);
   const changed = now !== opened;
@@ -1586,6 +1691,7 @@ function QuestionForm({
       answerMode,
       scoring: answerScoring,
       points: own,
+      talebeNotes: notes,
     });
   };
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -1834,13 +1940,20 @@ function QuestionForm({
         )}
       </div>
       <div className="flex flex-col gap-1">
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button type="submit" disabled={blocked}>
             {t("OnlineExams.save")}
           </Button>
           <Button variant="ghost" onClick={onCancel}>
             {t("OnlineExams.cancel")}
           </Button>
+          {/* Beside the buttons, never a field of its own: it takes no room. */}
+          <span className="ms-auto">
+            <TalebeNotesToggle
+              on={notes}
+              onToggle={() => setNotes((was) => !was)}
+            />
+          </span>
         </div>
         <p className="mds-caption text-neutral-muted">
           {t("OnlineExams.shortcutHint")}

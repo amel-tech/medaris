@@ -19,7 +19,11 @@ import { readOnce } from "~/lib/tedrisat-read";
 import { segmentOf } from "../online-exams";
 import { CourseZerothSection } from "./course-zeroth-section";
 import { NewExamForm } from "./new-exam-form";
-import { type PracticeSetRow, PracticeSetsTable } from "./practice-sets-table";
+import {
+  NotesBadge,
+  type PracticeSetRow,
+  PracticeSetsTable,
+} from "./practice-sets-table";
 
 /**
  * "Sınavlar" of a course (MDRS-299): its online exams, "Yeni sınav", and the
@@ -75,6 +79,7 @@ export async function ExamsPage({
         talebeCount: s?.talebeCount ?? null,
         attemptCount: s?.attemptCount ?? null,
         averagePercent: s?.averagePercent ?? null,
+        unansweredNotes: exam.unansweredNotes ?? 0,
       };
     });
   const segment = segmentOf(kind);
@@ -154,7 +159,14 @@ export async function ExamsPage({
                       count: exam.questionCount,
                     })}
                   </span>{" "}
-                  {status(exam)}
+                  {status(exam)}{" "}
+                  <NotesBadge
+                    courseId={courseId}
+                    kind="EXAM"
+                    id={exam.id}
+                    title={exam.title}
+                    count={exam.unansweredNotes ?? 0}
+                  />
                   {exam.status !== "DRAFT" ? (
                     <>
                       {" · "}

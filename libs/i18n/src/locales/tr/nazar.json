@@ -240,7 +240,8 @@
       "DECK_PUBLISH_RESULT": "{outcome, select, approved {Deste yayınlandı} unpublished {Deste yayından kaldırıldı} proposal_rejected {Deste öneriniz reddedildi} other {Deste yayın isteği reddedildi}}",
       "SUBMISSION_REVIEWED": "Ödeviniz değerlendirildi",
       "COURSE_BAN_PLACED": "Yeni ders yasağı",
-      "KOSK_BAN_PLACED": "Yeni köşk yasağı"
+      "KOSK_BAN_PLACED": "Yeni köşk yasağı",
+      "QUESTION_NOTE_SHARED": "{kind, select, PRACTICE {“{setTitle}” setine talebe notu geldi} EXAM {“{setTitle}” sınavına talebe notu geldi} other {Talebe notu geldi}}"
     }
   },
   "Problems": {
@@ -2678,5 +2679,39 @@
     "verdictSkipped": "Atladı, boş kaldı",
     "earned": "{earned} / {points} puan aldı",
     "chosen": "(seçtiği)"
+  },
+  "QuestionNotes": {
+    "toggleName": "Talebe notları",
+    "toggleOn": "Talebe not ekleyebilir",
+    "toggleOff": "Talebe notu kapalı",
+    "toggleFailed": "Talebe notu ayarı kaydedilemedi",
+    "title": "Talebe notları",
+    "waiting": "{count} cevapsız",
+    "intro": "Talebelerin bu setteki sorulara yazıp size gönderdiği notlar. Bir sorunun notlarını sorunun yanındaki konuşma balonuyla açıp kapatırsınız.",
+    "loadFailed": "Talebe notları şu an okunamadı.",
+    "empty": "Henüz size gönderilmiş talebe notu yok. Bir talebe bir soruya not yazıp size gönderdiğinde burada görünür.",
+    "questionNumber": "{number}. soru",
+    "answered": "Cevaplandı",
+    "unanswered": "Cevapsız",
+    "editedAfterReply": "Cevaptan sonra değişti",
+    "noName": "Adı görünmeyen talebe",
+    "sentAt": "{when} gönderildi",
+    "yourReply": "Cevabınız",
+    "yourReplyAt": "Cevabınız · {when}",
+    "editReply": "Cevabı düzenle",
+    "removeReply": "Cevabı kaldır",
+    "reply": "Cevapla",
+    "saveReply": "Cevabı kaydet",
+    "cancel": "Vazgeç",
+    "replyLabel": "{number}. soru, {name} için cevap",
+    "replyPlaceholder": "Kısa bir cevap yazın",
+    "replied": "Cevap gönderildi",
+    "removed": "Cevap kaldırıldı",
+    "replyFailed": "Cevap gönderilemedi",
+    "removeFailed": "Cevap kaldırılamadı",
+    "noteGone": "Talebe bu notu artık size göndermiyor.",
+    "badge": "{count} not",
+    "badgeLabel": "“{title}”: {count} cevapsız talebe notu",
+    "headerLink": "{count} cevapsız talebe notu"
   }
 }

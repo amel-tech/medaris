@@ -276,6 +276,8 @@ export type UnsavedQuestion = {
   scoring: ScoringValue | null;
   /** Own points in hundredths; null shares what the others leave. */
   points: number | null;
+  /** Whether its talebe may write a note on it (MDRS-248); left out by an older page. */
+  talebeNotes?: boolean;
 };
 
 const unsavedKey = (examId: string) => `exam-unsaved:${examId}`;
