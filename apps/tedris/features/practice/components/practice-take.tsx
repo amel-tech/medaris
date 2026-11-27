@@ -14,6 +14,7 @@ import {
   INDICATOR,
   QuestionNavigator,
   QuestionOptions,
+  TakeKeys,
   TextSizeButtons,
 } from "~/features/online-exams/components/question-parts";
 import {
@@ -342,14 +343,33 @@ export function PracticeTake(source: PracticeSource) {
     );
   };
 
+  // The end: the last question, or every one answered. "Bitir" then takes
+  // "Sonraki"'s place under the options, as the one button that leads.
+  const atEnd =
+    following === null ||
+    index === questions.length - 1 ||
+    answered === questions.length;
+  const goOn = () => {
+    if (finishing) return;
+    if (atEnd) setAsking(true);
+    else go(following, following !== null && following <= index);
+  };
+
   const scale = TEXT_SCALES[textStep];
 
   return (
     <div
-      className="flex flex-col gap-section"
+      className="take-column flex flex-col gap-section"
       style={{ zoom: scale }}
       data-text-scale={scale}
     >
+      <TakeKeys
+        question={q}
+        chosen={mine?.optionIds ?? []}
+        onChoose={choose}
+        onEnter={goOn}
+        off={asking || finishing}
+      />
       <section
         className="mds-card flex flex-col gap-3"
         aria-label={t("barLabel")}
@@ -376,6 +396,16 @@ export function PracticeTake(source: PracticeSource) {
               biggerLabel={t("textBigger")}
               groupLabel={tb("textSizeLabel")}
             />
+            {/* Up here, away from "Sonraki": ending is never one slip from going on. */}
+            <Button
+              size="small"
+              variant="secondary"
+              disabled={finishing}
+              onClick={() => setAsking(true)}
+              data-testid="finish-in-bar"
+            >
+              {t("finish")}
+            </Button>
           </div>
         </div>
         <Progress
@@ -451,49 +481,35 @@ export function PracticeTake(source: PracticeSource) {
             onChoose={choose}
             legend={t("optionsLegend")}
           />
-          {/* Moving about on the start side; going on and ending on the
-              end side, apart, so "Bitir" is not one slip from "Sonraki".
-              "Sonraki" leads while there is a next question; after the last
-              one "Bitir" does, with "Sonraki" disabled. On a phone each side
-              fills its own row. */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pbs-2">
-            <div className="flex gap-2 max-sm:inline-full">
+          {/* Right under the options, as wide as they are: back and skip on
+              the start side, the one button that leads on the end side. The
+              same button says "Bitir" at the end, so the focus stays on it.
+              On a phone the row holds to the bottom of the screen, the
+              leading button on a row of its own under the thumb. */}
+          <div className="take-nav" data-testid="take-nav">
+            <div className="take-nav__back">
               <Button
                 variant="outline"
-                className="max-sm:flex-1"
                 disabled={index === 0}
                 onClick={() => go(index - 1)}
               >
                 {t("previous")}
               </Button>
-              <Button variant="ghost" className="max-sm:flex-1" onClick={skip}>
+              <Button variant="ghost" onClick={skip}>
                 {t("skip")}
               </Button>
             </div>
-            <div className="flex gap-2 max-sm:inline-full">
-              <Button
-                variant={following === null ? "primary" : "outline"}
-                className="max-sm:flex-1"
-                loading={finishing}
-                onClick={() => setAsking(true)}
-              >
-                {t("finish")}
-              </Button>
-              {/* Kept in place when nothing comes next, only disabled: a
-                  removed button would drop the keyboard's focus, and "Bitir"
-                  would slide under a second click. */}
-              <Button
-                variant={following === null ? "outline" : "primary"}
-                className="max-sm:flex-1"
-                disabled={following === null}
-                onClick={() => {
-                  if (following !== null) go(following, following <= index);
-                }}
-              >
-                {t("next")}
-              </Button>
-            </div>
+            <Button
+              className="take-nav__go"
+              loading={atEnd && finishing}
+              onClick={goOn}
+            >
+              {atEnd ? t("finish") : t("next")}
+            </Button>
           </div>
+          <p className="take-keys mds-caption text-neutral-muted">
+            {tb("keysHint")}
+          </p>
         </section>
       ) : null}
 

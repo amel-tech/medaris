@@ -3,7 +3,7 @@
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
 import { type QuestionState, TEXT_SCALES } from "../take-model";
 import { ArabicText } from "./arabic-text";
 
@@ -13,11 +13,25 @@ import { ArabicText } from "./arabic-text";
  * Each takes its words from its caller, so each screen keeps its own catalogue.
  */
 
+/** The letter an option is shown and picked by: A, B, C … */
+export const optionLetter = (i: number) => String.fromCharCode(65 + i);
+
 const optionText = (text: string) => (
-  <ArabicText text={text} size="var(--fs-body)" />
+  // A block, so an Arabic option takes the whole row and lines up on the right.
+  <ArabicText text={text} size="var(--fs-body)" className="block" />
 );
 
-/** A question's options: radio buttons, or check boxes when more than one may be right. */
+/** The letter badge in front of an option; the option's text names it. */
+const letterBadge = (i: number) => (
+  <span className="take-option__letter">{optionLetter(i)}</span>
+);
+
+/**
+ * A question's options as option cards (MDRS-248): each a whole, bordered row
+ * with its letter, chosen by a click anywhere on it. Underneath they are still
+ * radio buttons, or check boxes when more than one may be right, so the arrow
+ * keys, the focus and a screen reader work as they do on any choice.
+ */
 export function QuestionOptions({
   question,
   chosen,
@@ -34,11 +48,13 @@ export function QuestionOptions({
 }) {
   if (question.answerMode === "MULTIPLE") {
     return (
-      <fieldset className="mds-choice-group">
+      <fieldset className="mds-choice-group take-options">
         <legend className="mds-label">{legend}</legend>
-        {question.options.map((o) => (
+        {question.options.map((o, i) => (
           <Checkbox
             key={o.id}
+            bordered
+            icon={letterBadge(i)}
             label={optionText(o.text)}
             checked={chosen.includes(o.id)}
             onCheckedChange={(on) =>
@@ -54,14 +70,116 @@ export function QuestionOptions({
   return (
     <RadioGroup
       legend={legend}
+      bordered
+      className="take-options"
       value={chosen[0] ?? null}
       onChange={(value) => onChoose([value])}
-      options={question.options.map((o) => ({
+      options={question.options.map((o, i) => ({
         value: o.id,
         label: optionText(o.text),
+        icon: letterBadge(i),
       }))}
     />
   );
+}
+
+/**
+ * The option a key picks: 1–9, or a letter A–Z, counted from the first
+ * option; `null` for any other key. A keyboard that does not write Latin
+ * letters or digits (an Arabic one) is read by the key's place.
+ */
+export const optionKeyIndex = (event: {
+  key: string;
+  code?: string;
+}): number | null => {
+  if (/^[1-9]$/.test(event.key)) return Number(event.key) - 1;
+  if (/^[a-z]$/i.test(event.key))
+    return event.key.toUpperCase().charCodeAt(0) - 65;
+  const digit = /^(?:Digit|Numpad)([1-9])$/.exec(event.code ?? "");
+  if (digit) return Number(digit[1]) - 1;
+  const letter = /^Key([A-Z])$/.exec(event.code ?? "");
+  if (letter && !/^[\x20-\x7e]$/.test(event.key))
+    return letter[1].charCodeAt(0) - 65;
+  return null;
+};
+
+/** What a key that picks option `i` makes of the choice: a radio takes it, a check box turns over. */
+export const pickedBy = (
+  question: {
+    answerMode: string;
+    options: ReadonlyArray<{ id: string }>;
+  },
+  chosen: readonly string[],
+  i: number
+): string[] | null => {
+  const option = question.options[i];
+  if (!option) return null;
+  if (question.answerMode !== "MULTIPLE") return [option.id];
+  return chosen.includes(option.id)
+    ? chosen.filter((id) => id !== option.id)
+    : [...chosen, option.id];
+};
+
+/** Where a key belongs to what has the focus, not to the question screen. */
+const OWN_KEYS =
+  "input:not([type=radio], [type=checkbox]), textarea, select, [contenteditable]:not([contenteditable=false]), [role=dialog], [role=alertdialog], [role=textbox], [role=combobox]";
+const ACTIVATES = "button, a[href], [role=button], [role=link], summary";
+const CHOICE = "[role=radio], [role=checkbox]";
+
+/**
+ * The question screen's keys (MDRS-248): 1–9 or A–Z picks an option, Enter
+ * goes on, as "Sonraki" or, at the end, "Bitir" does. Not while a field, a
+ * dialog or another control that takes the key has the focus, and not with
+ * Ctrl, Alt or Cmd. Enter on a focused option card goes on too; on a
+ * button it stays the button's. Draws nothing.
+ */
+export function TakeKeys({
+  question,
+  chosen,
+  onChoose,
+  onEnter,
+  off = false,
+}: {
+  question:
+    | {
+        answerMode: string;
+        options: ReadonlyArray<{ id: string }>;
+      }
+    | undefined;
+  chosen: readonly string[];
+  onChoose: (optionIds: string[]) => void;
+  onEnter: () => void;
+  /** a dialog is open, or the attempt is ending */
+  off?: boolean;
+}) {
+  const latest = useRef({ question, chosen, onChoose, onEnter, off });
+  latest.current = { question, chosen, onChoose, onEnter, off };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const { question, chosen, onChoose, onEnter, off } = latest.current;
+      if (off || !question || event.defaultPrevented || event.isComposing)
+        return;
+      if (event.ctrlKey || event.altKey || event.metaKey) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(OWN_KEYS)) return;
+      const onChoice = Boolean(target?.closest(CHOICE));
+      if (event.key === "Enter") {
+        if (!onChoice && target?.closest(ACTIVATES)) return;
+        event.preventDefault();
+        onEnter();
+        return;
+      }
+      const i = optionKeyIndex(event);
+      if (i === null) return;
+      const next = pickedBy(question, chosen, i);
+      if (!next) return;
+      event.preventDefault();
+      onChoose(next);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return null;
 }
 
 /**

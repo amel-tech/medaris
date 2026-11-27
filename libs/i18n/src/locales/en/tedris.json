@@ -1149,6 +1149,7 @@
   },
   "TakeBar": {
     "textSizeLabel": "Text size",
-    "textSizeFact": "You can make the questions’ text bigger or smaller: during the exam, the A− and A+ buttons in the top bar do it."
+    "textSizeFact": "You can make the questions’ text bigger or smaller: during the exam, the A− and A+ buttons in the top bar do it.",
+    "keysHint": "Shortcuts: 1–9 or A–Z to pick an option, Enter for the next question."
   }
 }
