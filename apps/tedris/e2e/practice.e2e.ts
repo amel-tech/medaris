@@ -158,10 +158,9 @@ test("Başla, one answer, Bitir: the result with the correct options", async ({
 test("a note on a question: written, sent, answered, read under Notlarım (soru notları)", async ({
   page,
 }) => {
-  await page.goto("/calisma-sorulari");
-  const card = page.getByTestId("practice-set").filter({ hasText: setTitle });
-  // The test before solved the set once: this is the second attempt.
-  await card.getByRole("link", { name: `${setTitle}: tekrar çöz` }).click();
+  // Straight to the set: an attempt is started or the open one taken back,
+  // whatever the tests before left.
+  await page.goto(`/calisma-sorulari/${setId}`);
   const question = page.getByTestId("practice-question");
   await expect(question).toBeVisible();
   const text = (await question.locator("h2").textContent())?.trim();

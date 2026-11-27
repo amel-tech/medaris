@@ -280,6 +280,8 @@ export function QuestionNote({
                 dir="auto"
                 rows={4}
                 maxLength={NOTE_MAX}
+                // Held while a write is out, so its answer never overwrites newer text.
+                readOnly={busy !== null}
                 value={body}
                 placeholder={t("bodyPlaceholder")}
                 onChange={(event) => {
@@ -313,7 +315,7 @@ export function QuestionNote({
               label={t("share")}
               description={locked ? t("shareLockedExam") : t("shareHelp")}
               checked={sending}
-              disabled={locked}
+              disabled={locked || busy !== null}
               onCheckedChange={(checked: boolean) => {
                 setShared(checked);
                 setStatus(null);

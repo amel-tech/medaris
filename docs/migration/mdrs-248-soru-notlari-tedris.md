@@ -66,6 +66,9 @@ kaplamasın": on every screen the note is one small icon in the question's top l
 
 ## Verified
 
+- `env -u NODE_ENV npx vitest run` in `apps/tedris`: `Test Files 105 passed (105)`,
+  `Tests 1429 passed (1429)`; `npx vitest run test/question-notes.spec.ts`: `Tests 19 passed
+  (19)`.
 - `apps/tedris/test/question-notes.spec.ts` (19 tests): the icon only where allowed, a note
   kept after notes were turned off, the panel's focus, save and send, Esc, the screen's keys,
   a failed save, delete, the exam's lock (switch disabled, sent as personal), a
