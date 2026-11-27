@@ -16,6 +16,7 @@ import {
   getMyLessonViews,
   getMySubmissions,
   getRecordings,
+  hasPracticeSets,
   isSignedIn,
 } from "~/features/courses/public-reads";
 import { inviteHrefs } from "~/lib/invite-hrefs";
@@ -62,8 +63,9 @@ export default async function Page({
   // they may hand in (the programme's "Ödev teslim edilmedi" marks).
   // The decks are read only for a caller who holds a seat (the tab exists only then).
   // "Notlarım" (MDRS-248) is read, like the decks, only for a seat holder.
-  // The watch marks (MDRS-248, the "sayaç") too.
-  const [kosk, signedIn, recordings, handedIn, decks, grades, views] =
+  // The watch marks (MDRS-248, the "sayaç") too, and whether the course has
+  // a published çalışma seti (MDRS-248, Faz 3).
+  const [kosk, signedIn, recordings, handedIn, decks, grades, views, practice] =
     await Promise.all([
       getKosk(course.koskId),
       isSignedIn(),
@@ -83,6 +85,10 @@ export default async function Page({
         holdsSeat(courseViewState(course, await isSignedIn()))
           ? getMyLessonViews(course.id)
           : null)(),
+      (async () =>
+        holdsSeat(courseViewState(course, await isSignedIn()))
+          ? hasPracticeSets(course.id)
+          : false)(),
     ]);
   const hrefs = inviteHrefs(`/courses/${course.id}`);
 
@@ -102,6 +108,7 @@ export default async function Page({
       decks={decks ?? []}
       grades={grades}
       views={views}
+      hasPractice={practice}
       initialTab={typeof tab === "string" ? tab : undefined}
     />
   );

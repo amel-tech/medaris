@@ -7,18 +7,11 @@ import type {
 import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Button } from "@medaris/ui/mds/button";
-import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { unstable_isUnrecognizedActionError as isStaleAction } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   answerZerothQuestion,
@@ -38,7 +31,6 @@ import {
   type LocalAnswer,
   nextIndex,
   pointsText,
-  type QuestionState,
   readTextScale,
   readUnsent,
   stateOf,
@@ -48,6 +40,11 @@ import {
   writeTextScale,
   writeUnsent,
 } from "../take-model";
+import {
+  QuestionNavigator,
+  QuestionOptions,
+  TextSizeButtons,
+} from "./question-parts";
 
 type Phase = "briefing" | "running" | "elsewhere" | "ended";
 
@@ -76,41 +73,6 @@ const lostConnection = (result: unknown) => {
  * opens the exam takes the attempt; this one says so and can take it back.
  * Coming back from another tab is counted for the team.
  */
-/**
- * The question list's colours (the owner, 22 Nov 2026: "cevaplanmamışsa sarı
- * olsun, atlanmışsa turuncu olsun, cevaplanmışsa beyaz/dark olsun"), set
- * inline so no stylesheet order can undo them. Unanswered is the warning
- * pair; skipped is the warning's bold fill, the closest the system has to
- * orange (it has no orange token); answered is the sheet itself, white by
- * day and dark by night. The current question carries a brand ring on top.
- * Each button's name says its state too, so colour is never the only cue.
- */
-const INDICATOR: Record<QuestionState, CSSProperties> = {
-  // Not answered yet: plain.
-  unseen: {
-    background: "var(--background-neutral-surface)",
-    borderColor: "var(--border-neutral-strong)",
-    color: "var(--text-neutral-default)",
-  },
-  // Skipped: dark yellow.
-  skipped: {
-    background: "var(--background-warning-bold)",
-    borderColor: "var(--border-warning-default)",
-    color: "var(--text-neutral-on-bold)",
-  },
-  // Answered: blue.
-  answered: {
-    background: "var(--background-info-bold)",
-    borderColor: "var(--border-info-default)",
-    color: "var(--text-neutral-on-bold)",
-  },
-};
-
-const CURRENT: CSSProperties = {
-  boxShadow:
-    "0 0 0 2px var(--background-neutral-page), 0 0 0 4px var(--border-brand-default)",
-};
-
 /** How long the page must be away before coming back counts as a switch. */
 export const SWITCH_MIN_MS = 2000;
 
@@ -554,7 +516,6 @@ export function ExamTake({
     // largest step spans the whole width of the screen.
     const scale = TEXT_SCALES[textStep];
     const widest = textStep === TEXT_SCALES.length - 1;
-    const optionText = (text: string) => textProps(text, "var(--fs-body)", 1);
 
     return (
       <div
@@ -647,26 +608,12 @@ export function ExamTake({
                       points: pointsText(q.points, locale),
                     })}
                   </p>
-                  <div className="flex gap-1">
-                    <Button
-                      size="small"
-                      variant="outline"
-                      aria-label={t("textSmaller")}
-                      disabled={textStep === 0}
-                      onClick={() => stepText(-1)}
-                    >
-                      A−
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outline"
-                      aria-label={t("textBigger")}
-                      disabled={textStep === TEXT_SCALES.length - 1}
-                      onClick={() => stepText(1)}
-                    >
-                      A+
-                    </Button>
-                  </div>
+                  <TextSizeButtons
+                    step={textStep}
+                    onStep={stepText}
+                    smallerLabel={t("textSmaller")}
+                    biggerLabel={t("textBigger")}
+                  />
                 </div>
                 <h1
                   id="exam-question"
@@ -675,37 +622,12 @@ export function ExamTake({
                 >
                   {q.text}
                 </h1>
-                {q.answerMode === "MULTIPLE" ? (
-                  <fieldset className="mds-choice-group">
-                    <legend className="mds-label">{t("optionsLegend")}</legend>
-                    {q.options.map((o) => (
-                      <Checkbox
-                        key={o.id}
-                        label={<span {...optionText(o.text)}>{o.text}</span>}
-                        checked={mine?.optionIds.includes(o.id) ?? false}
-                        onCheckedChange={(on) =>
-                          choose(
-                            on
-                              ? [...(mine?.optionIds ?? []), o.id]
-                              : (mine?.optionIds ?? []).filter(
-                                  (id) => id !== o.id
-                                )
-                          )
-                        }
-                      />
-                    ))}
-                  </fieldset>
-                ) : (
-                  <RadioGroup
-                    legend={t("optionsLegend")}
-                    value={mine?.optionIds[0] ?? null}
-                    onChange={(value) => choose([value])}
-                    options={q.options.map((o) => ({
-                      value: o.id,
-                      label: <span {...optionText(o.text)}>{o.text}</span>,
-                    }))}
-                  />
-                )}
+                <QuestionOptions
+                  question={q}
+                  chosen={mine?.optionIds ?? []}
+                  onChoose={choose}
+                  legend={t("optionsLegend")}
+                />
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
@@ -732,44 +654,27 @@ export function ExamTake({
               </section>
             ) : null}
 
-            <nav
-              className="mds-card flex flex-col gap-2"
-              aria-label={t("questionsTitle")}
-            >
-              <h2 className="mds-h3">{t("questionsTitle")}</h2>
-              <ol className="flex flex-wrap gap-2">
-                {questions.map((it, i) => {
-                  const state = stateOf(answers.get(it.id));
-                  return (
-                    <li key={it.id}>
-                      <Button
-                        size="small"
-                        variant="outline"
-                        data-state={state}
-                        style={{
-                          ...INDICATOR[state],
-                          ...(i === index ? CURRENT : null),
-                        }}
-                        aria-current={i === index ? "step" : undefined}
-                        aria-label={t("listItemLabel", {
-                          number: String(i + 1),
-                          state: t(
-                            state === "answered"
-                              ? "stateAnswered"
-                              : state === "skipped"
-                                ? "stateSkipped"
-                                : "stateUnseen"
-                          ),
-                        })}
-                        onClick={() => go(i)}
-                      >
-                        {i + 1}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
+            <QuestionNavigator
+              items={questions.map((it) => ({
+                id: it.id,
+                state: stateOf(answers.get(it.id)),
+              }))}
+              index={index}
+              onGo={(i) => go(i)}
+              title={t("questionsTitle")}
+              itemLabel={(number, state) =>
+                t("listItemLabel", {
+                  number: String(number),
+                  state: t(
+                    state === "answered"
+                      ? "stateAnswered"
+                      : state === "skipped"
+                        ? "stateSkipped"
+                        : "stateUnseen"
+                  ),
+                })
+              }
+            />
 
             <AlertDialog
               open={asking}

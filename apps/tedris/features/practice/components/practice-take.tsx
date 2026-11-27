@@ -1,0 +1,450 @@
+"use client";
+
+import type { PracticeAttemptResponse } from "@medaris/services/tedrisat";
+import { Alert } from "@medaris/ui/mds/alert";
+import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
+import { Button } from "@medaris/ui/mds/button";
+import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { textProps } from "~/features/online-exams/arabic";
+import {
+  QuestionNavigator,
+  QuestionOptions,
+  TextSizeButtons,
+} from "~/features/online-exams/components/question-parts";
+import {
+  type LocalAnswer,
+  nextIndex,
+  readTextScale,
+  stateOf,
+  TEXT_SCALES,
+  writeTextScale,
+} from "~/features/online-exams/take-model";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
+import { finishPractice, savePracticeChoice, startPractice } from "../actions";
+import {
+  blankCount,
+  PRACTICE_HREF,
+  readSkipped,
+  resultHref,
+  startIndex,
+  writeSkipped,
+} from "../practice-model";
+
+type Phase = "opening" | "absent" | "failed" | "running";
+
+const failure = (result: unknown): { status?: number; code?: string } =>
+  result as { status?: number; code?: string };
+
+/**
+ * A talebe solves a çalışma seti (MDRS-248, Faz 3): the page starts an
+ * attempt, or the API gives back the one in progress, which then goes on at
+ * the question it was left at. No clock, no holder, no tab count, no zeroth
+ * question: the questions, A− / A+, the list and "Soruyu atla" are the
+ * online exam's own parts (`question-parts.tsx`).
+ *
+ * Every choice is saved the moment it is made. The saves of one question go
+ * one after another, so a slow earlier save never lands after a later one
+ * (the API keeps the last write and has no sequence number). A save that
+ * fails keeps the choice on screen and says "Cevabın kaydedilemedi, tekrar
+ * dene"; its button sends what is still unsent, and "Bitir" sends it first.
+ */
+export function PracticeTake({ setId }: { setId: string }) {
+  const t = useTranslations("tedris.Practice");
+  const router = useRouter();
+
+  const [phase, setPhase] = useState<Phase>("opening");
+  const [attempt, setAttempt] = useState<PracticeAttemptResponse | null>(null);
+  const [answers, setAnswers] = useState<Map<string, LocalAnswer>>(new Map());
+  const [index, setIndex] = useState(0);
+  const [pending, setPending] = useState(0);
+  const [savedFor, setSavedFor] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [finishFailed, setFinishFailed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [textStep, setTextStep] = useState(0);
+
+  const scaleKey = `practice:${setId}`;
+  useEffect(() => {
+    setTextStep(readTextScale(scaleKey, window.sessionStorage));
+  }, [scaleKey]);
+  const stepText = (by: number) => {
+    const next = Math.min(Math.max(textStep + by, 0), TEXT_SCALES.length - 1);
+    setTextStep(next);
+    writeTextScale(scaleKey, next, window.sessionStorage);
+  };
+
+  const seq = useRef(0);
+  // The latest save issued for each question: an older one still waiting in
+  // its queue is not sent, so a retry never lands after a newer choice.
+  const latest = useRef(new Map<string, number>());
+  // The screen's choices, for a retry that runs outside a render.
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+  // The choices the API has not taken yet, by question.
+  const unsent = useRef(new Map<string, string[]>());
+  // The saves of each question, one after another.
+  const queue = useRef(new Map<string, Promise<void>>());
+  const started = useRef(false);
+
+  const open = useCallback(async () => {
+    setPhase("opening");
+    try {
+      const result = await startPractice(setId);
+      if (sendToSignIn(result)) return;
+      if (!result.success) {
+        const { status } = failure(result);
+        setPhase(
+          status === 400 || status === 403 || status === 404
+            ? "absent"
+            : "failed"
+        );
+        return;
+      }
+      const a = result.data;
+      if (a.status === "FINISHED") {
+        router.replace(resultHref(a.id));
+        return;
+      }
+      setAttempt(a);
+      // The questions skipped in this tab before a reload stay skipped.
+      const skipped = readSkipped(a.id, window.sessionStorage);
+      setAnswers(
+        new Map(
+          a.questions.map((q) => [
+            q.id,
+            {
+              optionIds: q.chosenOptionIds,
+              skipped: q.chosenOptionIds.length === 0 && skipped.has(q.id),
+            },
+          ])
+        )
+      );
+      setIndex(startIndex(a));
+      setPhase("running");
+    } catch {
+      setPhase("failed");
+    }
+  }, [router, setId]);
+
+  // Once, also under Strict Mode's second effect run: the API would give the
+  // same attempt back, but one call is enough.
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void open();
+  }, [open]);
+
+  useEffect(() => {
+    if (!attempt) return;
+    writeSkipped(
+      attempt.id,
+      [...answers]
+        .filter(([, a]) => stateOf(a) === "skipped")
+        .map(([id]) => id),
+      window.sessionStorage
+    );
+  }, [answers, attempt]);
+
+  const send = useCallback(
+    (questionId: string, optionIds: string[]): Promise<void> => {
+      if (!attempt) return Promise.resolve();
+      const attemptId = attempt.id;
+      seq.current += 1;
+      const mine = seq.current;
+      latest.current.set(questionId, mine);
+      setSavedFor(null);
+      setPending((n) => n + 1);
+      const run = async () => {
+        try {
+          // A newer choice of this question is queued behind: it is the one to send.
+          if (latest.current.get(questionId) !== mine) return;
+          const result = await savePracticeChoice(
+            attemptId,
+            questionId,
+            optionIds
+          );
+          if (result.success) {
+            unsent.current.delete(questionId);
+            if (unsent.current.size === 0) setSaveFailed(false);
+            if (mine === seq.current) setSavedFor(questionId);
+            return;
+          }
+          if (sendToSignIn(result)) return;
+          if (failure(result).code === "PRACTICE_ATTEMPT_FINISHED") {
+            router.replace(resultHref(attemptId));
+            return;
+          }
+          unsent.current.set(questionId, optionIds);
+          setSaveFailed(true);
+        } catch {
+          unsent.current.set(questionId, optionIds);
+          setSaveFailed(true);
+        } finally {
+          setPending((n) => n - 1);
+        }
+      };
+      const next = (queue.current.get(questionId) ?? Promise.resolve()).then(
+        run
+      );
+      queue.current.set(questionId, next);
+      return next;
+    },
+    [attempt, router]
+  );
+
+  const resend = () =>
+    Promise.all(
+      [...unsent.current].map(([questionId, optionIds]) =>
+        send(
+          questionId,
+          answersRef.current.get(questionId)?.optionIds ?? optionIds
+        )
+      )
+    );
+
+  const finish = async () => {
+    if (!attempt) return;
+    setAsking(false);
+    setFinishing(true);
+    setFinishFailed(false);
+    try {
+      await resend();
+      await Promise.all(queue.current.values());
+      if (unsent.current.size > 0) return;
+      const result = await finishPractice(attempt.id);
+      if (sendToSignIn(result)) return;
+      if (
+        result.success ||
+        failure(result).code === "PRACTICE_ATTEMPT_FINISHED"
+      ) {
+        router.push(resultHref(attempt.id));
+        return;
+      }
+      setFinishFailed(true);
+    } catch {
+      setFinishFailed(true);
+    } finally {
+      setFinishing(false);
+    }
+  };
+
+  if (phase === "opening") {
+    return (
+      <div className="flex flex-col gap-section" aria-busy="true">
+        <p className="mds-body-sm text-neutral-muted">{t("opening")}</p>
+        <Skeleton height="220px" />
+      </div>
+    );
+  }
+
+  if (phase === "absent" || phase === "failed" || !attempt) {
+    return (
+      <Alert
+        tone={phase === "absent" ? "neutral" : "error"}
+        title={t(phase === "absent" ? "notFoundTitle" : "openFailedTitle")}
+      >
+        <p>{t(phase === "absent" ? "notFound" : "openFailed")}</p>
+        <p className="mbs-3 flex flex-wrap gap-2">
+          {phase === "failed" ? (
+            <Button size="small" variant="outline" onClick={() => void open()}>
+              {t("retry")}
+            </Button>
+          ) : null}
+          <Button size="small" variant="secondary" href={PRACTICE_HREF}>
+            {t("backToList")}
+          </Button>
+        </p>
+      </Alert>
+    );
+  }
+
+  const questions = attempt.questions;
+  const q = questions[index];
+  const ids = questions.map((it) => it.id);
+  const mine = q ? answers.get(q.id) : undefined;
+  const skipped = questions.filter(
+    (it) => stateOf(answers.get(it.id)) === "skipped"
+  ).length;
+  const blanks = blankCount(
+    ids,
+    new Map([...answers].map(([id, a]) => [id, a.optionIds]))
+  );
+
+  const choose = (optionIds: string[]) => {
+    // Nothing changes under "Bitir": a later choice would miss the result.
+    if (!q || finishing) return;
+    setAnswers((all) => new Map(all).set(q.id, { optionIds, skipped: false }));
+    setNotice(null);
+    void send(q.id, optionIds);
+  };
+  const go = (to: number | null, follow = false, skippedNow = skipped) => {
+    if (to === null) return;
+    setIndex(to);
+    setNotice(
+      follow && skippedNow > 0
+        ? t("skippedFollow", { skipped: skippedNow })
+        : null
+    );
+  };
+  const skip = () => {
+    if (!q || finishing) return;
+    // As in the exam: "Soruyu atla" leaves the question blank, and it comes
+    // back after the last one. A choice made before is taken back.
+    const had = (mine?.optionIds.length ?? 0) > 0;
+    const next = new Map(answers).set(q.id, { optionIds: [], skipped: true });
+    setAnswers(next);
+    if (had) void send(q.id, []);
+    const to = nextIndex(ids, next, index);
+    go(
+      to,
+      to !== null && to <= index,
+      ids.filter((id) => stateOf(next.get(id)) === "skipped").length
+    );
+  };
+
+  const scale = TEXT_SCALES[textStep];
+
+  return (
+    <div
+      className="flex flex-col gap-section"
+      style={{ zoom: scale }}
+      data-text-scale={scale}
+    >
+      <section
+        className="mds-card flex flex-wrap items-center justify-between gap-3"
+        aria-label={t("barLabel")}
+      >
+        <h1 className="mds-h3" dir="auto">
+          {attempt.title}
+        </h1>
+        <p className="mds-body-sm">
+          {t("counter", {
+            number: String(index + 1),
+            count: String(questions.length),
+          })}
+        </p>
+        <p className="mds-body-sm text-neutral-muted" aria-live="polite">
+          {pending > 0 ? t("saving") : q && savedFor === q.id ? t("saved") : ""}
+        </p>
+      </section>
+
+      {saveFailed ? (
+        <Alert tone="error" title={t("saveFailed")}>
+          <p>
+            <Button
+              size="small"
+              variant="outline"
+              onClick={() => void resend()}
+            >
+              {t("saveRetry")}
+            </Button>
+          </p>
+        </Alert>
+      ) : null}
+      {finishFailed ? <Alert tone="error" title={t("finishFailed")} /> : null}
+      {notice ? (
+        <p className="mds-body-sm" aria-live="polite">
+          {notice}
+        </p>
+      ) : null}
+
+      {q ? (
+        <section
+          className="mds-card flex flex-col gap-3"
+          aria-labelledby="practice-question"
+          data-testid="practice-question"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="mds-caption text-neutral-muted">
+              {t("questionNumber", { number: String(index + 1) })}
+            </p>
+            <TextSizeButtons
+              step={textStep}
+              onStep={stepText}
+              smallerLabel={t("textSmaller")}
+              biggerLabel={t("textBigger")}
+            />
+          </div>
+          <h2
+            id="practice-question"
+            className="mds-body"
+            {...textProps(q.text, "var(--fs-body)", 1)}
+          >
+            {q.text}
+          </h2>
+          <QuestionOptions
+            question={q}
+            chosen={mine?.optionIds ?? []}
+            onChoose={choose}
+            legend={t("optionsLegend")}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={index === 0}
+              onClick={() => go(index - 1)}
+            >
+              {t("previous")}
+            </Button>
+            <Button variant="ghost" onClick={skip}>
+              {t("skip")}
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={nextIndex(ids, answers, index) === null}
+              onClick={() => {
+                const to = nextIndex(ids, answers, index);
+                go(to, to !== null && to <= index);
+              }}
+            >
+              {t("next")}
+            </Button>
+            <Button loading={finishing} onClick={() => setAsking(true)}>
+              {t("finish")}
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      <QuestionNavigator
+        items={questions.map((it) => ({
+          id: it.id,
+          state: stateOf(answers.get(it.id)),
+        }))}
+        index={index}
+        onGo={(i) => go(i)}
+        title={t("questionsTitle")}
+        itemLabel={(number, state) =>
+          t("listItemLabel", {
+            number: String(number),
+            state: t(
+              state === "answered"
+                ? "stateAnswered"
+                : state === "skipped"
+                  ? "stateSkipped"
+                  : "stateUnseen"
+            ),
+          })
+        }
+      />
+
+      <AlertDialog
+        open={asking}
+        onOpenChange={setAsking}
+        title={t("finishTitle")}
+        confirmLabel={t("confirmFinish")}
+        cancelLabel={t("backToSolving")}
+        onConfirm={() => void finish()}
+      >
+        <p>
+          {blanks > 0 ? t("finishBlank", { count: blanks }) : t("finishAll")}
+        </p>
+      </AlertDialog>
+    </div>
+  );
+}

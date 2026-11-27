@@ -160,6 +160,18 @@ export const getMyLessonViews = (
     (await viewerApi()).lessons.listMyLessonViews({ id: courseId }, NO_STORE)
   );
 
+/**
+ * Whether the course has a published çalışma seti for this talebe (MDRS-248,
+ * Faz 3). False for anyone who is no talebe of the course (the API answers
+ * 403) and when the read failed: the page then offers no link.
+ */
+export const hasPracticeSets = async (courseId: string): Promise<boolean> =>
+  ((
+    await orNull(async () =>
+      (await viewerApi()).practice.listPracticeSets({ id: courseId }, NO_STORE)
+    )
+  )?.length ?? 0) > 0;
+
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>
   Boolean(await getAccessToken());
