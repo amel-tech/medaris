@@ -463,6 +463,7 @@
       }
     },
     "tokens": [
+      "--arabic-scale",
       "--background-action-bold",
       "--background-action-bold-hover",
       "--background-brand-bold",
@@ -515,6 +516,7 @@
       "--fs-arabic",
       "--fs-arabic-inline",
       "--fs-arabic-min",
+      "--fs-arabic-text-min",
       "--fs-body",
       "--fs-body-sm",
       "--fs-caption",
@@ -778,6 +780,8 @@
       "--fs-arabic": "spacing",
       "--fs-arabic-inline": "spacing",
       "--fs-arabic-min": "spacing",
+      "--arabic-scale": "other",
+      "--fs-arabic-text-min": "spacing",
       "--weight-book": "font",
       "--lh-arabic": "other",
       "--lh-arabic-text": "other",

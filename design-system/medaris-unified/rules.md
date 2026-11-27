@@ -118,6 +118,7 @@ Rule: a page title is `.mds-h1` (Literata 30/500), one per page, in every app. A
 ### MDS-TYPE-04 — Arabic and the Qur'an
 Rule: `lang="ar" dir="rtl"` goes on the Arabic element itself, never on a shared ancestor. Three classes, one job each:
 - `.mds-arabic` — a run inside Latin text: 1.2em and never below 16px, no wrap, isolated. It carries harakat only inside reading text (`--lh-reading`); in UI text an inline Arabic word is written without them. A run longer than three words is a block.
+- `.mds-arabic-block` — an author's Arabic block beside Latin text (a question, an option, an answer): the Latin size it stands for × `--arabic-scale` (1.4), never under `--fs-arabic-text-min` (18px), at `--lh-arabic-text` (2.0), isolated. A−/A+ multiply the result, so Arabic stays 1.4 × the Turkish at every step (MDRS-248).
 - `.mds-arabic-text` — a classical block (matn): Naskh 26/2.0.
 - `.mds-quran` — the Qur'an and nothing else: Scheherazade New 34/2.25, 28 on a phone. Each ayah's end mark is bound to the word before it with U+00A0. The harakat switch acts on the matn only, never on the Qur'an.
 

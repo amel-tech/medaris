@@ -19,6 +19,10 @@
     "./medaris-fonts": {
       "types": "./medaris-fonts.d.ts",
       "import": "./medaris-fonts.js"
+    },
+    "./arabic": {
+      "types": "./arabic.d.ts",
+      "import": "./arabic.js"
     }
   },
   "files": [
@@ -31,6 +35,8 @@
     "tailwind-roles.css",
     "medaris-fonts.js",
     "medaris-fonts.d.ts",
+    "arabic.js",
+    "arabic.d.ts",
     "build/*"
   ],
   "scripts": {
