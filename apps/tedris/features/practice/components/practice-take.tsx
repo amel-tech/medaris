@@ -15,10 +15,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArabicText } from "~/features/online-exams/components/arabic-text";
 import {
   INDICATOR,
+  QuestionListToggle,
   QuestionNavigator,
   QuestionOptions,
+  ScrollPane,
   TakeKeys,
   TextSizeButtons,
+  useQuestionList,
 } from "~/features/online-exams/components/question-parts";
 import {
   type LocalAnswer,
@@ -92,6 +95,7 @@ export function PracticeTake(source: PracticeSource) {
   const [finishFailed, setFinishFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [textStep, setTextStep] = useState(0);
+  const list = useQuestionList();
   // The talebe's note of each question (soru notları), as the icon shows it.
   const [notes, setNotes] = useState<
     Map<string, MyQuestionNoteResponse | null>
@@ -370,6 +374,7 @@ export function PracticeTake(source: PracticeSource) {
   return (
     <div
       className="take-column flex flex-col gap-section"
+      data-take-screen
       style={{ zoom: scale }}
       data-text-scale={scale}
     >
@@ -380,19 +385,21 @@ export function PracticeTake(source: PracticeSource) {
         onEnter={goOn}
         off={asking || finishing}
       />
+      {/* On a desk (1024px and up) one thin row: the title, the counter, the
+          progress, A− / A+, "Sorular" and "Bitir" (app/tedris.css, tek ekran). */}
       <section
-        className="mds-card flex flex-col gap-3"
+        className="mds-card take-bar flex flex-col gap-3"
         aria-label={t("barLabel")}
       >
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="take-bar__row flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <ArabicText
             as="h1"
-            className="mds-h3"
+            className="mds-h3 take-bar__title"
             size="var(--fs-h3)"
             weight="var(--weight-semibold)"
             text={attempt.setId ? attempt.title : t("poolTitle")}
           />
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="take-bar__tools flex flex-wrap items-center gap-3">
             <p className="mds-body-sm mds-num">
               {t("counter", {
                 number: String(index + 1),
@@ -406,6 +413,7 @@ export function PracticeTake(source: PracticeSource) {
               biggerLabel={t("textBigger")}
               groupLabel={tb("textSizeLabel")}
             />
+            <QuestionListToggle list={list} label={t("questionsTitle")} />
             {/* Up here, away from "Sonraki": ending is never one slip from going on. */}
             <Button
               size="small"
@@ -419,12 +427,13 @@ export function PracticeTake(source: PracticeSource) {
           </div>
         </div>
         <Progress
+          className="take-bar__progress"
           value={questions.length ? (answered / questions.length) * 100 : 0}
           label={t("progressLabel")}
           labelHidden
           completeLabel={t("progressComplete")}
         />
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="take-bar__row take-bar__state flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <p className="mds-body-sm text-neutral-muted mds-num">
             {t("progressText", {
               answered: String(answered),
@@ -470,8 +479,10 @@ export function PracticeTake(source: PracticeSource) {
       ) : null}
 
       {q ? (
+        // On a desk: the question on the start side, its options on the
+        // end side, each scrolling on its own, the buttons under both.
         <section
-          className="mds-card flex flex-col gap-3"
+          className="mds-card take-body flex flex-col gap-3"
           aria-labelledby="practice-question"
           data-testid="practice-question"
         >
@@ -494,20 +505,32 @@ export function PracticeTake(source: PracticeSource) {
               />
             ) : null}
           </div>
-          <ArabicText
-            as="h2"
-            id="practice-question"
-            className="mds-body take-question"
-            size="var(--fs-body)"
-            text={q.text}
-          />
-          <QuestionOptions
-            question={q}
-            chosen={mine?.optionIds ?? []}
-            onChoose={choose}
-            legend={t("optionsLegend")}
-            multiHint={tb("multiHint")}
-          />
+          <ScrollPane
+            className="take-question-pane"
+            label={tb("questionPane")}
+            watch={q.id}
+          >
+            <ArabicText
+              as="h2"
+              id="practice-question"
+              className="mds-body take-question"
+              size="var(--fs-body)"
+              text={q.text}
+            />
+          </ScrollPane>
+          <ScrollPane
+            className="take-options-pane"
+            label={tb("optionsPane")}
+            watch={q.id}
+          >
+            <QuestionOptions
+              question={q}
+              chosen={mine?.optionIds ?? []}
+              onChoose={choose}
+              legend={t("optionsLegend")}
+              multiHint={tb("multiHint")}
+            />
+          </ScrollPane>
           {/* Right under the options, as wide as they are: back and skip on
               the start side, the one button that leads on the end side. The
               same button says "Bitir" at the end, so the focus stays on it.
@@ -546,6 +569,8 @@ export function PracticeTake(source: PracticeSource) {
         index={index}
         onGo={(i) => go(i)}
         title={t("questionsTitle")}
+        list={list}
+        closeLabel={tb("listClose")}
         itemLabel={(number, state) =>
           t("listItemLabel", {
             number: String(number),

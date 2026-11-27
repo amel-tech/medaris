@@ -148,10 +148,95 @@
   overflow-wrap: anywhere;
 }
 
-/* A question's text on an answer card (answer-review.tsx), its own lines
-   kept, as on the question screen. */
+/* The answer cards of a çalışma result and of a past exam (answer-review.tsx,
+   MDRS-248): every card one fixed height, so a row has no half-empty card.
+   What runs past it is cut under a fade and "Devamını göster" opens it; the
+   open card is laid over its neighbours from its own cell, which keeps its
+   place, so nothing in the grid moves. */
+.answer-grid {
+  grid-auto-rows: 17rem;
+}
+.answer-cell {
+  position: relative;
+  min-inline-size: 0;
+}
+.answer-card {
+  inline-size: 100%;
+  block-size: 100%;
+}
+.answer-card__body {
+  flex: 1 1 0;
+  min-block-size: 0;
+  overflow: hidden;
+}
+.answer-card__body[data-clipped] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
+}
+.answer-card__more {
+  align-self: flex-start;
+}
+.answer-card[data-expanded] {
+  position: absolute;
+  z-index: 10;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: auto;
+  min-block-size: 100%;
+  max-block-size: 80dvh;
+  overflow-y: auto;
+  box-shadow: var(--elevation-overlay);
+}
+.answer-card[data-expanded] .answer-card__body {
+  flex: none;
+  overflow: visible;
+}
+
+/* A question's text on an answer card, its own lines kept, as on the
+   question screen. */
 .answer-question {
   white-space: pre-line;
+}
+
+/* An option on an answer card: its letter, its text and a ✓ on the correct
+   one. The talebe's choice is the filled letter, green when right and red
+   when wrong; the letter's fill, the ✓ and the card's badge say it, never
+   colour alone. */
+.answer-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.answer-option__letter {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border: var(--border-width-thin) solid var(--border-neutral-strong);
+  border-radius: var(--radius-full);
+  background: var(--background-neutral-surface);
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  color: var(--text-neutral-default);
+}
+.answer-option[data-chosen] .answer-option__letter {
+  background: var(--background-error-bold);
+  border-color: var(--background-error-bold);
+  color: var(--text-neutral-on-bold);
+}
+.answer-option[data-chosen][data-correct] .answer-option__letter {
+  background: var(--background-success-bold);
+  border-color: var(--background-success-bold);
+}
+.answer-option[data-chosen] {
+  font-weight: var(--weight-semibold);
+}
+.answer-option__mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-success-default);
 }
 
 /* The buttons right under the options: back and skip at the start, the one
@@ -192,6 +277,156 @@
   }
   .take-nav__go {
     flex-basis: 100%;
+  }
+}
+
+/* The question screen on a desk (MDRS-248, tek ekran: "soru uzun olsa da
+   çözme ekranındaki tüm alanlar laptop ekranına kaydırmadan sığmalı"). From
+   1024px the page is the window's height and does not scroll: the bar is one
+   thin row; the question's text and its options sit side by side, each
+   scrolling on its own when it runs long; the buttons stay under both; the
+   question list is a drawer behind "Sorular". A− / A+ zoom all of it, and the
+   panes give way, so the buttons stay in the window at every step. Below
+   1024px the page is as it was, the buttons held to the bottom. */
+.take-list-toggle,
+.take-navigator__close {
+  display: none;
+}
+@media (width >= 64rem) {
+  main:has(> .take-column),
+  main:has(> [data-exam-area] .take-column) {
+    flex: 1 1 0;
+    min-block-size: 0;
+    padding-block: var(--space-3);
+  }
+  [data-exam-area]:has(.take-column),
+  [data-exam-area]:has(.take-column) > div {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-block-size: 0;
+  }
+  .take-column {
+    flex: 1 1 0;
+    min-block-size: 0;
+    max-inline-size: none;
+    gap: var(--space-3);
+  }
+  .take-list-toggle,
+  .take-navigator__close {
+    display: inline-flex;
+  }
+
+  /* The bar: one row; the title gives way first. */
+  .take-bar {
+    flex: none;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-4);
+    padding-block: var(--space-2);
+    padding-inline: var(--space-4);
+  }
+  .take-bar__row {
+    display: contents;
+  }
+  .take-bar__title {
+    flex: 0 1 auto;
+    min-inline-size: 6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .take-bar__state {
+    display: flex;
+    flex: none;
+    flex-wrap: nowrap;
+    order: 3;
+  }
+  .take-bar__progress {
+    order: 2;
+    flex: 1 1 8rem;
+    min-inline-size: 6rem;
+  }
+  .take-bar__tools {
+    order: 4;
+    flex: none;
+    flex-wrap: nowrap;
+    margin-inline-start: auto;
+  }
+  .take-bar--exam {
+    justify-content: flex-start;
+  }
+  .take-bar--exam > :last-child {
+    margin-inline-start: auto;
+  }
+  .take-bar :is(p, h1) {
+    white-space: nowrap;
+  }
+
+  /* The question: text | options, the buttons under both. */
+  .take-body {
+    display: grid;
+    flex: 1 1 0;
+    min-block-size: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head options"
+      "text options"
+      "nav nav";
+    column-gap: var(--space-6);
+    row-gap: var(--space-3);
+  }
+  .take-body > .question-note-anchor {
+    grid-area: head;
+  }
+  .take-question-pane {
+    grid-area: text;
+  }
+  .take-options-pane {
+    grid-area: options;
+  }
+  .take-question-pane,
+  .take-options-pane {
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Room for a chosen tile's focus ring inside the scrolling edge. */
+    padding: 4px;
+    margin: -4px;
+  }
+  /* Two columns of short options only while the pane is wide enough for
+     them; at A+ a narrow pane lays them in one. */
+  .take-options-pane {
+    container-type: inline-size;
+  }
+  @container (width < 30rem) {
+    .take-options--grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .take-body > .take-nav {
+    grid-area: nav;
+    position: static;
+    padding-block: var(--space-2) 0;
+    border-block-start: var(--border-width-thin) solid
+      var(--border-neutral-subtle);
+  }
+
+  /* The list: a drawer on the end side, over the page, while open. */
+  .take-navigator {
+    position: fixed;
+    z-index: 40;
+    inset-block: 0;
+    inset-inline-end: 0;
+    inline-size: min(22rem, 100%);
+    overflow-y: auto;
+    border-radius: 0;
+    box-shadow: var(--elevation-overlay);
+  }
+  .take-navigator:not([data-open]) {
+    display: none;
   }
 }
 

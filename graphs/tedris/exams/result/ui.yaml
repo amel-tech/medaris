@@ -3,7 +3,8 @@
 # and made of links. The layout of /my-exams (app/my-exams/layout.tsx) mounts the phone's chrome, which is tedris.shell.frame's.
 #
 # Words: every `MyExams.*` key is copied from libs/i18n/src/locales/tr/tedris-learn.json (the app reads it as
-# `tedrisLearn.MyExams.<key>`); the key is the path inside the file. The `composed.MyExams.*` keys are NOT in any i18n file: they
+# `tedrisLearn.MyExams.<key>`); the key is the path inside the file. Every `AnswerReview.*` key is copied from
+# libs/i18n/src/locales/tr/tedris.json (the answer cards are answer-review.tsx's, `tedris.AnswerReview.<key>`). The `composed.MyExams.*` keys are NOT in any i18n file: they
 # are values the API gives, shown alone:
 #   composed.MyExams.course     the exam's course, a caption with dir=auto                                       (my-exam-result.tsx:98-100)
 #   composed.MyExams.title      the exam's title, the h1                                                          (my-exam-result.tsx:101-103)
@@ -95,11 +96,11 @@ nodes:
   questionNumber: { type: text, component: Text, text: { key: MyExams.questionNumber, params: { number: row.number } }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:292 } # a <strong>, not a heading (rule EXM-RES-2)
   questionOutcome: { type: text, component: Text, text: { oneOf: [MyExams.outcomeRight, MyExams.outcomeWrong, MyExams.outcomeBlank] }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:293 } # a Badge: green, red or grey, and its word
   pointsGot: { type: text, component: Text, text: { key: MyExams.pointsGot, params: { got: row.got, points: row.points } }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/my-exam-result.tsx:297 }
-  questionText: { type: text, component: Text, text: { key: composed.MyExams.question, params: { question: row.question } }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/answer-review.tsx:334 } # dir=auto
-  optionText: { type: text, component: Text, text: { key: composed.MyExams.option, params: { option: row.option } }, in: [resultShown], when: answersOpen, repeat: result.questions.options, source: apps/tedris/features/online-exams/components/answer-review.tsx:358 }
-  givenAnswer: { type: text, component: Text, text: { key: MyExams.chosen }, in: [resultShown], when: answersOpen, repeat: result.questions.options.chosen, source: apps/tedris/features/online-exams/components/answer-review.tsx:374 } # a Badge beside each option the talebe chose
-  correctAnswer: { type: text, component: Text, text: { key: MyExams.correctOption }, in: [resultShown], when: answersOpen, repeat: result.questions.options.correct, source: apps/tedris/features/online-exams/components/answer-review.tsx:379 } # a Badge beside each correct option
-  noAnswer: { type: text, component: Text, text: { key: MyExams.noAnswer }, in: [resultShown], when: answersOpen, repeat: result.questions.blank, source: apps/tedris/features/online-exams/components/answer-review.tsx:387 }
+  questionText: { type: text, component: Text, text: { key: composed.MyExams.question, params: { question: row.question } }, in: [resultShown], when: answersOpen, repeat: result.questions, source: apps/tedris/features/online-exams/components/answer-review.tsx:402 } # dir=auto
+  optionText: { type: text, component: Text, text: { key: composed.MyExams.option, params: { option: row.option } }, in: [resultShown], when: answersOpen, repeat: result.questions.options, source: apps/tedris/features/online-exams/components/answer-review.tsx:436 }
+  givenAnswer: { type: text, component: Text, text: { key: AnswerReview.chosenHidden }, in: [resultShown], when: answersOpen, repeat: result.questions.options.chosen, source: apps/tedris/features/online-exams/components/answer-review.tsx:428 } # the chosen option's letter, filled: green when right, red when wrong; its word ("seçtiğin şık") is visually hidden (MDRS-248, tek ekran)
+  correctAnswer: { type: text, component: Text, text: { key: AnswerReview.correctHidden }, in: [resultShown], when: answersOpen, repeat: result.questions.options.correct, source: apps/tedris/features/online-exams/components/answer-review.tsx:443 } # a ✓ at the end of each correct option; its word ("doğru şık") is visually hidden
+  noAnswer: { type: text, component: Text, text: { key: MyExams.noAnswer }, in: [resultShown], when: answersOpen, repeat: result.questions.blank, source: apps/tedris/features/online-exams/components/answer-review.tsx:461 }
 
 edges:
   - { labelledBy: [awaitingRegion, awaitingText] }

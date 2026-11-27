@@ -1,10 +1,10 @@
 {
+  "AnswerReview.chosenHidden": "seçtiğin şık",
+  "AnswerReview.correctHidden": "doğru şık",
   "MyExams.answersLater": "Cevapların ve doğruları, sınav herkes için bitince burada açılır.",
   "MyExams.breadcrumbLabel": "Sayfa yolu",
   "MyExams.byTopic": "Konulara göre",
-  "MyExams.chosen": "Senin seçimin",
   "MyExams.continue": "Devam et",
-  "MyExams.correctOption": "Doğru şık",
   "MyExams.counts": "{right} doğru · {wrong} yanlış · {blank} boş",
   "MyExams.courseTopicLine": "Yüzde {percent} · {exams} sınavdan",
   "MyExams.courseTopics": "Dersin konularında durumum",

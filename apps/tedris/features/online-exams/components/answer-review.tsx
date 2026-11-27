@@ -23,6 +23,7 @@ import {
   QuestionNoteSummary,
 } from "~/features/question-notes/components/question-note";
 import { ArabicText } from "./arabic-text";
+import { optionLetter } from "./question-parts";
 
 export type ReviewOutcome = "correct" | "wrong" | "blank";
 type Filter = "all" | ReviewOutcome;
@@ -110,9 +111,11 @@ const TARGETED: CSSProperties = {
  * strip of numbered tiles, one per question in its outcome's colour, glyph
  * and border, that scrolls to the question and focuses it; the filter by
  * outcome; and the questions as narrow cards in a grid (one column on a
- * phone, two or three wider), all of one width and, in a row, as tall as the
- * tallest (the owner: "kartlar aynı genişlik yüksekliğe sahip değil"). A tile whose
- * question the filter hides shows all of them again first. 500 questions
+ * phone, two or three wider), all of one width and one fixed height (the
+ * owner: "kartlar eşit boyda ve dolu görünsün"). A card whose content runs
+ * past that height is cut, with "Devamını göster": the card then grows over
+ * its neighbours, which do not move, until Esc or a click outside it. A tile
+ * whose question the filter hides shows all of them again first. 500 questions
  * are 500 tiles and 500 cards, drawn whole: no virtual list and no
  * `content-visibility` (its estimated heights moved a scrolled-to card out
  * of view; measured, see docs/migration/mdrs-248-talebe-sonuc.md).
@@ -134,6 +137,8 @@ export function AnswerReview({
   const [filter, setFilter] = useState<Filter>("all");
   const [target, setTarget] = useState<string | null>(null);
   const [targeted, setTargeted] = useState<string | null>(null);
+  // The one card drawn whole over its neighbours, if any.
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     const c: Record<ReviewOutcome, number> = { correct: 0, wrong: 0, blank: 0 };
@@ -214,6 +219,7 @@ export function AnswerReview({
         onChange={(v) => {
           setFilter((v as Filter | null) ?? "all");
           setTargeted(null);
+          setExpanded(null);
         }}
         options={[
           {
@@ -238,17 +244,19 @@ export function AnswerReview({
         <p className="mds-body-sm text-neutral-muted">{t("filterEmpty")}</p>
       ) : (
         <ol
-          className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3"
+          className="answer-grid grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
           data-testid="answer-grid"
         >
           {shown.map((q) => (
-            <li key={q.id} className="flex min-w-0">
+            <li key={q.id} className="answer-cell" data-testid="answer-cell">
               <AnswerCard
                 question={q}
                 id={cardId(q.id)}
                 testId={cardTestId}
                 targeted={targeted === q.id}
                 onLeave={leave}
+                expanded={expanded === q.id}
+                onExpand={setExpanded}
               />
             </li>
           ))}
@@ -265,6 +273,8 @@ const AnswerCard = memo(function AnswerCard({
   testId,
   targeted,
   onLeave,
+  expanded,
+  onExpand,
 }: {
   question: ReviewItem;
   id: string;
@@ -272,11 +282,17 @@ const AnswerCard = memo(function AnswerCard({
   targeted: boolean;
   /** focus left the card: its ring goes */
   onLeave: () => void;
+  /** drawn over its neighbours, whole */
+  expanded: boolean;
+  /** opens this card (its id) or closes the open one (null) */
+  onExpand: (id: string | null) => void;
 }) {
   const t = useTranslations("tedris.AnswerReview");
   const look = LOOK[question.outcome];
-  // Only what the talebe needs to see: the choice and the correct option.
-  const lines = question.options.filter((o) => o.chosen || o.correct);
+  const bodyId = useId();
+  const cardRef = useRef<HTMLElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
   // The card keeps its note: the icon's panel writes it, the summary shows it.
   const [note, setNote] = useState(question.note?.initial ?? null);
   // A newer note from the server (a refresh after the hoca answered) wins;
@@ -289,14 +305,58 @@ const AnswerCard = memo(function AnswerCard({
   useEffect(() => {
     setNote(initial);
   }, [initialAt, initialReplyAt]);
+
+  // Whether the card's content runs past its fixed height. Guessed from the
+  // text first, then measured on the page, where a card whose content fits
+  // has no button.
+  const [overflows, setOverflows] = useState(() => isHeavy(question));
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el || expanded) return;
+    const measure = () => {
+      if (el.clientHeight === 0) return;
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [expanded, question, note]);
+
+  // Open: Esc puts it back and the focus on its button; a click anywhere
+  // outside the card puts it back.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onExpand(null);
+      moreRef.current?.focus();
+    };
+    const onDown = (event: PointerEvent) => {
+      const target = event.target instanceof Node ? event.target : null;
+      if (target && cardRef.current?.contains(target)) return;
+      onExpand(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [expanded, onExpand]);
+
   return (
     <article
+      ref={cardRef}
       id={id}
       tabIndex={-1}
-      className="mds-card flex h-full w-full flex-col gap-2 break-words"
+      className="mds-card answer-card flex flex-col gap-2 break-words"
       data-testid={testId}
       data-outcome={question.outcome}
       data-targeted={targeted ? "true" : undefined}
+      data-expanded={expanded ? "true" : undefined}
       onBlur={targeted ? onLeave : undefined}
       style={{
         padding: "var(--space-4)",
@@ -331,139 +391,108 @@ const AnswerCard = memo(function AnswerCard({
           </span>
         ) : null}
       </div>
-      <QuestionText
-        text={question.text}
-        moreLabel={t("showMore")}
-        lessLabel={t("showLess")}
-      />
-      {question.setTitle ? (
-        <p
-          className="mds-caption text-neutral-muted"
-          data-testid={`${testId}-set`}
-        >
-          {t("fromSetLabel")} <ArabicText text={question.setTitle} />
-        </p>
-      ) : null}
-      <ul className="flex flex-col gap-1">
-        {lines.map((o) => (
-          // The option's text on the start side, its badges on the same row
-          // at the end, however long the text runs.
-          <li
-            key={o.id}
-            className="mds-body-sm flex items-start justify-between gap-2"
-            data-chosen={o.chosen ? "true" : undefined}
-            data-correct={o.correct ? "true" : undefined}
+      <div
+        ref={bodyRef}
+        id={bodyId}
+        className="answer-card__body flex flex-col gap-2"
+        data-testid="answer-card-body"
+        data-clipped={!expanded && overflows ? "true" : undefined}
+      >
+        <div className="answer-question" data-testid="answer-question-text">
+          <ArabicText
+            as="p"
+            className="mds-body-sm"
+            text={question.text}
+            size="var(--fs-body-sm)"
+          />
+        </div>
+        {question.setTitle ? (
+          <p
+            className="mds-caption text-neutral-muted"
+            data-testid={`${testId}-set`}
           >
-            <span className="min-w-0 flex-1">
-              <ArabicText
-                text={o.text}
-                size="var(--fs-body-sm)"
-                className="block"
-              />
-            </span>
-            <span
-              className="flex shrink-0 flex-wrap justify-end gap-1"
-              data-testid="answer-option-badges"
+            {t("fromSetLabel")} <ArabicText text={question.setTitle} />
+          </p>
+        ) : null}
+        {/* Every option with its letter: the talebe's choice is the filled
+            letter, the correct one has a ✓ (the owner: "Senin seçimin"
+            yerine seçilen şıkkın harfi). */}
+        <ul className="flex flex-col gap-1" aria-label={t("optionsLabel")}>
+          {question.options.map((o, i) => (
+            <li
+              key={o.id}
+              className="answer-option mds-body-sm"
+              data-chosen={o.chosen ? "true" : undefined}
+              data-correct={o.correct ? "true" : undefined}
             >
+              <span
+                className="answer-option__letter"
+                aria-hidden="true"
+                data-testid="answer-option-letter"
+              >
+                {optionLetter(i)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <ArabicText
+                  text={o.text}
+                  size="var(--fs-body-sm)"
+                  className="block"
+                />
+              </span>
+              {o.correct ? (
+                <span className="answer-option__mark">
+                  <Icon name="check" size="sm" />
+                </span>
+              ) : null}
               {o.chosen ? (
-                // A wrong choice in the error colour with its cross; a right one in info.
-                <Badge
-                  variant={o.correct ? "info" : "error"}
-                  icon={o.correct ? undefined : <Icon name="close" size="sm" />}
-                >
-                  {t("chosen")}
-                </Badge>
+                <span className="mds-visually-hidden">
+                  ({t("chosenHidden")})
+                </span>
               ) : null}
               {o.correct ? (
-                <Badge variant="success" icon={<Icon name="check" size="sm" />}>
-                  {t("correctOption")}
-                </Badge>
+                <span className="mds-visually-hidden">
+                  ({t("correctHidden")})
+                </span>
               ) : null}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {question.outcome === "blank" ? (
-        <p className="mds-caption text-neutral-muted">{t("noAnswer")}</p>
+            </li>
+          ))}
+        </ul>
+        {question.outcome === "blank" ? (
+          <p className="mds-caption text-neutral-muted">{t("noAnswer")}</p>
+        ) : null}
+        {question.note ? <QuestionNoteSummary note={note} /> : null}
+      </div>
+      {overflows || expanded ? (
+        <Button
+          ref={moreRef}
+          variant="link"
+          size="small"
+          className="answer-card__more"
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          data-testid="answer-card-more"
+          onClick={() => onExpand(expanded ? null : question.id)}
+        >
+          {expanded ? t("collapse") : t("expand")}
+        </Button>
       ) : null}
-      {question.note ? <QuestionNoteSummary note={note} /> : null}
     </article>
   );
 });
 
-/** The lines a long question's text shows on its card before "Devamını göster". */
-export const CLAMP_LINES = 6;
-
 /**
- * Whether a question's text is long enough to be cut on its card: more than
- * a few paragraphs, or more characters than six lines of a narrow card hold.
- * Measured again on the page, where a text that fits shows no button.
+ * Whether a question's text is long: more than a few paragraphs, or more
+ * characters than a few lines of a narrow card hold.
  */
 export const isLongText = (text: string) =>
-  text.split("\n").length > CLAMP_LINES || [...text].length > 280;
+  text.split("\n").length > 6 || [...text].length > 280;
 
 /**
- * A question's text on its card (MDRS-248, uzun soru): its own lines and
- * paragraphs kept, and a long one cut at six lines with "Devamını göster",
- * so one long question does not stretch its card, and with it every card in
- * the row, by a screen's height. The button opens it in place and says
- * "Daha az göster" while it is open.
+ * Whether a card's content is likely to run past the card's fixed height
+ * (MDRS-248, tek ekran): a long question, a long option, or many options.
+ * The first guess only; the page measures it.
  */
-function QuestionText({
-  text,
-  moreLabel,
-  lessLabel,
-}: {
-  text: string;
-  moreLabel: string;
-  lessLabel: string;
-}) {
-  const id = useId();
-  const ref = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const [long, setLong] = useState(() => isLongText(text));
-  // On the page the cut is measured: a text that fits its lines has no button.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || open || el.clientHeight === 0) return;
-    setLong(el.scrollHeight > el.clientHeight + 1);
-  }, [text, open]);
-  return (
-    <div className="flex flex-col items-start gap-1">
-      <div
-        ref={ref}
-        id={id}
-        className="answer-question w-full"
-        data-testid="answer-question-text"
-        data-clamped={open || !long ? undefined : "true"}
-        style={open || !long ? undefined : CLAMPED}
-      >
-        <ArabicText
-          as="p"
-          className="mds-body-sm"
-          text={text}
-          size="var(--fs-body-sm)"
-        />
-      </div>
-      {long ? (
-        <Button
-          variant="link"
-          size="small"
-          aria-expanded={open}
-          aria-controls={id}
-          data-testid="answer-question-more"
-          onClick={() => setOpen((o) => !o)}
-        >
-          {open ? lessLabel : moreLabel}
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-const CLAMPED: CSSProperties = {
-  display: "-webkit-box",
-  WebkitBoxOrient: "vertical",
-  WebkitLineClamp: CLAMP_LINES,
-  overflow: "hidden",
-};
+export const isHeavy = (question: Pick<ReviewItem, "text" | "options">) =>
+  isLongText(question.text) ||
+  question.options.length > 5 ||
+  question.options.reduce((n, o) => n + [...o.text].length, 0) > 200;

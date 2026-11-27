@@ -167,8 +167,8 @@ describe("a long question on the question screen (MDRS-248, uzun soru)", () => {
   });
 });
 
-describe("the answer cards (MDRS-248)", () => {
-  it("stretches every card to its row and keeps the badges on the option's row", async () => {
+describe("the answer cards (MDRS-248, tek ekran)", () => {
+  it("gives every card one fixed height and marks the choice by its letter", async () => {
     const { AnswerReview } = await import(
       "~/features/online-exams/components/answer-review"
     );
@@ -191,16 +191,29 @@ describe("the answer cards (MDRS-248)", () => {
       })
     );
     const grid = host.querySelector("[data-testid=answer-grid]") as HTMLElement;
-    expect(grid.className).toContain("items-stretch");
-    expect(grid.className).not.toContain("items-start");
+    expect(grid.className).toContain("answer-grid");
     for (const card of host.querySelectorAll("[data-testid=answer]")) {
-      expect(card.className).toContain("h-full");
-      expect(card.parentElement?.className).toContain("flex");
+      expect(card.className).toContain("answer-card");
+      expect(card.parentElement?.className).toContain("answer-cell");
     }
+    const css = readFileSync(`${__dirname}/../app/tedris.css`, "utf8");
+    // One row height for all: no card half empty beside a full one.
+    expect(css).toMatch(/\.answer-grid \{\s*grid-auto-rows: \d+(\.\d+)?rem;/);
+    expect(css).toMatch(/\.answer-card \{[^}]*block-size: 100%;/);
+    expect(css).toMatch(/\.answer-card__body \{[^}]*overflow: hidden;/);
+    // The letter in front of every option; the choice's filled, the correct one ✓.
     const row = host.querySelector("[data-chosen=true]") as HTMLElement;
-    expect(row.className).toContain("justify-between");
     expect(
-      row.querySelector("[data-testid=answer-option-badges]")?.textContent
-    ).not.toBe("");
+      row.querySelector("[data-testid=answer-option-letter]")?.textContent
+    ).toBe("A");
+    expect(row.className).toContain("answer-option");
+    expect(css).toMatch(
+      /\.answer-option\[data-chosen\] \.answer-option__letter \{/
+    );
+    const right = host.querySelector("[data-correct=true]") as HTMLElement;
+    expect(
+      right.querySelector("[data-testid=answer-option-letter]")?.textContent
+    ).toBe("B");
+    expect(right.querySelector(".answer-option__mark svg")).toBeTruthy();
   });
 });

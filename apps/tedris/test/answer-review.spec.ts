@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
-import { createElement } from "react";
+
+import { readFileSync } from "node:fs";
+import { act, createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReviewItem } from "~/features/online-exams/components/answer-review";
-import { cleanup, click, render } from "./dom";
+import { cleanup, click, key, render } from "./dom";
 import { intlMock } from "./intl-mock";
 
 /**
@@ -57,6 +59,13 @@ const chip = (host: HTMLElement, label: string) =>
 
 afterEach(cleanup);
 
+/** A pointer pressed on an element, as a click outside a card begins. */
+const pointerDown = async (el: Element) => {
+  await act(async () => {
+    el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+  });
+};
+
 describe("the answers' strip and cards (MDRS-248)", () => {
   it("draws a tile per question with its outcome in words, a glyph and a border", async () => {
     const host = await mount([item(1), item(2), item(3)]);
@@ -72,20 +81,33 @@ describe("the answers' strip and cards (MDRS-248)", () => {
     expect(right.style.borderStyle).toBe("solid");
   });
 
-  it("lays the questions out as narrow cards in a grid, each with only the choice and the correct option", async () => {
+  it("lays the questions out as narrow cards in a grid, every option with its letter and the choice's letter filled", async () => {
     const host = await mount([item(1), item(2), item(3)]);
     const grid = host.querySelector("[data-testid=answer-grid]") as HTMLElement;
     expect(grid.className).toContain("grid-cols-1");
     expect(grid.className).toContain("md:grid-cols-2");
     expect(grid.className).toContain("xl:grid-cols-3");
-    // A row's cards as tall as its tallest, and a long word wraps rather than widen it.
-    expect(grid.className).toContain("items-stretch");
+    // One fixed height for every card (app/tedris.css .answer-grid).
+    expect(grid.className).toContain("answer-grid");
     expect(cards(host)[0].style.overflowWrap).toBe("anywhere");
     const wrong = cards(host)[1];
-    expect(wrong.textContent).toContain("İkinci");
-    expect(wrong.textContent).toContain("Senin seçimin");
-    expect(wrong.textContent).toContain("Doğru şık");
-    expect(wrong.textContent).not.toContain("Üçüncü");
+    // The outcome is the badge's; the choice is its letter, no "Senin seçimin".
+    expect(wrong.textContent).not.toContain("Senin seçimin");
+    expect(wrong.textContent).not.toContain("Doğru şık");
+    const letters = [
+      ...wrong.querySelectorAll("[data-testid=answer-option-letter]"),
+    ].map((el) => el.textContent);
+    expect(letters).toEqual(["A", "B", "C"]);
+    const chosen = wrong.querySelector("[data-chosen=true]") as HTMLElement;
+    expect(chosen.textContent).toContain("İkinci");
+    expect(chosen.textContent).toContain("seçtiğin şık");
+    expect(chosen.hasAttribute("data-correct")).toBe(false);
+    const right = wrong.querySelector("[data-correct=true]") as HTMLElement;
+    expect(right.textContent).toContain("Birinci");
+    expect(right.querySelector(".answer-option__mark svg")).toBeTruthy();
+    // A blank question has no filled letter and says it is blank.
+    expect(cards(host)[2].querySelector("[data-chosen]")).toBeNull();
+    expect(cards(host)[2].textContent).toContain("Boş");
     expect(cards(host)[2].textContent).toContain("Bu soruyu boş bıraktın.");
   });
 
@@ -221,7 +243,7 @@ describe("the answers' strip and cards (MDRS-248)", () => {
     scrolled.mockRestore();
   });
 
-  it("cuts a long question at six lines with Devamını göster, and opens it in place", async () => {
+  it("cuts a long card with Devamını göster, and lays it over its neighbours until Esc or a click outside", async () => {
     const long = `Aşağıdaki âyet Fâtiha sûresinin beşinci âyetidir:
 
 إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ
@@ -229,39 +251,85 @@ describe("the answers' strip and cards (MDRS-248)", () => {
 ${"Bu âyette kul, ibadetin yalnız Allah'a yapıldığını söyler. ".repeat(6)}
 
 Bu âyetteki fiilin anlamı nedir?`;
-    const host = await mount([item(1), item(2, { text: long })]);
-    const [short, tall] = cards(host);
-    // A short question has no button and no cut.
-    expect(
-      short.querySelector("[data-testid=answer-question-more]")
-    ).toBeNull();
+    const host = await mount([item(1), item(2, { text: long }), item(3)]);
+    const [short, tall, third] = cards(host);
+    // A short card has no button and no cut.
+    expect(short.querySelector("[data-testid=answer-card-more]")).toBeNull();
     expect(
       short
-        .querySelector("[data-testid=answer-question-text]")
-        ?.hasAttribute("data-clamped")
+        .querySelector("[data-testid=answer-card-body]")
+        ?.hasAttribute("data-clipped")
     ).toBe(false);
+    const body = tall.querySelector(
+      "[data-testid=answer-card-body]"
+    ) as HTMLElement;
+    const more = tall.querySelector(
+      "[data-testid=answer-card-more]"
+    ) as HTMLButtonElement;
+    expect(body.dataset.clipped).toBe("true");
+    expect(more.textContent).toBe("Devamını göster");
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    expect(more.getAttribute("aria-controls")).toBe(body.id);
+    // The text keeps its own lines.
     const text = tall.querySelector(
       "[data-testid=answer-question-text]"
     ) as HTMLElement;
-    const more = tall.querySelector(
-      "[data-testid=answer-question-more]"
-    ) as HTMLButtonElement;
-    expect(text.dataset.clamped).toBe("true");
-    // happy-dom keeps only the standard half of the clamp; the browser draws six lines.
-    expect(text.style.overflow).toBe("hidden");
-    expect(more.textContent).toBe("Devamını göster");
-    expect(more.getAttribute("aria-expanded")).toBe("false");
-    expect(more.getAttribute("aria-controls")).toBe(text.id);
-    // The text keeps its own lines.
     expect(text.className).toContain("answer-question");
     expect(text.textContent).toContain("\n");
+    const cells = [
+      ...host.querySelectorAll("[data-testid=answer-cell]"),
+    ] as HTMLElement[];
+
     await click(more);
-    expect(text.hasAttribute("data-clamped")).toBe(false);
-    expect(more.textContent).toBe("Daha az göster");
+    expect(tall.dataset.expanded).toBe("true");
+    expect(body.hasAttribute("data-clipped")).toBe(false);
+    expect(more.textContent).toBe("Kapat");
     expect(more.getAttribute("aria-expanded")).toBe("true");
+    // The card is laid over the grid from its own cell: every card stays in
+    // its cell, in the same order, so nothing moves.
+    expect(cells.map((c) => c.firstElementChild)).toEqual([short, tall, third]);
+    // A click inside the card leaves it open.
+    await pointerDown(body);
+    expect(tall.dataset.expanded).toBe("true");
+    // A click outside puts it back.
+    await pointerDown(third);
+    expect(tall.hasAttribute("data-expanded")).toBe(false);
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    expect(body.dataset.clipped).toBe("true");
+
+    // Esc puts it back, and the focus on its button.
     await click(more);
-    expect(text.dataset.clamped).toBe("true");
-    expect(more.textContent).toBe("Devamını göster");
+    expect(tall.dataset.expanded).toBe("true");
+    await key(document.body, "Escape");
+    expect(tall.hasAttribute("data-expanded")).toBe(false);
+    expect(document.activeElement).toBe(more);
+  });
+
+  it("lays the open card over the others in the stylesheet, its cell keeping its place", () => {
+    const css = readFileSync(`${__dirname}/../app/tedris.css`, "utf8");
+    expect(css).toMatch(/\.answer-cell \{[^}]*position: relative;/);
+    const open =
+      /\.answer-card\[data-expanded\] \{[^}]*\}/.exec(css)?.[0] ?? "";
+    expect(open).toContain("position: absolute;");
+    expect(open).toContain("z-index: 10;");
+    expect(open).toContain("box-shadow: var(--elevation-overlay);");
+  });
+
+  it("opens one card at a time", async () => {
+    const long = "Uzun bir soru metni. ".repeat(20);
+    const host = await mount([
+      item(1, { text: long }),
+      item(2, { text: long }),
+    ]);
+    const [first, second] = cards(host);
+    const moreOf = (card: HTMLElement) =>
+      card.querySelector("[data-testid=answer-card-more]") as HTMLElement;
+    await click(moreOf(first));
+    expect(first.dataset.expanded).toBe("true");
+    await pointerDown(moreOf(second));
+    await click(moreOf(second));
+    expect(first.hasAttribute("data-expanded")).toBe(false);
+    expect(second.dataset.expanded).toBe("true");
   });
 
   it("counts a text as long by its paragraphs or its length", async () => {
@@ -271,5 +339,33 @@ Bu âyetteki fiilin anlamı nedir?`;
     expect(isLongText("Kısa bir soru?")).toBe(false);
     expect(isLongText("a\nb\nc\nd\ne\nf\ng")).toBe(true);
     expect(isLongText("x".repeat(281))).toBe(true);
+  });
+
+  it("guesses a heavy card by its question, its options' length or their count", async () => {
+    const { isHeavy } = await import(
+      "~/features/online-exams/components/answer-review"
+    );
+    const options = (texts: string[]) =>
+      texts.map((text, i) => ({
+        id: String(i),
+        text,
+        chosen: false,
+        correct: i === 0,
+      }));
+    expect(isHeavy({ text: "Kısa?", options: options(["A", "B"]) })).toBe(
+      false
+    );
+    expect(
+      isHeavy({
+        text: "Kısa?",
+        options: options(["x".repeat(120), "y".repeat(120)]),
+      })
+    ).toBe(true);
+    expect(
+      isHeavy({
+        text: "Kısa?",
+        options: options(["1", "2", "3", "4", "5", "6"]),
+      })
+    ).toBe(true);
   });
 });

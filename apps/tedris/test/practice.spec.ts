@@ -314,17 +314,18 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
     expect(html).toMatch(/data-testid="practice-correct">1</);
     expect(html).toMatch(/data-testid="practice-wrong">1</);
     expect(html).toMatch(/data-testid="practice-blank">1</);
-    // The wrong one: the choice in the error colour with its cross, the
-    // correct option in success with its tick; a right choice stays info.
+    // The wrong one: the choice is its letter, filled (red in the
+    // stylesheet), no "Senin seçimin" badge; the correct option has its ✓.
     expect(html).toContain('data-outcome="wrong"');
+    expect(html).not.toContain("Senin seçimin");
     expect(html).toMatch(
-      /data-chosen="true"[^>]*>(?:(?!<\/li>).)*?İkinci bab(?:(?!<\/li>).)*?mds-badge--error(?:(?!<\/li>).)*?<svg(?:(?!<\/li>).)*?Senin seçimin/
+      /data-chosen="true"[^>]*><span class="answer-option__letter"[^>]*>[A-Z]<\/span>(?:(?!<\/li>).)*?İkinci bab(?:(?!<\/li>).)*?seçtiğin şık/
     );
     expect(html).toMatch(
-      /data-correct="true"[^>]*>(?:(?!<\/li>).)*?Birinci bab(?:(?!<\/li>).)*?mds-badge--success(?:(?!<\/li>).)*?<svg(?:(?!<\/li>).)*?Doğru şık/
+      /data-correct="true"[^>]*><span class="answer-option__letter"[^>]*>[A-Z]<\/span>(?:(?!<\/li>).)*?Birinci bab(?:(?!<\/li>).)*?answer-option__mark(?:(?!<\/li>).)*?<svg/
     );
     expect(html).toMatch(
-      /data-chosen="true" data-correct="true"[^>]*>(?:(?!<\/li>).)*?mds-badge--info[^>]*>Senin seçimin/
+      /data-chosen="true" data-correct="true"[^>]*>(?:(?!<\/li>).)*?seçtiğin şık(?:(?!<\/li>).)*?doğru şık/
     );
     // Every question as a card in the grid, a tile each on the strip, and a
     // filter by outcome with the counts.
@@ -333,8 +334,7 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
     expect(html).toContain('aria-label="1. soru: Yanlış"');
     expect(html).toContain('aria-label="2. soru: Doğru"');
     expect(html).toContain('aria-label="3. soru: Boş"');
-    // A card lists only the choice and the correct option.
-    expect(html).not.toContain("Dördüncü bab");
+    // A card lists every option of its question, each with its letter.
     expect(html).toContain("Tümü (3)");
     expect(html).toContain("Doğru (1)");
     expect(html).toContain("Yanlış (1)");

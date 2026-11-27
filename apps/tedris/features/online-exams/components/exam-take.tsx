@@ -44,10 +44,13 @@ import {
 } from "../take-model";
 import { ArabicText } from "./arabic-text";
 import {
+  QuestionListToggle,
   QuestionNavigator,
   QuestionOptions,
+  ScrollPane,
   TakeKeys,
   TextSizeButtons,
+  useQuestionList,
 } from "./question-parts";
 
 type Phase = "briefing" | "running" | "elsewhere" | "ended";
@@ -136,6 +139,7 @@ export function ExamTake({
   const [notice, setNotice] = useState<string | null>(null);
   // A− / A+ on the questions' text, kept for this exam in this tab (a reload keeps it).
   const [textStep, setTextStep] = useState(0);
+  const list = useQuestionList();
   // The page's width without its scrollbar: the running exam grows with A+
   // and takes all of it at the largest step.
   const [pageWidth, setPageWidth] = useState(0);
@@ -560,6 +564,7 @@ export function ExamTake({
         >
           <div
             className="take-column flex flex-col gap-section"
+            data-take-screen
             style={{ zoom: scale }}
             data-text-scale={scale}
           >
@@ -571,7 +576,7 @@ export function ExamTake({
               off={asking}
             />
             <section
-              className="mds-card flex flex-wrap items-center justify-between gap-3"
+              className="mds-card take-bar take-bar--exam flex flex-wrap items-center justify-between gap-3"
               aria-label={t("barLabel")}
             >
               <p
@@ -610,6 +615,7 @@ export function ExamTake({
                 biggerLabel={t("textBigger")}
                 groupLabel={tb("textSizeLabel")}
               />
+              <QuestionListToggle list={list} label={t("questionsTitle")} />
               {/* Up here, away from "Sonraki": ending is never one slip from going on. */}
               <Button
                 size="small"
@@ -642,8 +648,10 @@ export function ExamTake({
             ) : null}
 
             {q ? (
+              // On a desk: the question on the start side, its options on
+              // the end side, each scrolling on its own (practice-take.tsx).
               <section
-                className="mds-card flex flex-col gap-3"
+                className="mds-card take-body flex flex-col gap-3"
                 aria-labelledby="exam-question"
               >
                 {/* The note icon at the end of this line (soru notları): a
@@ -669,20 +677,32 @@ export function ExamTake({
                     />
                   ) : null}
                 </div>
-                <ArabicText
-                  as="h1"
-                  id="exam-question"
-                  className="mds-body take-question"
-                  size="var(--fs-body)"
-                  text={q.text}
-                />
-                <QuestionOptions
-                  question={q}
-                  chosen={mine?.optionIds ?? []}
-                  onChoose={choose}
-                  legend={t("optionsLegend")}
-                  multiHint={tb("multiHint")}
-                />
+                <ScrollPane
+                  className="take-question-pane"
+                  label={tb("questionPane")}
+                  watch={q.id}
+                >
+                  <ArabicText
+                    as="h1"
+                    id="exam-question"
+                    className="mds-body take-question"
+                    size="var(--fs-body)"
+                    text={q.text}
+                  />
+                </ScrollPane>
+                <ScrollPane
+                  className="take-options-pane"
+                  label={tb("optionsPane")}
+                  watch={q.id}
+                >
+                  <QuestionOptions
+                    question={q}
+                    chosen={mine?.optionIds ?? []}
+                    onChoose={choose}
+                    legend={t("optionsLegend")}
+                    multiHint={tb("multiHint")}
+                  />
+                </ScrollPane>
                 {/* As on the çalışma soruları (practice-take.tsx): right under
                     the options, back and skip on the start side, the one
                     button that leads on the end side, "Bitir" at the end. */}
@@ -718,6 +738,8 @@ export function ExamTake({
               index={index}
               onGo={(i) => go(i)}
               title={t("questionsTitle")}
+              list={list}
+              closeLabel={tb("listClose")}
               itemLabel={(number, state) =>
                 t("listItemLabel", {
                   number: String(number),

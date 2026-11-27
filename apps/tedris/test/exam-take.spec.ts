@@ -563,6 +563,36 @@ describe("the exam page (MDRS-299)", () => {
     expect(radio(host, "Cim").getAttribute("aria-checked")).toBe("false");
   });
 
+  it("lays the exam out for a desk like the çalışma soruları: panes and the list behind Sorular (tek ekran)", async () => {
+    mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+    const host = await mount(briefing());
+    await click(button(host, "Sınava başla"));
+    await settle();
+    const screen = host.querySelector("[data-take-screen]") as HTMLElement;
+    expect(screen.className).toContain("take-column");
+    const bar = host.querySelector("[data-testid=exam-clock]")
+      ?.parentElement as HTMLElement;
+    expect(bar.className).toContain("take-bar");
+    const body = host
+      .querySelector("#exam-question")
+      ?.closest("section.take-body") as HTMLElement;
+    expect(body).toBeTruthy();
+    expect(
+      body.querySelector(".take-question-pane #exam-question")
+    ).toBeTruthy();
+    expect(body.querySelector(".take-options-pane .take-options")).toBeTruthy();
+    expect(body.querySelector("[data-testid=take-nav]")).toBeTruthy();
+    const toggle = bar.querySelector(
+      "[data-testid=take-list-toggle]"
+    ) as HTMLButtonElement;
+    const list = host.querySelector("nav.take-navigator") as HTMLElement;
+    expect(toggle.getAttribute("aria-controls")).toBe(list.id);
+    await click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    await key(document.body, "Escape");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("names the list's colours among what to know before the start", async () => {
     const host = await mount(briefing());
     expect(host.textContent).toContain(
