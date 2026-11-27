@@ -1154,7 +1154,8 @@
   "TakeBar": {
     "textSizeLabel": "Yazı boyutu",
     "textSizeFact": "Soruların yazısını büyütüp küçültebilirsin: sınav sırasında üst çubuktaki A− ve A+ düğmeleri bunu yapar.",
-    "keysHint": "Kısayollar: şık seçmek için 1–9 ya da A–Z, sonraki soru için Enter."
+    "keysHint": "Kısayollar: şık seçmek için 1–9 ya da A–Z, sonraki soru için Enter.",
+    "multiHint": "Birden fazla doğru olabilir."
   },
   "QuestionNotes": {
     "buttonLabel": "{number}. soruya not yaz",

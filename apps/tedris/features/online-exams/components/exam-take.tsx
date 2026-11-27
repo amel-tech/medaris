@@ -681,6 +681,7 @@ export function ExamTake({
                   chosen={mine?.optionIds ?? []}
                   onChoose={choose}
                   legend={t("optionsLegend")}
+                  multiHint={tb("multiHint")}
                 />
                 {/* As on the çalışma soruları (practice-take.tsx): right under
                     the options, back and skip on the start side, the one

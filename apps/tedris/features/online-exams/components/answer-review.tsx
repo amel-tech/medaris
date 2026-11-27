@@ -107,7 +107,8 @@ const TARGETED: CSSProperties = {
  * strip of numbered tiles, one per question in its outcome's colour, glyph
  * and border, that scrolls to the question and focuses it; the filter by
  * outcome; and the questions as narrow cards in a grid (one column on a
- * phone, two or three wider), each as tall as its own text. A tile whose
+ * phone, two or three wider), all of one width and, in a row, as tall as the
+ * tallest (the owner: "kartlar aynı genişlik yüksekliğe sahip değil"). A tile whose
  * question the filter hides shows all of them again first. 500 questions
  * are 500 tiles and 500 cards, drawn whole: no virtual list and no
  * `content-visibility` (its estimated heights moved a scrolled-to card out
@@ -234,11 +235,11 @@ export function AnswerReview({
         <p className="mds-body-sm text-neutral-muted">{t("filterEmpty")}</p>
       ) : (
         <ol
-          className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3"
+          className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3"
           data-testid="answer-grid"
         >
           {shown.map((q) => (
-            <li key={q.id} className="min-w-0">
+            <li key={q.id} className="flex min-w-0">
               <AnswerCard
                 question={q}
                 id={cardId(q.id)}
@@ -289,7 +290,7 @@ const AnswerCard = memo(function AnswerCard({
     <article
       id={id}
       tabIndex={-1}
-      className="mds-card flex flex-col gap-2 break-words"
+      className="mds-card flex h-full w-full flex-col gap-2 break-words"
       data-testid={testId}
       data-outcome={question.outcome}
       data-targeted={targeted ? "true" : undefined}
@@ -343,27 +344,40 @@ const AnswerCard = memo(function AnswerCard({
       ) : null}
       <ul className="flex flex-col gap-1">
         {lines.map((o) => (
+          // The option's text on the start side, its badges on the same row
+          // at the end, however long the text runs.
           <li
             key={o.id}
-            className="mds-body-sm flex flex-wrap items-center gap-x-2 gap-y-1"
+            className="mds-body-sm flex items-start justify-between gap-2"
             data-chosen={o.chosen ? "true" : undefined}
             data-correct={o.correct ? "true" : undefined}
           >
-            <ArabicText text={o.text} size="var(--fs-body-sm)" />
-            {o.chosen ? (
-              // A wrong choice in the error colour with its cross; a right one in info.
-              <Badge
-                variant={o.correct ? "info" : "error"}
-                icon={o.correct ? undefined : <Icon name="close" size="sm" />}
-              >
-                {t("chosen")}
-              </Badge>
-            ) : null}
-            {o.correct ? (
-              <Badge variant="success" icon={<Icon name="check" size="sm" />}>
-                {t("correctOption")}
-              </Badge>
-            ) : null}
+            <span className="min-w-0 flex-1">
+              <ArabicText
+                text={o.text}
+                size="var(--fs-body-sm)"
+                className="block"
+              />
+            </span>
+            <span
+              className="flex shrink-0 flex-wrap justify-end gap-1"
+              data-testid="answer-option-badges"
+            >
+              {o.chosen ? (
+                // A wrong choice in the error colour with its cross; a right one in info.
+                <Badge
+                  variant={o.correct ? "info" : "error"}
+                  icon={o.correct ? undefined : <Icon name="close" size="sm" />}
+                >
+                  {t("chosen")}
+                </Badge>
+              ) : null}
+              {o.correct ? (
+                <Badge variant="success" icon={<Icon name="check" size="sm" />}>
+                  {t("correctOption")}
+                </Badge>
+              ) : null}
+            </span>
           </li>
         ))}
       </ul>

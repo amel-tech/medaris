@@ -3,7 +3,13 @@
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
-import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
 import { type QuestionState, TEXT_SCALES } from "../take-model";
 import { ArabicText } from "./arabic-text";
 
@@ -26,17 +32,36 @@ const letterBadge = (i: number) => (
   <span className="take-option__letter">{optionLetter(i)}</span>
 );
 
+/** The longest option text, counted in characters, that still sits in a 2×2 grid (MDRS-248). */
+export const SHORT_OPTION = 32;
+
 /**
- * A question's options as option cards (MDRS-248): each a whole, bordered row
- * with its letter, chosen by a click anywhere on it. Underneath they are still
- * radio buttons, or check boxes when more than one may be right, so the arrow
- * keys, the focus and a screen reader work as they do on any choice.
+ * How a question's option tiles are laid out: `grid`, two equal columns on a
+ * wide screen, when every option is short; otherwise `list`, one column. The
+ * count is in characters (code points), so Arabic is measured as it reads.
+ */
+export const optionsLayout = (
+  options: ReadonlyArray<{ text: string }>
+): "grid" | "list" =>
+  options.every((o) => [...o.text.trim()].length <= SHORT_OPTION)
+    ? "grid"
+    : "list";
+
+/**
+ * A question's options as tiles (MDRS-248, the owner: "şıkları kare halinde
+ * mi yapsak aynı hizada kalabilmeleri için; butona tıklandığında işaretlenmiş
+ * olur"): each a button-like tile with its letter, all of one width and one
+ * height, chosen by a click anywhere on it; chosen, it fills and shows a ✓.
+ * Underneath they are still radio buttons, or check boxes when more than one
+ * may be right, hidden from sight only, so the arrow keys, the focus and a
+ * screen reader work as they do on any choice.
  */
 export function QuestionOptions({
   question,
   chosen,
   onChoose,
   legend,
+  multiHint,
 }: {
   question: {
     answerMode: string;
@@ -45,11 +70,21 @@ export function QuestionOptions({
   chosen: readonly string[];
   onChoose: (optionIds: string[]) => void;
   legend: string;
+  /** shown over check boxes: "Birden fazla doğru olabilir." */
+  multiHint: string;
 }) {
+  const hintId = useId();
+  const className = `take-options take-options--${optionsLayout(question.options)}`;
   if (question.answerMode === "MULTIPLE") {
     return (
-      <fieldset className="mds-choice-group take-options">
+      <fieldset
+        className={`mds-choice-group ${className}`}
+        aria-describedby={hintId}
+      >
         <legend className="mds-label">{legend}</legend>
+        <p className="mds-help take-options__hint" id={hintId}>
+          {multiHint}
+        </p>
         {question.options.map((o, i) => (
           <Checkbox
             key={o.id}
@@ -71,7 +106,7 @@ export function QuestionOptions({
     <RadioGroup
       legend={legend}
       bordered
-      className="take-options"
+      className={className}
       value={chosen[0] ?? null}
       onChange={(value) => onChoose([value])}
       options={question.options.map((o, i) => ({
