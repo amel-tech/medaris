@@ -315,9 +315,13 @@ describe("solving a çalışma seti (MDRS-248)", () => {
       ok({ questionId, optionIds: ids, savedAt: new Date() })
     );
     const host = await mount();
-    expect(host.textContent).toContain(
-      "Kısayollar: şık seçmek için 1–9 ya da A–Z, sonraki soru için Enter."
-    );
+    // The shortcuts work without a line that spells them out (MDRS-248):
+    // only the leading button names its key, for a screen reader.
+    expect(host.textContent).not.toContain("Kısayollar");
+    expect(host.querySelector(".take-keys")).toBeNull();
+    expect(
+      host.querySelector(".take-nav__go")?.getAttribute("aria-keyshortcuts")
+    ).toBe("Enter");
     await key(document.body, "2");
     await settle();
     expect(radio(host, "Be").getAttribute("aria-checked")).toBe("true");

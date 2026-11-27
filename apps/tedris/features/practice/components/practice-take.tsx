@@ -497,7 +497,7 @@ export function PracticeTake(source: PracticeSource) {
           <ArabicText
             as="h2"
             id="practice-question"
-            className="mds-body"
+            className="mds-body take-question"
             size="var(--fs-body)"
             text={q.text}
           />
@@ -528,15 +528,13 @@ export function PracticeTake(source: PracticeSource) {
             </div>
             <Button
               className="take-nav__go"
+              aria-keyshortcuts="Enter"
               loading={atEnd && finishing}
               onClick={goOn}
             >
               {atEnd ? t("finish") : t("next")}
             </Button>
           </div>
-          <p className="take-keys mds-caption text-neutral-muted">
-            {tb("keysHint")}
-          </p>
         </section>
       ) : null}
 

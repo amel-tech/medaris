@@ -351,7 +351,7 @@ states:
       NAVIGATE: { target: left, say: "they follow Celseye dön, or leave" }
   notOpen:
     title: The exam cannot be started yet
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:756
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:757
     description: >-
       An alert "Sınav henüz açılmadı" says from when until when the exam can be started, in the browser's own time zone, and nothing
       else: no start, no link. Nothing changes on the page when the earliest start comes; the talebe opens the page again.
@@ -360,14 +360,14 @@ states:
       NAVIGATE: left
   closed:
     title: The time to start has passed
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:768
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:769
     description: An alert "Başlama süresi geçti" says the exam could be started until its latest start, and that the talebe did not take it.
     by: human
     on:
       NAVIGATE: left
   briefing:
     title: Bilmeniz gerekenler
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:778
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:779
     description: >-
       Before anything starts: the course, the exam's title (h1) and "Bilmeniz gerekenler": how long it lasts and that the full length
       is given whenever it is started, how many questions it has and that the points are out of 100, how radio buttons and check boxes
@@ -544,7 +544,7 @@ states:
       FAIL.other: { target: question, effect: [failedNotice], say: "the call is refused: a toast says so" }
   confirmFinish:
     title: Sınavı bitir?
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:733
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:734
     description: >-
       An alert dialog: "{unanswered} soru cevapsız, {skipped} soru atlandı. Kalan süren {timeLeft}. Bitirdikten sonra hiçbir cevap
       değişmez.", where the unanswered count holds the skipped ones too (exam-take.tsx:518-533). "Bitir" ends the exam; "Sınava dön"
@@ -597,7 +597,7 @@ states:
   finished:
     title: Sınav bitti
     type: final
-    source: apps/tedris/features/online-exams/components/exam-take.tsx:887
+    source: apps/tedris/features/online-exams/components/exam-take.tsx:888
     description: >-
       Nothing can be changed any more: "Sınav bitti", a line that says at what time it ended and how ("Sınavı … saatinde bitirdin.",
       "Süre doldu; …", "Ders kadrosu sınavı … erken bitirdi; …", or "Sınavın kaydedilen cevaplarla bitti." when the read did not say),

@@ -5,7 +5,10 @@ import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ExamEditor } from "~/features/online-exams/components/exam-editor";
+import {
+  ExamEditor,
+  rowText,
+} from "~/features/online-exams/components/exam-editor";
 import {
   cleanup,
   click,
@@ -1761,5 +1764,18 @@ describe("the talebe-notes icon in the editor (MDRS-248)", () => {
       "q1",
       expect.objectContaining({ talebeNotes: false })
     );
+  });
+});
+
+describe("a long question on its one-line row (MDRS-248, uzun soru)", () => {
+  it("shows the first line and says more follows", () => {
+    expect(
+      rowText(
+        "Âyetü'l-Kürsî şöyle başlar:\n\nاللَّهُ لَا إِلَٰهَ إِلَّا هُوَ\n\nHangi sûrededir?"
+      )
+    ).toBe("Âyetü'l-Kürsî şöyle başlar: …");
+    expect(rowText("Tek satırlık soru?")).toBe("Tek satırlık soru?");
+    expect(rowText("\n  Boş satırla başlayan\n")).toBe("Boş satırla başlayan");
+    expect(rowText("")).toBe("");
   });
 });

@@ -220,4 +220,56 @@ describe("the answers' strip and cards (MDRS-248)", () => {
     expect(drawn).toBeLessThan(5000);
     scrolled.mockRestore();
   });
+
+  it("cuts a long question at six lines with Devamını göster, and opens it in place", async () => {
+    const long = `Aşağıdaki âyet Fâtiha sûresinin beşinci âyetidir:
+
+إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ
+
+${"Bu âyette kul, ibadetin yalnız Allah'a yapıldığını söyler. ".repeat(6)}
+
+Bu âyetteki fiilin anlamı nedir?`;
+    const host = await mount([item(1), item(2, { text: long })]);
+    const [short, tall] = cards(host);
+    // A short question has no button and no cut.
+    expect(
+      short.querySelector("[data-testid=answer-question-more]")
+    ).toBeNull();
+    expect(
+      short
+        .querySelector("[data-testid=answer-question-text]")
+        ?.hasAttribute("data-clamped")
+    ).toBe(false);
+    const text = tall.querySelector(
+      "[data-testid=answer-question-text]"
+    ) as HTMLElement;
+    const more = tall.querySelector(
+      "[data-testid=answer-question-more]"
+    ) as HTMLButtonElement;
+    expect(text.dataset.clamped).toBe("true");
+    // happy-dom keeps only the standard half of the clamp; the browser draws six lines.
+    expect(text.style.overflow).toBe("hidden");
+    expect(more.textContent).toBe("Devamını göster");
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    expect(more.getAttribute("aria-controls")).toBe(text.id);
+    // The text keeps its own lines.
+    expect(text.className).toContain("answer-question");
+    expect(text.textContent).toContain("\n");
+    await click(more);
+    expect(text.hasAttribute("data-clamped")).toBe(false);
+    expect(more.textContent).toBe("Daha az göster");
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    await click(more);
+    expect(text.dataset.clamped).toBe("true");
+    expect(more.textContent).toBe("Devamını göster");
+  });
+
+  it("counts a text as long by its paragraphs or its length", async () => {
+    const { isLongText } = await import(
+      "~/features/online-exams/components/answer-review"
+    );
+    expect(isLongText("Kısa bir soru?")).toBe(false);
+    expect(isLongText("a\nb\nc\nd\ne\nf\ng")).toBe(true);
+    expect(isLongText("x".repeat(281))).toBe(true);
+  });
 });

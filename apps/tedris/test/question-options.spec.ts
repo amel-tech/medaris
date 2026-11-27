@@ -126,16 +126,44 @@ describe("the option tiles (MDRS-248)", () => {
     expect(control(tiles(host)[3]).getAttribute("aria-checked")).toBe("true");
   });
 
-  it("styles the tiles as an equal grid with the control hidden from sight only", () => {
+  it("styles the tiles as a grid with the control hidden from sight only", () => {
     const css = readFileSync(`${__dirname}/../app/tedris.css`, "utf8");
-    expect(css).toMatch(
-      /\.take-options \{[^}]*display: grid;[^}]*grid-auto-rows: 1fr;/
-    );
+    expect(css).toMatch(/\.take-options \{[^}]*display: grid;/);
+    // Each tile as tall as its own text in one column; in the 2×2 grid the
+    // two tiles of a row stretch to each other, not to the tallest tile of
+    // the group (uzun soru).
+    expect(css).not.toMatch(/grid-auto-rows: 1fr/);
     expect(css).toMatch(
       /\.take-options--grid \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/
     );
     expect(css).toMatch(/clip-path: inset\(50%\)/);
     expect(css).toMatch(/content: "✓"/);
+  });
+});
+
+describe("a long question on the question screen (MDRS-248, uzun soru)", () => {
+  const css = readFileSync(`${__dirname}/../app/tedris.css`, "utf8");
+
+  it("keeps the question's own lines and wraps it in the reading column", () => {
+    expect(css).toMatch(/\.take-question \{[^}]*white-space: pre-line;/);
+    expect(css).toMatch(/\.take-question \{[^}]*overflow-wrap: anywhere;/);
+  });
+
+  it("holds the buttons to the bottom of the screen on every width", () => {
+    // Outside any media query: "Sonraki" in reach when a long question and
+    // its options run past the screen, on a desk as on a phone.
+    const nav = /\n\.take-nav \{[^}]*\}/.exec(css)?.[0] ?? "";
+    expect(nav).toContain("position: sticky;");
+    expect(nav).toContain("inset-block-end: 0;");
+    expect(nav).toContain("background: var(--background-neutral-surface);");
+  });
+
+  it("lays long options out in one column", async () => {
+    const { optionsLayout } = await import(
+      "~/features/online-exams/components/question-parts"
+    );
+    const long = "Rahmân ve Rahîm olan Allah'ın adıyla. ".repeat(4);
+    expect(optionsLayout([{ text: long }, { text: "Kısa" }])).toBe("list");
   });
 });
 
