@@ -37,21 +37,17 @@
 
 /* The option tiles (MDRS-248, the owner: "şıkları kare halinde mi yapsak
    aynı hizada kalabilmeleri için; butona tıklandığında işaretlenmiş olur,
-   radio ya değil"). A grid of equal tiles: every tile is as wide as the
-   others, and every row as tall as the tallest tile in the group
-   (grid-auto-rows: 1fr), so the options line up whatever their length. Two
-   columns on a wide screen when every option is short (optionsLayout in
-   question-parts.tsx), one otherwise and always on a phone. The group's name
-   and the multiple-answer hint span the whole width on the first rows. */
+   radio ya değil"). A grid of tiles of one width. Two columns on a wide
+   screen when every option is short (optionsLayout in question-parts.tsx),
+   where the two tiles of a row are as tall as each other (the grid's own
+   stretch); one column otherwise and always on a phone, where each tile is
+   as tall as its own text, so one long option does not pad the others with
+   empty space (MDRS-248, uzun soru). The group's name and the
+   multiple-answer hint span the whole width. */
 .take-options {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto;
-  grid-auto-rows: 1fr;
   gap: var(--space-2);
-}
-.take-options:has(> .take-options__hint) {
-  grid-template-rows: auto auto;
 }
 @media (width >= 40rem) {
   .take-options--grid {
@@ -145,16 +141,35 @@
   color: var(--text-brand-default);
 }
 
+/* A question's text keeps the lines and paragraphs it was written in (an
+   âyet on a line of its own) and wraps inside the reading column. */
+.take-question {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* A question's text on an answer card (answer-review.tsx), its own lines
+   kept, as on the question screen. */
+.answer-question {
+  white-space: pre-line;
+}
+
 /* The buttons right under the options: back and skip at the start, the one
-   that leads at the end. On a phone they hold to the bottom of the screen,
-   the leading one on a row of its own, under the thumb. */
+   that leads at the end. They hold to the bottom of the screen whenever the
+   question and its options run past it, so "Sonraki" is always in reach
+   without scrolling (MDRS-248, uzun soru); on a phone the leading one takes a
+   row of its own, under the thumb. */
 .take-nav {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding-block-start: var(--space-2);
+  padding-block: var(--space-2);
+  background: var(--background-neutral-surface);
 }
 .take-nav__back {
   display: flex;
@@ -163,11 +178,7 @@
 }
 @media (width < 40rem) {
   .take-nav {
-    position: sticky;
-    inset-block-end: 0;
-    z-index: 1;
     padding-block: var(--space-3);
-    background: var(--background-neutral-surface);
     border-block-start: var(--border-width-thin) solid
       var(--border-neutral-subtle);
   }
@@ -181,10 +192,6 @@
   }
   .take-nav__go {
     flex-basis: 100%;
-  }
-  /* No keyboard to speak of on a phone. */
-  .take-keys {
-    display: none;
   }
 }
 

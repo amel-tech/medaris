@@ -672,7 +672,7 @@ export function ExamTake({
                 <ArabicText
                   as="h1"
                   id="exam-question"
-                  className="mds-body"
+                  className="mds-body take-question"
                   size="var(--fs-body)"
                   text={q.text}
                 />
@@ -699,13 +699,14 @@ export function ExamTake({
                       {t("skip")}
                     </Button>
                   </div>
-                  <Button className="take-nav__go" onClick={goOn}>
+                  <Button
+                    className="take-nav__go"
+                    aria-keyshortcuts="Enter"
+                    onClick={goOn}
+                  >
                     {atEnd ? t("finish") : t("next")}
                   </Button>
                 </div>
-                <p className="take-keys mds-caption text-neutral-muted">
-                  {tb("keysHint")}
-                </p>
               </section>
             ) : null}
 

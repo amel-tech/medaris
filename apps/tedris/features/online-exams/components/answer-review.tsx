@@ -2,6 +2,7 @@
 
 import type { MyQuestionNoteResponse } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
+import { Button } from "@medaris/ui/mds/button";
 import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Icon, type IconName } from "@medaris/ui/mds/icon";
 import { useTranslations } from "next-intl";
@@ -12,7 +13,9 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -328,11 +331,10 @@ const AnswerCard = memo(function AnswerCard({
           </span>
         ) : null}
       </div>
-      <ArabicText
-        as="p"
-        className="mds-body-sm"
+      <QuestionText
         text={question.text}
-        size="var(--fs-body-sm)"
+        moreLabel={t("showMore")}
+        lessLabel={t("showLess")}
       />
       {question.setTitle ? (
         <p
@@ -388,3 +390,80 @@ const AnswerCard = memo(function AnswerCard({
     </article>
   );
 });
+
+/** The lines a long question's text shows on its card before "Devamını göster". */
+export const CLAMP_LINES = 6;
+
+/**
+ * Whether a question's text is long enough to be cut on its card: more than
+ * a few paragraphs, or more characters than six lines of a narrow card hold.
+ * Measured again on the page, where a text that fits shows no button.
+ */
+export const isLongText = (text: string) =>
+  text.split("\n").length > CLAMP_LINES || [...text].length > 280;
+
+/**
+ * A question's text on its card (MDRS-248, uzun soru): its own lines and
+ * paragraphs kept, and a long one cut at six lines with "Devamını göster",
+ * so one long question does not stretch its card, and with it every card in
+ * the row, by a screen's height. The button opens it in place and says
+ * "Daha az göster" while it is open.
+ */
+function QuestionText({
+  text,
+  moreLabel,
+  lessLabel,
+}: {
+  text: string;
+  moreLabel: string;
+  lessLabel: string;
+}) {
+  const id = useId();
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(() => isLongText(text));
+  // On the page the cut is measured: a text that fits its lines has no button.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || open || el.clientHeight === 0) return;
+    setLong(el.scrollHeight > el.clientHeight + 1);
+  }, [text, open]);
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <div
+        ref={ref}
+        id={id}
+        className="answer-question w-full"
+        data-testid="answer-question-text"
+        data-clamped={open || !long ? undefined : "true"}
+        style={open || !long ? undefined : CLAMPED}
+      >
+        <ArabicText
+          as="p"
+          className="mds-body-sm"
+          text={text}
+          size="var(--fs-body-sm)"
+        />
+      </div>
+      {long ? (
+        <Button
+          variant="link"
+          size="small"
+          aria-expanded={open}
+          aria-controls={id}
+          data-testid="answer-question-more"
+          onClick={() => setOpen((o) => !o)}
+        >
+          {open ? lessLabel : moreLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+const CLAMPED: CSSProperties = {
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: CLAMP_LINES,
+  overflow: "hidden",
+};

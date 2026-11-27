@@ -181,6 +181,21 @@ const localKey = () => `local-${++localKeys}`;
  * no points and a publish with no date, since a set has no celse and every
  * question of it weighs the same.
  */
+/**
+ * A question's text on its one-line row: its first line, and "…" when more
+ * follows (MDRS-248, uzun soru). A long question opens with a sentence and
+ * puts its âyet on a line of its own; cut in the middle of that line, the row
+ * would show the end of the Arabic run instead of its start.
+ */
+export const rowText = (text: string): string => {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length <= 1) return lines[0] ?? "";
+  return `${lines[0]} …`;
+};
+
 export function ExamEditor({
   courseId,
   draft,
@@ -1415,11 +1430,11 @@ function QuestionRow({
           type="button"
           tabIndex={-1}
           onClick={onEdit}
-          dir={paragraphDir(question.text)}
+          dir={paragraphDir(rowText(question.text))}
           className="mds-body min-inline-0 flex-1 basis-[calc(100%-5rem)] cursor-pointer truncate border-0 bg-transparent p-0 text-start text-inherit md:basis-[12rem]"
         >
           {question.text ? (
-            <ArabicText text={question.text} />
+            <ArabicText text={rowText(question.text)} />
           ) : (
             <span className="text-neutral-muted">
               {t("OnlineExams.noText")}

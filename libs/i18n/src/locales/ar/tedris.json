@@ -1149,12 +1149,13 @@
     "filterItem": "{label} ({count})",
     "filterShown": "{count, plural, zero {لا أسئلة معروضة} one {سؤال واحد معروض} two {سؤالان معروضان} few {# أسئلة معروضة} many {# سؤالًا معروضًا} other {# سؤال معروض}}",
     "filterEmpty": "لا يوجد سؤال في هذا التصنيف.",
-    "fromSetLabel": "المجموعة:"
+    "fromSetLabel": "المجموعة:",
+    "showMore": "اعرض المزيد",
+    "showLess": "اعرض أقل"
   },
   "TakeBar": {
     "textSizeLabel": "حجم النص",
     "textSizeFact": "يمكنك تكبير نص الأسئلة أو تصغيره: أثناء الامتحان يقوم بذلك زرّا A− وA+ في الشريط العلوي.",
-    "keysHint": "اختصارات: 1–9 أو A–Z لاختيار جواب، وEnter للسؤال التالي.",
     "multiHint": "قد يكون أكثر من جواب صحيحًا."
   },
   "QuestionNotes": {

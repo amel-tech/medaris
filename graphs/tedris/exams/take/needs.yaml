@@ -17,7 +17,7 @@ needs:
       - state: briefing
       - node: briefingFacts
       - node: startButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:788
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:789
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says in the briefing what A− and A+ do, and draws them"
     note: "Owner: \"sınava girerken talebeye 'bilmeniz gerekenler' ekranı gösterilecek\"."
@@ -33,7 +33,7 @@ needs:
       - node: hadithArabic
       - node: zerothOptions
       - node: startHint
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:832
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:833
       - test: apps/tedris/test/exam-take.spec.ts
         name: "asks for the zeroth answer before the start"
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
@@ -211,7 +211,7 @@ needs:
       - node: previousButton
       - node: nextButton
       - source: apps/tedris/features/online-exams/components/exam-take.tsx:691
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:705
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:709
 
   - id: skip-a-question
     need: >-
@@ -220,7 +220,7 @@ needs:
     evidence:
       - state: question
       - node: skipButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:704
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:708
     note: "Owner: \"soruyu atla seçeneği olacak\"."
 
   - id: the-skipped-come-back-after-the-last
@@ -242,7 +242,7 @@ needs:
       - state: finished
       - node: finishButton
       - node: finishDialog
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:737
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:738
     note: "Owner: \"en son sınavı bitir butonuyla sınav bitecek\"."
 
   - id: resume-after-a-lost-connection
@@ -290,7 +290,7 @@ needs:
       - state: notingSwitch
       - node: factSwitch
       - node: switchedNotice
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:795
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:796
 
   - id: one-place-at-a-time
     need: >-
@@ -371,8 +371,8 @@ needs:
       - state: finished
       - node: resultWhere
       - node: toMine
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:897
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:899
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:898
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:900
 
   - id: the-text-size-can-change
     need: >-
