@@ -78,7 +78,7 @@ const current = (html: string) =>
   /<a [^>]*aria-current="page"[^>]*>/.exec(html)?.[0];
 
 describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
-  it("holds the six pages in order, and no 'Çıkış yap'", async () => {
+  it("holds the seven pages in order, and no 'Çıkış yap'", async () => {
     const html = await render("/home");
     const labels = [...nav(html).matchAll(/<a [^>]*>(.*?)<\/a>/g)].map(
       (m) => m[1]
@@ -89,6 +89,7 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
       "Derslerim",
       "Programım",
       "Sınavlarım",
+      "Çalışma Soruları",
       "Desteler",
     ]);
     expect(html).not.toContain("Çıkış yap");
@@ -113,6 +114,10 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
     expect(current(nav(await render("/my-exams/l1")))).toContain(
       'href="/my-exams"'
     );
+    // Çalışma Soruları, a set being solved and a result (MDRS-248).
+    const practice = await render("/calisma-sorulari/deneme/a1");
+    expect(current(nav(practice))).toContain('href="/calisma-sorulari"');
+    expect(practice).toMatch(/data-title="true">Çalışma Soruları</);
   });
 
   it("ends in the person, as the way to Hesap: avatar, name, Talebe", async () => {

@@ -14,8 +14,8 @@ import { type Section, sectionOf } from "./member-phone-menu";
 
 /**
  * The top bar at 768 and up, as every Tedris screen of the canvas draws it:
- * the Medaris wordmark, the five places (Ana sayfa, Keşfet, Derslerim,
- * Programım, Desteler), then the bell and the person's initials as the way to
+ * the Medaris wordmark, the places (Ana sayfa, Keşfet, Derslerim,
+ * Programım, Sınavlarım, Çalışma Soruları, Desteler), then the bell and the person's initials as the way to
  * Hesap. A visitor gets Keşfet, then Giriş yap and Kayıt ol: Ana sayfa is
  * personal, so `/home` sends a visitor to Keşfet and the bar does not offer it
  * (MDRS-256). Below 768 the phone AppBar takes its place.
@@ -73,6 +73,7 @@ export function DesktopBar({
             {item("courses", "/my-courses", t("courses"))}
             {item("schedule", "/schedule", t("schedule"))}
             {item("exams", "/my-exams", t("exams"))}
+            {item("practice", "/calisma-sorulari", t("practice"))}
             {item("decks", "/decks", t("decks"))}
           </>
         ) : null}

@@ -25,6 +25,10 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useMemo, useState } from "react";
 import { courseCover } from "~/features/courses/course-cover";
+import {
+  courseAnchor,
+  PRACTICE_HREF,
+} from "~/features/practice/practice-model";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 import {
   type AssignmentViewer,
@@ -72,6 +76,7 @@ export const CoursePage = ({
   initialTab,
   grades = null,
   views = null,
+  hasPractice = false,
   now: nowProp,
 }: {
   course: CourseDetailResponse;
@@ -118,6 +123,12 @@ export const CoursePage = ({
    * failed, and then the programme draws no watch marks.
    */
   views?: LessonViewResponse[] | null;
+  /**
+   * Whether the course has a published çalışma seti for this talebe
+   * (MDRS-248, Faz 3): then the aside links to Çalışma Soruları; otherwise
+   * nothing is drawn.
+   */
+  hasPractice?: boolean;
   /** The tab the page opens on: `?tab=kayitlar` from a session page. */
   initialTab?: string;
   /** The instant the page is drawn at, for tests. */
@@ -395,6 +406,16 @@ export const CoursePage = ({
               signInHref={signInHref ?? invite.signIn}
               registerHref={registerHref ?? invite.register}
             />
+            {hasPractice ? (
+              <Button
+                href={`${PRACTICE_HREF}#${courseAnchor(course.id)}`}
+                variant="secondary"
+                fullWidth
+                data-testid="course-practice-link"
+              >
+                {t("practiceLink")}
+              </Button>
+            ) : null}
             {resourceList}
           </div>
         )}
