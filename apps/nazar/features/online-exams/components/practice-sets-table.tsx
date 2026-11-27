@@ -5,6 +5,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Table } from "@medaris/ui/mds/table";
 import { useFormatter, useTranslations } from "next-intl";
+import { DeletePracticeSet } from "./delete-practice-set";
 
 /** One çalışma seti as the list shows it; the figures are null where there are none. */
 export interface PracticeSetRow {
@@ -52,7 +53,8 @@ const COMPACT_STACK = [
  * draft, a set nobody finished). Drafts come first: they are the hoca's
  * work in progress. Below 768 px each row is a card (`responsive="stack"`),
  * so the page never scrolls sideways; its figures run on one or two lines,
- * each after its column's name, instead of one line apiece.
+ * each after its column's name, instead of one line apiece. The last
+ * column is "Sil", which a locked set offers off, with its reason.
  */
 export function PracticeSetsTable({
   courseId,
@@ -155,6 +157,23 @@ export function PracticeSetsTable({
             r.averagePercent === null
               ? none
               : wholePercent(format, r.averagePercent),
+        },
+        {
+          key: "actions",
+          header: (
+            <span className="mds-visually-hidden">{t("colActions")}</span>
+          ),
+          align: "right",
+          // "Sil" in every row (MDRS-248): off, with its reason, once locked.
+          render: (r) => (
+            <DeletePracticeSet
+              courseId={courseId}
+              setId={r.id}
+              title={r.title}
+              locked={r.locked}
+              placement="row"
+            />
+          ),
         },
       ]}
     />

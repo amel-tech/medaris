@@ -31,6 +31,7 @@ DELETE /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madras
 DELETE /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 DELETE /nizam/medaris-nazims/:userId -> no AuthzGuard
 DELETE /nizam/permission-groups/:id -> no AuthzGuard
+DELETE /online-exams/:examId -> exam.prepare on byOnlineExamCourse
 DELETE /online-exams/:examId/questions/:questionId -> exam.prepare on byOnlineExamCourse
 DELETE /questions/:questionId -> course.view on byQuestionCourse
 GET / -> public

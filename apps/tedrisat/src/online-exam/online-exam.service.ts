@@ -343,6 +343,16 @@ export class OnlineExamService {
     return this.getDraft(examId, user);
   }
 
+  /**
+   * "Seti sil" (MDRS-248): a çalışma seti goes with its questions, draft or
+   * published, as long as no talebe has started it and no pool attempt drew
+   * from it (else EXAM_LOCKED). An exam is EXAM_KIND_MISMATCH.
+   */
+  async deleteExam(examId: string, user: AuthenticatedUser): Promise<void> {
+    const courseId = await this.courseOf(examId, user);
+    await this.repo.deletePractice(courseId, examId, user.sub);
+  }
+
   /** What keeps the draft from being published; empty when it can be. */
   private problemsOf(
     draft: IOnlineExamDraft,

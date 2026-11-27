@@ -3,9 +3,11 @@ import { eq } from "drizzle-orm";
 import request from "supertest";
 import { purgeCourses } from "../../src/course/course-purge";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
 import { lessons } from "../../src/database/schema/course.schema";
 import { notifications } from "../../src/database/schema/notification.schema";
 import {
+  examOptions,
   examQuestions,
   onlineExams,
 } from "../../src/database/schema/online-exam.schema";
@@ -613,5 +615,143 @@ describe("çalışma setleri (e2e)", () => {
     expect(
       await db().select().from(onlineExams).where(eq(onlineExams.id, set.id))
     ).toEqual([]);
+  });
+
+  describe("Seti sil (MDRS-248)", () => {
+    const remove = (examId: string, who = muderris) =>
+      http().delete(`/online-exams/${examId}`).set("Authorization", who);
+    const gone = async (set: ISet) => {
+      expect(
+        await db().select().from(onlineExams).where(eq(onlineExams.id, set.id))
+      ).toEqual([]);
+      expect(
+        await db()
+          .select()
+          .from(examQuestions)
+          .where(eq(examQuestions.examId, set.id))
+      ).toEqual([]);
+      for (const q of set.questions) {
+        expect(
+          await db()
+            .select()
+            .from(examOptions)
+            .where(eq(examOptions.questionId, q.id))
+        ).toEqual([]);
+      }
+    };
+    const pool = () =>
+      http()
+        .get(`/courses/${ids.courseId}/practice-pool`)
+        .set("Authorization", talebe);
+
+    it("deletes a draft with its questions, options and topics, and writes it down", async () => {
+      const set = await draftSet();
+      await remove(set.id).expect(204);
+      await gone(set);
+      const [audit] = await db()
+        .select({ action: auditLog.action, actorId: auditLog.actorId })
+        .from(auditLog)
+        .where(eq(auditLog.action, "online_exam.delete"));
+      expect(audit).toEqual({
+        action: "online_exam.delete",
+        actorId: CAST.MUDERRIS,
+      });
+      expect(
+        (
+          await http()
+            .get(`/courses/${ids.courseId}/online-exams?kind=PRACTICE`)
+            .set("Authorization", muderris)
+            .expect(200)
+        ).body
+      ).toEqual([]);
+      expect((await remove(set.id).expect(404)).body.code).toBe(
+        "EXAM_NOT_FOUND"
+      );
+    });
+
+    it("deletes a published set nobody started, off the talebe's list and the pool", async () => {
+      const set = await draftSet();
+      const kept = await draftSet("Kalan set");
+      await publish(set);
+      await publish(kept);
+      expect(
+        ((await courseSets().expect(200)).body as Array<{ id: string }>).map(
+          (s) => s.id
+        )
+      ).toContain(set.id);
+      const before = (await pool().expect(200)).body.questionCount as number;
+      await remove(set.id).expect(204);
+      await gone(set);
+      expect(
+        ((await courseSets().expect(200)).body as Array<{ id: string }>).map(
+          (s) => s.id
+        )
+      ).toEqual([kept.id]);
+      expect(
+        (
+          (
+            await http()
+              .get("/my-practice-sets")
+              .set("Authorization", talebe)
+              .expect(200)
+          ).body as Array<{ id: string }>
+        ).map((s) => s.id)
+      ).not.toContain(set.id);
+      expect((await pool().expect(200)).body.questionCount).toBe(
+        before - set.questions.length
+      );
+      expect((await start(set.id).expect(404)).body.code).toBe(
+        "PRACTICE_SET_NOT_FOUND"
+      );
+    });
+
+    it("refuses a set a talebe started, finished or not, and one a pool attempt drew from", async () => {
+      const started = await draftSet();
+      await publish(started);
+      const attempt = (await start(started.id).expect(201)).body;
+      expect((await remove(started.id).expect(409)).body.code).toBe(
+        "EXAM_LOCKED"
+      );
+      await finish(attempt.id).expect(200);
+      expect((await remove(started.id).expect(409)).body.code).toBe(
+        "EXAM_LOCKED"
+      );
+
+      const drawn = await draftSet("Havuz seti");
+      await publish(drawn);
+      await http()
+        .post(`/courses/${ids.courseId}/practice-pool/attempts`)
+        .set("Authorization", talebe)
+        .send({ mode: "ALL" })
+        .expect(201);
+      expect((await remove(drawn.id).expect(409)).body.code).toBe(
+        "EXAM_LOCKED"
+      );
+      expect(
+        await db()
+          .select()
+          .from(onlineExams)
+          .where(eq(onlineExams.id, drawn.id))
+      ).toHaveLength(1);
+    });
+
+    it("refuses an exam, and anyone without exam.prepare on the course", async () => {
+      const exam = (
+        await http()
+          .post(`/courses/${ids.courseId}/online-exams`)
+          .set("Authorization", muderris)
+          .send({ title: "Ara sınav" })
+          .expect(201)
+      ).body.id as string;
+      expect((await remove(exam).expect(409)).body.code).toBe(
+        "EXAM_KIND_MISMATCH"
+      );
+      const set = await draftSet();
+      await remove(set.id, bearerOf(CAST.OTHER_COURSE)).expect(403);
+      await remove(set.id, talebe).expect(403);
+      expect(
+        await db().select().from(onlineExams).where(eq(onlineExams.id, set.id))
+      ).toHaveLength(1);
+    });
   });
 });

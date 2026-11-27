@@ -107,6 +107,10 @@ export interface CreateOnlineExamRequest {
     createOnlineExamDto: CreateOnlineExamDto;
 }
 
+export interface DeleteOnlineExamRequest {
+    examId: string;
+}
+
 export interface GetCourseZerothQuestionRequest {
     id: string;
 }
@@ -404,6 +408,49 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     async createOnlineExam(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamCreatedResponse> {
         const response = await this.createOnlineExamRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * A çalışma seti (PRACTICE, MDRS-248), draft or published, goes with its questions, their options and topics, and its picked topics, in one transaction. Once a talebe has started it or a pool attempt drew one of its questions (the summary\'s and the draft\'s `locked`), it is 409 EXAM_LOCKED: those attempts are the talebe\'s record. An exam (EXAM) is 409 EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and deleting one is a decision of its own. Written to `audit_log` as `online_exam.delete`.
+     * Seti sil: delete a çalışma seti with its questions
+     */
+    async deleteOnlineExamRaw(requestParameters: DeleteOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling deleteOnlineExam().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * A çalışma seti (PRACTICE, MDRS-248), draft or published, goes with its questions, their options and topics, and its picked topics, in one transaction. Once a talebe has started it or a pool attempt drew one of its questions (the summary\'s and the draft\'s `locked`), it is 409 EXAM_LOCKED: those attempts are the talebe\'s record. An exam (EXAM) is 409 EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and deleting one is a decision of its own. Written to `audit_log` as `online_exam.delete`.
+     * Seti sil: delete a çalışma seti with its questions
+     */
+    async deleteOnlineExam(requestParameters: DeleteOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteOnlineExamRaw(requestParameters, initOverrides);
     }
 
     /**
