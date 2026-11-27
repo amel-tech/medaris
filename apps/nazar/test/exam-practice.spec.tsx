@@ -1,6 +1,9 @@
 // @vitest-environment happy-dom
 import { resources } from "@medaris/i18n";
-import type { OnlineExamDraftResponse } from "@medaris/services/tedrisat";
+import type {
+  OnlineExamDraftResponse,
+  PracticeSetStatsResponse,
+} from "@medaris/services/tedrisat";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -106,7 +109,10 @@ const wrap = (node: React.ReactNode) => (
     </ToastProvider>
   </NextIntlClientProvider>
 );
-const page = (draft: OnlineExamDraftResponse) =>
+const page = (
+  draft: OnlineExamDraftResponse,
+  practiceStats?: PracticeSetStatsResponse | null
+) =>
   render(
     wrap(
       <ExamWorkspace
@@ -114,6 +120,7 @@ const page = (draft: OnlineExamDraftResponse) =>
         draft={draft}
         timeZone="Europe/Istanbul"
         locale="tr"
+        practiceStats={practiceStats}
       />
     )
   );
@@ -273,6 +280,34 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
     expect((button(root, "Yayınla") as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("says which part a question lacks, and that the talebe never gets it", async () => {
+    const root = await page(set);
+    expect(root.textContent).toContain("Konular: 3. Kıyas");
+    expect(root.textContent).toContain(
+      "2. sorunun doğru şıkkı işaretli değil."
+    );
+    expect(root.textContent).toContain(
+      "1 soru eksik; talebeler yalnız tamamlanmış soruları çözer."
+    );
+    expect(root.textContent).toContain(
+      "Talebe bunu çalışma setleri listesinde, setin adının altında okur."
+    );
+  });
+
+  it("shows how a published set was solved, and no Yayından kaldır once it was", async () => {
+    const root = await page(published, {
+      setId: "s1",
+      talebeCount: 1,
+      attemptCount: 2,
+      averagePercent: "72.50",
+    });
+    expect(root.textContent).toContain("1 talebe 2 kez çözdü · ortalama %73");
+    expect(root.textContent).toContain(
+      "Talebeler bu seti çözdü; artık yayından kaldırılamaz."
+    );
+    expect(button(root, "Yayından kaldır")).toBeUndefined();
+  });
+
   it("goes back to a draft with Yayından kaldır", async () => {
     actions.unpublishOnlineExam.mockResolvedValue({
       success: true,
@@ -280,7 +315,7 @@ describe("preparing a çalışma seti (MDRS-248)", () => {
     });
     const root = await page(published);
     expect(root.textContent).toContain(
-      "Talebeler bu soruları süre sınırı olmadan, istedikleri zaman çözebilir."
+      "Dersin talebeleri bu seti istedikleri zaman, süre sınırı olmadan çözebilir."
     );
     await click(button(root, "Yayından kaldır") as HTMLButtonElement);
     await settle(40);

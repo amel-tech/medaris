@@ -68,9 +68,12 @@ export function NewExamForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={
-            practice ? undefined : t("OnlineExams.newTitlePlaceholder")
+            practice
+              ? t("Practice.newTitlePlaceholder")
+              : t("OnlineExams.newTitlePlaceholder")
           }
           maxLength={200}
+          className={practice ? "w-80 max-w-full" : undefined}
         />
       </Field>
       <Button type="submit" loading={busy} disabled={title.trim() === ""}>

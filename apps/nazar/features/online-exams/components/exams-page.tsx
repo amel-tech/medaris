@@ -19,15 +19,17 @@ import { readOnce } from "~/lib/tedrisat-read";
 import { segmentOf } from "../online-exams";
 import { CourseZerothSection } from "./course-zeroth-section";
 import { NewExamForm } from "./new-exam-form";
+import { type PracticeSetRow, PracticeSetsTable } from "./practice-sets-table";
 
 /**
  * "Sınavlar" of a course (MDRS-299): its online exams, "Yeni sınav", and the
  * zeroth question its exams ask. Opens with `exam.prepare`. With
  * `kind: PRACTICE` it is "Çalışma Soruları" (MDRS-248): the course's
  * çalışma setleri and "Yeni çalışma seti", with no results and no zeroth
- * question, since a set has neither. Beside each published set, how many
- * talebe solved it, how many times, and their average percentage (Faz 4);
- * a side read, so the list stays when it fails.
+ * question, since a set has neither. The sets are a table: beside each
+ * published set, how many talebe solved it, how many times, and their
+ * average percentage (Faz 4); a side read, so the table stays when it fails
+ * and says so above it.
  */
 export async function ExamsPage({
   courseId,
@@ -61,33 +63,19 @@ export async function ExamsPage({
   const statsOf = new Map(
     stats?.status === "ok" ? stats.data.map((s) => [s.setId, s]) : []
   );
-  const percent = (value: string) =>
-    new Intl.NumberFormat(locale, {
-      style: "percent",
-      maximumFractionDigits: 2,
-    }).format(Number(value) / 100);
-  const solved = (exam: OnlineExamSummaryResponse) => {
-    if (!practice || exam.status === "DRAFT" || stats?.status !== "ok") {
-      return null;
-    }
-    const s = statsOf.get(exam.id);
-    return (
-      <span
-        className="mds-body-sm text-neutral-muted"
-        data-testid="practice-set-stats"
-      >
-        {" · "}
-        {s
-          ? t("Practice.stats", {
-              talebe: s.talebeCount,
-              count: s.attemptCount,
-              percent:
-                s.averagePercent === null ? "" : percent(s.averagePercent),
-            })
-          : t("Practice.statsNone")}
-      </span>
-    );
-  };
+  const practiceRows = (list: OnlineExamSummaryResponse[]): PracticeSetRow[] =>
+    list.map((exam) => {
+      const s = exam.status === "DRAFT" ? undefined : statsOf.get(exam.id);
+      return {
+        id: exam.id,
+        title: exam.title,
+        draft: exam.status === "DRAFT",
+        questionCount: exam.questionCount,
+        talebeCount: s?.talebeCount ?? null,
+        attemptCount: s?.attemptCount ?? null,
+        averagePercent: s?.averagePercent ?? null,
+      };
+    });
   const segment = segmentOf(kind);
   const gate = pageGate([exams], permissions, PAGE_CODES.exams);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
@@ -100,13 +88,7 @@ export async function ExamsPage({
         }).format(new Date(at))
       : "";
   const status = (exam: OnlineExamSummaryResponse) =>
-    practice ? (
-      exam.status === "DRAFT" ? (
-        <Badge variant="secondary">{t("Practice.statusDraft")}</Badge>
-      ) : (
-        <Badge variant="success">{t("Practice.statusOpen")}</Badge>
-      )
-    ) : exam.status === "SCHEDULED" ? (
+    exam.status === "SCHEDULED" ? (
       <Badge variant="brand">
         {t("OnlineExams.statusScheduled", { when: when(exam.startsAt) })}
       </Badge>
@@ -140,9 +122,21 @@ export async function ExamsPage({
       ) : (
         <>
           <NewExamForm courseId={courseId} kind={kind} />
-          {exams.data.length === 0 ? (
+          {practice ? (
+            <>
+              {stats?.status === "ok" || exams.data.length === 0 ? null : (
+                <p className="mds-body-sm text-neutral-muted">
+                  {t("Practice.statsFailed")}
+                </p>
+              )}
+              <PracticeSetsTable
+                courseId={courseId}
+                rows={practiceRows(exams.data)}
+              />
+            </>
+          ) : exams.data.length === 0 ? (
             <p className="mds-body-sm text-neutral-muted">
-              {practice ? t("Practice.none") : t("OnlineExams.none")}
+              {t("OnlineExams.none")}
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
@@ -155,17 +149,12 @@ export async function ExamsPage({
                     {exam.title}
                   </a>{" "}
                   <span className="mds-body-sm text-neutral-muted">
-                    {practice
-                      ? t("Practice.questionCount", {
-                          count: exam.questionCount,
-                        })
-                      : t("OnlineExams.questionCount", {
-                          count: exam.questionCount,
-                        })}
+                    {t("OnlineExams.questionCount", {
+                      count: exam.questionCount,
+                    })}
                   </span>{" "}
                   {status(exam)}
-                  {solved(exam)}
-                  {!practice && exam.status !== "DRAFT" ? (
+                  {exam.status !== "DRAFT" ? (
                     <>
                       {" · "}
                       <a
@@ -202,10 +191,16 @@ export async function ExamsLoading() {
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>
-      <Skeleton width="12rem" height="2.5rem" />
-      {[0, 1, 2].map((row) => (
-        <Skeleton key={row} height="2rem" />
-      ))}
+      <div className="flex flex-col gap-1">
+        <Skeleton width="12rem" height="2.5rem" />
+        <Skeleton width="24rem" height="1rem" className="max-w-full" />
+      </div>
+      <Skeleton width="22rem" height="4rem" className="max-w-full" />
+      <div className="flex flex-col gap-2">
+        {[0, 1, 2, 3].map((row) => (
+          <Skeleton key={row} height="2.75rem" />
+        ))}
+      </div>
     </output>
   );
 }

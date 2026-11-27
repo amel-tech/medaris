@@ -22,7 +22,7 @@ import {
   useRouter,
 } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import {
@@ -711,7 +711,8 @@ export function ExamEditor({
             {t("OnlineExams.noQuestions")}
           </p>
         ) : null}
-        <ol className="flex flex-col gap-3">
+        {/* Each card says "1. soru": the list draws no number of its own. */}
+        <ol className="flex list-none flex-col gap-3 ps-0">
           {numbered.map((q) => (
             <li key={q.key}>
               {editing === q.key ? (
@@ -759,6 +760,7 @@ export function ExamEditor({
           kind={kind}
           problems={problems}
           questionCount={numbered.length}
+          incompleteCount={numbered.filter((q) => q.lacks.length > 0).length}
           durationMinutes={settings.durationMinutes ?? null}
           timeZone={publish.timeZone}
           holding={editing !== null}
@@ -880,7 +882,11 @@ function SettingsSection({
         )}
         <Field
           label={t("OnlineExams.instructionsLabel")}
-          help={t("OnlineExams.instructionsHelp")}
+          help={
+            practice
+              ? t("Practice.instructionsHelp")
+              : t("OnlineExams.instructionsHelp")
+          }
         >
           <Textarea
             value={instructions}
@@ -934,7 +940,7 @@ function TopicsSection({
         {t("OnlineExams.topicsIntro")}
       </p>
       {topics.length > 0 ? (
-        <ul className="flex flex-wrap gap-2">
+        <ul className="flex list-none flex-wrap gap-2 ps-0">
           {topics.map((topic) => (
             <li key={topic.id} className="flex items-center gap-1">
               <Badge variant={topic.picked ? "brand" : "outline"}>
@@ -1030,7 +1036,21 @@ function QuestionRow({
     ? format.number(share.hundredths / 100, { maximumFractionDigits: 2 })
     : "";
   const [asking, setAsking] = useState(false);
-  const topics = numbersOf(question.topicIds, draft.courseTopics);
+  // Its topics by number and name: "11" alone sends the reader up the page.
+  // Each name is its own run, so an Arabic one does not reorder the line.
+  const named = draft.courseTopics.filter((topic) =>
+    question.topicIds.includes(topic.id)
+  );
+  const n = question.number;
+  const missing = question.lacks.map((lack) =>
+    lack === "text"
+      ? t("OnlineExams.problemNoText", { n })
+      : lack === "option"
+        ? t("OnlineExams.problemFewOptions", { n })
+        : lack === "correct"
+          ? t("OnlineExams.problemNoCorrect", { n })
+          : t("OnlineExams.problemNoTopic", { n })
+  );
   return (
     <article className="mds-card flex flex-col gap-2 p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -1042,9 +1062,15 @@ function QuestionRow({
             ? t("OnlineExams.complete")
             : t("OnlineExams.incomplete")}
         </Badge>
-        {topics ? (
+        {named.length > 0 ? (
           <span className="mds-body-sm text-neutral-muted">
-            {t("OnlineExams.topicsOfQuestion", { numbers: topics })}
+            {t("OnlineExams.topicsOfQuestionLabel")}{" "}
+            {named.map((topic, i) => (
+              <Fragment key={topic.id}>
+                {i > 0 ? ", " : ""}
+                <bdi>{`${topic.number}. ${topic.name}`}</bdi>
+              </Fragment>
+            ))}
           </span>
         ) : null}
         {question.pending ? (
@@ -1056,6 +1082,14 @@ function QuestionRow({
           <Badge variant="error">{t("OnlineExams.notSaved")}</Badge>
         ) : null}
       </div>
+      {missing.length > 0 ? (
+        // What "Eksik" means, so the hoca need not guess which part is wanting.
+        <ul className="mds-body-sm flex list-disc flex-col gap-1 ps-5">
+          {missing.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
       <p className="mds-body-sm text-neutral-muted">
         {question.answerMode === "MULTIPLE"
           ? `${t("OnlineExams.modeMultiple")} · ${
