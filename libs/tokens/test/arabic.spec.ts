@@ -126,6 +126,12 @@ describe("arabicRuns", () => {
       { text: "زَيْدٌ فِي الدَّارِ", arabic: true },
     ]);
     expect(arabicRuns("")).toEqual([]);
+    // A long run of spaces closing an Arabic run moves on in linear time.
+    const spaces = " ".repeat(50_000);
+    expect(arabicRuns(`قَالَ${spaces}x`)).toEqual([
+      { text: "قَالَ", arabic: true },
+      { text: `${spaces}x`, arabic: false },
+    ]);
     // Punctuation before any letter opens a non-Arabic run.
     expect(arabicRuns("« قَالَ")).toEqual([
       { text: "« ", arabic: false },

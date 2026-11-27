@@ -11,6 +11,7 @@ const ARABIC = /\p{Script=Arabic}/u;
 const ARABIC_EXT = /\p{Script_Extensions=Arabic}/u;
 const LETTER = /\p{L}/u;
 const WORD = /[\p{L}\p{N}]/u;
+const SPACE = /\s/u;
 
 /** The values of the tokens, for a caller that needs a number (a canvas, a test). */
 export const ARABIC_SCALE = 1.4;
@@ -84,9 +85,14 @@ export const arabicRuns = (text) => {
     } else if (arabic === null || arabic === current.arabic) {
       current.text += ch;
     } else {
-      const trailing = current.arabic ? /\s+$/u.exec(current.text) : null;
-      const carried = trailing ? trailing[0] : "";
-      if (carried) current.text = current.text.slice(0, -carried.length);
+      // The spaces closing an Arabic run, counted from the end (no regex:
+      // a trailing \s+$ is polynomial on a long run of spaces).
+      let cut = current.text.length;
+      while (current.arabic && cut > 0 && SPACE.test(current.text[cut - 1])) {
+        cut -= 1;
+      }
+      const carried = current.text.slice(cut);
+      current.text = current.text.slice(0, cut);
       if (current.text) runs.push(current);
       current = { text: carried + ch, arabic };
     }
