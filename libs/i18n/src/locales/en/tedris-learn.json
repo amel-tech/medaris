@@ -52,6 +52,16 @@
     "openLabel": ": {title} (opens in a new tab)",
     "watchLabel": "Watch the recording: {title}"
   },
+  "DocumentsTab": {
+    "empty": "This course has no documents yet.",
+    "allTitle": "All documents",
+    "allHint": "Whole course first, then by week",
+    "general": "Whole course",
+    "weekLabel": "Week {number}",
+    "sessionLabel": "Open the session page: {title}",
+    "newTab": " (opens in a new tab)",
+    "download": " (downloads)"
+  },
   "RecordingRelease": {
     "opens": "The recording opens on {day} at {time}.",
     "early": "Opens to talebe on {day} at {time}",

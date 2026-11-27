@@ -52,6 +52,16 @@
     "openLabel": ": {title} (yeni sekmede açılır)",
     "watchLabel": "Kaydı izle: {title}"
   },
+  "DocumentsTab": {
+    "empty": "Bu derste henüz doküman yok.",
+    "allTitle": "Bütün dokümanlar",
+    "allHint": "Önce ders geneli, sonra haftalara göre",
+    "general": "Ders geneli",
+    "weekLabel": "Hafta {number}",
+    "sessionLabel": "Celse sayfasını aç: {title}",
+    "newTab": " (yeni sekmede açılır)",
+    "download": " (indirilir)"
+  },
   "RecordingRelease": {
     "opens": "Ders kaydı {day} {time} açılır.",
     "early": "Talebelere {day} {time} açılacak",

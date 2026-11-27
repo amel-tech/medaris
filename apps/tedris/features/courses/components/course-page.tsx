@@ -37,6 +37,7 @@ import {
   holdsSeat,
   sessionWhen,
 } from "../course-view";
+import { courseDocuments } from "../documents-model";
 import { canWriteNotes } from "../lesson-note-model";
 import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { sessionChoices } from "../question-model";
@@ -45,6 +46,7 @@ import { CourseDecksTab } from "./course-decks-tab";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
+import { DocumentsTab } from "./documents-tab";
 import { MyGradesTab } from "./exam-grades";
 import { FileErrorNotice } from "./file-error-notice";
 import { RecordingsTab } from "./recordings-tab";
@@ -174,6 +176,10 @@ export const CoursePage = ({
   const asksQuestions =
     !course.contentLocked && canWriteNotes(course.enrollment?.status);
 
+  // MDRS-248: every document of the course on one tab, for who may read the
+  // content; the course detail already carries the course's and each celse's.
+  const documents = course.contentLocked ? null : courseDocuments(course);
+
   const tabs = [
     { value: "mufredat", label: t("tabCurriculum") },
     {
@@ -183,6 +189,15 @@ export const CoursePage = ({
         ? { count: recordings.length }
         : {}),
     },
+    ...(documents
+      ? [
+          {
+            value: "dokumanlar",
+            label: t("tabDocuments"),
+            ...(documents.count > 0 ? { count: documents.count } : {}),
+          },
+        ]
+      : []),
     ...(seat
       ? [
           {
@@ -456,6 +471,11 @@ export const CoursePage = ({
                 now={now}
               />
             </TabsPanel>
+            {documents ? (
+              <TabsPanel value="dokumanlar" className="pbs-4">
+                <DocumentsTab documents={documents} courseId={course.id} />
+              </TabsPanel>
+            ) : null}
             {seat ? (
               <TabsPanel value="deste" className="pbs-4">
                 {decks.length > 0 ? (
