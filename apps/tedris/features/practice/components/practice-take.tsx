@@ -4,12 +4,14 @@ import type { PracticeAttemptResponse } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Button } from "@medaris/ui/mds/button";
-import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { Icon } from "@medaris/ui/mds/icon";
+import { Progress } from "@medaris/ui/mds/progress";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { textProps } from "~/features/online-exams/arabic";
 import {
+  INDICATOR,
   QuestionNavigator,
   QuestionOptions,
   TextSizeButtons,
@@ -38,6 +40,7 @@ import {
   startIndex,
   writeSkipped,
 } from "../practice-model";
+import { PracticeTakeSkeleton } from "./practice-take-skeleton";
 
 type Phase = "opening" | "absent" | "failed" | "running";
 
@@ -252,12 +255,7 @@ export function PracticeTake(source: PracticeSource) {
   };
 
   if (phase === "opening") {
-    return (
-      <div className="flex flex-col gap-section" aria-busy="true">
-        <p className="mds-body-sm text-neutral-muted">{t("opening")}</p>
-        <Skeleton height="220px" />
-      </div>
-    );
+    return <PracticeTakeSkeleton label={t("opening")} />;
   }
 
   if (phase === "absent" || phase === "failed" || !attempt) {
@@ -302,6 +300,10 @@ export function PracticeTake(source: PracticeSource) {
   const skipped = questions.filter(
     (it) => stateOf(answers.get(it.id)) === "skipped"
   ).length;
+  const answered = questions.filter(
+    (it) => stateOf(answers.get(it.id)) === "answered"
+  ).length;
+  const following = nextIndex(ids, answers, index);
   const blanks = blankCount(
     ids,
     new Map([...answers].map(([id, a]) => [id, a.optionIds]))
@@ -348,21 +350,49 @@ export function PracticeTake(source: PracticeSource) {
       data-text-scale={scale}
     >
       <section
-        className="mds-card flex flex-wrap items-center justify-between gap-3"
+        className="mds-card flex flex-col gap-3"
         aria-label={t("barLabel")}
       >
-        <h1 className="mds-h3" dir="auto">
-          {attempt.setId ? attempt.title : t("poolTitle")}
-        </h1>
-        <p className="mds-body-sm">
-          {t("counter", {
-            number: String(index + 1),
-            count: String(questions.length),
-          })}
-        </p>
-        <p className="mds-body-sm text-neutral-muted" aria-live="polite">
-          {pending > 0 ? t("saving") : q && savedFor === q.id ? t("saved") : ""}
-        </p>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h1 className="mds-h3" dir="auto">
+            {attempt.setId ? attempt.title : t("poolTitle")}
+          </h1>
+          <p className="mds-body-sm mds-num">
+            {t("counter", {
+              number: String(index + 1),
+              count: String(questions.length),
+            })}
+          </p>
+        </div>
+        <Progress
+          value={questions.length ? (answered / questions.length) * 100 : 0}
+          label={t("progressLabel")}
+          labelHidden
+          completeLabel={t("progressComplete")}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <p className="mds-body-sm text-neutral-muted mds-num">
+            {t("progressText", {
+              answered: String(answered),
+              count: String(questions.length),
+            })}
+          </p>
+          {/* Always in the page, so a screen reader hears each change. */}
+          <p
+            className="mds-body-sm text-neutral-muted flex items-center gap-1"
+            aria-live="polite"
+            data-testid="practice-save-state"
+          >
+            {pending > 0 ? (
+              t("saving")
+            ) : q && savedFor === q.id ? (
+              <>
+                <Icon name="check" size="sm" />
+                {t("saved")}
+              </>
+            ) : null}
+          </p>
+        </div>
       </section>
 
       {saveFailed ? (
@@ -415,30 +445,48 @@ export function PracticeTake(source: PracticeSource) {
             onChoose={choose}
             legend={t("optionsLegend")}
           />
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              disabled={index === 0}
-              onClick={() => go(index - 1)}
-            >
-              {t("previous")}
-            </Button>
-            <Button variant="ghost" onClick={skip}>
-              {t("skip")}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={nextIndex(ids, answers, index) === null}
-              onClick={() => {
-                const to = nextIndex(ids, answers, index);
-                go(to, to !== null && to <= index);
-              }}
-            >
-              {t("next")}
-            </Button>
-            <Button loading={finishing} onClick={() => setAsking(true)}>
-              {t("finish")}
-            </Button>
+          {/* Moving about on the start side; going on and ending on the
+              end side, apart, so "Bitir" is not one slip from "Sonraki".
+              "Sonraki" leads while there is a next question; after the last
+              one "Bitir" does, with "Sonraki" disabled. On a phone each side
+              fills its own row. */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pbs-2">
+            <div className="flex gap-2 max-sm:inline-full">
+              <Button
+                variant="outline"
+                className="max-sm:flex-1"
+                disabled={index === 0}
+                onClick={() => go(index - 1)}
+              >
+                {t("previous")}
+              </Button>
+              <Button variant="ghost" className="max-sm:flex-1" onClick={skip}>
+                {t("skip")}
+              </Button>
+            </div>
+            <div className="flex gap-2 max-sm:inline-full">
+              <Button
+                variant={following === null ? "primary" : "outline"}
+                className="max-sm:flex-1"
+                loading={finishing}
+                onClick={() => setAsking(true)}
+              >
+                {t("finish")}
+              </Button>
+              {/* Kept in place when nothing comes next, only disabled: a
+                  removed button would drop the keyboard's focus, and "Bitir"
+                  would slide under a second click. */}
+              <Button
+                variant={following === null ? "outline" : "primary"}
+                className="max-sm:flex-1"
+                disabled={following === null}
+                onClick={() => {
+                  if (following !== null) go(following, following <= index);
+                }}
+              >
+                {t("next")}
+              </Button>
+            </div>
           </div>
         </section>
       ) : null}
@@ -462,6 +510,33 @@ export function PracticeTake(source: PracticeSource) {
                   : "stateUnseen"
             ),
           })
+        }
+        legend={
+          <ul
+            className="flex flex-wrap gap-x-4 gap-y-1 mds-caption text-neutral-muted"
+            aria-label={t("legendLabel")}
+          >
+            {(
+              [
+                ["answered", "stateAnswered", answered],
+                ["skipped", "stateSkipped", skipped],
+                [
+                  "unseen",
+                  "stateUnseen",
+                  questions.length - answered - skipped,
+                ],
+              ] as const
+            ).map(([state, key, n]) => (
+              <li key={state} className="flex items-center gap-1">
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-3 rounded-sm border"
+                  style={INDICATOR[state]}
+                />
+                {t("legendItem", { state: t(key), count: String(n) })}
+              </li>
+            ))}
+          </ul>
         }
       />
 
