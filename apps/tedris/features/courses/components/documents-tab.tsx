@@ -2,6 +2,7 @@
 
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { sessionPagePath } from "../calendar-links";
 import type { CourseDocuments } from "../documents-model";
@@ -85,7 +86,7 @@ export const DocumentsTab = ({
             {week.sessions.map((session) => (
               <div key={session.lessonId} className="flex flex-col gap-2">
                 <h4 className="m-0 px-3">
-                  <a
+                  <Link
                     className="mds-label inline-flex items-center gap-1 text-neutral-default hover:underline"
                     href={sessionPagePath(courseId, session.lessonId)}
                     aria-label={t("sessionLabel", { title: session.title })}
@@ -93,7 +94,7 @@ export const DocumentsTab = ({
                   >
                     <bdi>{session.title}</bdi>
                     <Icon name="chevronRight" size="sm" />
-                  </a>
+                  </Link>
                 </h4>
                 <ResourceList
                   resources={session.rows}
