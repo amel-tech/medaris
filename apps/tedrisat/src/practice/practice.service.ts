@@ -138,7 +138,10 @@ export class PracticeService {
     user: AuthenticatedUser,
     courseId: string
   ): Promise<PracticeSetSummaryResponse[]> {
-    if (!(await this.mayPractise(user, courseId))) {
+    // A course the caller may not see is not found; one they see but are
+    // no talebe of is refused.
+    await this.courses.getDetail(courseId, user, { read: true });
+    if (!(await this.courses.mayWriteAsTalebe(user, courseId))) {
       throw new PracticeForbiddenError(courseId);
     }
     return this.summaries(user.sub, await this.repo.listSets([courseId]));
@@ -210,27 +213,31 @@ export class PracticeService {
     const set = await this.setFor(user, setId);
     const open = await this.repo.findOpenAttempt(user.sub, setId);
     if (open) return this.view(open, set.title);
-    const questions = (await this.questionsOf(set.courseId, setId)).filter(
-      (q) => lacksOf(q).length === 0
-    );
-    const made = await this.repo.startAttempt({
-      setId,
-      courseId: set.courseId,
-      userId: user.sub,
-      questionOrder: drawOrder(
-        questions.map((q) => q.id),
-        fairRandom
-      ),
-      optionOrder: Object.fromEntries(
-        questions.map((q) => [
-          q.id,
-          drawOrder(
-            q.options.map((o) => o.id),
+    // Drawn once the set's row is held: no take-back, and so no change to
+    // its questions, can come between the read and the attempt.
+    const made = await this.repo.startAttempt(
+      { setId, courseId: set.courseId, userId: user.sub },
+      async () => {
+        const questions = (await this.questionsOf(set.courseId, setId)).filter(
+          (q) => lacksOf(q).length === 0
+        );
+        return {
+          questionOrder: drawOrder(
+            questions.map((q) => q.id),
             fairRandom
           ),
-        ])
-      ),
-    });
+          optionOrder: Object.fromEntries(
+            questions.map((q) => [
+              q.id,
+              drawOrder(
+                q.options.map((o) => o.id),
+                fairRandom
+              ),
+            ])
+          ),
+        };
+      }
+    );
     if (!made) throw new PracticeSetNotFoundError(setId);
     return this.view(made, set.title);
   }
