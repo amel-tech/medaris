@@ -78,8 +78,8 @@ describe("the answers' strip and cards (MDRS-248)", () => {
     expect(grid.className).toContain("grid-cols-1");
     expect(grid.className).toContain("md:grid-cols-2");
     expect(grid.className).toContain("xl:grid-cols-3");
-    // As tall as its own text, and a long word wraps rather than widen it.
-    expect(grid.className).toContain("items-start");
+    // A row's cards as tall as its tallest, and a long word wraps rather than widen it.
+    expect(grid.className).toContain("items-stretch");
     expect(cards(host)[0].style.overflowWrap).toBe("anywhere");
     const wrong = cards(host)[1];
     expect(wrong.textContent).toContain("İkinci");

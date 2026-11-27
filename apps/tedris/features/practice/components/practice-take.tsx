@@ -506,6 +506,7 @@ export function PracticeTake(source: PracticeSource) {
             chosen={mine?.optionIds ?? []}
             onChoose={choose}
             legend={t("optionsLegend")}
+            multiHint={tb("multiHint")}
           />
           {/* Right under the options, as wide as they are: back and skip on
               the start side, the one button that leads on the end side. The
