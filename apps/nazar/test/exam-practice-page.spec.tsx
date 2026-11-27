@@ -62,6 +62,10 @@ vi.mock("next-intl/server", () => ({
 }));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace?: string) => translatorFor(namespace),
+  useFormatter: () => ({
+    number: (value: number, options?: Intl.NumberFormatOptions) =>
+      new Intl.NumberFormat("tr", options).format(value),
+  }),
 }));
 vi.mock("@medaris/ui/mds/toast", () => ({
   useToaster: () => ({ notify: vi.fn() }),
@@ -70,10 +74,13 @@ vi.mock("~/lib/tedrisat-read", () => ({
   readOnce: async (
     _what: string,
     call: (a: typeof api) => Promise<unknown>
-  ) => ({
-    status: "ok",
-    data: await call(api),
-  }),
+  ) => {
+    try {
+      return { status: "ok", data: await call(api) };
+    } catch {
+      return { status: "failed" };
+    }
+  },
 }));
 vi.mock("~/features/account/reads", () => ({
   getViewer: async () => ({ id: "u-1", timeZone: "Europe/Istanbul" }),
@@ -97,10 +104,15 @@ describe("Çalışma Soruları (MDRS-248)", () => {
       "Talebeler bu soruları süre sınırı olmadan, istedikleri zaman çözebilir."
     );
     expect(text).toContain("Yeni çalışma seti");
-    expect(text).toContain("Kıyas tekrarı 4 soru Yayında");
-    expect(text).toContain("Tarifler 0 soru Taslak");
-    // How a published set was solved; a draft says nothing.
-    expect(text).toContain("3 talebe 5 kez çözdü · ortalama %72,5");
+    // A table: one-word headers, then one row per set, drafts first.
+    expect(markup).toContain("<table");
+    expect(text).toContain("Set Durum Soru Talebe Çözülme Ortalama");
+    expect(text).toContain("Tarifler Taslak 0 — Yok — Yok — Yok");
+    // How a published set was solved, its average a whole percentage.
+    expect(text).toContain("Kıyas tekrarı Yayında 4 3 5 %73");
+    expect(text.indexOf("Tarifler")).toBeLessThan(
+      text.indexOf("Kıyas tekrarı")
+    );
     expect(asked).toContainEqual({
       method: "listPracticeSetStats",
       request: { id: "c1" },
@@ -115,13 +127,47 @@ describe("Çalışma Soruları (MDRS-248)", () => {
     });
   });
 
-  it("says a published set nobody solved yet", async () => {
+  it("shows a dash for a published set nobody solved yet", async () => {
+    const before = api.practice.listPracticeSetStats;
     api.practice.listPracticeSetStats = record("listPracticeSetStats", []);
-    const text = textOf(
-      await html(<ExamsPage courseId="c1" kind="PRACTICE" />)
+    let text: string;
+    try {
+      text = textOf(await html(<ExamsPage courseId="c1" kind="PRACTICE" />));
+    } finally {
+      api.practice.listPracticeSetStats = before;
+    }
+    expect(text).toContain("Kıyas tekrarı Yayında 4 — Yok — Yok — Yok");
+    expect(text).not.toContain("Çözülme sayıları şu an okunamadı.");
+  });
+
+  it("keeps the table and says so when the figures cannot be read", async () => {
+    const before = api.practice.listPracticeSetStats;
+    api.practice.listPracticeSetStats = async () => {
+      throw new Error("down");
+    };
+    let text: string;
+    try {
+      text = textOf(await html(<ExamsPage courseId="c1" kind="PRACTICE" />));
+    } finally {
+      api.practice.listPracticeSetStats = before;
+    }
+    expect(text).toContain("Çözülme sayıları şu an okunamadı.");
+    expect(text).toContain("Kıyas tekrarı Yayında 4 — Yok");
+  });
+
+  it("says there is no set yet, and how to open one", async () => {
+    const before = api.onlineExams.listOnlineExams;
+    api.onlineExams.listOnlineExams = record("listOnlineExams", []);
+    let markup: string;
+    try {
+      markup = await html(<ExamsPage courseId="c1" kind="PRACTICE" />);
+    } finally {
+      api.onlineExams.listOnlineExams = before;
+    }
+    expect(markup).not.toContain("<table");
+    expect(textOf(markup)).toContain(
+      "Henüz çalışma seti yok. Yukarıya adını yazıp ilk seti açın."
     );
-    expect(text).toContain("Kıyas tekrarı 4 soru Yayında · Henüz çözülmedi");
-    expect(text).not.toContain("Tarifler 0 soru Taslak ·");
   });
 
   it("leaves Sınavlar asking for the exams only", async () => {

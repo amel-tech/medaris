@@ -1,6 +1,9 @@
 "use client";
 
-import type { OnlineExamDraftResponse } from "@medaris/services/tedrisat";
+import type {
+  OnlineExamDraftResponse,
+  PracticeSetStatsResponse,
+} from "@medaris/services/tedrisat";
 import { useEffect, useState } from "react";
 import { ExamEditor } from "./exam-editor";
 import { PublishedExam } from "./exam-publish";
@@ -21,11 +24,14 @@ export function ExamWorkspace({
   draft,
   timeZone,
   locale,
+  practiceStats,
 }: {
   courseId: string;
   draft: OnlineExamDraftResponse;
   timeZone: string;
   locale: string;
+  /** A çalışma seti's figures: null when nobody finished it, undefined when unread. */
+  practiceStats?: PracticeSetStatsResponse | null;
 }) {
   const [current, setCurrent] = useState(draft);
   useEffect(() => {
@@ -46,6 +52,7 @@ export function ExamWorkspace({
       kind={current.kind}
       timeZone={timeZone}
       locale={locale}
+      practiceStats={practiceStats}
       onUnpublished={setCurrent}
     />
   );

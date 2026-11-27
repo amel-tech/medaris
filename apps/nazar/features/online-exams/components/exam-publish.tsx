@@ -3,6 +3,7 @@
 import type {
   ExamKind,
   OnlineExamDraftResponse,
+  PracticeSetStatsResponse,
   PublishProblemResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
@@ -14,13 +15,14 @@ import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { fieldsOf, instantOf } from "~/features/sessions/sessions";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { unpublishOnlineExam } from "../actions";
 import { onlineExamErrorKey, READS_AGAIN } from "../online-exams";
+import { wholePercent } from "./practice-sets-table";
 
 const MINUTE = 60_000;
 /** The latest start the page fills in: the earliest plus ten minutes (decided 22 Nov 2026). */
@@ -86,12 +88,14 @@ function ProblemLines({ problems }: { problems: PublishProblemResponse[] }) {
  *
  * A çalışma seti (`kind: PRACTICE`, MDRS-248) has no date, no window and no
  * length: one "Yayınla", asked once, opens it to the course's talebe from
- * now on.
+ * now on. Its incomplete questions do not stop it, but the talebe never gets
+ * them, which the panel says (`incompleteCount`).
  */
 export function PublishSection({
   kind = "EXAM",
   problems,
   questionCount,
+  incompleteCount = 0,
   durationMinutes,
   timeZone,
   holding,
@@ -101,6 +105,8 @@ export function PublishSection({
   kind?: ExamKind;
   problems: PublishProblemResponse[];
   questionCount: number;
+  /** A çalışma seti's questions that are not complete: published, never asked. */
+  incompleteCount?: number;
   /** Null until the team types it; the exam is not published without it. */
   durationMinutes: number | null;
   timeZone: string;
@@ -185,11 +191,17 @@ export function PublishSection({
         <h2 id="publish-title" className="mds-h2">
           {t("Practice.publishTitle")}
         </h2>
-        <p className="mds-body-sm text-neutral-muted">{t("Practice.intro")}</p>
+        <p className="mds-body-sm text-neutral-muted">
+          {t("Practice.publishBody")}
+        </p>
         {problems.length > 0 ? (
-          <Alert tone="warning" title={t("OnlineExams.notReadyTitle")}>
+          <Alert tone="warning" title={t("Practice.notReadyTitle")}>
             <p>{t("Practice.notReady")}</p>
           </Alert>
+        ) : incompleteCount > 0 ? (
+          <p className="mds-help">
+            {t("Practice.incompleteNote", { count: incompleteCount })}
+          </p>
         ) : null}
         {holding ? (
           <p className="mds-body-sm text-neutral-muted">
@@ -358,15 +370,21 @@ export function PublishedExam({
   kind = "EXAM",
   timeZone,
   locale,
+  practiceStats,
   onUnpublished,
 }: {
   draft: OnlineExamDraftResponse;
   kind?: ExamKind;
   timeZone: string;
   locale: string;
+  /** A çalışma seti's figures: null when nobody finished it, undefined when unread. */
+  practiceStats?: PracticeSetStatsResponse | null;
   onUnpublished: (next: OnlineExamDraftResponse) => void;
 }) {
   const t = useTranslations("nazar");
+  const format = useFormatter();
+  // A finished attempt was started first: the API refuses to unpublish it.
+  const solved = (practiceStats?.attemptCount ?? 0) > 0;
   const words = t as unknown as Messages;
   const router = useRouter();
   const practice = kind === "PRACTICE";
@@ -426,13 +444,15 @@ export function PublishedExam({
       >
         <div className="flex flex-wrap items-center gap-2">
           <h2 id="published-title" className="mds-h2">
-            {t("OnlineExams.publishTitle")}
+            {practice
+              ? t("Practice.publishedTitle")
+              : t("OnlineExams.publishTitle")}
           </h2>
           {badge}
         </div>
         <p className="mds-body">
           {practice
-            ? t("Practice.intro")
+            ? t("Practice.publishedBody")
             : draft.status === "SCHEDULED"
               ? t("OnlineExams.scheduledBody", {
                   when: when(draft.startsAt),
@@ -444,7 +464,23 @@ export function PublishedExam({
                   })
                 : t("OnlineExams.closedBody")}
         </p>
-        {practice ? (
+        {practice && practiceStats ? (
+          <p className="mds-body-sm" data-testid="practice-set-stats">
+            {t("Practice.stats", {
+              talebe: practiceStats.talebeCount,
+              count: practiceStats.attemptCount,
+              percent:
+                practiceStats.averagePercent === null
+                  ? ""
+                  : wholePercent(format, practiceStats.averagePercent),
+            })}
+          </p>
+        ) : null}
+        {practice && solved ? (
+          <p className="mds-body-sm text-neutral-muted">
+            {t("Practice.lockedNow")}
+          </p>
+        ) : practice ? (
           <>
             <p className="mds-body-sm text-neutral-muted">
               {t("Practice.lockedNote")}
@@ -506,7 +542,7 @@ export function PublishedExam({
         <h2 id="published-questions" className="mds-h2">
           {t("OnlineExams.questionsTitle", { count: draft.questions.length })}
         </h2>
-        <ol className="flex flex-col gap-3">
+        <ol className="flex list-none flex-col gap-3 ps-0">
           {draft.questions.map((q) => (
             <li key={q.id} className="mds-card flex flex-col gap-2 p-4">
               <strong>
@@ -517,9 +553,16 @@ export function PublishedExam({
               </p>
               <ol className="mds-body-sm flex flex-col gap-1" type="A">
                 {q.options.map((o) => (
-                  <li key={o.id} dir="auto">
-                    {o.text}
-                    {o.correct ? ` · ${t("OnlineExams.correct")}` : ""}
+                  <li key={o.id}>
+                    <span dir="auto">{o.text}</span>
+                    {o.correct ? (
+                      <>
+                        {" "}
+                        <Badge variant="success">
+                          {t("OnlineExams.correct")}
+                        </Badge>
+                      </>
+                    ) : null}
                   </li>
                 ))}
               </ol>

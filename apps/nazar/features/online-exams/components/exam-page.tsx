@@ -20,7 +20,8 @@ import { ExamWorkspace } from "./exam-workspace";
  * questions and "Yayınla"; once published, the exam read-only with when it
  * opens. Times are on the viewer's clock. With `kind: PRACTICE` it is one
  * çalışma seti under "Çalışma Soruları" (MDRS-248); an id of the other kind
- * is sent to the page of its own.
+ * is sent to the page of its own. A published set also shows how it was
+ * solved, and once a talebe finished it, that it can no longer be unpublished.
  */
 export async function ExamPage({
   courseId,
@@ -32,7 +33,7 @@ export async function ExamPage({
   kind?: ExamKind;
 }) {
   const practice = kind === "PRACTICE";
-  const [t, locale, me, draft, permissions] = await Promise.all([
+  const [t, locale, me, draft, permissions, stats] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
@@ -40,6 +41,12 @@ export async function ExamPage({
       api.onlineExams.getOnlineExamDraft({ examId })
     ),
     readCoursePermissions(courseId),
+    // A side read: how the set was solved. Missing, the page goes on without it.
+    practice
+      ? readOnce("the course's practice set stats", (api) =>
+          api.practice.listPracticeSetStats({ id: courseId })
+        )
+      : null,
   ]);
   const gate = pageGate([draft], permissions, PAGE_CODES.exams);
   if (draft.status !== "ok" || gate !== "ok") {
@@ -88,6 +95,11 @@ export async function ExamPage({
         draft={draft.data}
         timeZone={resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE)}
         locale={locale}
+        practiceStats={
+          stats?.status === "ok"
+            ? (stats.data.find((s) => s.setId === examId) ?? null)
+            : undefined
+        }
       />
     </>
   );
