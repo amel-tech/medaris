@@ -1,7 +1,4 @@
-import type {
-  DraftCourseTopicResponse,
-  ExamKind,
-} from "@medaris/services/tedrisat";
+import type { ExamKind } from "@medaris/services/tedrisat";
 
 /** The course page a kind is prepared under: "Sınavlar", or "Çalışma Soruları" for a set (MDRS-248). */
 export const segmentOf = (kind: ExamKind): string =>
@@ -100,31 +97,33 @@ export function spreadOptions<O extends { text: string; correct: boolean }>(
   return { options: next, last };
 }
 
-/** "3, 7" → the topics of those numbers, and the numbers no topic has. */
-export function topicsByNumbers(
-  text: string,
-  topics: readonly DraftCourseTopicResponse[]
-): { ids: string[]; unknown: number[] } {
-  const ids: string[] = [];
-  const unknown: number[] = [];
-  for (const part of text.split(/[\s,;]+/).filter(Boolean)) {
-    const n = Number(part);
-    const topic = topics.find((t) => t.number === n);
-    if (!Number.isInteger(n) || !topic) unknown.push(n);
-    else if (!ids.includes(topic.id)) ids.push(topic.id);
-  }
-  return { ids, unknown };
+/**
+ * What saving does to the options as typed (MDRS-248): the empty ones are
+ * left out, each correct mark going with its own option, so the letters
+ * after an empty one move up. `gaps` is true when an empty option stands
+ * before a typed one (the letters will move); `blankCorrect` is the index of
+ * the first empty option marked correct, which blocks the save, or -1.
+ */
+export function optionsToSave(
+  options: ReadonlyArray<{ text: string; correct: boolean }>
+): {
+  kept: Array<{ text: string; correct: boolean }>;
+  gaps: boolean;
+  blankCorrect: number;
+} {
+  const blank = (o: { text: string }) => o.text.trim() === "";
+  let last = -1;
+  options.forEach((o, i) => {
+    if (!blank(o)) last = i;
+  });
+  return {
+    kept: options
+      .filter((o) => !blank(o))
+      .map((o) => ({ text: o.text.trim(), correct: o.correct })),
+    gaps: last > 0 && options.slice(0, last).some(blank),
+    blankCorrect: options.findIndex((o) => blank(o) && o.correct),
+  };
 }
-
-/** The topics' numbers as the field shows them: "3, 7". */
-export const numbersOf = (
-  ids: readonly string[],
-  topics: readonly DraftCourseTopicResponse[]
-): string =>
-  topics
-    .filter((t) => ids.includes(t.id))
-    .map((t) => t.number)
-    .join(", ");
 
 /** The catalog key that words a refusal. */
 export function onlineExamErrorKey(code: string): string {
@@ -158,17 +157,24 @@ export function onlineExamErrorKey(code: string): string {
 
 export type Lack = "text" | "option" | "correct" | "topic";
 
-/** What a question still lacks, as the API says it (text, a second option, a correct one, a topic). */
-export function lacksOf(q: {
-  text: string;
-  options: ReadonlyArray<{ text: string; correct: boolean }>;
-  topicIds: readonly string[];
-}): Lack[] {
+/**
+ * What a question still lacks, as the API's `lacksOf(q, kind)` says it: a
+ * text, a second option, a correct one, and in an exam a topic. A çalışma
+ * seti's question needs no topic (MDRS-248).
+ */
+export function lacksOf(
+  q: {
+    text: string;
+    options: ReadonlyArray<{ text: string; correct: boolean }>;
+    topicIds: readonly string[];
+  },
+  kind: ExamKind = "EXAM"
+): Lack[] {
   const lacks: Lack[] = [];
   if (q.text.trim() === "") lacks.push("text");
   if (q.options.length < 2) lacks.push("option");
   if (!q.options.some((o) => o.correct)) lacks.push("correct");
-  if (q.topicIds.length === 0) lacks.push("topic");
+  if (kind === "EXAM" && q.topicIds.length === 0) lacks.push("topic");
   return lacks;
 }
 
