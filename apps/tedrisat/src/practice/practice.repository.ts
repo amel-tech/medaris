@@ -244,13 +244,14 @@ export class PracticeRepository {
   /**
    * Starts an attempt at a set, unless one is in progress, which is
    * returned instead: the open-attempt index settles two starts at once.
-   * The set's row is held for share before `draw` reads its questions, so
+   * The set's row is held for share before `draw` reads its questions on
+   * the same connection, so
    * taking it back to a draft, the only way its questions change, waits;
    * null when it is no published set any more.
    */
   async startAttempt(
     input: { setId: string; courseId: string; userId: string },
-    draw: () => Promise<{
+    draw: (tx: Tx) => Promise<{
       questionOrder: string[];
       optionOrder: Record<string, string[]>;
     }>
@@ -264,7 +265,7 @@ export class PracticeRepository {
       if (!set) return null;
       const [made] = await tx
         .insert(practiceAttempts)
-        .values({ ...input, ...(await draw()) })
+        .values({ ...input, ...(await draw(tx)) })
         .onConflictDoNothing()
         .returning();
       return made ?? this.findOpenAttempt(input.userId, input.setId, tx);

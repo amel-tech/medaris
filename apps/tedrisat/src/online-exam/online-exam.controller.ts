@@ -184,7 +184,7 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "Yayınla: now, or at a day and time, with a latest start",
     description:
-      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.",
     operationId: "publishOnlineExam",
   })
   @ApiOkResponse({ type: OnlineExamDraftResponse })
@@ -192,8 +192,7 @@ export class OnlineExamController {
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
   @ApiConflictResponse({
-    description:
-      "EXAM_NOT_READY, EXAM_STALE, EXAM_LOCKED (published already). A çalışma seti (PRACTICE) is published at once with no celse, no window and no zeroth question (the times in the body are not read): it needs one complete question, and its incomplete ones are not solved.",
+    description: "EXAM_NOT_READY, EXAM_STALE, EXAM_LOCKED (published already)",
   })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))

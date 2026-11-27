@@ -123,7 +123,8 @@ export class CreateOnlineExamDto {
     description:
       "EXAM, left out: an exam sat once with its celse. PRACTICE: a çalışma seti, which the course's talebe solve whenever they like, as often as they like, with no celse, length, points or zeroth question (MDRS-248).",
   })
-  @IsOptional()
+  // Not @IsOptional: it would let a null through unchecked.
+  @ValidateIf((_, value) => value !== undefined)
   @IsEnum(ExamKind)
   kind?: ExamKind;
 }
@@ -135,7 +136,8 @@ export class ListOnlineExamsQueryDto {
     enumName: "ExamKind",
     default: ExamKind.EXAM,
   })
-  @IsOptional()
+  // Not @IsOptional: it would let a null through unchecked.
+  @ValidateIf((_, value) => value !== undefined)
   @IsEnum(ExamKind)
   kind?: ExamKind;
 }

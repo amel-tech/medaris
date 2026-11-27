@@ -455,17 +455,20 @@ describe("çalışma setleri (e2e)", () => {
     await publish(set);
     const attempt = (await start(set.id).expect(201)).body;
     for (const who of [CAST.PENDING, CAST.STRANGER, CAST.MUDERRIS]) {
-      const listed = await courseSets(bearerOf(who));
-      expect([403, 404]).toContain(listed.status);
-      const started = await start(set.id, bearerOf(who));
-      expect([403, 404]).toContain(started.status);
+      expect((await courseSets(bearerOf(who)).expect(403)).body.code).toBe(
+        "PRACTICE_FORBIDDEN"
+      );
+      expect((await start(set.id, bearerOf(who)).expect(404)).body.code).toBe(
+        "PRACTICE_SET_NOT_FOUND"
+      );
       expect(
         (await read(attempt.id, bearerOf(who)).expect(404)).body.code
       ).toBe("PRACTICE_ATTEMPT_NOT_FOUND");
     }
-    expect((await courseSets(bearerOf(CAST.PENDING))).body.code).toMatch(
-      /PRACTICE_FORBIDDEN|FORBIDDEN|COURSE_NOT_FOUND/
-    );
+    // A refused start leaves nothing behind: the talebe's attempt alone.
+    expect(
+      (await db().select().from(practiceAttempts)).map((a) => a.userId)
+    ).toEqual([CAST.TALEBE]);
     expect(
       (
         await http()

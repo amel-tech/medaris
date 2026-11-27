@@ -615,7 +615,7 @@ actions:
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         kind: { enum: [EXAM, PRACTICE], description: "left out, EXAM; PRACTICE opens a çalışma seti (MDRS-248)" }
-    result: { status: 201, note: "{ id, version }: a draft with no celse, no length and no question" }
+    result: { status: 201, note: "{ id }: a draft with no celse, no length and no question; getOnlineExamDraft gives its version" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
@@ -681,7 +681,7 @@ actions:
   addExamQuestion:
     summary: Soru ekle (made on the question's first save)
     route: POST /online-exams/{examId}/questions
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:247
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:246
     needs: exam.prepare on the exam's course; a draft
     body:
       type: object
@@ -702,7 +702,7 @@ actions:
   saveExamQuestion:
     summary: Save a question's text, options, mode, scoring and topics
     route: PUT /online-exams/{examId}/questions/{questionId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:271
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:270
     needs: exam.prepare on the exam's course; a draft
     body:
       type: object
@@ -732,7 +732,7 @@ actions:
   removeExamQuestion:
     summary: Sil, a question
     route: DELETE /online-exams/{examId}/questions/{questionId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:292
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:291
     needs: exam.prepare on the exam's course; a draft; ?version=
     result: { status: 200, note: "{ version }" }
     refusals:
@@ -746,7 +746,7 @@ actions:
   setExamQuestionPoints:
     summary: A question's own points, or back into the equal share
     route: PUT /online-exams/{examId}/questions/{questionId}/points
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:323
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:322
     needs: exam.prepare on the exam's course; a draft
     body:
       type: object
@@ -770,7 +770,7 @@ actions:
   listCourseTopics:
     summary: The course's numbered topics
     route: GET /courses/{id}/exam-topics
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:343
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:342
     needs: exam.prepare on the course
     result: { status: 200, type: array, returns: CourseTopic }
     refusals:
@@ -781,7 +781,7 @@ actions:
   createCourseTopic:
     summary: Konu ekle
     route: POST /courses/{id}/exam-topics
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:364
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:363
     needs: exam.prepare on the course
     body:
       type: object
@@ -804,7 +804,7 @@ actions:
   renameCourseTopic:
     summary: Rename or renumber a topic (the API has it; the page offers no control yet)
     route: PATCH /courses/{id}/exam-topics/{topicId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:387
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:386
     needs: exam.prepare on the course
     body:
       type: object
@@ -825,7 +825,7 @@ actions:
   removeCourseTopic:
     summary: A topic's remove control
     route: DELETE /courses/{id}/exam-topics/{topicId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:408
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:407
     needs: exam.prepare on the course
     result: { status: 200, note: "{ exams: [{ id, version }] }: the exams whose pick it took off, with their new versions" }
     refusals:
@@ -839,7 +839,7 @@ actions:
   publishOnlineExam:
     summary: Yayınla, now or at a day and time
     route: POST /online-exams/{examId}/publish
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:201
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:200
     needs: exam.prepare on the exam's course; a draft with no publish problem
     body:
       type: object
@@ -866,7 +866,7 @@ actions:
   unpublishOnlineExam:
     summary: Taslağa al, until it opens
     route: POST /online-exams/{examId}/unpublish
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:226
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:225
     needs: exam.prepare on the exam's course
     body:
       type: object
@@ -1106,7 +1106,7 @@ invariants:
       No answer about a practice attempt in progress says which options are correct; a finished attempt shows them with each
       question's outcome and the percentage at once (MDRS-248).
     holds: true
-    source: apps/tedrisat/src/practice/practice.service.ts:398
+    source: apps/tedrisat/src/practice/practice.service.ts:407
 
   - id: practice-set-has-no-celse
     rule: >-

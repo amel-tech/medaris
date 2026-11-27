@@ -34,6 +34,7 @@ import {
   type IPracticeAttempt,
   type IPracticeSet,
   PracticeRepository,
+  type Tx,
 } from "./practice.repository";
 
 /** A random number in [0, 1) from the system's cryptographic source. */
@@ -126,10 +127,11 @@ export class PracticeService {
   /** The set's questions, every one as the team wrote it. */
   private async questionsOf(
     courseId: string,
-    setId: string | null
+    setId: string | null,
+    tx?: Tx
   ): Promise<IDraftQuestion[]> {
     if (setId === null) return [];
-    const draft = await this.exams.findDraft(courseId, setId);
+    const draft = await this.exams.findDraft(courseId, setId, tx);
     return draft?.questions ?? [];
   }
 
@@ -217,10 +219,10 @@ export class PracticeService {
     // its questions, can come between the read and the attempt.
     const made = await this.repo.startAttempt(
       { setId, courseId: set.courseId, userId: user.sub },
-      async () => {
-        const questions = (await this.questionsOf(set.courseId, setId)).filter(
-          (q) => lacksOf(q).length === 0
-        );
+      async (tx) => {
+        const questions = (
+          await this.questionsOf(set.courseId, setId, tx)
+        ).filter((q) => lacksOf(q).length === 0);
         return {
           questionOrder: drawOrder(
             questions.map((q) => q.id),

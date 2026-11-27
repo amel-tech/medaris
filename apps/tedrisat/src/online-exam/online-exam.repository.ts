@@ -225,9 +225,13 @@ export class OnlineExamRepository {
   /** An exam of the course as its page reads it; null when there is none. */
   async findDraft(
     courseId: string,
-    examId: string
+    examId: string,
+    // A caller's transaction (a practice attempt's start reads the set under
+    // its lock): the reads run on its connection rather than a second one.
+    tx?: Tx
   ): Promise<IOnlineExamDraft | null> {
-    const [found] = await this.db
+    const db = tx ?? this.db;
+    const [found] = await db
       .select({ exam: onlineExams, startsAt: lessons.scheduledAt })
       .from(onlineExams)
       .leftJoin(lessons, eq(lessons.id, onlineExams.lessonId))
@@ -238,17 +242,17 @@ export class OnlineExamRepository {
     if (!found) return null;
     const { exam } = found;
     const [zeroth, picked, questions] = await Promise.all([
-      this.db
+      db
         .select({ id: zerothOptions.id, text: zerothOptions.text })
         .from(zerothOptions)
         .where(eq(zerothOptions.examId, examId))
         .orderBy(asc(zerothOptions.position)),
-      this.db
+      db
         .select({ topicId: onlineExamTopics.topicId })
         .from(onlineExamTopics)
         .where(eq(onlineExamTopics.examId, examId))
         .orderBy(asc(onlineExamTopics.position)),
-      this.db
+      db
         .select()
         .from(examQuestions)
         .where(eq(examQuestions.examId, examId))
@@ -257,12 +261,12 @@ export class OnlineExamRepository {
     const ids = questions.map((q) => q.id);
     const [options, carried] = ids.length
       ? await Promise.all([
-          this.db
+          db
             .select()
             .from(examOptions)
             .where(inArray(examOptions.questionId, ids))
             .orderBy(asc(examOptions.position)),
-          this.db
+          db
             .select()
             .from(examQuestionTopics)
             .where(inArray(examQuestionTopics.questionId, ids)),
