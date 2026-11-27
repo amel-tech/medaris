@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -323,7 +324,12 @@ export function useQuestionList(): QuestionList {
     setOpen(false);
     if (refocus) toggleRef.current?.focus();
   }, []);
-  return { id, open, setOpen, toggleRef, close };
+  // One object per open/closed, so the list's effects run when it opens or
+  // closes, not on every render of the page (the exam's clock ticks each second).
+  return useMemo(
+    () => ({ id, open, setOpen, toggleRef, close }),
+    [id, open, close]
+  );
 }
 
 /** "Sorular" in the top bar: opens and closes the list's drawer. */
@@ -434,7 +440,8 @@ export function QuestionNavigator({
     const nav = ref.current;
     nav?.querySelector<HTMLElement>("[aria-current=step]")?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // An Esc a note's panel or a dialog has taken is not the drawer's.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
       close(true);
     };
@@ -487,7 +494,8 @@ export function QuestionNavigator({
               aria-label={itemLabel(i + 1, state)}
               onClick={() => {
                 onGo(i);
-                if (open) list?.close(false);
+                // The focus goes back to "Sorular", not to a hidden tile.
+                if (open) list?.close(true);
               }}
             >
               {i + 1}

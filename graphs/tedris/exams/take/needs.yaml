@@ -116,8 +116,8 @@ needs:
       - state: question
       - node: radioOptions
       - node: checkOptions
-      - source: apps/tedris/features/online-exams/components/question-parts.tsx:82
-      - source: apps/tedris/features/online-exams/components/question-parts.tsx:108
+      - source: apps/tedris/features/online-exams/components/question-parts.tsx:83
+      - source: apps/tedris/features/online-exams/components/question-parts.tsx:109
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
         name: "saves every answer by the page's count, and only what fits the question"
     note: >-
@@ -199,7 +199,7 @@ needs:
     evidence:
       - state: question
       - node: questionList
-      - source: apps/tedris/features/online-exams/components/question-parts.tsx:407
+      - source: apps/tedris/features/online-exams/components/question-parts.tsx:413
       - test: apps/tedris/test/exam-take.spec.ts
         name: "colours the question list: unanswered plain, answered blue, skipped dark yellow, the current one ringed"
     note: "Owner: \"soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir böylece\"."
@@ -383,7 +383,7 @@ needs:
       - node: textSmallerButton
       - node: textBiggerButton
       - node: factTextSize
-      - source: apps/tedris/features/online-exams/components/question-parts.tsx:234
+      - source: apps/tedris/features/online-exams/components/question-parts.tsx:235
       - test: apps/tedris/test/exam-take.spec.ts
         name: "zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload"
       - test: apps/tedris/test/exam-take.spec.ts

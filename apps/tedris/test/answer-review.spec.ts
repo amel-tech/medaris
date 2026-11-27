@@ -315,6 +315,40 @@ Bu âyetteki fiilin anlamı nedir?`;
     expect(open).toContain("box-shadow: var(--elevation-overlay);");
   });
 
+  it("keeps the card open for its note's dialog and an Esc already taken, and puts it back when a tile goes elsewhere", async () => {
+    const scrolled = vi
+      .spyOn(HTMLElement.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
+    const long = "Uzun bir soru metni. ".repeat(20);
+    const host = await mount([item(1, { text: long }), item(2)]);
+    const card = cards(host)[0];
+    await click(
+      card.querySelector("[data-testid=answer-card-more]") as HTMLElement
+    );
+    expect(card.dataset.expanded).toBe("true");
+    // A dialog the card's note opened is drawn outside the card.
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "alertdialog");
+    document.body.appendChild(dialog);
+    await pointerDown(dialog);
+    expect(card.dataset.expanded).toBe("true");
+    // An Esc the dialog has taken.
+    await act(async () => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+      });
+      event.preventDefault();
+      document.body.dispatchEvent(event);
+    });
+    expect(card.dataset.expanded).toBe("true");
+    // A tile of another question: the open card goes back first.
+    await click(tiles(host)[1]);
+    expect(card.hasAttribute("data-expanded")).toBe(false);
+    scrolled.mockRestore();
+  });
+
   it("opens one card at a time", async () => {
     const long = "Uzun bir soru metni. ".repeat(20);
     const host = await mount([

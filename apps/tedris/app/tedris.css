@@ -170,6 +170,11 @@
   overflow: hidden;
 }
 .answer-card__body[data-clipped] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 2.5rem),
+    transparent
+  );
   mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
 }
 .answer-card__more {
@@ -317,13 +322,15 @@
     display: inline-flex;
   }
 
-  /* The bar: one row; the title gives way first. */
+  /* The bar: one row while it fits, the title giving way first; at a large
+     A+ step on a narrow desk it takes a second row rather than push "Bitir"
+     out of the window. */
   .take-bar {
     flex: none;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-2) var(--space-4);
     padding-block: var(--space-2);
     padding-inline: var(--space-4);
   }

@@ -101,6 +101,9 @@ const LOOK: Record<
 };
 const OUTCOMES = ["correct", "wrong", "blank"] as const;
 
+/** Layers drawn outside a card that still belong to it: its note's dialogs. */
+const OWN_LAYERS = "[role=dialog], [role=alertdialog]";
+
 const TARGETED: CSSProperties = {
   boxShadow:
     "0 0 0 2px var(--background-neutral-page), 0 0 0 4px var(--border-brand-default)",
@@ -176,6 +179,7 @@ export function AnswerReview({
 
   const goTo = (q: ReviewItem) => {
     if (filter !== "all" && q.outcome !== filter) setFilter("all");
+    setExpanded(null);
     setTargeted(q.id);
     setTarget(q.id);
   };
@@ -318,10 +322,23 @@ const AnswerCard = memo(function AnswerCard({
       setOverflows(el.scrollHeight > el.clientHeight + 1);
     };
     measure();
-    if (typeof ResizeObserver === "undefined") return;
+    // The body's box is fixed by the card: its content is watched too, and
+    // the faces' arrival (the Arabic face draws taller than the fallback).
+    let live = true;
+    void document.fonts?.ready.then(() => {
+      if (live) measure();
+    });
+    if (typeof ResizeObserver === "undefined")
+      return () => {
+        live = false;
+      };
     const observer = new ResizeObserver(measure);
     observer.observe(el);
-    return () => observer.disconnect();
+    for (const child of el.children) observer.observe(child);
+    return () => {
+      live = false;
+      observer.disconnect();
+    };
   }, [expanded, question, note]);
 
   // Open: Esc puts it back and the focus on its button; a click anywhere
@@ -329,14 +346,14 @@ const AnswerCard = memo(function AnswerCard({
   useEffect(() => {
     if (!expanded) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // An Esc the card's note or its dialog has taken is not the card's.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
       onExpand(null);
       moreRef.current?.focus();
     };
     const onDown = (event: PointerEvent) => {
-      const target = event.target instanceof Node ? event.target : null;
-      if (target && cardRef.current?.contains(target)) return;
+      if (!outside(event.target)) return;
       onExpand(null);
     };
     document.addEventListener("keydown", onKey);
@@ -346,6 +363,13 @@ const AnswerCard = memo(function AnswerCard({
       document.removeEventListener("pointerdown", onDown);
     };
   }, [expanded, onExpand]);
+
+  // Outside the card: not in it, and not in a dialog it opened (a note's
+  // "Sil" asks in a dialog drawn outside the card).
+  const outside = (target: EventTarget | null) =>
+    target instanceof Element
+      ? !cardRef.current?.contains(target) && !target.closest(OWN_LAYERS)
+      : target !== null;
 
   return (
     <article
@@ -357,7 +381,13 @@ const AnswerCard = memo(function AnswerCard({
       data-outcome={question.outcome}
       data-targeted={targeted ? "true" : undefined}
       data-expanded={expanded ? "true" : undefined}
-      onBlur={targeted ? onLeave : undefined}
+      onBlur={(event) => {
+        if (targeted) onLeave();
+        // The focus left for the next card: the open one goes back, so it
+        // does not cover the card the focus is on.
+        if (expanded && event.relatedTarget && outside(event.relatedTarget))
+          onExpand(null);
+      }}
       style={{
         padding: "var(--space-4)",
         borderInlineStartWidth: "4px",

@@ -81,8 +81,10 @@ describe("the question screen on a desk (MDRS-248, tek ekran)", () => {
     expect(desk).toMatch(
       /\.take-body > \.take-nav \{[^}]*grid-area: nav;[^}]*position: static;/
     );
-    // The bar is one row.
-    expect(desk).toMatch(/\.take-bar \{[^}]*flex-wrap: nowrap;/);
+    // The bar is a row, which takes a second one only when it does not fit.
+    expect(desk).toMatch(
+      /\.take-bar \{[^}]*flex-direction: row;[^}]*flex-wrap: wrap;/
+    );
     // The list is a drawer, shown only while open.
     expect(desk).toMatch(/\.take-navigator \{[^}]*position: fixed;/);
     expect(desk).toMatch(
@@ -141,6 +143,23 @@ describe("the question screen on a desk (MDRS-248, tek ekran)", () => {
     await click(nav.querySelector("[aria-label='3. soru']") as HTMLElement);
     expect(nav.hasAttribute("data-open")).toBe(false);
     expect(host.querySelector("h2")?.textContent).toBe("Soru 3");
+  });
+
+  it("leaves the focus where it is in the open list when the page draws again", async () => {
+    let redraw: () => void = () => {};
+    function Ticking() {
+      const [, setTick] = useState(0);
+      redraw = () => setTick((n) => n + 1);
+      return createElement(Harness);
+    }
+    const host = await render(createElement(Ticking));
+    await click(
+      host.querySelector("[data-testid=take-list-toggle]") as HTMLElement
+    );
+    const third = host.querySelector("[aria-label='3. soru']") as HTMLElement;
+    third.focus();
+    await act(async () => redraw());
+    expect(document.activeElement).toBe(third);
   });
 
   it("names a pane as a region of its own", async () => {
