@@ -359,6 +359,7 @@ export function PracticeTake(source: PracticeSource) {
             as="h1"
             className="mds-h3"
             size="var(--fs-h3)"
+            weight="var(--weight-semibold)"
             text={attempt.setId ? attempt.title : t("poolTitle")}
           />
           <div className="flex flex-wrap items-center gap-3">

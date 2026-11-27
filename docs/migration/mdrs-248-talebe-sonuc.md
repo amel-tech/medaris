@@ -38,10 +38,15 @@ result) and `libs/i18n` (`tedris.json` only). Nazar, `nazar.json`,
 4. **Arabic everywhere on these screens** through one component,
    `ArabicText` (`arabic-text.tsx`): an all-Arabic text is one Arabic block
    (`textProps`); a text that mixes Turkish and Arabic, in either order,
-   keeps the page's direction and size and draws each Arabic run on its own
-   isolated element (`arabicRuns` + `textProps`), at `--lh-arabic` (1.8)
-   rather than the block's 2, so a Turkish line with one Arabic word does
-   not open up. It is used for the question and the options on both solving
+   keeps its own size and draws each Arabic run on its own isolated element
+   (`arabicRuns` + `textProps`), at `--lh-arabic` (1.8) rather than the
+   block's 2, so a Turkish line with one Arabic word does not open up. Its
+   direction is stated (`mixedDir`): right to left only when it is mostly
+   Arabic and ends in Arabic, otherwise left to right, so a Turkish question
+   that opens with an Arabic quotation is not turned around, and an Arabic
+   interface does not turn a Turkish question around either. A heading
+   passes its weight, which the Arabic block's book weight would otherwise
+   replace. It is used for the question and the options on both solving
    screens, the result cards (question, options, set title), the page and
    bar headings, and the exam briefing's title and zeroth question.
 
@@ -80,12 +85,16 @@ No virtual list was needed at 500.
 - The online exam's solving screen in a real browser: the sample exam is
   closed. The bar placement is covered by `exam-take.spec.ts` only.
 - A screen reader, Windows and Safari.
-- `tedrisLearn.OnlineExam.factTextSize` in `tedris-learn.json` is no longer
-  read; it was left in place because this change touches `tedris.json` only.
+- Keys in `tedris-learn.json` that are no longer read (found with a grep of
+  `apps/tedris` for each key of the two namespaces):
+  `OnlineExam.factTextSize`, and in `MyExams` `outcomeRight`,
+  `outcomeWrong`, `outcomeBlank`, `chosen`, `correctOption`, `noAnswer`,
+  `questionNumber`. They were left in place because this change touches
+  `tedris.json` only.
 
 ## Later
 
-- Remove the unused `tedrisLearn.OnlineExam.factTextSize` key (all three
+- Remove the eight unused `tedris-learn.json` keys listed above (all three
   locales).
 - With 500 questions the strip itself is tall (about 20 rows at 1440px).
   Grouping it by tens, or folding it, is a design decision.

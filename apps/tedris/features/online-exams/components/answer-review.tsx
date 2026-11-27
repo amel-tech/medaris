@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   memo,
   type ReactNode,
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -129,6 +130,9 @@ export function AnswerReview({
       filter === "all" ? items : items.filter((q) => q.outcome === filter),
     [items, filter]
   );
+  const visible = useMemo(() => new Set(shown.map((q) => q.id)), [shown]);
+  // Stable, so the memoised cards keep their props.
+  const leave = useCallback(() => setTargeted(null), []);
 
   // After the render that shows the card: scroll to it and focus it.
   useEffect(() => {
@@ -179,7 +183,7 @@ export function AnswerReview({
                   number: q.number,
                   outcome: t(q.outcome),
                 })}
-                aria-controls={cardId(q.id)}
+                aria-controls={visible.has(q.id) ? cardId(q.id) : undefined}
                 onClick={() => goTo(q)}
               >
                 {q.number}
@@ -192,7 +196,10 @@ export function AnswerReview({
       <ChoiceChips
         legend={t("filterLegend")}
         value={filter}
-        onChange={(v) => setFilter((v as Filter | null) ?? "all")}
+        onChange={(v) => {
+          setFilter((v as Filter | null) ?? "all");
+          setTargeted(null);
+        }}
         options={[
           {
             value: "all",
@@ -226,6 +233,7 @@ export function AnswerReview({
                 id={cardId(q.id)}
                 testId={cardTestId}
                 targeted={targeted === q.id}
+                onLeave={leave}
               />
             </li>
           ))}
@@ -241,11 +249,14 @@ const AnswerCard = memo(function AnswerCard({
   id,
   testId,
   targeted,
+  onLeave,
 }: {
   question: ReviewItem;
   id: string;
   testId: string;
   targeted: boolean;
+  /** focus left the card: its ring goes */
+  onLeave: () => void;
 }) {
   const t = useTranslations("tedris.AnswerReview");
   const look = LOOK[question.outcome];
@@ -259,6 +270,7 @@ const AnswerCard = memo(function AnswerCard({
       data-testid={testId}
       data-outcome={question.outcome}
       data-targeted={targeted ? "true" : undefined}
+      onBlur={targeted ? onLeave : undefined}
       style={{
         padding: "var(--space-4)",
         borderInlineStartWidth: "4px",

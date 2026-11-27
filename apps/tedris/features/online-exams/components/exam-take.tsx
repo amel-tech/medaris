@@ -734,6 +734,7 @@ export function ExamTake({
           id="exam-briefing"
           className="mds-h2"
           size="var(--fs-h2)"
+          weight="var(--weight-semibold)"
           text={brief.title}
         />
         <h2 className="mds-h3">{t("briefingTitle")}</h2>

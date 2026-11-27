@@ -142,7 +142,7 @@ describe("the answers' strip and cards (MDRS-248)", () => {
     const run = [...card.querySelectorAll("[lang=ar]")].find(
       (el) => el.textContent === "فَعَلَ"
     ) as HTMLElement;
-    expect(run.parentElement?.hasAttribute("dir")).toBe(false);
+    expect(run.parentElement?.getAttribute("dir")).toBe("ltr");
     expect(run.parentElement?.hasAttribute("data-mixed-arabic")).toBe(true);
     expect(run.parentElement?.getAttribute("lang")).toBeNull();
     // Arabic first, Turkish after: still the page's direction, only the
@@ -151,10 +151,46 @@ describe("the answers' strip and cards (MDRS-248)", () => {
       (el) => el.textContent === "اِسْمٌ"
     ) as HTMLElement;
     expect(lead.getAttribute("dir")).toBe("rtl");
-    expect(lead.parentElement?.hasAttribute("dir")).toBe(false);
+    expect(lead.parentElement?.getAttribute("dir")).toBe("ltr");
     expect(card.querySelector("[data-testid=answer-set]")?.textContent).toBe(
       "Set: Emsile"
     );
+  });
+
+  it("gives a mixed text the direction it ends in, and keeps a heading's weight on its Arabic", async () => {
+    const { ArabicText, mixedDir } = await import(
+      "~/features/online-exams/components/arabic-text"
+    );
+    expect(mixedDir("الْحَمْدُ لِلَّهِ hangi sûrenin ilk âyetidir?")).toBe("ltr");
+    expect(mixedDir("مَا مَعْنَى X فِي الْآيَةِ؟")).toBe("rtl");
+    const host = await render(
+      createElement(ArabicText, {
+        as: "h1",
+        text: "الصَّرْفُ",
+        size: "var(--fs-h1)",
+        weight: "var(--weight-medium)",
+      })
+    );
+    const h1 = host.querySelector("h1") as HTMLElement;
+    expect(h1.getAttribute("lang")).toBe("ar");
+    expect(h1.style.fontWeight).toBe("var(--weight-medium)");
+    expect(h1.style.lineHeight).toBe("var(--lh-arabic)");
+  });
+
+  it("drops the ring when the filter changes, and points only at cards that are shown", async () => {
+    const scrolled = vi
+      .spyOn(HTMLElement.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
+    const host = await mount([item(1), item(2), item(3)]);
+    await click(tiles(host)[0]);
+    expect(cards(host)[0].dataset.targeted).toBe("true");
+    await click(chip(host, "Doğru"));
+    expect(host.querySelector("[data-targeted]")).toBeNull();
+    expect(tiles(host)[0].getAttribute("aria-controls")).toBe(
+      cards(host)[0].id
+    );
+    expect(tiles(host)[1].hasAttribute("aria-controls")).toBe(false);
+    scrolled.mockRestore();
   });
 
   it("draws 500 questions without a virtual list, fast enough to click through", async () => {

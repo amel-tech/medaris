@@ -91,6 +91,7 @@ function Result({
         as="h1"
         className="mds-h1"
         size="var(--fs-h1)"
+        weight="var(--weight-medium)"
         text={result.title}
       />
     </div>
