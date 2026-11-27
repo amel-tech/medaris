@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.18.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.17.1...tedris-web-v2.18.0) (2026-11-27)
+
+
+### Features
+
+* **nazar-web, tedris-web, i18n, docs:** MDRS-248 quick option entry and aligned status badges ([#465](https://github.com/amel-tech/medaris/issues/465)) ([02399a9](https://github.com/amel-tech/medaris/commit/02399a9b5ceb3b0944bb87abad9d61c35cfd3b8a))
+* **tedris-web, i18n, docs:** MDRS-248 çalışma soruları for the talebe ([#460](https://github.com/amel-tech/medaris/issues/460)) ([e397931](https://github.com/amel-tech/medaris/commit/e397931c66f22ba7ed6cbcb542db4840cf871135))
+* **tedris-web, i18n, docs:** MDRS-248 çalışma soruları UX for the talebe ([#463](https://github.com/amel-tech/medaris/issues/463)) ([2593d7a](https://github.com/amel-tech/medaris/commit/2593d7a32d05e03312481eb1e3da08a276345538))
+* **tedris-web, i18n, docs:** MDRS-248 list every course document on one tab ([#461](https://github.com/amel-tech/medaris/issues/461)) ([6c7a3d2](https://github.com/amel-tech/medaris/commit/6c7a3d250d97811baca8b4ced188a4c89aee8a63))
+* **tedrisat, services, tedris-web, nazar-web, i18n, docs:** MDRS-248 çalışma havuzu ([#462](https://github.com/amel-tech/medaris/issues/462)) ([8bb242c](https://github.com/amel-tech/medaris/commit/8bb242c758a6e0eb3b0963471c27eeb2ec4366d7))
+* **tedrisat, tedris-web, nazar-web, services, i18n:** MDRS-248 notify a talebe of an answer ([#456](https://github.com/amel-tech/medaris/issues/456)) ([0231291](https://github.com/amel-tech/medaris/commit/02312915e6dd3da2c136d1ff3e9feeb502ec4047))
+
 ## [2.17.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.17.0...tedris-web-v2.17.1) (2026-11-25)
 
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.23](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.22...tedrisat-v0.2.23) (2026-11-27)
+
+
+### Features
+
+* **tedrisat, services, docs:** MDRS-248 çalışma setleri API ([#458](https://github.com/amel-tech/medaris/issues/458)) ([70b0fb2](https://github.com/amel-tech/medaris/commit/70b0fb268404d06c1f0ab55566132c1e0170585c))
+* **tedrisat, services, tedris-web, nazar-web, i18n, docs:** MDRS-248 çalışma havuzu ([#462](https://github.com/amel-tech/medaris/issues/462)) ([8bb242c](https://github.com/amel-tech/medaris/commit/8bb242c758a6e0eb3b0963471c27eeb2ec4366d7))
+* **tedrisat, tedris-web, nazar-web, services, i18n:** MDRS-248 notify a talebe of an answer ([#456](https://github.com/amel-tech/medaris/issues/456)) ([0231291](https://github.com/amel-tech/medaris/commit/02312915e6dd3da2c136d1ff3e9feeb502ec4047))
+
 ## [0.2.22](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.21...tedrisat-v0.2.22) (2026-11-25)
 
 
