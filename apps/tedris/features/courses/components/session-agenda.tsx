@@ -1,6 +1,7 @@
 "use client";
 
 import type { AgendaStepResponse } from "@medaris/services/tedrisat";
+import { paragraphDir } from "@medaris/tokens/arabic";
 import { currentAgendaStep } from "../session-model";
 import { useCelseClock } from "../use-celse-clock";
 import { ArabicText } from "./arabic-text";
@@ -62,7 +63,7 @@ export function SessionAgenda({
                 {step.time}
               </span>
               <span className="flex min-inline-0 flex-1 flex-col">
-                <span className="mds-body-sm" dir="auto">
+                <span className="mds-body-sm" dir={paragraphDir(step.title)}>
                   <ArabicText text={step.title} />
                 </span>
               </span>

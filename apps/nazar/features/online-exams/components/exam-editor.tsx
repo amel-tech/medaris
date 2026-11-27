@@ -46,7 +46,7 @@ import {
   saveExamSettings,
   setExamQuestionPoints,
 } from "../actions";
-import { boxDir, textProps } from "../arabic";
+import { paragraphDir, textProps } from "../arabic";
 import { setExamQuestionTalebeNotes } from "../notes-actions";
 import {
   type AnswerModeValue,
@@ -1415,7 +1415,7 @@ function QuestionRow({
           type="button"
           tabIndex={-1}
           onClick={onEdit}
-          dir={boxDir(question.text)}
+          dir={paragraphDir(question.text)}
           className="mds-body min-inline-0 flex-1 basis-[calc(100%-5rem)] cursor-pointer truncate border-0 bg-transparent p-0 text-start text-inherit md:basis-[12rem]"
         >
           {question.text ? (

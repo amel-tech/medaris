@@ -10,6 +10,7 @@ import { Switch } from "@medaris/ui/mds/switch";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
+import { paragraphDir } from "~/features/online-exams/arabic";
 import { ArabicText } from "~/features/online-exams/components/arabic-text";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { deleteMyQuestionNote, saveMyQuestionNote } from "../actions";
@@ -277,7 +278,9 @@ export function QuestionNote({
               }
             >
               <Textarea
-                dir="auto"
+                // A note that quotes Arabic reads in the page's direction; one
+                // in Arabic only, right to left (MDRS-248).
+                dir={paragraphDir(body)}
                 rows={4}
                 maxLength={NOTE_MAX}
                 // Held while a write is out, so its answer never overwrites newer text.

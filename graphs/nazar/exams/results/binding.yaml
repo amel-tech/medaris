@@ -28,7 +28,7 @@
 #   - FAIL.other of refreshing, and the release's and the close's refusals (FAIL.forbidden, FAIL.notOpen): the page offers neither
 #     button to one the API would refuse, and the walk cannot make tedrisat refuse in between. FAIL.other of releasing and closingEarly
 #     are walked by aborting the page's server action in the browser (`fail: abort`): the page puts the view back and the toast says
-#     why ("Bir şeyler ters gitti…", results-view.tsx:156, 184).
+#     why ("Bir şeyler ters gitti…", results-view.tsx:158, 186).
 #   - The switch times of a row (rowSwitchTimes): exams.mjs takes the exam through the API, which records no tab switch.
 # What a walk leaves that its teardown cannot undo: the audit rows of the reads and of the release.
 schema: delurio-graph/0

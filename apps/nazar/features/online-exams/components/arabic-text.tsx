@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
-import { arabicRuns, isMixed, mixedDir, textProps } from "../arabic";
+import { arabicRuns, isMixed, paragraphDir, textProps } from "../arabic";
 
 /**
  * A question's or an option's text by the Arabic text standard (MDRS-248):
  * an Arabic text is one Arabic block and a Latin one is left to the browser
  * (`textProps`). A text that mixes the two, in either order, takes the
- * direction of its frame (`mixedDir`: a Turkish question that opens with a
- * hadith stays left to right) and draws each Arabic run in it, with its
- * brackets and quotes, on its own isolated right-to-left element
- * (`arabicRuns`), so "«زَيْدٌ» kelimesinin i'râbı nedir?" keeps its Turkish
- * order, its quotes around the word and its Arabic at the Arabic size.
+ * page's direction (`paragraphDir`: a Turkish question that opens with a
+ * hadith stays left to right on a Turkish page) and draws each Arabic run in
+ * it, with its brackets and quotes, on its own isolated right-to-left
+ * element (`arabicRuns`), so "«زَيْدٌ» kelimesinin i'râbı nedir?" keeps its
+ * Turkish order, its quotes around the word and its Arabic at the Arabic
+ * size.
  */
 export function ArabicText({
   text,
@@ -40,7 +41,7 @@ export function ArabicText({
     at += run.text.length;
   }
   return (
-    <span className={className} dir={mixedDir(text)} data-mixed-arabic="">
+    <span className={className} dir={paragraphDir(text)} data-mixed-arabic="">
       {parts}
     </span>
   );

@@ -13,7 +13,8 @@ export interface ArabicTextStyle {
 
 export interface ArabicTextProps {
   lang?: "ar";
-  dir: "rtl" | "auto";
+  /** rtl on an Arabic-only text; otherwise the `uiDir` given, absent without one (the page's). */
+  dir?: "rtl" | "ltr";
   /** On an Arabic block: lang="ar" here does not re-point the Latin size tokens. */
   "data-arabic-block"?: "";
   style?: ArabicTextStyle;
@@ -25,16 +26,27 @@ export declare function startsArabic(text: string): boolean;
 export declare function hasArabic(text: string): boolean;
 /** `size` (a CSS length, default 1em) x --arabic-scale, never under --fs-arabic-text-min, both x `scale`. */
 export declare function arabicFontSize(size?: string, scale?: number): string;
+/** The interface's direction: ltr for tr and en, rtl for ar. */
+export type UiDir = "ltr" | "rtl";
+/** True when the text holds a Latin letter. */
+export declare function hasLatin(text: string): boolean;
+/** True when the text holds Arabic script and no Latin letter. */
+export declare function isArabicOnly(text: string): boolean;
+/**
+ * A text's paragraph direction: rtl when it is Arabic only, otherwise
+ * `uiDir` (undefined without one: the element takes the page's direction).
+ */
+export declare function paragraphDir(text: string): "rtl" | undefined;
+export declare function paragraphDir(text: string, uiDir: UiDir): UiDir;
 /** The lang, dir and style of a question's, an option's or an answer's text. */
 export declare function arabicTextProps(
   text: string,
   size?: string,
-  scale?: number
+  scale?: number,
+  uiDir?: UiDir
 ): ArabicTextProps;
 /** True when the text holds both Arabic and Latin letters. */
 export declare function isMixed(text: string): boolean;
-/** A mixed text's direction: rtl only when it is mostly Arabic and ends in Arabic. */
-export declare function mixedDir(text: string): "rtl" | "ltr";
 /** A mixed text cut into its Arabic runs (with their brackets and quotes) and its other runs, in order. */
 export declare function arabicRuns(
   text: string

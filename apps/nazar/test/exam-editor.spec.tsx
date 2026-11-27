@@ -1473,10 +1473,11 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Düzenle"));
     expect(textOf(root).getAttribute("lang")).toBe("ar");
     expect(option(root, 1).getAttribute("dir")).toBe("rtl");
-    expect(option(root, 2).getAttribute("dir")).toBe("auto");
+    expect(option(root, 2).hasAttribute("dir")).toBe(false);
     expect(option(root, 2).getAttribute("lang")).toBeNull();
     await cleanup();
-    // A Turkish text with an Arabic phrase: a left-to-right frame, stated, the phrase an Arabic run.
+    // A Turkish text with an Arabic phrase: the page's direction (no dir of
+    // its own, so <html dir> decides), the phrase an Arabic run.
     const mixed = await render(
       wrap(
         <ExamEditor
@@ -1488,7 +1489,7 @@ describe("the exam editor (MDRS-299)", () => {
     const line = mixed.querySelector(
       'article[aria-label="1. soru"] button[tabindex="-1"] > span'
     ) as HTMLElement;
-    expect(line.getAttribute("dir")).toBe("ltr");
+    expect(line.hasAttribute("dir")).toBe(false);
     expect(line.getAttribute("lang")).toBeNull();
     expect(line.querySelector("[lang=ar]")?.textContent).toBe("الْحَمْدُ لِلَّهِ");
     await cleanup();
@@ -1507,7 +1508,7 @@ describe("the exam editor (MDRS-299)", () => {
     const box = hadith.querySelector(
       'article[aria-label="1. soru"] button[tabindex="-1"]'
     ) as HTMLElement;
-    expect(box.getAttribute("dir")).toBe("ltr");
+    expect(box.hasAttribute("dir")).toBe(false);
     const runs = [...box.querySelectorAll("[lang=ar]")];
     expect(runs.map((r) => [r.textContent, r.getAttribute("dir")])).toEqual([
       ["قَالَ رَسُولُ اللَّهِ ﷺ: «إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ»", "rtl"],
