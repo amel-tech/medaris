@@ -231,6 +231,31 @@ describe("solving a çalışma seti (MDRS-248)", () => {
     expect(router.push).toHaveBeenCalledWith("/calisma-sorulari/deneme/a1");
   });
 
+  it("leads with Sonraki while there is a next question, and with Bitir after the last", async () => {
+    mocks.startPractice.mockResolvedValue(ok(attempt()));
+    mocks.savePracticeChoice.mockImplementation(async (_a, questionId, ids) =>
+      ok({ questionId, optionIds: ids, savedAt: new Date() })
+    );
+    const host = await mount();
+    // "Bitir" is there from the start, but quiet beside "Sonraki".
+    expect(button("Sonraki").className).toContain("mds-btn--primary");
+    expect(button("Bitir").className).toContain("mds-btn--outline");
+    expect(host.textContent).toContain("0/2 cevaplandı");
+    expect(host.textContent).toContain("Cevaplanmadı (2)");
+    await click(radio(host, "Elif"));
+    await settle();
+    expect(host.textContent).toContain("1/2 cevaplandı");
+    expect(host.textContent).toContain("Cevaplandı (1)");
+    await click(button("Sonraki"));
+    await settle();
+    await click(radio(host, "Dal"));
+    await settle();
+    // Every question answered: nothing comes next, and "Bitir" leads.
+    expect(button("Sonraki").disabled).toBe(true);
+    expect(button("Bitir").className).toContain("mds-btn--primary");
+    expect(host.textContent).toContain("2/2 cevaplandı");
+  });
+
   it("says the set is not there when the API refuses it", async () => {
     mocks.startPractice.mockResolvedValue({
       success: false,

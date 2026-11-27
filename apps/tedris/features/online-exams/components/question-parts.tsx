@@ -3,7 +3,7 @@
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { textProps } from "../arabic";
 import { type QuestionState, TEXT_SCALES } from "../take-model";
 
@@ -107,7 +107,7 @@ export function TextSizeButtons({
  * day and dark by night. The current question carries a brand ring on top.
  * Each button's name says its state too, so colour is never the only cue.
  */
-const INDICATOR: Record<QuestionState, CSSProperties> = {
+export const INDICATOR: Record<QuestionState, CSSProperties> = {
   // Not answered yet: plain.
   unseen: {
     background: "var(--background-neutral-surface)",
@@ -140,12 +140,15 @@ export function QuestionNavigator({
   onGo,
   title,
   itemLabel,
+  legend,
 }: {
   items: ReadonlyArray<{ id: string; state: QuestionState }>;
   index: number;
   onGo: (to: number) => void;
   title: string;
   itemLabel: (number: number, state: QuestionState) => string;
+  /** a key to the colours under the list; the exam draws none */
+  legend?: ReactNode;
 }) {
   return (
     <nav className="mds-card flex flex-col gap-2" aria-label={title}>
@@ -170,6 +173,7 @@ export function QuestionNavigator({
           </li>
         ))}
       </ol>
+      {legend}
     </nav>
   );
 }

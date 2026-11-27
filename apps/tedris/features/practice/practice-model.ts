@@ -106,13 +106,17 @@ export const actionOf = (
 ): PracticeAction =>
   set.openAttemptId ? "continue" : set.attemptCount > 0 ? "again" : "start";
 
-/** "62.50" as the locale writes a percentage: "%62,5" in Turkish, "62.5%" in English. */
+/**
+ * "62.50" as the locale writes a percentage, as a whole number: "%63" in
+ * Turkish, "63%" in English. The API keeps two decimals; a talebe reads a
+ * score, and "%83,33" beside "%80" only makes the column harder to scan.
+ */
 export const percentText = (percent: string, locale: string): string => {
   const value = Number(percent);
   if (!Number.isFinite(value)) return `${percent}%`;
   return new Intl.NumberFormat(locale, {
     style: "percent",
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(value / 100);
 };
 

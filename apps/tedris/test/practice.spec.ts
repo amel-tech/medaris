@@ -18,6 +18,7 @@ import {
   randomDefault,
   startIndex,
 } from "~/features/practice/practice-model";
+import { intlMock } from "./intl-mock";
 
 /**
  * Çalışma Soruları (MDRS-248, Faz 3): the list by course with "Başla",
@@ -38,6 +39,8 @@ const lookup = (key: string, values: Record<string, unknown> = {}) =>
     (acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)),
     text(key)
   );
+// The result's body is a client component: the real catalogue behind useTranslations.
+vi.mock("next-intl", async (orig) => intlMock(await orig()));
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => lookup,
   getLocale: async () => "tr",
@@ -140,8 +143,9 @@ describe("the çalışma soruları model (MDRS-248)", () => {
     expect(actionOf(set({ attemptCount: 1 }))).toBe("again");
   });
 
-  it("writes a percentage the Turkish way", () => {
-    expect(percentText("62.50", "tr")).toBe("%62,5");
+  it("writes a percentage the Turkish way, as a whole number", () => {
+    expect(percentText("62.50", "tr")).toBe("%63");
+    expect(percentText("83.33", "tr")).toBe("%83");
     expect(percentText("100.00", "tr")).toBe("%100");
   });
 
@@ -267,8 +271,19 @@ describe("the Çalışma Soruları page (MDRS-248)", () => {
     ]);
     expect(html).toContain('id="ders-c1"');
     expect(html).toContain(">Emsile<");
-    expect(html).toContain("10 soru · 2 deneme");
-    expect(html).toContain("Son sonucun: %75");
+    // The course heading counts the sets its rows call "Çözüldü"; one being
+    // solved again is "Devam ediyor", not solved.
+    expect(html).toContain("3 set · 1 çözüldü");
+    // One table, a row per set, each with its state in words.
+    expect(html.match(/<table/g)).toHaveLength(1);
+    expect(html.match(/data-testid="practice-set"/g)).toHaveLength(3);
+    expect(html).toMatch(/data-action="start".*?>Yeni</);
+    expect(html).toMatch(/data-action="again".*?>Çözüldü</);
+    expect(html).toMatch(/data-action="continue".*?>Devam ediyor</);
+    expect(html).toMatch(/data-testid="practice-set-last"[^>]*><strong>%75</);
+    // The phone's line in place of the number cells, for the eye only.
+    expect(html).toContain("10 soru · 2 deneme · Son sonucun: %75");
+    expect(html).toMatch(/data-testid="practice-set-facts" aria-hidden="true"/);
     expect(html).toContain('href="/calisma-sorulari/a"');
     expect(html).toContain(">Başla<");
     expect(html).toContain(">Tekrar çöz<");
@@ -293,18 +308,31 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
 
   it("shows the percentage, the counts and every choice beside the correct option", async () => {
     const html = await renderResult(finished);
-    expect(html).toContain("%33,33");
+    expect(html).toContain("%33");
+    expect(html).not.toContain("%33,33");
     expect(html).toMatch(/data-testid="practice-correct">1</);
     expect(html).toMatch(/data-testid="practice-wrong">1</);
     expect(html).toMatch(/data-testid="practice-blank">1</);
-    // The wrong one: the choice in the info colour, the correct option in success.
+    // The wrong one: the choice in the error colour with its cross, the
+    // correct option in success with its tick; a right choice stays info.
     expect(html).toContain('data-outcome="WRONG"');
     expect(html).toMatch(
-      /data-chosen="true"[^>]*>.*?İkinci bab.*?mds-badge--info[^>]*>Senin seçimin/
+      /data-chosen="true"[^>]*>(?:(?!<\/li>).)*?İkinci bab(?:(?!<\/li>).)*?mds-badge--error(?:(?!<\/li>).)*?<svg(?:(?!<\/li>).)*?Senin seçimin/
     );
     expect(html).toMatch(
-      /data-correct="true"[^>]*>.*?Birinci bab.*?mds-badge--success[^>]*>Doğru şık/
+      /data-correct="true"[^>]*>(?:(?!<\/li>).)*?Birinci bab(?:(?!<\/li>).)*?mds-badge--success(?:(?!<\/li>).)*?<svg(?:(?!<\/li>).)*?Doğru şık/
     );
+    expect(html).toMatch(
+      /data-chosen="true" data-correct="true"[^>]*>(?:(?!<\/li>).)*?mds-badge--info[^>]*>Senin seçimin/
+    );
+    // Every question, and a filter by outcome with the counts.
+    expect(html.match(/data-testid="practice-answer"/g)).toHaveLength(3);
+    expect(html).toContain("Tümü (3)");
+    expect(html).toContain("Doğru (1)");
+    expect(html).toContain("Yanlış (1)");
+    expect(html).toContain("Boş (1)");
+    // One set: no "Set: …" under each question.
+    expect(html).not.toContain('data-testid="practice-answer-set"');
     expect(html).toContain("Bu soruyu boş bıraktın.");
     expect(html).toContain('href="/calisma-sorulari/s1"');
     expect(html).toContain(">Tekrar çöz<");
