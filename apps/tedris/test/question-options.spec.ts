@@ -12,6 +12,9 @@ import {
 import { cleanup, click, key, render } from "./dom";
 import { intlMock } from "./intl-mock";
 
+/** The question sheet's look, shared by tedris and nazar (MDRS-248, ortak görünüm). */
+const SHEET_CSS = `${__dirname}/../../../libs/ui/src/styles/mds/question.css`;
+
 /**
  * The option tiles of the question screen and the equal answer cards of the
  * result (MDRS-248, the owner: "şıkları kare halinde mi yapsak aynı hizada
@@ -127,7 +130,8 @@ describe("the option tiles (MDRS-248)", () => {
   });
 
   it("styles the tiles as a grid with the control hidden from sight only", () => {
-    const css = readFileSync(`${__dirname}/../app/tedris.css`, "utf8");
+    // The sheet's look is @medaris/ui's, shared with nazar's preview (ortak görünüm).
+    const css = readFileSync(SHEET_CSS, "utf8");
     expect(css).toMatch(/\.take-options \{[^}]*display: grid;/);
     // Each tile as tall as its own text in one column; in the 2×2 grid the
     // two tiles of a row stretch to each other, not to the tallest tile of
@@ -145,8 +149,9 @@ describe("a long question on the question screen (MDRS-248, uzun soru)", () => {
   const css = readFileSync(`${__dirname}/../app/tedris.css`, "utf8");
 
   it("keeps the question's own lines and wraps it in the reading column", () => {
-    expect(css).toMatch(/\.take-question \{[^}]*white-space: pre-line;/);
-    expect(css).toMatch(/\.take-question \{[^}]*overflow-wrap: anywhere;/);
+    const sheet = readFileSync(SHEET_CSS, "utf8");
+    expect(sheet).toMatch(/\.take-question \{[^}]*white-space: pre-line;/);
+    expect(sheet).toMatch(/\.take-question \{[^}]*overflow-wrap: anywhere;/);
   });
 
   it("holds the buttons to the bottom of the screen on every width", () => {

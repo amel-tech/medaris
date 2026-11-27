@@ -2540,7 +2540,10 @@
     "unsavedTitle": "Açık sorudaki değişiklikler kaydedilmedi",
     "unsavedBody": "Devam ederseniz bu sorudaki değişiklikler kaybolur. Saklamak için “Soruya dön”e basıp soruyu kaydedin.",
     "unsavedDrop": "Değişiklikleri bırak",
-    "unsavedKeep": "Soruya dön"
+    "unsavedKeep": "Soruya dön",
+    "multiHint": "Birden fazla doğru olabilir.",
+    "questionPane": "Soru metni",
+    "questionRows": "Soru listesi"
   },
   "Practice": {
     "title": "Çalışma Soruları",

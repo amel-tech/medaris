@@ -1198,7 +1198,7 @@ describe("the exam editor (MDRS-299)", () => {
       "[role=checkbox]"
     ) as HTMLElement;
 
-  it("draws a saved question as the talebe sees it: its whole text, its option tiles, the correct one marked (MDRS-248)", async () => {
+  it("draws a saved question with the talebe's own sheet: its whole text, its option tiles, the correct one marked (MDRS-248, ortak görünüm)", async () => {
     const root = await render(
       wrap(
         <ExamEditor
@@ -1217,32 +1217,38 @@ describe("the exam editor (MDRS-299)", () => {
     const card = root.querySelector(
       'article[aria-label="1. soru"]'
     ) as HTMLElement;
+    // tedris's QuestionSheet, read only: the same card, text and tiles.
+    const sheet = card.querySelector(".take-body") as HTMLElement;
+    expect(sheet.className).toContain("mds-card");
+    expect(sheet.dataset.readonly).toBe("true");
     // Its text with its lines, not cut to one.
-    const text = card.querySelector("p.whitespace-pre-line") as HTMLElement;
+    const text = sheet.querySelector(".take-question") as HTMLElement;
     expect(text.textContent).toBe("Kıyasın rükünleri\nkaç tanedir?");
+    expect(sheet.getAttribute("aria-labelledby")).toBe(text.id);
     expect(card.textContent).toContain("3. Kıyas");
-    // The options as tiles, each with its letter; the correct one marked
-    // with a ✓ and its name, never colour alone.
-    const tiles = [...card.querySelectorAll("ul li")] as HTMLElement[];
+    expect(card.querySelector(".mds-caption")?.textContent).toBe("1. soru");
+    // The options as the talebe's tiles, each with its letter; the correct
+    // one marked with a ✓ and its name, never colour alone.
+    const tiles = [...card.querySelectorAll(".take-options .mds-choice")];
     expect(
-      tiles.map((li) => li.querySelector("[aria-hidden]")?.textContent)
+      tiles.map(
+        (tile) => tile.querySelector(".take-option__letter")?.textContent
+      )
     ).toEqual(["A", "B", "C"]);
-    expect(tiles.map((li) => li.hasAttribute("data-correct"))).toEqual([
-      false,
-      true,
-      false,
-    ]);
+    expect(
+      tiles.map((tile) => tile.querySelector("[data-correct-mark]") !== null)
+    ).toEqual([false, true, false]);
     expect(tiles[1]?.textContent).toContain("✓");
     expect(tiles[1]?.textContent).toContain("Doğru");
     expect(tiles[0]?.textContent).not.toContain("Doğru");
     // Short options sit two to a row on a wide screen, as on the çalışma screen.
-    expect(card.querySelector("ul")?.className).toContain("md:grid-cols-2");
+    expect(card.querySelector(".take-options--grid")).not.toBeNull();
     // No badge says it is complete, and no row facts are left over.
     expect(card.textContent).not.toContain("Tamam");
     expect(card.textContent).not.toContain("şık ·");
     expect(card.hasAttribute("data-lacks-card")).toBe(false);
     expect(card.querySelector("[data-lacks]")).toBeNull();
-    // The icons at its corner: notes, edit and delete, each named.
+    // The icons where the talebe has the note icon: notes, edit and delete.
     expect(button(card, "Talebe notları")).toBeTruthy();
     expect(button(card, "1. soruyu sil")).toBeTruthy();
     expect(forms(root)).toHaveLength(0);
@@ -1267,12 +1273,48 @@ describe("the exam editor (MDRS-299)", () => {
         />
       )
     );
-    expect(root.querySelector("article ul")?.className).not.toContain(
-      "md:grid-cols-2"
-    );
+    expect(root.querySelector("article .take-options--list")).not.toBeNull();
+    expect(root.querySelector("article .take-options--grid")).toBeNull();
   });
 
-  it("ends a question that is not ready with an exclamation mark naming what it lacks, its card tinted red (MDRS-248)", async () => {
+  it("lists every question on the end side as one line that brings it into view (MDRS-248, ortak görünüm)", async () => {
+    const long = "Kıyasın rükünleri nelerdir ve hangisi asıl sayılır? ".repeat(
+      3
+    );
+    const root = await render(
+      wrap(
+        <ExamEditor
+          courseId="c1"
+          draft={saved({ text: `${long}\nikinci satır` })}
+        />
+      )
+    );
+    const nav = root.querySelector(
+      'nav[aria-label="Soru listesi"]'
+    ) as HTMLElement;
+    const rows = [...nav.querySelectorAll("[data-question-row]")];
+    expect(rows).toHaveLength(1);
+    const open = rows[0]?.querySelector("button") as HTMLButtonElement;
+    // One line: the number, then the text with its lines joined, cut by CSS.
+    expect(open.textContent).toBe(
+      `1. soru${`${long}ikinci satır`.replace(/\s+/g, " ").trim()}`
+    );
+    expect(open.querySelector(".truncate")).not.toBeNull();
+    const item = root.querySelector(
+      `#${CSS.escape(open.getAttribute("aria-controls") ?? "")}`
+    );
+    expect(item?.querySelector('article[aria-label="1. soru"]')).not.toBeNull();
+    expect(open.hasAttribute("aria-current")).toBe(false);
+    await click(open);
+    await settle(10);
+    expect(open.getAttribute("aria-current")).toBe("true");
+    expect(document.activeElement).toBe(item?.querySelector("article"));
+    // Desk only: a phone has the questions alone.
+    expect(nav.className).toContain("hidden");
+    expect(nav.className).toContain("min-[64rem]:flex");
+  });
+
+  it("ends a question that is not ready with an exclamation mark naming what it lacks, its card and its line tinted red (MDRS-248)", async () => {
     const root = await render(
       wrap(
         <ExamEditor
@@ -1293,17 +1335,25 @@ describe("the exam editor (MDRS-299)", () => {
       'article[aria-label="1. soru"]'
     ) as HTMLElement;
     expect(card.hasAttribute("data-lacks-card")).toBe(true);
-    expect(card.className).toContain("bg-error-subtle");
+    expect(card.querySelector(".take-body")?.className).toContain(
+      "bg-error-subtle"
+    );
     expect(card.textContent).not.toContain("Eksik");
-    // At the end of the question's text, a button the keyboard reaches,
-    // named by what is missing.
+    // Beside its number, a button the keyboard reaches, named by what is missing.
     const mark = card.querySelector("[data-lacks]") as HTMLButtonElement;
-    expect(mark.closest("p.whitespace-pre-line")).not.toBeNull();
+    expect(mark.closest(".question-note-anchor")).not.toBeNull();
     expect(mark.tagName).toBe("BUTTON");
     expect(mark.getAttribute("aria-label")).toBe(
       "Eksik: Doğru şık işaretli değil, Konu seçilmedi"
     );
     expect(mark.querySelector(".mds-icon")).not.toBeNull();
+    // Its line in the list says so too.
+    const row = root.querySelector("[data-question-row]") as HTMLElement;
+    expect(row.hasAttribute("data-lacks-row")).toBe(true);
+    expect(row.className).toContain("bg-error-subtle");
+    expect(row.querySelector("[data-lacks]")?.getAttribute("aria-label")).toBe(
+      mark.getAttribute("aria-label")
+    );
     // It opens the question, as its edit icon does.
     await click(mark);
     expect(forms(root)).toHaveLength(1);
@@ -1547,9 +1597,9 @@ describe("the exam editor (MDRS-299)", () => {
       })
     );
     // Its card marks "Dört", now B, as the correct one.
-    const correct = root.querySelector(
-      'article[aria-label="1. soru"] li[data-correct]'
-    );
+    const correct = root
+      .querySelector('article[aria-label="1. soru"] [data-correct-mark]')
+      ?.closest(".mds-choice");
     expect(correct?.textContent).toContain("B");
     expect(correct?.textContent).toContain("Dört");
   });
@@ -1673,15 +1723,17 @@ describe("the exam editor (MDRS-299)", () => {
     const row = root.querySelector(
       'article[aria-label="1. soru"]'
     ) as HTMLElement;
-    // The whole paragraph reads right to left; the Arabic option tile too.
-    expect(
-      row.querySelector("p.whitespace-pre-line")?.getAttribute("dir")
-    ).toBe("rtl");
-    const text = row.querySelector("p [lang=ar]") as HTMLElement;
+    // The whole paragraph reads right to left, as on the talebe's screen
+    // (the same ArabicText); the Arabic option tile too.
+    const text = row.querySelector(".take-question") as HTMLElement;
     expect(text.getAttribute("dir")).toBe("rtl");
-    expect(row.querySelector("li[data-correct] [lang=ar]")?.textContent).toBe(
-      "كَثِيرُ الرَّحْمَةِ"
-    );
+    expect(text.getAttribute("lang")).toBe("ar");
+    expect(
+      row
+        .querySelector("[data-correct-mark]")
+        ?.closest(".mds-choice")
+        ?.querySelector("[lang=ar]")?.textContent
+    ).toBe("كَثِيرُ الرَّحْمَةِ");
     expect(text.textContent).toBe("مَا مَعْنَى «الرَّحْمٰنِ»؟");
     expect(text.style.fontFamily).toBe("var(--font-arabic)");
     await click(button(root, "1. soruyu düzenle"));
@@ -1701,7 +1753,7 @@ describe("the exam editor (MDRS-299)", () => {
       )
     );
     const line = mixed.querySelector(
-      'article[aria-label="1. soru"] p.whitespace-pre-line > span'
+      'article[aria-label="1. soru"] .take-question'
     ) as HTMLElement;
     expect(line.hasAttribute("dir")).toBe(false);
     expect(line.getAttribute("lang")).toBeNull();
@@ -1720,7 +1772,7 @@ describe("the exam editor (MDRS-299)", () => {
       )
     );
     const box = hadith.querySelector(
-      'article[aria-label="1. soru"] p.whitespace-pre-line'
+      'article[aria-label="1. soru"] .take-question'
     ) as HTMLElement;
     expect(box.hasAttribute("dir")).toBe(false);
     const runs = [...box.querySelectorAll("[lang=ar]")];

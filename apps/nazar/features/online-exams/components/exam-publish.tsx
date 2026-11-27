@@ -21,10 +21,9 @@ import { fieldsOf, instantOf } from "~/features/sessions/sessions";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { unpublishOnlineExam } from "../actions";
-import { paragraphDir } from "../arabic";
 import { onlineExamErrorKey, READS_AGAIN } from "../online-exams";
-import { ArabicText } from "./arabic-text";
 import { wholePercent } from "./practice-sets-table";
+import { HocaSheet, QuestionsBoard, usePickedQuestion } from "./question-board";
 import { QuestionNotesSwitch } from "./talebe-notes-toggle";
 
 const MINUTE = 60_000;
@@ -397,6 +396,7 @@ export function PublishedExam({
   const { notify } = useToaster();
   const [asking, setAsking] = useState(false);
   const [sending, setSending] = useState(false);
+  const { picked, pick, placeId } = usePickedQuestion();
   const when = (at: Date | string | null | undefined) =>
     at
       ? new Intl.DateTimeFormat(locale, {
@@ -552,44 +552,49 @@ export function PublishedExam({
         <h2 id="published-questions" className="mds-h2">
           {t("OnlineExams.questionsTitle", { count: draft.questions.length })}
         </h2>
-        <ol className="flex list-none flex-col gap-3 ps-0">
-          {draft.questions.map((q) => (
-            <li key={q.id} className="mds-card flex flex-col gap-2 p-4">
-              {/* The talebe-notes icon works on a published and a locked
-                  set or exam too (MDRS-248): it is not the question's content. */}
-              <div className="flex items-center justify-between gap-2">
-                <strong>
-                  {t("OnlineExams.questionNumber", { number: q.number })}
-                </strong>
-                <QuestionNotesSwitch
-                  examId={draft.id}
-                  kind={kind}
-                  question={q}
-                />
-              </div>
-              {/* An Arabic-only question is laid out right to left, wrapped
-                  lines too; one with a Latin letter takes the page's. */}
-              <p className="mds-body" dir={paragraphDir(q.text)}>
-                <ArabicText text={q.text} />
-              </p>
-              <ol className="mds-body-sm flex flex-col gap-1" type="A">
-                {q.options.map((o) => (
-                  <li key={o.id}>
-                    <ArabicText text={o.text} />
-                    {o.correct ? (
-                      <>
-                        {" "}
-                        <Badge variant="success">
-                          {t("OnlineExams.correct")}
-                        </Badge>
-                      </>
-                    ) : null}
-                  </li>
-                ))}
-              </ol>
-            </li>
-          ))}
-        </ol>
+        {/* As the editor shows them (question-board.tsx, MDRS-248 ortak
+            görünüm): each question as the talebe sees it, one line each on
+            the end side of a desk. */}
+        <QuestionsBoard
+          lines={draft.questions.map((q) => ({
+            key: q.id,
+            number: q.number,
+            text: q.text,
+          }))}
+          picked={picked}
+          placeId={placeId}
+          onPick={(key) => pick(key)}
+        >
+          <ol className="flex list-none flex-col gap-3 ps-0">
+            {draft.questions.map((q) => (
+              <li key={q.id} id={placeId(q.id)} className="scroll-mt-4">
+                <article
+                  className="flex flex-col gap-2"
+                  aria-label={t("OnlineExams.questionNumber", {
+                    number: q.number,
+                  })}
+                  tabIndex={-1}
+                >
+                  <HocaSheet
+                    question={q}
+                    number={q.number}
+                    picked={q.id === picked}
+                    tools={
+                      // The talebe-notes icon works on a published and a
+                      // locked set or exam too (MDRS-248): it is not the
+                      // question's content.
+                      <QuestionNotesSwitch
+                        examId={draft.id}
+                        kind={kind}
+                        question={q}
+                      />
+                    }
+                  />
+                </article>
+              </li>
+            ))}
+          </ol>
+        </QuestionsBoard>
       </section>
     </div>
   );

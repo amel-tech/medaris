@@ -2540,7 +2540,10 @@
     "unsavedTitle": "The open question has unsaved changes",
     "unsavedBody": "If you go on, the changes to this question are lost. To keep them, press “Back to the question” and save it.",
     "unsavedDrop": "Discard changes",
-    "unsavedKeep": "Back to the question"
+    "unsavedKeep": "Back to the question",
+    "multiHint": "More than one may be right.",
+    "questionPane": "Question text",
+    "questionRows": "Question list"
   },
   "Practice": {
     "title": "Practice Questions",

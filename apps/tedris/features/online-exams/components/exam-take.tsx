@@ -46,8 +46,7 @@ import { ArabicText } from "./arabic-text";
 import {
   QuestionListToggle,
   QuestionNavigator,
-  QuestionOptions,
-  ScrollPane,
+  QuestionSheet,
   TakeKeys,
   TextSizeButtons,
   useQuestionList,
@@ -648,61 +647,47 @@ export function ExamTake({
             ) : null}
 
             {q ? (
-              // On a desk: the question on the start side, its options on
-              // the end side, each scrolling on its own (practice-take.tsx).
-              <section
-                className="mds-card take-body flex flex-col gap-3"
-                aria-labelledby="exam-question"
+              // As on the çalışma soruları (practice-take.tsx): the question
+              // above its options, side by side only when that does not fit.
+              <QuestionSheet
+                textId="exam-question"
+                textAs="h1"
+                text={q.text}
+                question={q}
+                chosen={mine?.optionIds ?? []}
+                onChoose={choose}
+                legend={t("optionsLegend")}
+                multiHint={tb("multiHint")}
+                questionPaneLabel={tb("questionPane")}
+                optionsPaneLabel={tb("optionsPane")}
+                watch={q.id}
+                fit
+                head={
+                  // The note icon at the end of this line (soru notları): a
+                  // personal note may be written during the exam; sending it
+                  // to the hoca waits until the exam is over.
+                  <>
+                    <p className="mds-caption text-neutral-muted">
+                      {t("questionPoints", {
+                        points: pointsText(q.points, locale),
+                      })}
+                    </p>
+                    {showsNote(q) ? (
+                      <QuestionNote
+                        key={q.id}
+                        questionId={q.id}
+                        questionNumber={index + 1}
+                        note={notes.get(q.id) ?? null}
+                        onChange={(note) =>
+                          setNotes((all) => new Map(all).set(q.id, note))
+                        }
+                        enabled={q.talebeNotes === true}
+                        shareLock
+                      />
+                    ) : null}
+                  </>
+                }
               >
-                {/* The note icon at the end of this line (soru notları): a
-                    personal note may be written during the exam; sending it
-                    to the hoca waits until the exam is over. */}
-                <div className="question-note-anchor flex min-h-8 items-center justify-between gap-2">
-                  <p className="mds-caption text-neutral-muted">
-                    {t("questionPoints", {
-                      points: pointsText(q.points, locale),
-                    })}
-                  </p>
-                  {showsNote(q) ? (
-                    <QuestionNote
-                      key={q.id}
-                      questionId={q.id}
-                      questionNumber={index + 1}
-                      note={notes.get(q.id) ?? null}
-                      onChange={(note) =>
-                        setNotes((all) => new Map(all).set(q.id, note))
-                      }
-                      enabled={q.talebeNotes === true}
-                      shareLock
-                    />
-                  ) : null}
-                </div>
-                <ScrollPane
-                  className="take-question-pane"
-                  label={tb("questionPane")}
-                  watch={q.id}
-                >
-                  <ArabicText
-                    as="h1"
-                    id="exam-question"
-                    className="mds-body take-question"
-                    size="var(--fs-body)"
-                    text={q.text}
-                  />
-                </ScrollPane>
-                <ScrollPane
-                  className="take-options-pane"
-                  label={tb("optionsPane")}
-                  watch={q.id}
-                >
-                  <QuestionOptions
-                    question={q}
-                    chosen={mine?.optionIds ?? []}
-                    onChoose={choose}
-                    legend={t("optionsLegend")}
-                    multiHint={tb("multiHint")}
-                  />
-                </ScrollPane>
                 {/* As on the çalışma soruları (practice-take.tsx): right under
                     the options, back and skip on the start side, the one
                     button that leads on the end side, "Bitir" at the end. */}
@@ -727,7 +712,7 @@ export function ExamTake({
                     {atEnd ? t("finish") : t("next")}
                   </Button>
                 </div>
-              </section>
+              </QuestionSheet>
             ) : null}
 
             <QuestionNavigator
