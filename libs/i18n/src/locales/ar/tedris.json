@@ -1141,8 +1141,6 @@
     "correct": "صحيح",
     "wrong": "خطأ",
     "blank": "فارغ",
-    "chosen": "اختيارك",
-    "correctOption": "الخيار الصحيح",
     "noAnswer": "تركت هذا السؤال دون إجابة.",
     "filterLegend": "تصفية الإجابات",
     "filterAll": "الكل",
@@ -1150,13 +1148,19 @@
     "filterShown": "{count, plural, zero {لا أسئلة معروضة} one {سؤال واحد معروض} two {سؤالان معروضان} few {# أسئلة معروضة} many {# سؤالًا معروضًا} other {# سؤال معروض}}",
     "filterEmpty": "لا يوجد سؤال في هذا التصنيف.",
     "fromSetLabel": "المجموعة:",
-    "showMore": "اعرض المزيد",
-    "showLess": "اعرض أقل"
+    "chosenHidden": "اختيارك",
+    "correctHidden": "الخيار الصحيح",
+    "optionsLabel": "الخيارات",
+    "expand": "اعرض المزيد",
+    "collapse": "إغلاق"
   },
   "TakeBar": {
     "textSizeLabel": "حجم النص",
     "textSizeFact": "يمكنك تكبير نص الأسئلة أو تصغيره: أثناء الامتحان يقوم بذلك زرّا A− وA+ في الشريط العلوي.",
-    "multiHint": "قد يكون أكثر من جواب صحيحًا."
+    "multiHint": "قد يكون أكثر من جواب صحيحًا.",
+    "questionPane": "نص السؤال",
+    "optionsPane": "الخيارات",
+    "listClose": "إغلاق"
   },
   "QuestionNotes": {
     "buttonLabel": "اكتب ملاحظة على السؤال {number}",

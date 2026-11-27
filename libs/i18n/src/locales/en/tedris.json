@@ -1141,8 +1141,6 @@
     "correct": "Correct",
     "wrong": "Wrong",
     "blank": "Blank",
-    "chosen": "Your choice",
-    "correctOption": "Correct option",
     "noAnswer": "You left this question blank.",
     "filterLegend": "Filter the answers",
     "filterAll": "All",
@@ -1150,13 +1148,19 @@
     "filterShown": "{count, plural, one {# question shown} other {# questions shown}}",
     "filterEmpty": "No question matches this filter.",
     "fromSetLabel": "Set:",
-    "showMore": "Show more",
-    "showLess": "Show less"
+    "chosenHidden": "your choice",
+    "correctHidden": "the correct option",
+    "optionsLabel": "Options",
+    "expand": "Show more",
+    "collapse": "Close"
   },
   "TakeBar": {
     "textSizeLabel": "Text size",
     "textSizeFact": "You can make the questions’ text bigger or smaller: during the exam, the A− and A+ buttons in the top bar do it.",
-    "multiHint": "More than one may be right."
+    "multiHint": "More than one may be right.",
+    "questionPane": "Question text",
+    "optionsPane": "Options",
+    "listClose": "Close"
   },
   "QuestionNotes": {
     "buttonLabel": "Write a note on question {number}",

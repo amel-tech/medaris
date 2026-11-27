@@ -286,6 +286,46 @@ describe("solving a çalışma seti (MDRS-248)", () => {
     );
   });
 
+  it("lays the screen out for a desk: one-row bar, the question and the options in panes, the list behind Sorular (tek ekran)", async () => {
+    mocks.startPractice.mockResolvedValue(ok(attempt()));
+    const host = await mount();
+    const screen = host.querySelector("[data-take-screen]") as HTMLElement;
+    expect(screen.className).toContain("take-column");
+    const bar = host.querySelector(
+      "[aria-label='Çalışma durumu']"
+    ) as HTMLElement;
+    expect(bar.className).toContain("take-bar");
+    const question = host.querySelector(
+      "[data-testid=practice-question]"
+    ) as HTMLElement;
+    expect(question.className).toContain("take-body");
+    expect(
+      question.querySelector(".take-question-pane #practice-question")
+    ).toBeTruthy();
+    expect(
+      question.querySelector(".take-options-pane .take-options")
+    ).toBeTruthy();
+    expect(
+      question.querySelector(".take-question-pane")?.getAttribute("aria-label")
+    ).toBe("Soru metni");
+    expect(
+      question.querySelector(".take-options-pane")?.getAttribute("aria-label")
+    ).toBe("Şıklar");
+    // "Sorular" in the bar opens the list, which is the drawer on a desk.
+    const toggle = bar.querySelector(
+      "[data-testid=take-list-toggle]"
+    ) as HTMLButtonElement;
+    expect(toggle.textContent).toBe("Sorular");
+    const list = host.querySelector("nav.take-navigator") as HTMLElement;
+    expect(toggle.getAttribute("aria-controls")).toBe(list.id);
+    await click(toggle);
+    expect(list.dataset.open).toBe("true");
+    await click(list.querySelector("[aria-label^='2. soru']") as HTMLElement);
+    await settle();
+    expect(list.hasAttribute("data-open")).toBe(false);
+    expect(host.textContent).toContain("İkinci soru");
+  });
+
   it("draws each option as a card with its letter, chosen by a click anywhere on it", async () => {
     mocks.startPractice.mockResolvedValue(ok(attempt()));
     mocks.savePracticeChoice.mockResolvedValue(

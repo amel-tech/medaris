@@ -6,9 +6,12 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import {
   type CSSProperties,
   type ReactNode,
+  useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
+  useState,
 } from "react";
 import { type QuestionState, TEXT_SCALES } from "../take-model";
 import { ArabicText } from "./arabic-text";
@@ -298,7 +301,113 @@ const CURRENT: CSSProperties = {
     "0 0 0 2px var(--background-neutral-page), 0 0 0 4px var(--border-brand-default)",
 };
 
-/** The numbered list of the questions, each coloured by its state; a click goes there. */
+/**
+ * The question list's drawer on a desk (MDRS-248, tek ekran): from 1024px
+ * the list is not under the question but behind "Sorular" in the top bar,
+ * so the question screen fits the window. Below that the list stays at the
+ * end of the page and the toggle is not drawn (app/tedris.css).
+ */
+export interface QuestionList {
+  id: string;
+  open: boolean;
+  setOpen: (open: boolean | ((was: boolean) => boolean)) => void;
+  toggleRef: { current: HTMLButtonElement | null };
+  /** closes the drawer; `refocus` puts the focus back on the toggle (Esc, Kapat) */
+  close: (refocus: boolean) => void;
+}
+
+export function useQuestionList(): QuestionList {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const close = useCallback((refocus: boolean) => {
+    setOpen(false);
+    if (refocus) toggleRef.current?.focus();
+  }, []);
+  // One object per open/closed, so the list's effects run when it opens or
+  // closes, not on every render of the page (the exam's clock ticks each second).
+  return useMemo(
+    () => ({ id, open, setOpen, toggleRef, close }),
+    [id, open, close]
+  );
+}
+
+/** "Sorular" in the top bar: opens and closes the list's drawer. */
+export function QuestionListToggle({
+  list,
+  label,
+}: {
+  list: QuestionList;
+  label: string;
+}) {
+  return (
+    <Button
+      ref={list.toggleRef}
+      size="small"
+      variant="outline"
+      className="take-list-toggle"
+      aria-expanded={list.open}
+      aria-controls={list.id}
+      data-testid="take-list-toggle"
+      onClick={() => list.setOpen((was) => !was)}
+    >
+      {label}
+    </Button>
+  );
+}
+
+/**
+ * A pane of the question screen that scrolls on its own on a desk (the
+ * question's text, the options), so a long one never pushes the buttons out
+ * of the window. A named region; once its content runs past it, it also
+ * takes the focus, so the arrow keys can scroll it.
+ */
+export function ScrollPane({
+  className,
+  label,
+  watch,
+  children,
+}: {
+  className: string;
+  /** the pane's name: "Soru metni", "Şıklar" */
+  label: string;
+  /** what the pane shows (the question's id): measured again when it changes */
+  watch: unknown;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLElement>(null);
+  const [scrolls, setScrolls] = useState(false);
+  // `watch` is what the pane shows: measured again, and back at its top, for each question.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    const measure = () => setScrolls(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    for (const child of el.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [watch]);
+  return (
+    <section
+      ref={ref}
+      className={className}
+      tabIndex={scrolls ? 0 : undefined}
+      aria-label={label}
+      data-scrolls={scrolls || undefined}
+    >
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The numbered list of the questions, each coloured by its state; a click
+ * goes there. With `list`, it is also the drawer "Sorular" opens on a desk:
+ * Esc, "Kapat", a click outside it or a question picked in it closes it.
+ */
 export function QuestionNavigator({
   items,
   index,
@@ -306,6 +415,8 @@ export function QuestionNavigator({
   title,
   itemLabel,
   legend,
+  list,
+  closeLabel,
 }: {
   items: ReadonlyArray<{ id: string; state: QuestionState }>;
   index: number;
@@ -314,10 +425,60 @@ export function QuestionNavigator({
   itemLabel: (number: number, state: QuestionState) => string;
   /** a key to the colours under the list; the exam draws none */
   legend?: ReactNode;
+  /** the drawer's state, from `useQuestionList` */
+  list?: QuestionList;
+  /** the drawer's close button: "Kapat" */
+  closeLabel?: string;
 }) {
+  const ref = useRef<HTMLElement>(null);
+  const open = list?.open ?? false;
+  const close = list?.close;
+  // Open: the focus goes to the current question, and Esc or a click
+  // anywhere outside the drawer (and its toggle) closes it.
+  useEffect(() => {
+    if (!open || !close) return;
+    const nav = ref.current;
+    nav?.querySelector<HTMLElement>("[aria-current=step]")?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      // An Esc a note's panel or a dialog has taken is not the drawer's.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      close(true);
+    };
+    const onDown = (event: PointerEvent) => {
+      const target = event.target instanceof Node ? event.target : null;
+      if (!target || nav?.contains(target)) return;
+      if (list?.toggleRef.current?.contains(target)) return;
+      close(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [open, close, list]);
   return (
-    <nav className="mds-card flex flex-col gap-2" aria-label={title}>
-      <h2 className="mds-h3">{title}</h2>
+    <nav
+      ref={ref}
+      id={list?.id}
+      className="mds-card take-navigator flex flex-col gap-2"
+      data-open={open || undefined}
+      aria-label={title}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="mds-h3">{title}</h2>
+        {list && closeLabel ? (
+          <Button
+            size="small"
+            variant="ghost"
+            className="take-navigator__close"
+            onClick={() => list.close(true)}
+          >
+            {closeLabel}
+          </Button>
+        ) : null}
+      </div>
       <ol className="flex flex-wrap gap-2">
         {items.map(({ id, state }, i) => (
           <li key={id}>
@@ -331,7 +492,11 @@ export function QuestionNavigator({
               }}
               aria-current={i === index ? "step" : undefined}
               aria-label={itemLabel(i + 1, state)}
-              onClick={() => onGo(i)}
+              onClick={() => {
+                onGo(i);
+                // The focus goes back to "Sorular", not to a hidden tile.
+                if (open) list?.close(true);
+              }}
             >
               {i + 1}
             </Button>

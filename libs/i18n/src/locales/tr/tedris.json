@@ -1141,8 +1141,6 @@
     "correct": "Doğru",
     "wrong": "Yanlış",
     "blank": "Boş",
-    "chosen": "Senin seçimin",
-    "correctOption": "Doğru şık",
     "noAnswer": "Bu soruyu boş bıraktın.",
     "filterLegend": "Cevapları süz",
     "filterAll": "Tümü",
@@ -1150,13 +1148,19 @@
     "filterShown": "{count} soru gösteriliyor",
     "filterEmpty": "Bu süzgeçte soru yok.",
     "fromSetLabel": "Set:",
-    "showMore": "Devamını göster",
-    "showLess": "Daha az göster"
+    "chosenHidden": "seçtiğin şık",
+    "correctHidden": "doğru şık",
+    "optionsLabel": "Şıklar",
+    "expand": "Devamını göster",
+    "collapse": "Kapat"
   },
   "TakeBar": {
     "textSizeLabel": "Yazı boyutu",
     "textSizeFact": "Soruların yazısını büyütüp küçültebilirsin: sınav sırasında üst çubuktaki A− ve A+ düğmeleri bunu yapar.",
-    "multiHint": "Birden fazla doğru olabilir."
+    "multiHint": "Birden fazla doğru olabilir.",
+    "questionPane": "Soru metni",
+    "optionsPane": "Şıklar",
+    "listClose": "Kapat"
   },
   "QuestionNotes": {
     "buttonLabel": "{number}. soruya not yaz",
