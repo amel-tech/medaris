@@ -3,6 +3,7 @@ import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { ArabicText } from "~/features/online-exams/components/arabic-text";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { continueHref, PRACTICE_HREF } from "../practice-model";
 import type { PracticeAttemptRead } from "../reads";
@@ -80,9 +81,13 @@ function Result({
   at: (value: Date | string) => string;
 }) {
   const heading = (
-    <h1 className="mds-h1" dir="auto">
-      {attempt.setId ? attempt.title : t("poolTitle")}
-    </h1>
+    <ArabicText
+      as="h1"
+      className="mds-h1"
+      size="var(--fs-h1)"
+      weight="var(--weight-medium)"
+      text={attempt.setId ? attempt.title : t("poolTitle")}
+    />
   );
 
   if (attempt.status !== "FINISHED" || !attempt.result) {

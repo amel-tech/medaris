@@ -23,7 +23,6 @@ import {
   startExamAttempt,
   tickExamClock,
 } from "../actions";
-import { textProps } from "../arabic";
 import {
   clockText,
   holderIdFor,
@@ -40,6 +39,7 @@ import {
   writeTextScale,
   writeUnsent,
 } from "../take-model";
+import { ArabicText } from "./arabic-text";
 import {
   QuestionNavigator,
   QuestionOptions,
@@ -86,6 +86,7 @@ export function ExamTake({
   briefing: ExamBriefingResponse;
 }) {
   const t = useTranslations("tedrisLearn.OnlineExam");
+  const tb = useTranslations("tedris.TakeBar");
   const locale = useLocale();
   const { notify } = useToaster();
   const at = (value: Date | string) =>
@@ -575,6 +576,14 @@ export function ExamTake({
                     ? t("saved")
                     : ""}
               </p>
+              {/* Once, for the whole exam: the step zooms every question. */}
+              <TextSizeButtons
+                step={textStep}
+                onStep={stepText}
+                smallerLabel={t("textSmaller")}
+                biggerLabel={t("textBigger")}
+                groupLabel={tb("textSizeLabel")}
+              />
             </section>
 
             {offline && stale ? (
@@ -602,26 +611,18 @@ export function ExamTake({
                 className="mds-card flex flex-col gap-3"
                 aria-labelledby="exam-question"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="mds-caption text-neutral-muted">
-                    {t("questionPoints", {
-                      points: pointsText(q.points, locale),
-                    })}
-                  </p>
-                  <TextSizeButtons
-                    step={textStep}
-                    onStep={stepText}
-                    smallerLabel={t("textSmaller")}
-                    biggerLabel={t("textBigger")}
-                  />
-                </div>
-                <h1
+                <p className="mds-caption text-neutral-muted">
+                  {t("questionPoints", {
+                    points: pointsText(q.points, locale),
+                  })}
+                </p>
+                <ArabicText
+                  as="h1"
                   id="exam-question"
                   className="mds-body"
-                  {...textProps(q.text, "var(--fs-body)", 1)}
-                >
-                  {q.text}
-                </h1>
+                  size="var(--fs-body)"
+                  text={q.text}
+                />
                 <QuestionOptions
                   question={q}
                   chosen={mine?.optionIds ?? []}
@@ -728,9 +729,14 @@ export function ExamTake({
         aria-labelledby="exam-briefing"
       >
         <p className="mds-caption text-neutral-muted">{brief.courseTitle}</p>
-        <h1 id="exam-briefing" className="mds-h2" dir="auto">
-          {brief.title}
-        </h1>
+        <ArabicText
+          as="h1"
+          id="exam-briefing"
+          className="mds-h2"
+          size="var(--fs-h2)"
+          weight="var(--weight-semibold)"
+          text={brief.title}
+        />
         <h2 className="mds-h3">{t("briefingTitle")}</h2>
         <ul className="mds-body flex list-disc flex-col gap-1 ps-5">
           <li>{t("factLength", { minutes: String(brief.durationMinutes) })}</li>
@@ -742,7 +748,7 @@ export function ExamTake({
           <li>{t("factSkip")}</li>
           <li>{t("factColors")}</li>
           <li>
-            {t("factTextSize")}{" "}
+            {tb("textSizeFact")}{" "}
             {/* What the two buttons look like; the sentence says what they do. */}
             <span
               className="inline-flex gap-1 align-middle"
@@ -782,12 +788,12 @@ export function ExamTake({
           </p>
           <p className="mds-body text-center">{t("hadithMeaning")}</p>
           <RadioGroup
-            legend={<span dir="auto">{brief.zeroth.question}</span>}
+            legend={<ArabicText text={brief.zeroth.question} />}
             value={zeroth}
             onChange={(value) => void chooseZeroth(value)}
             options={brief.zeroth.options.map((o) => ({
               value: o.id,
-              label: <span dir="auto">{o.text}</span>,
+              label: <ArabicText text={o.text} />,
             }))}
             help={t("zerothNote")}
             error={zerothFailed ? t("notSaved") : undefined}

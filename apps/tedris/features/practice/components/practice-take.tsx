@@ -9,7 +9,7 @@ import { Progress } from "@medaris/ui/mds/progress";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { textProps } from "~/features/online-exams/arabic";
+import { ArabicText } from "~/features/online-exams/components/arabic-text";
 import {
   INDICATOR,
   QuestionNavigator,
@@ -66,6 +66,7 @@ export type PracticeSource =
 
 export function PracticeTake(source: PracticeSource) {
   const t = useTranslations("tedris.Practice");
+  const tb = useTranslations("tedris.TakeBar");
   const pool = "courseId" in source ? source : null;
   const setId = "setId" in source ? source.setId : null;
   const courseId = pool?.courseId ?? null;
@@ -353,16 +354,29 @@ export function PracticeTake(source: PracticeSource) {
         className="mds-card flex flex-col gap-3"
         aria-label={t("barLabel")}
       >
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h1 className="mds-h3" dir="auto">
-            {attempt.setId ? attempt.title : t("poolTitle")}
-          </h1>
-          <p className="mds-body-sm mds-num">
-            {t("counter", {
-              number: String(index + 1),
-              count: String(questions.length),
-            })}
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <ArabicText
+            as="h1"
+            className="mds-h3"
+            size="var(--fs-h3)"
+            weight="var(--weight-semibold)"
+            text={attempt.setId ? attempt.title : t("poolTitle")}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="mds-body-sm mds-num">
+              {t("counter", {
+                number: String(index + 1),
+                count: String(questions.length),
+              })}
+            </p>
+            <TextSizeButtons
+              step={textStep}
+              onStep={stepText}
+              smallerLabel={t("textSmaller")}
+              biggerLabel={t("textBigger")}
+              groupLabel={tb("textSizeLabel")}
+            />
+          </div>
         </div>
         <Progress
           value={questions.length ? (answered / questions.length) * 100 : 0}
@@ -421,24 +435,16 @@ export function PracticeTake(source: PracticeSource) {
           aria-labelledby="practice-question"
           data-testid="practice-question"
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="mds-caption text-neutral-muted">
-              {t("questionNumber", { number: String(index + 1) })}
-            </p>
-            <TextSizeButtons
-              step={textStep}
-              onStep={stepText}
-              smallerLabel={t("textSmaller")}
-              biggerLabel={t("textBigger")}
-            />
-          </div>
-          <h2
+          <p className="mds-caption text-neutral-muted">
+            {t("questionNumber", { number: String(index + 1) })}
+          </p>
+          <ArabicText
+            as="h2"
             id="practice-question"
             className="mds-body"
-            {...textProps(q.text, "var(--fs-body)", 1)}
-          >
-            {q.text}
-          </h2>
+            size="var(--fs-body)"
+            text={q.text}
+          />
           <QuestionOptions
             question={q}
             chosen={mine?.optionIds ?? []}

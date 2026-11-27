@@ -1097,9 +1097,6 @@
     "blank": "Boş",
     "answersTitle": "Cevapların",
     "questionNumber": "{number}. soru",
-    "chosen": "Senin seçimin",
-    "correctOption": "Doğru şık",
-    "noAnswer": "Bu soruyu boş bıraktın.",
     "inProgressTitle": "Bu deneme sürüyor",
     "inProgress": "Kaldığın sorudan devam edebilirsin.",
     "resultNotFoundTitle": "Bu deneme bulunamadı",
@@ -1115,7 +1112,6 @@
     "poolContinue": "Karışık denemeye devam et",
     "poolNotFoundTitle": "Karışık deneme açılamadı",
     "poolNotFound": "Soru sayısı dersteki soru sayısından fazla olabilir ya da bu dersin talebesi değilsin.",
-    "fromSet": "Set: {title}",
     "courseSummary": "{sets} set · {solved} çözüldü",
     "tableCaption": "{course} çalışma setleri",
     "colSet": "Set",
@@ -1132,11 +1128,27 @@
     "progressText": "{answered}/{count} cevaplandı",
     "legendLabel": "Renklerin anlamı",
     "legendItem": "{state} ({count})",
+    "progressComplete": "tamamlandı"
+  },
+  "AnswerReview": {
+    "stripLabel": "Soruların sonucu",
+    "tileLabel": "{number}. soru: {outcome}",
+    "questionNumber": "{number}. soru",
+    "correct": "Doğru",
+    "wrong": "Yanlış",
+    "blank": "Boş",
+    "chosen": "Senin seçimin",
+    "correctOption": "Doğru şık",
+    "noAnswer": "Bu soruyu boş bıraktın.",
     "filterLegend": "Cevapları süz",
     "filterAll": "Tümü",
     "filterItem": "{label} ({count})",
     "filterShown": "{count} soru gösteriliyor",
     "filterEmpty": "Bu süzgeçte soru yok.",
-    "progressComplete": "tamamlandı"
+    "fromSetLabel": "Set:"
+  },
+  "TakeBar": {
+    "textSizeLabel": "Yazı boyutu",
+    "textSizeFact": "Soruların yazısını büyütüp küçültebilirsin: sınav sırasında üst çubuktaki A− ve A+ düğmeleri bunu yapar."
   }
 }

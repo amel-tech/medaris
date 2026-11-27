@@ -1097,9 +1097,6 @@
     "blank": "فارغ",
     "answersTitle": "إجاباتك",
     "questionNumber": "السؤال {number}",
-    "chosen": "اختيارك",
-    "correctOption": "الخيار الصحيح",
-    "noAnswer": "تركت هذا السؤال دون إجابة.",
     "inProgressTitle": "هذه المحاولة جارية",
     "inProgress": "يمكنك المتابعة من حيث توقفت.",
     "resultNotFoundTitle": "لم يُعثر على هذه المحاولة",
@@ -1115,7 +1112,6 @@
     "poolContinue": "تابع التدريب المختلط",
     "poolNotFoundTitle": "تعذّر فتح التدريب المختلط",
     "poolNotFound": "قد يكون العدد أكبر من أسئلة الدرس، أو أنك لست طالبًا في هذا الدرس.",
-    "fromSet": "المجموعة: {title}",
     "courseSummary": "{sets, plural, one {مجموعة واحدة} two {مجموعتان} few {# مجموعات} many {# مجموعة} other {# مجموعة}} · {solved} محلولة",
     "tableCaption": "مجموعات تدريب {course}",
     "colSet": "المجموعة",
@@ -1132,11 +1128,27 @@
     "progressText": "أُجيب عن {answered}/{count}",
     "legendLabel": "دلالة الألوان",
     "legendItem": "{state} ({count})",
+    "progressComplete": "مكتمل"
+  },
+  "AnswerReview": {
+    "stripLabel": "نتيجة كل سؤال",
+    "tileLabel": "السؤال {number}: {outcome}",
+    "questionNumber": "السؤال {number}",
+    "correct": "صحيح",
+    "wrong": "خطأ",
+    "blank": "فارغ",
+    "chosen": "اختيارك",
+    "correctOption": "الخيار الصحيح",
+    "noAnswer": "تركت هذا السؤال دون إجابة.",
     "filterLegend": "تصفية الإجابات",
     "filterAll": "الكل",
     "filterItem": "{label} ({count})",
     "filterShown": "{count, plural, zero {لا أسئلة معروضة} one {سؤال واحد معروض} two {سؤالان معروضان} few {# أسئلة معروضة} many {# سؤالًا معروضًا} other {# سؤال معروض}}",
     "filterEmpty": "لا يوجد سؤال في هذا التصنيف.",
-    "progressComplete": "مكتمل"
+    "fromSetLabel": "المجموعة:"
+  },
+  "TakeBar": {
+    "textSizeLabel": "حجم النص",
+    "textSizeFact": "يمكنك تكبير نص الأسئلة أو تصغيره: أثناء الامتحان يقوم بذلك زرّا A− وA+ في الشريط العلوي."
   }
 }

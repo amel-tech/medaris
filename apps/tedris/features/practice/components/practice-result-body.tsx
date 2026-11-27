@@ -4,18 +4,17 @@ import type {
   PracticeAttemptResponse,
   PracticeQuestionResponse,
 } from "@medaris/services/tedrisat";
-import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
-import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Icon, type IconName } from "@medaris/ui/mds/icon";
 import { Progress } from "@medaris/ui/mds/progress";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
-import { textProps } from "~/features/online-exams/arabic";
+import {
+  AnswerReview,
+  type ReviewItem,
+} from "~/features/online-exams/components/answer-review";
 import { againHref, PRACTICE_HREF, percentText } from "../practice-model";
 
 type Outcome = NonNullable<PracticeQuestionResponse["outcome"]>;
-type Filter = "all" | Outcome;
 
 /**
  * Each outcome in words, a glyph and a colour (the colours of a past exam's
@@ -25,24 +24,24 @@ const OUTCOME: Record<
   Outcome,
   {
     key: "correct" | "wrong" | "blank";
-    badge: "success" | "error" | "secondary";
     tone: "success" | "error" | "neutral";
     icon: IconName;
   }
 > = {
-  CORRECT: { key: "correct", badge: "success", tone: "success", icon: "check" },
-  WRONG: { key: "wrong", badge: "error", tone: "error", icon: "close" },
-  BLANK: { key: "blank", badge: "secondary", tone: "neutral", icon: "ban" },
+  CORRECT: { key: "correct", tone: "success", icon: "check" },
+  WRONG: { key: "wrong", tone: "error", icon: "close" },
+  BLANK: { key: "blank", tone: "neutral", icon: "ban" },
 };
 const OUTCOMES = ["CORRECT", "WRONG", "BLANK"] as const;
 
 /**
  * A finished çalışma attempt's result (MDRS-248): the percentage with its
  * bar, the correct, wrong and blank counts as stats with their glyphs,
- * "Tekrar çöz" and "Çalışma sorularına dön" right under them, then every
- * question, which a filter narrows to the correct, wrong or blank ones.
- * "Set: <ad>" is written under a question only in a mixed (pool) attempt,
- * where the questions come from several sets.
+ * "Tekrar çöz" and "Çalışma sorularına dön" right under them, then the
+ * answers (`AnswerReview`, shared with a past exam): a numbered tile per
+ * question, the filter and the questions as narrow cards. "Set: <ad>" is
+ * written under a question only in a mixed (pool) attempt, where the
+ * questions come from several sets.
  */
 export function PracticeResultBody({
   attempt,
@@ -53,7 +52,6 @@ export function PracticeResultBody({
 }) {
   const t = useTranslations("tedris.Practice");
   const locale = useLocale();
-  const [filter, setFilter] = useState<Filter>("all");
   const r = attempt.result;
   if (!r) return null;
 
@@ -63,10 +61,6 @@ export function PracticeResultBody({
   // From the questions themselves, so a chip's count is what it shows.
   const counts: Record<Outcome, number> = { CORRECT: 0, WRONG: 0, BLANK: 0 };
   for (const q of attempt.questions) counts[outcomeOf(q)] += 1;
-  const shown =
-    filter === "all"
-      ? attempt.questions
-      : attempt.questions.filter((q) => outcomeOf(q) === filter);
   const pooled = !attempt.setId;
 
   const actions = (
@@ -125,137 +119,38 @@ export function PracticeResultBody({
         {actions}
       </section>
 
-      <section
-        className="flex flex-col gap-3"
-        aria-labelledby="practice-answers"
-      >
-        <h2 id="practice-answers" className="mds-h2">
-          {t("answersTitle")}
-        </h2>
-        <ChoiceChips
-          legend={t("filterLegend")}
-          value={filter}
-          onChange={(v) => setFilter((v as Filter | null) ?? "all")}
-          options={[
-            {
-              value: "all",
-              label: t("filterItem", {
-                label: t("filterAll"),
-                count: attempt.questions.length,
-              }),
-            },
-            ...OUTCOMES.map((o) => ({
-              value: o,
-              icon: <Icon name={OUTCOME[o].icon} size="sm" />,
-              label: t("filterItem", {
-                label: t(OUTCOME[o].key),
-                count: counts[o],
-              }),
-              disabled: counts[o] === 0,
-            })),
-          ]}
-        />
-        <p className="mds-visually-hidden" aria-live="polite">
-          {filter === "all" ? "" : t("filterShown", { count: shown.length })}
-        </p>
-        {shown.length === 0 ? (
-          <p className="mds-body-sm text-neutral-muted">{t("filterEmpty")}</p>
-        ) : (
-          <ol className="flex flex-col gap-3">
-            {shown.map((q) => (
-              <li key={q.id}>
-                <AnsweredQuestion question={q} pooled={pooled} />
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+      <AnswerReview
+        items={attempt.questions.map((q) => reviewItemOf(q, pooled))}
+        heading={t("answersTitle")}
+        headingId="practice-answers"
+        cardTestId="practice-answer"
+      />
 
       {actions}
     </>
   );
 }
 
-function AnsweredQuestion({
-  question,
-  pooled,
-}: {
-  question: PracticeQuestionResponse;
-  pooled: boolean;
-}) {
-  const t = useTranslations("tedris.Practice");
-  const outcome: Outcome = question.outcome ?? "BLANK";
-  const look = OUTCOME[outcome];
-  return (
-    <article
-      className="mds-card flex flex-col gap-2"
-      data-testid="practice-answer"
-      data-outcome={outcome}
-      style={{
-        borderInlineStartWidth: "4px",
-        borderInlineStartColor:
-          outcome === "CORRECT"
-            ? "var(--border-success-default)"
-            : outcome === "WRONG"
-              ? "var(--border-error-default)"
-              : "var(--border-neutral-strong)",
-      }}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <strong>{t("questionNumber", { number: question.number })}</strong>
-        <Badge variant={look.badge} icon={<Icon name={look.icon} size="sm" />}>
-          {t(look.key)}
-        </Badge>
-      </div>
-      <p
-        className="mds-body"
-        {...textProps(question.text, "var(--fs-body)", 1)}
-      >
-        {question.text}
-      </p>
-      {pooled ? (
-        <p
-          className="mds-caption text-neutral-muted"
-          data-testid="practice-answer-set"
-          dir="auto"
-        >
-          {t("fromSet", { title: question.setTitle })}
-        </p>
-      ) : null}
-      <ul className="flex flex-col gap-1">
-        {question.options.map((o) => {
-          const chosen = question.chosenOptionIds.includes(o.id);
-          return (
-            <li
-              key={o.id}
-              className="mds-body-sm flex flex-wrap items-center gap-2"
-              data-chosen={chosen ? "true" : undefined}
-              data-correct={o.correct ? "true" : undefined}
-            >
-              <span {...textProps(o.text, "var(--fs-body-sm)", 1)}>
-                {o.text}
-              </span>
-              {chosen ? (
-                // A wrong choice in the error colour with its cross; a right one in info.
-                <Badge
-                  variant={o.correct ? "info" : "error"}
-                  icon={o.correct ? undefined : <Icon name="close" size="sm" />}
-                >
-                  {t("chosen")}
-                </Badge>
-              ) : null}
-              {o.correct ? (
-                <Badge variant="success" icon={<Icon name="check" size="sm" />}>
-                  {t("correctOption")}
-                </Badge>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-      {outcome === "BLANK" ? (
-        <p className="mds-body-sm text-neutral-muted">{t("noAnswer")}</p>
-      ) : null}
-    </article>
-  );
-}
+const REVIEW_OUTCOME: Record<Outcome, ReviewItem["outcome"]> = {
+  CORRECT: "correct",
+  WRONG: "wrong",
+  BLANK: "blank",
+};
+
+/** A çalışma question as the shared answer cards take it. */
+export const reviewItemOf = (
+  q: PracticeQuestionResponse,
+  pooled: boolean
+): ReviewItem => ({
+  id: q.id,
+  number: q.number,
+  text: q.text,
+  outcome: REVIEW_OUTCOME[q.outcome ?? "BLANK"],
+  options: q.options.map((o) => ({
+    id: o.id,
+    text: o.text,
+    chosen: q.chosenOptionIds.includes(o.id),
+    correct: o.correct,
+  })),
+  setTitle: pooled ? q.setTitle : null,
+});
