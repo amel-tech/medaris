@@ -60,6 +60,7 @@ GET /courses/:id/my-submissions -> course.view on byExistingCourse
 GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 GET /courses/:id/online-exams -> exam.prepare on course
 GET /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
+GET /courses/:id/practice-sets -> course.view on course
 GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
 GET /courses/:id/recordings -> course.view on course (public)
@@ -149,6 +150,7 @@ GET /me/permissions -> no AuthzGuard
 GET /me/public-profile -> no AuthzGuard
 GET /me/roles -> no AuthzGuard
 GET /me/upcoming-lessons -> no AuthzGuard
+GET /my-practice-sets -> no AuthzGuard
 GET /nizam/audit-log -> no AuthzGuard
 GET /nizam/audit-log/export -> no AuthzGuard
 GET /nizam/chief-nazim -> no AuthzGuard
@@ -173,6 +175,8 @@ GET /notifications/unread-count -> no AuthzGuard
 GET /online-exams/:examId -> exam.prepare on byOnlineExamCourse
 GET /online-exams/:examId/results -> exam.prepare on byOnlineExamCourse
 GET /online-exams/:examId/results/:userId -> exam.prepare on byOnlineExamCourse
+GET /practice-attempts/:attemptId -> course.view on byPracticeAttemptCourse
+GET /practice-sets/:setId/attempts -> course.view on byPracticeSetCourse
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
@@ -293,6 +297,8 @@ POST /online-exams/:examId/close -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/publish -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/questions -> exam.prepare on byOnlineExamCourse
 POST /online-exams/:examId/unpublish -> exam.prepare on byOnlineExamCourse
+POST /practice-attempts/:attemptId/finish -> course.view on byPracticeAttemptCourse
+POST /practice-sets/:setId/attempts -> course.view on byPracticeSetCourse
 PUT /courses/:id -> course.edit on course
 PUT /courses/:id/exam-zeroth-question -> exam.prepare on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
@@ -322,4 +328,5 @@ PUT /nizam/permission-groups/:id -> no AuthzGuard
 PUT /nizam/platform-policies/:key -> no AuthzGuard
 PUT /online-exams/:examId/questions/:questionId -> exam.prepare on byOnlineExamCourse
 PUT /online-exams/:examId/questions/:questionId/points -> exam.prepare on byOnlineExamCourse
+PUT /practice-attempts/:attemptId/answers/:questionId -> course.view on byPracticeAttemptCourse
 PUT /questions/:questionId/answer -> course.view on byQuestionCourse

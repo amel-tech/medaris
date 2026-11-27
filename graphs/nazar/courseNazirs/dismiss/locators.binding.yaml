@@ -21,7 +21,7 @@
 #   - applicantF's post in it, made as the hoca makes it on the page (helpers/course-nazir-grants.mjs, POST /courses/:id/nazirs), and, where the
 #     story needs it, the post applicantF makes for applicantE (helpers/api.mjs as applicantF: a holder of course_nazir.assign by a grant appoints).
 # `make` removes a course left under its tag, and with it the posts, so `setup` is safe to run twice. `teardown` removes the course (which takes
-# its posts and grants with it: apps/tedrisat/src/course/course-purge.ts:126) and then reads the database for any active post or grant that
+# its posts and grants with it: apps/tedrisat/src/course/course-purge.ts:158) and then reads the database for any active post or grant that
 # applicantF or applicantE still holds: the line must say 0 and 0, which is how a walk that stopped before its dismissal is proved to leave
 # nothing behind. What no walk can undo: the audit rows (course_nazir.assign, course_nazir.revoke) and the invitation mails of the course.
 #

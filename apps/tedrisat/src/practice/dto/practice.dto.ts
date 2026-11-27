@@ -1,0 +1,171 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ArrayMaxSize, ArrayUnique, IsArray, IsUUID } from "class-validator";
+import { AnswerMode } from "../../online-exam/domain/online-exam";
+import { PracticeAttemptStatus, PracticeOutcome } from "../domain/practice";
+
+/** One answer, saved the moment it is chosen. */
+export class SavePracticeAnswerDto {
+  @ApiProperty({
+    type: [String],
+    format: "uuid",
+    description:
+      "The options chosen, of this question only; none clears the answer. A radio question (SINGLE) takes one at most.",
+  })
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(100)
+  @IsUUID("all", { each: true })
+  optionIds!: string[];
+}
+
+/** A çalışma seti as the talebe's list shows it, with where the caller stands on it. */
+export class PracticeSetSummaryResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ format: "uuid" }) courseId!: string;
+  @ApiProperty({ description: "The course's title." }) courseTitle!: string;
+  @ApiProperty() title!: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "The team's own words about the set.",
+  })
+  instructions!: string | null;
+  @ApiProperty({
+    description:
+      "The questions an attempt is given: the set's complete questions.",
+  })
+  questionCount!: number;
+  @ApiProperty({ description: "How many times the caller finished it." })
+  attemptCount!: number;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: "66.67",
+    description:
+      "The percentage of the caller's latest finished attempt, with two decimals; null before the first.",
+  })
+  lastPercent!: string | null;
+  @ApiProperty({
+    type: String,
+    format: "uuid",
+    nullable: true,
+    description:
+      "The caller's attempt in progress, which starting the set again goes on with; null when none.",
+  })
+  openAttemptId!: string | null;
+  @ApiProperty() publishedAt!: Date;
+}
+
+/** One option of a question; `correct` only once the attempt is finished. */
+export class PracticeOptionResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty() text!: string;
+  @ApiPropertyOptional({
+    description:
+      "Whether it is a correct option: sent only once the attempt is finished, never before.",
+  })
+  correct?: boolean;
+}
+
+/** One question of an attempt, in the attempt's order. */
+export class PracticeQuestionResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ description: "1 up, in the attempt's order." })
+  number!: number;
+  @ApiProperty() text!: string;
+  @ApiProperty({ enum: AnswerMode, enumName: "AnswerMode" })
+  answerMode!: AnswerMode;
+  @ApiProperty({
+    type: [PracticeOptionResponse],
+    description: "In the attempt's order.",
+  })
+  options!: PracticeOptionResponse[];
+  @ApiProperty({
+    type: [String],
+    format: "uuid",
+    description: "The options the caller chose; none when blank.",
+  })
+  chosenOptionIds!: string[];
+  @ApiPropertyOptional({
+    enum: PracticeOutcome,
+    enumName: "PracticeOutcome",
+    description: "How the answer did; only once the attempt is finished.",
+  })
+  outcome?: PracticeOutcome;
+  @ApiPropertyOptional({
+    example: "0.50",
+    description:
+      "The part of the question the answer got, from 0.00 to 1.00 (a part only under IN_SHARES); only once the attempt is finished.",
+  })
+  part?: string;
+}
+
+/** How a finished attempt went: every question weighs the same. */
+export class PracticeResultResponse {
+  @ApiProperty({ description: "Questions got whole." }) correct!: number;
+  @ApiProperty({ description: "Questions answered and not got whole." })
+  wrong!: number;
+  @ApiProperty({ description: "Questions left without an answer." })
+  blank!: number;
+  @ApiProperty({ description: "The attempt's questions." }) total!: number;
+  @ApiProperty({
+    example: "66.67",
+    description:
+      "The parts got over the number of questions, as a percentage with two decimals, rounded half up once.",
+  })
+  percent!: string;
+}
+
+/** A talebe's attempt at a çalışma seti, as its page reads it. */
+export class PracticeAttemptResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ format: "uuid" }) setId!: string;
+  @ApiProperty({ format: "uuid" }) courseId!: string;
+  @ApiProperty({ description: "The set's title." }) title!: string;
+  @ApiProperty({
+    enum: PracticeAttemptStatus,
+    enumName: "PracticeAttemptStatus",
+  })
+  status!: PracticeAttemptStatus;
+  @ApiProperty() startedAt!: Date;
+  @ApiProperty({ type: Date, nullable: true }) finishedAt!: Date | null;
+  @ApiProperty({
+    type: String,
+    format: "uuid",
+    nullable: true,
+    description: "The question last answered, where the page goes on.",
+  })
+  currentQuestionId!: string | null;
+  @ApiProperty({ type: [PracticeQuestionResponse] })
+  questions!: PracticeQuestionResponse[];
+  @ApiProperty({
+    type: PracticeResultResponse,
+    nullable: true,
+    description: "Null while the attempt is in progress.",
+  })
+  result!: PracticeResultResponse | null;
+}
+
+export class PracticeAnswerSavedResponse {
+  @ApiProperty({ format: "uuid" }) questionId!: string;
+  @ApiProperty({ type: [String], format: "uuid" }) optionIds!: string[];
+  @ApiProperty() savedAt!: Date;
+}
+
+/** One of the caller's attempts at a set, the latest first. */
+export class PracticeAttemptSummaryResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({
+    enum: PracticeAttemptStatus,
+    enumName: "PracticeAttemptStatus",
+  })
+  status!: PracticeAttemptStatus;
+  @ApiProperty() startedAt!: Date;
+  @ApiProperty({ type: Date, nullable: true }) finishedAt!: Date | null;
+  @ApiProperty({
+    type: PracticeResultResponse,
+    nullable: true,
+    description: "Null while it is in progress.",
+  })
+  result!: PracticeResultResponse | null;
+}

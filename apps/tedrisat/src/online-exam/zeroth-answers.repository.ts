@@ -25,6 +25,7 @@ import {
 } from "../database/schema/online-exam.schema";
 import { permissionGrants } from "../database/schema/permission.schema";
 import { roleAssignments } from "../database/schema/role-assignment.schema";
+import { ExamKind } from "./domain/online-exam";
 
 type Db = DatabaseService["db"];
 
@@ -168,7 +169,12 @@ export class ZerothAnswersRepository {
       .innerJoin(kosks, eq(kosks.id, courses.koskId))
       .leftJoin(madrasahs, eq(madrasahs.id, courses.madrasahId))
       .where(
-        and(isNotNull(onlineExams.publishedAt), ...this.placeOf({ koskIds }))
+        and(
+          isNotNull(onlineExams.publishedAt),
+          // A çalışma seti asks no zeroth question (MDRS-248).
+          eq(onlineExams.kind, ExamKind.EXAM),
+          ...this.placeOf({ koskIds })
+        )
       )
       .orderBy(asc(kosks.name), asc(courses.title), asc(courses.id));
   }

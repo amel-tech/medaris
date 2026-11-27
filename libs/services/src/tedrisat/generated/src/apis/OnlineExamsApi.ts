@@ -19,6 +19,7 @@ import type {
   CourseZerothQuestionResponse,
   CreateCourseTopicDto,
   CreateOnlineExamDto,
+  ExamKind,
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   ExamVersionResponse,
@@ -47,6 +48,8 @@ import {
     CreateCourseTopicDtoToJSON,
     CreateOnlineExamDtoFromJSON,
     CreateOnlineExamDtoToJSON,
+    ExamKindFromJSON,
+    ExamKindToJSON,
     ExamPointsResponseFromJSON,
     ExamPointsResponseToJSON,
     ExamQuestionWriteResponseFromJSON,
@@ -131,6 +134,7 @@ export interface ListCourseTopicsRequest {
 
 export interface ListOnlineExamsRequest {
     id: string;
+    kind?: ExamKind;
 }
 
 export interface PublishOnlineExamRequest {
@@ -349,7 +353,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * \"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.
+     * \"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.
      * Open a new online exam
      */
     async createOnlineExamRaw(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamCreatedResponse>> {
@@ -394,7 +398,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * \"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.
+     * \"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.
      * Open a new online exam
      */
     async createOnlineExam(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamCreatedResponse> {
@@ -675,7 +679,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.
+     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.
      * The course\'s online exams
      */
     async listOnlineExamsRaw(requestParameters: ListOnlineExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OnlineExamSummaryResponse>>> {
@@ -687,6 +691,10 @@ export class OnlineExamsApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['kind'] != null) {
+            queryParameters['kind'] = requestParameters['kind'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -710,7 +718,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.
+     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.
      * The course\'s online exams
      */
     async listOnlineExams(requestParameters: ListOnlineExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OnlineExamSummaryResponse>> {
@@ -719,7 +727,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. Written to `audit_log` as `online_exam.publish`.
+     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.
      * Yayınla: now, or at a day and time, with a latest start
      */
     async publishOnlineExamRaw(requestParameters: PublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamDraftResponse>> {
@@ -764,7 +772,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. Written to `audit_log` as `online_exam.publish`.
+     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.
      * Yayınla: now, or at a day and time, with a latest start
      */
     async publishOnlineExam(requestParameters: PublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamDraftResponse> {

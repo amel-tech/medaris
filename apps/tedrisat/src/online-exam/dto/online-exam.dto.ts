@@ -20,6 +20,7 @@ import {
 } from "class-validator";
 import {
   AnswerMode,
+  ExamKind,
   ONLINE_EXAM_INSTRUCTIONS_MAX,
   ONLINE_EXAM_TITLE_MAX,
   OPTION_TEXT_MAX,
@@ -114,6 +115,31 @@ export class CreateOnlineExamDto {
   @MinLength(1)
   @MaxLength(ONLINE_EXAM_TITLE_MAX)
   title!: string;
+
+  @ApiPropertyOptional({
+    enum: ExamKind,
+    enumName: "ExamKind",
+    default: ExamKind.EXAM,
+    description:
+      "EXAM, left out: an exam sat once with its celse. PRACTICE: a çalışma seti, which the course's talebe solve whenever they like, as often as they like, with no celse, length, points or zeroth question (MDRS-248).",
+  })
+  // Not @IsOptional: it would let a null through unchecked.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsEnum(ExamKind)
+  kind?: ExamKind;
+}
+
+/** `?kind=` of the course's exam list (MDRS-248): EXAM when left out. */
+export class ListOnlineExamsQueryDto {
+  @ApiPropertyOptional({
+    enum: ExamKind,
+    enumName: "ExamKind",
+    default: ExamKind.EXAM,
+  })
+  // Not @IsOptional: it would let a null through unchecked.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsEnum(ExamKind)
+  kind?: ExamKind;
 }
 
 /** A new topic of the course's list. */
@@ -347,6 +373,13 @@ export class PublishProblemResponse {
 export class OnlineExamDraftResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
   @ApiProperty({ format: "uuid" }) courseId!: string;
+  @ApiProperty({
+    enum: ExamKind,
+    enumName: "ExamKind",
+    description:
+      "An exam, or a çalışma seti (PRACTICE), which has no celse, no length, no points and no zeroth question; its `status` is DRAFT or OPEN.",
+  })
+  kind!: ExamKind;
   @ApiProperty() title!: string;
   @ApiProperty({
     type: Number,
@@ -449,6 +482,7 @@ export class TopicRemovedResponse {
 
 export class OnlineExamSummaryResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ enum: ExamKind, enumName: "ExamKind" }) kind!: ExamKind;
   @ApiProperty() title!: string;
   @ApiProperty() questionCount!: number;
   @ApiProperty({ enum: ["DRAFT", "SCHEDULED", "OPEN", "CLOSED"] })

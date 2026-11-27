@@ -14547,7 +14547,7 @@
     },
     "/courses/{id}/online-exams": {
       "get": {
-        "description": "Nazar's \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.",
+        "description": "Nazar's \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.",
         "operationId": "listOnlineExams",
         "parameters": [
           {
@@ -14556,6 +14556,14 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ExamKind"
             }
           }
         ],
@@ -14572,6 +14580,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
           },
           "403": {
             "description": "No `exam.prepare` on the course."
@@ -14591,7 +14602,7 @@
         ]
       },
       "post": {
-        "description": "\"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.",
+        "description": "\"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.",
         "operationId": "createOnlineExam",
         "parameters": [
           {
@@ -14731,7 +14742,7 @@
             "description": "EXAM_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_STALE, EXAM_LOCKED"
+            "description": "EXAM_STALE, EXAM_LOCKED, EXAM_KIND_MISMATCH (a length on a çalışma seti)"
           }
         },
         "security": [
@@ -14747,7 +14758,7 @@
     },
     "/online-exams/{examId}/publish": {
       "post": {
-        "description": "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+        "description": "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.",
         "operationId": "publishOnlineExam",
         "parameters": [
           {
@@ -14846,7 +14857,7 @@
             "description": "EXAM_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened), EXAM_STALE"
+            "description": "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened; a çalışma seti once a talebe has started it), EXAM_STALE"
           }
         },
         "security": [
@@ -15096,7 +15107,7 @@
             "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL"
+            "description": "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL, EXAM_KIND_MISMATCH (a çalışma seti, whose questions all weigh the same)"
           }
         },
         "security": [
@@ -16034,6 +16045,9 @@
           },
           "404": {
             "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_KIND_MISMATCH (a çalışma seti, which has no results for the team)"
           }
         },
         "security": [
@@ -16085,6 +16099,9 @@
           },
           "404": {
             "description": "EXAM_NOT_FOUND, ATTEMPT_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_KIND_MISMATCH (a çalışma seti, which has no results for the team)"
           }
         },
         "security": [
@@ -16130,7 +16147,7 @@
             "description": "EXAM_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_NOT_OPEN"
+            "description": "EXAM_NOT_OPEN, EXAM_KIND_MISMATCH (a çalışma seti)"
           }
         },
         "security": [
@@ -16393,6 +16410,308 @@
         "summary": "The exams that asked one zeroth question, each with its counts",
         "tags": [
           "nizam"
+        ]
+      }
+    },
+    "/courses/{id}/practice-sets": {
+      "get": {
+        "description": "Each published set of the course, the latest published first, with its question count (its complete questions), how many times the caller finished it, the percentage of their latest finish and the attempt they have in progress. A draft is not listed.",
+        "operationId": "listPracticeSets",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeSetSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's çalışma setleri, for its talebe",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/my-practice-sets": {
+      "get": {
+        "description": "The published sets of the courses where the caller holds an ENROLLED or COMPLETED seat and may write as a talebe, each with its course's title and the caller's standing on it, as `listPracticeSets` gives them.",
+        "operationId": "listMyPracticeSets",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeSetSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Çalışma setlerim: the sets of every course of the caller",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-sets/{setId}/attempts": {
+      "post": {
+        "description": "Starts an attempt: the set's complete questions, and each one's options, in an order of this attempt's own, with no clock. An attempt in progress is returned instead, as it stands. Nothing says which options are correct until the attempt is finished.",
+        "operationId": "startPracticeAttempt",
+        "parameters": [
+          {
+            "name": "setId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_SET_NOT_FOUND (a draft, an exam, or a set of a course the caller is no talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a çalışma seti",
+        "tags": [
+          "practice"
+        ]
+      },
+      "get": {
+        "description": "Every attempt of the caller's own at the set, the latest started first, each with its counts and percentage once finished.",
+        "operationId": "listPracticeAttempts",
+        "parameters": [
+          {
+            "name": "setId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeAttemptSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_SET_NOT_FOUND (a draft, an exam, or a set of a course the caller is no talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's attempts at a çalışma seti",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-attempts/{attemptId}": {
+      "get": {
+        "description": "In progress: the questions and their options in the attempt's order and the options chosen, and nothing that says which are correct. Finished: each question's options with `correct`, its outcome (CORRECT, WRONG, BLANK) and the part it got, and the counts and the percentage (every question weighs the same).",
+        "operationId": "getPracticeAttempt",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_ATTEMPT_NOT_FOUND (anyone else's, or of a course the caller is no longer a talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One of the caller's attempts",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-attempts/{attemptId}/answers/{questionId}": {
+      "put": {
+        "description": "Saved the moment it is chosen, replacing the answer before; none clears it. The question becomes the one the attempt goes on from.",
+        "operationId": "savePracticeAnswer",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePracticeAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAnswerSavedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "PRACTICE_ANSWER_INVALID, VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "PRACTICE_ATTEMPT_NOT_FOUND (anyone else's, or of a course the caller is no longer a talebe of), PRACTICE_QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "PRACTICE_ATTEMPT_FINISHED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer a question of an attempt",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-attempts/{attemptId}/finish": {
+      "post": {
+        "description": "\"Bitir\": the attempt ends with the answers saved, and the answer is the finished attempt with the correct options, each question's outcome and the counts and percentage. Finishing a finished attempt changes nothing. Starting the set again then begins a new attempt.",
+        "operationId": "finishPracticeAttempt",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_ATTEMPT_NOT_FOUND (anyone else's, or of a course the caller is no longer a talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Finish an attempt",
+        "tags": [
+          "practice"
         ]
       }
     }
@@ -30986,12 +31305,26 @@
           "koskIds"
         ]
       },
+      "ExamKind": {
+        "type": "string",
+        "enum": [
+          "EXAM",
+          "PRACTICE"
+        ]
+      },
       "OnlineExamSummaryResponse": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
           },
           "title": {
             "type": "string"
@@ -31021,6 +31354,7 @@
         },
         "required": [
           "id",
+          "kind",
           "title",
           "questionCount",
           "status",
@@ -31035,6 +31369,15 @@
             "type": "string",
             "maxLength": 200,
             "example": "Ara sınav"
+          },
+          "kind": {
+            "default": "EXAM",
+            "description": "EXAM, left out: an exam sat once with its celse. PRACTICE: a çalışma seti, which the course's talebe solve whenever they like, as often as they like, with no celse, length, points or zeroth question (MDRS-248).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
           }
         },
         "required": [
@@ -31265,6 +31608,14 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "description": "An exam, or a çalışma seti (PRACTICE), which has no celse, no length, no points and no zeroth question; its `status` is DRAFT or OPEN.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
+          },
           "title": {
             "type": "string"
           },
@@ -31346,6 +31697,7 @@
         "required": [
           "id",
           "courseId",
+          "kind",
           "title",
           "durationMinutes",
           "instructions",
@@ -33536,6 +33888,349 @@
           "answered",
           "options",
           "exams"
+        ]
+      },
+      "PracticeSetSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string",
+            "description": "The course's title."
+          },
+          "title": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true,
+            "description": "The team's own words about the set."
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "The questions an attempt is given: the set's complete questions."
+          },
+          "attemptCount": {
+            "type": "number",
+            "description": "How many times the caller finished it."
+          },
+          "lastPercent": {
+            "type": "string",
+            "nullable": true,
+            "example": "66.67",
+            "description": "The percentage of the caller's latest finished attempt, with two decimals; null before the first."
+          },
+          "openAttemptId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The caller's attempt in progress, which starting the set again goes on with; null when none."
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "courseTitle",
+          "title",
+          "instructions",
+          "questionCount",
+          "attemptCount",
+          "lastPercent",
+          "openAttemptId",
+          "publishedAt"
+        ]
+      },
+      "PracticeAttemptStatus": {
+        "type": "string",
+        "enum": [
+          "IN_PROGRESS",
+          "FINISHED"
+        ]
+      },
+      "PracticeOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean",
+            "description": "Whether it is a correct option: sent only once the attempt is finished, never before."
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "PracticeOutcome": {
+        "type": "string",
+        "enum": [
+          "CORRECT",
+          "WRONG",
+          "BLANK"
+        ],
+        "description": "How the answer did; only once the attempt is finished."
+      },
+      "PracticeQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 up, in the attempt's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "options": {
+            "description": "In the attempt's order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PracticeOptionResponse"
+            }
+          },
+          "chosenOptionIds": {
+            "description": "The options the caller chose; none when blank.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "outcome": {
+            "description": "How the answer did; only once the attempt is finished.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeOutcome"
+              }
+            ]
+          },
+          "part": {
+            "type": "string",
+            "example": "0.50",
+            "description": "The part of the question the answer got, from 0.00 to 1.00 (a part only under IN_SHARES); only once the attempt is finished."
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "answerMode",
+          "options",
+          "chosenOptionIds"
+        ]
+      },
+      "PracticeResultResponse": {
+        "type": "object",
+        "properties": {
+          "correct": {
+            "type": "number",
+            "description": "Questions got whole."
+          },
+          "wrong": {
+            "type": "number",
+            "description": "Questions answered and not got whole."
+          },
+          "blank": {
+            "type": "number",
+            "description": "Questions left without an answer."
+          },
+          "total": {
+            "type": "number",
+            "description": "The attempt's questions."
+          },
+          "percent": {
+            "type": "string",
+            "example": "66.67",
+            "description": "The parts got over the number of questions, as a percentage with two decimals, rounded half up once."
+          }
+        },
+        "required": [
+          "correct",
+          "wrong",
+          "blank",
+          "total",
+          "percent"
+        ]
+      },
+      "PracticeAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "setId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The set's title."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeAttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The question last answered, where the page goes on."
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PracticeQuestionResponse"
+            }
+          },
+          "result": {
+            "nullable": true,
+            "description": "Null while the attempt is in progress.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeResultResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "setId",
+          "courseId",
+          "title",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "currentQuestionId",
+          "questions",
+          "result"
+        ]
+      },
+      "PracticeAttemptSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeAttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "result": {
+            "nullable": true,
+            "description": "Null while it is in progress.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeResultResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "result"
+        ]
+      },
+      "SavePracticeAnswerDto": {
+        "type": "object",
+        "properties": {
+          "optionIds": {
+            "description": "The options chosen, of this question only; none clears the answer. A radio question (SINGLE) takes one at most.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "optionIds"
+        ]
+      },
+      "PracticeAnswerSavedResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "optionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "savedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "optionIds",
+          "savedAt"
         ]
       }
     }

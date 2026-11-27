@@ -45,6 +45,7 @@ import {
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   ExamVersionResponse,
+  ListOnlineExamsQueryDto,
   OnlineExamCreatedResponse,
   OnlineExamDraftResponse,
   OnlineExamSummaryResponse,
@@ -98,25 +99,28 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "The course's online exams",
     description:
-      'Nazar\'s "Sınavlar": each online exam of the course with its title, its question count and where it stands, the latest changed first.',
+      'Nazar\'s "Sınavlar": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.',
     operationId: "listOnlineExams",
   })
   @ApiOkResponse({ type: [OnlineExamSummaryResponse] })
+  @ApiBadRequestResponse({ description: "VALIDATION_ERROR" })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
   @Authz(PERMISSIONS.EXAM_PREPARE, byParam(ENTITIES.COURSE, "id"))
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Get("courses/:id/online-exams")
   listExams(
     @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) courseId: string
+    @Param("id", ParseUUIDPipe) courseId: string,
+    @Query() query: ListOnlineExamsQueryDto
   ): Promise<OnlineExamSummaryResponse[]> {
-    return this.service.listExams(courseId, request.user);
+    return this.service.listExams(courseId, request.user, query.kind);
   }
 
   @ApiOperation({
     summary: "Open a new online exam",
     description:
-      '"Yeni sınav": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.',
+      '"Yeni sınav": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.',
     operationId: "createOnlineExam",
   })
   @ApiCreatedResponse({ type: OnlineExamCreatedResponse })
@@ -131,7 +135,7 @@ export class OnlineExamController {
     @Param("id", ParseUUIDPipe) courseId: string,
     @Body() dto: CreateOnlineExamDto
   ): Promise<OnlineExamCreatedResponse> {
-    return this.service.createExam(courseId, dto.title, request.user);
+    return this.service.createExam(courseId, dto.title, request.user, dto.kind);
   }
 
   @ApiOperation({
@@ -162,7 +166,10 @@ export class OnlineExamController {
   @ApiBadRequestResponse({ description: "VALIDATION_ERROR, TOPIC_NOT_FOUND" })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
-  @ApiConflictResponse({ description: "EXAM_STALE, EXAM_LOCKED" })
+  @ApiConflictResponse({
+    description:
+      "EXAM_STALE, EXAM_LOCKED, EXAM_KIND_MISMATCH (a length on a çalışma seti)",
+  })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Patch("online-exams/:examId")
@@ -177,7 +184,7 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "Yayınla: now, or at a day and time, with a latest start",
     description:
-      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.",
     operationId: "publishOnlineExam",
   })
   @ApiOkResponse({ type: OnlineExamDraftResponse })
@@ -209,7 +216,8 @@ export class OnlineExamController {
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
   @ApiConflictResponse({
-    description: "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened), EXAM_STALE",
+    description:
+      "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened; a çalışma seti once a talebe has started it), EXAM_STALE",
   })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
@@ -306,7 +314,8 @@ export class OnlineExamController {
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND, QUESTION_NOT_FOUND" })
   @ApiConflictResponse({
-    description: "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL",
+    description:
+      "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL, EXAM_KIND_MISMATCH (a çalışma seti, whose questions all weigh the same)",
   })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))

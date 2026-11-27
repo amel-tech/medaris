@@ -22,6 +22,7 @@ export * from './NizamApi';
 export * from './NotificationsApi';
 export * from './OnlineExamAttemptsApi';
 export * from './OnlineExamsApi';
+export * from './PracticeApi';
 export * from './ResourcesApi';
 export * from './SessionsApi';
 export * from './SubmissionsApi';

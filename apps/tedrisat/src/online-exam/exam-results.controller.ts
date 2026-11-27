@@ -52,6 +52,10 @@ export class ExamResultsController {
   @ApiOkResponse({ type: OnlineExamResultsResponse })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
+  @ApiConflictResponse({
+    description:
+      "EXAM_KIND_MISMATCH (a çalışma seti, which has no results for the team)",
+  })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @Get("online-exams/:examId/results")
   results(
@@ -70,6 +74,10 @@ export class ExamResultsController {
   @ApiOkResponse({ type: TalebeAnswersResponse })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND, ATTEMPT_NOT_FOUND" })
+  @ApiConflictResponse({
+    description:
+      "EXAM_KIND_MISMATCH (a çalışma seti, which has no results for the team)",
+  })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @Get("online-exams/:examId/results/:userId")
   talebeAnswers(
@@ -88,7 +96,9 @@ export class ExamResultsController {
   @ApiOkResponse({ type: OnlineExamClosedResponse })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
-  @ApiConflictResponse({ description: "EXAM_NOT_OPEN" })
+  @ApiConflictResponse({
+    description: "EXAM_NOT_OPEN, EXAM_KIND_MISMATCH (a çalışma seti)",
+  })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @HttpCode(HttpStatus.OK)
   @Post("online-exams/:examId/close")
