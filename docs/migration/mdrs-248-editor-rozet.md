@@ -15,7 +15,7 @@ Builds on the UX passes in `mdrs-248-calisma-ux-nazar.md` and
   question textarea grows with its text (`field-sizing: content`, where the
   browser supports it; elsewhere it stays three rows and resizable, as
   before).
-- **Option rows**: the option's letter (A, B, C…, its number after Z), its
+- **Option rows**: the option's letter (A, B, C…, AA after Z), its
   "Doğru" box, then the field, on tight rows. Each "Doğru" box is described
   by its letter (`aria-describedby`), so a screen reader no longer hears
   five identical "Doğru" boxes. The field keeps its name ("1. şık").
