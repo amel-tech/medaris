@@ -10,6 +10,55 @@ export const segmentOf = (kind: ExamKind): string =>
 /** The option fields a new question shows (the owner: five). */
 export const OPTION_FIELDS = 5;
 
+/** The most options a question takes: the API's `@ArrayMaxSize(50)` on them. */
+export const OPTIONS_MAX = 50;
+
+/** "A", "B", … as the option's mark; past "Z" its number. */
+export const optionLetter = (index: number): string =>
+  index < 26 ? String.fromCharCode(65 + index) : String(index + 1);
+
+// "A) ", "b. ", "3) ": the mark a list copied from a document starts each line with.
+const LINE_MARK = /^\(?[A-Za-z0-9]\)\s+|^[A-Za-z0-9][.)]\s+/;
+
+/**
+ * The lines of a paste, one option each: blank lines dropped, and the marks
+ * taken off only when every line carries one (so "3. yüzyıl" alone is kept).
+ * One line or none is not a list: the caller lets the paste through.
+ */
+export function pastedOptions(text: string): string[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  if (lines.length < 2) return lines;
+  return lines.every((line) => LINE_MARK.test(line))
+    ? lines.map((line) => line.replace(LINE_MARK, "").trim())
+    : lines;
+}
+
+/**
+ * The options after `lines` are pasted into the one at `at`: that one and
+ * those after it take the lines in order (their "Doğru" marks stay), new
+ * options are added for the rest, up to `max`; lines past it are left out.
+ */
+export function spreadOptions<O extends { text: string; correct: boolean }>(
+  options: readonly O[],
+  at: number,
+  lines: readonly string[],
+  max: number = OPTIONS_MAX
+): Array<O | { text: string; correct: boolean }> {
+  const next: Array<O | { text: string; correct: boolean }> = [...options];
+  lines.forEach((line, k) => {
+    const i = at + k;
+    if (i >= max) return;
+    next[i] =
+      i < next.length
+        ? { ...next[i], text: line }
+        : { text: line, correct: false };
+  });
+  return next;
+}
+
 /** "3, 7" → the topics of those numbers, and the numbers no topic has. */
 export function topicsByNumbers(
   text: string,

@@ -30,6 +30,9 @@ export const wholePercent = (
     maximumFractionDigits: 0,
   });
 
+/** A status in the table: one width for "Taslak" and "Yayında", so the column lines up. */
+const STATUS_BADGE = "min-inline-20 justify-center";
+
 const COMPACT_STACK = [
   "max-md:[&_td[data-label]]:inline-flex!",
   "max-md:[&_td[data-label]]:items-baseline",
@@ -100,9 +103,13 @@ export function PracticeSetsTable({
           header: t("colStatus"),
           render: (r) =>
             r.draft ? (
-              <Badge variant="secondary">{t("statusDraft")}</Badge>
+              <Badge variant="secondary" className={STATUS_BADGE}>
+                {t("statusDraft")}
+              </Badge>
             ) : (
-              <Badge variant="success">{t("statusOpen")}</Badge>
+              <Badge variant="success" className={STATUS_BADGE}>
+                {t("statusOpen")}
+              </Badge>
             ),
         },
         {

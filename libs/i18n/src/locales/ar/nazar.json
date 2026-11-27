@@ -2399,6 +2399,7 @@
     "removeBody": "يُحذف السؤال مع خياراته.",
     "questionTextLabel": "السؤال",
     "optionsLabel": "الخيارات",
+    "optionsHelp": "اضغط Enter للانتقال إلى الخيار التالي. إذا ألصقت خيارات مكتوبة سطرًا تحت سطر صار كل سطر خيارًا.",
     "optionLabel": "الخيار {n}",
     "addOption": "إضافة خيار",
     "topicNumbersLabel": "أرقام الموضوعات",

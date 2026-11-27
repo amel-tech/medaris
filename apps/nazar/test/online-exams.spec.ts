@@ -3,8 +3,11 @@ import {
   modeFits,
   numbersOf,
   onlineExamErrorKey,
+  optionLetter,
+  pastedOptions,
   pointsFromText,
   sharesOf,
+  spreadOptions,
   topicsByNumbers,
 } from "~/features/online-exams/online-exams";
 
@@ -67,5 +70,42 @@ describe("online exams (MDRS-299)", () => {
     expect(modeFits("MULTIPLE", "IN_SHARES", 1)).toBe(false);
     expect(modeFits("SINGLE", null, 3)).toBe(true);
     expect(modeFits("SINGLE", "ALL_OR_NOTHING", 3)).toBe(false);
+  });
+});
+
+describe("quick option entry (MDRS-248)", () => {
+  it("letters the options A to Z, then numbers them", () => {
+    expect(optionLetter(0)).toBe("A");
+    expect(optionLetter(25)).toBe("Z");
+    expect(optionLetter(26)).toBe("27");
+  });
+
+  it("reads a pasted list a line each, its marks off only when every line has one", () => {
+    expect(pastedOptions("a) Asıl\r\nb) Fer\n")).toEqual(["Asıl", "Fer"]);
+    expect(pastedOptions("1. Asıl\n2. Fer")).toEqual(["Asıl", "Fer"]);
+    expect(pastedOptions("3. yüzyıl\nDördüncü yüzyıl")).toEqual([
+      "3. yüzyıl",
+      "Dördüncü yüzyıl",
+    ]);
+    expect(pastedOptions("  Tek satır  ")).toEqual(["Tek satır"]);
+  });
+
+  it("fills the option pasted into and those after it, adding up to the most", () => {
+    const four = [
+      { text: "Asıl", correct: true },
+      { text: "", correct: false },
+      { text: "", correct: true },
+      { text: "", correct: false },
+    ];
+    expect(
+      spreadOptions(four, 1, ["Fer", "İllet", "Hüküm", "Rivayet"])
+    ).toEqual([
+      { text: "Asıl", correct: true },
+      { text: "Fer", correct: false },
+      { text: "İllet", correct: true },
+      { text: "Hüküm", correct: false },
+      { text: "Rivayet", correct: false },
+    ]);
+    expect(spreadOptions(four, 3, ["x", "y", "z"], 5)).toHaveLength(5);
   });
 });

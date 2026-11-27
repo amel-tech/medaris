@@ -233,7 +233,11 @@ export function ResultsView({ initial }: { initial: Results }) {
       key: "state",
       header: t("ExamResults.colState"),
       render: (row) => (
-        <Badge variant={row.state === "IN_PROGRESS" ? "brand" : "secondary"}>
+        <Badge
+          variant={row.state === "IN_PROGRESS" ? "brand" : "secondary"}
+          // One width for every state, so the column lines up (MDRS-248).
+          className="min-inline-24 justify-center"
+        >
           {stateOf(row)}
         </Badge>
       ),

@@ -265,7 +265,12 @@ function SetTable({
                   {...role("cell")}
                   className={`${cell} max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end`}
                 >
-                  <Badge variant={status.badge}>{t(status.key)}</Badge>
+                  <Badge
+                    variant={status.badge}
+                    className="min-inline-24 justify-center"
+                  >
+                    {t(status.key)}
+                  </Badge>
                 </td>
                 <td
                   {...role("cell")}
@@ -274,6 +279,7 @@ function SetTable({
                   <Button
                     size="small"
                     variant={ACTION_VARIANT[action]}
+                    className="min-inline-24 justify-center"
                     href={solveHref(set.id)}
                     aria-label={t(`${action}Label`, { title: set.title })}
                   >

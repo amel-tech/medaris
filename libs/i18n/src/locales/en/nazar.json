@@ -2399,6 +2399,7 @@
     "removeBody": "The question is deleted with its options.",
     "questionTextLabel": "Question",
     "optionsLabel": "Options",
+    "optionsHelp": "Press Enter to go on to the next option. Paste options written one per line and each line becomes an option.",
     "optionLabel": "Option {n}",
     "addOption": "Add option",
     "topicNumbersLabel": "Topic numbers",
