@@ -20,14 +20,20 @@ Builds on the UX passes in `mdrs-248-calisma-ux-nazar.md` and
   by its letter (`aria-describedby`), so a screen reader no longer hears
   five identical "Doğru" boxes. The field keeps its name ("1. şık").
 - **Quick entry**: Enter in an option moves to the next one; on the last
-  it adds an option (Enter no longer sends the form from an option field).
-  A paste of two lines or more fills the option it lands in and those
-  after it, one line each, adding options as needed; blank lines are
-  dropped, and list marks ("A) ", "1. ") are taken off only when every line
-  carries one. A help line under "Şıklar" says so (tr/en/ar). "Şık ekle"
-  now puts the caret in the new option. Options stop at 50, the API's
-  `@ArrayMaxSize(50)` (`OPTIONS_MAX`); "Şık ekle" is hidden there and a
-  longer paste is cut at it.
+  it adds an option (Enter no longer sends the form from an option field,
+  except on the 50th, where it sends it as before). A paste of two lines or
+  more into an empty option fills it and the empty options after it, one
+  line each, skipping options that already hold text, then adds options as
+  needed; a paste into an option that holds text goes in at the caret, as
+  typed, so nothing typed is overwritten. Blank lines are dropped, each line
+  is cut to 1000 characters (the API's `OPTION_TEXT_MAX`), and list marks
+  ("A) ", "(1) ", "12. ", "Ç) ") are taken off only when every line carries
+  one and they count on (A, B, C… in Latin or Turkish order, or 1, 2, 3…),
+  so "I. Dünya Savaşı" / "V. Murad" keep theirs. A help line under "Şıklar"
+  says so (tr/en/ar). "Şık ekle" now puts the caret in the new option.
+  Options stop at 50, the API's `@ArrayMaxSize(50)` (`OPTIONS_MAX`); "Şık
+  ekle" is hidden there and a longer paste is cut at it. Past "Z" the
+  letters go on as `<ol type="A">` does (AA, AB…).
 - **Status badges in tables** have one minimum width and centred text, so
   the column lines up: nazar's set table (Taslak/Yayında,
   `min-inline-20`), tedris's set table (Yeni/Devam ediyor/Çözüldü,
@@ -52,6 +58,17 @@ Builds on the UX passes in `mdrs-248-calisma-ux-nazar.md` and
 - `field-sizing: content` growth in Safari and Firefox; there the textarea
   falls back to its old fixed three rows.
 - Arabic and English widths of the badges by eye (the minimum only grows).
+
+## Review
+
+`/code-review` (medium) gave seven findings. Fixed: a pasted line longer
+than 1000 characters (cut), a paste overwriting typed options or their
+"Doğru" marks (only empty options are filled now), marks of ten or more
+lines and Turkish letters (recognised), marks that are words (only marks
+that count on are taken off), letters past Z (AA…), Enter on the 50th
+option (sends the form). Left: a blank option in the middle is dropped on
+save, so the options after it move up a letter in the saved question; that
+was so before this change (the form has always kept blank fields).
 
 ## Later
 

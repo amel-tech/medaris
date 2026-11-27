@@ -670,7 +670,7 @@ describe("the exam editor (MDRS-299)", () => {
     );
   });
 
-  it("lets a one-line paste through as it is", async () => {
+  it("lets a one-line paste, or one into a typed option, through as it is", async () => {
     actions.addExamQuestion.mockResolvedValue({
       success: true,
       data: { version: 2, question: { id: "q1" } },
@@ -679,6 +679,11 @@ describe("the exam editor (MDRS-299)", () => {
     await click(button(root, "Soru ekle"));
     const event = await paste(option(root, 2), "Fer");
     expect(event.defaultPrevented).toBe(false);
+    // Into an option that holds text, even a list goes in at the caret.
+    await typeInto(option(root, 1), "Asıl");
+    const into = await paste(option(root, 1), "Fer\nİllet");
+    expect(into.defaultPrevented).toBe(false);
+    expect(option(root, 2).value).toBe("");
   });
 
   it("offers check boxes where any correct one is enough, and sends it", async () => {

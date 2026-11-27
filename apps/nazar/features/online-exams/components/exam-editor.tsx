@@ -54,6 +54,7 @@ import {
   nextFreeNumber,
   numbersOf,
   OPTION_FIELDS,
+  OPTION_TEXT_MAX,
   OPTIONS_MAX,
   onlineExamErrorKey,
   optionLetter,
@@ -1242,23 +1243,26 @@ function QuestionForm({
   // question's options are typed one after another without the mouse.
   const onOptionKey = (i: number, event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    // On the last option there can be, Enter sends the form, as before.
+    if (i + 1 >= OPTIONS_MAX) return;
     event.preventDefault();
-    if (i + 1 < options.length) setFocusAt(i + 1);
-    else if (options.length < OPTIONS_MAX) {
+    if (i + 1 >= options.length)
       setOptions((all) => [...all, { text: "", correct: false }]);
-      setFocusAt(i + 1);
-    }
+    setFocusAt(i + 1);
   };
-  // A list pasted into an option fills it and the ones after it, a line each.
+  // A list pasted into an empty option fills it and the empty ones after it, a line each.
   const onOptionPaste = (
     i: number,
     event: ClipboardEvent<HTMLInputElement>
   ) => {
+    // Into an option that holds text, a paste goes in at the caret, as typed.
+    if (event.currentTarget.value.trim() !== "") return;
     const lines = pastedOptions(event.clipboardData.getData("text"));
     if (lines.length < 2) return;
     event.preventDefault();
-    setOptions((all) => spreadOptions(all, i, lines));
-    setFocusAt(Math.min(i + lines.length, OPTIONS_MAX) - 1);
+    const spread = spreadOptions(options, i, lines);
+    setOptions(spread.options);
+    setFocusAt(spread.last);
   };
   const filled = options
     .filter((o) => o.text.trim() !== "")
@@ -1341,7 +1345,7 @@ function QuestionForm({
                 onKeyDown={(e) => onOptionKey(i, e)}
                 onPaste={(e) => onOptionPaste(i, e)}
                 {...textProps(o.text)}
-                maxLength={1000}
+                maxLength={OPTION_TEXT_MAX}
                 enterKeyHint="next"
                 className="min-inline-0 flex-1"
               />
