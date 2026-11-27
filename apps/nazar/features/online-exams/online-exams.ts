@@ -1,4 +1,11 @@
-import type { DraftCourseTopicResponse } from "@medaris/services/tedrisat";
+import type {
+  DraftCourseTopicResponse,
+  ExamKind,
+} from "@medaris/services/tedrisat";
+
+/** The course page a kind is prepared under: "Sınavlar", or "Çalışma Soruları" for a set (MDRS-248). */
+export const segmentOf = (kind: ExamKind): string =>
+  kind === "PRACTICE" ? "calisma-sorulari" : "sinavlar";
 
 /** The option fields a new question shows (the owner: five). */
 export const OPTION_FIELDS = 5;

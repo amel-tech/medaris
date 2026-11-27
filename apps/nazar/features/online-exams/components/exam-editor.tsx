@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  ExamKind,
   ExamQuestionResponse,
   OnlineExamDraftResponse,
   PublishProblemResponse,
@@ -84,6 +85,16 @@ type QuestionBody = {
   points: number | null;
 };
 
+/** The settings the page holds; a çalışma seti's leave the length out (MDRS-248). */
+const settingsOf = (
+  draft: OnlineExamDraftResponse,
+  practice: boolean
+): ExamSettings => ({
+  title: draft.title,
+  instructions: draft.instructions ?? null,
+  ...(practice ? {} : { durationMinutes: draft.durationMinutes }),
+});
+
 /** A question's own points as typed: on their way, refused, or the API's. */
 const typedOwnOf = (q: Question): number | null =>
   q.wantedPoints !== undefined ? q.wantedPoints : ownHundredthsOf(q.ownPoints);
@@ -138,14 +149,20 @@ const localKey = () => `local-${++localKeys}`;
  * the background, each naming the version the one before handed back. A
  * write that fails keeps what was typed and offers it again; a version
  * someone else moved (EXAM_STALE) reads the page again.
+ *
+ * With `kind: PRACTICE` it prepares a çalışma seti (MDRS-248): no length,
+ * no points and a publish with no date, since a set has no celse and every
+ * question of it weighs the same.
  */
 export function ExamEditor({
   courseId,
   draft,
+  kind = "EXAM",
   publish,
 }: {
   courseId: string;
   draft: OnlineExamDraftResponse;
+  kind?: ExamKind;
   /** "Yayınla" under the questions; left out, the editor has none. */
   publish?: {
     timeZone: string;
@@ -162,11 +179,10 @@ export function ExamEditor({
     draft.questions.map((q) => ({ ...q, key: q.id }))
   );
   const [editing, setEditing] = useState<string | null>(null);
-  const [settings, setSettings] = useState<ExamSettings>({
-    title: draft.title,
-    durationMinutes: draft.durationMinutes,
-    instructions: draft.instructions ?? null,
-  });
+  const practice = kind === "PRACTICE";
+  const [settings, setSettings] = useState<ExamSettings>(() =>
+    settingsOf(draft, practice)
+  );
   const [settingsState, setSettingsState] = useState<
     "saved" | "pending" | "failed"
   >("saved");
@@ -229,13 +245,9 @@ export function ExamEditor({
       )
     );
     if (settingsState !== "failed" && settingsState !== "pending") {
-      setSettings({
-        title: draft.title,
-        durationMinutes: draft.durationMinutes,
-        instructions: draft.instructions ?? null,
-      });
+      setSettings(settingsOf(draft, practice));
     }
-  }, [draft, inFlight, editing, settingsState]);
+  }, [draft, inFlight, editing, settingsState, practice]);
 
   /** A refusal, worded; false when the write did not go through. */
   const went = (result: Outcome): boolean => {
@@ -244,7 +256,12 @@ export function ExamEditor({
       notify({
         tone: "error",
         title: t("OnlineExams.failed"),
-        description: words(onlineExamErrorKey(result.code)),
+        description:
+          practice && result.code === "EXAM_NOT_READY"
+            ? t("Practice.notReady")
+            : practice && result.code === "EXAM_LOCKED"
+              ? t("Practice.lockedEdit")
+              : words(onlineExamErrorKey(result.code)),
       });
       if (READS_AGAIN.has(result.code)) router.refresh();
       return false;
@@ -608,36 +625,45 @@ export function ExamEditor({
   const numbered = questions.map((q, i) => ({
     ...q,
     number: i + 1,
-    share: shares.get(q.key),
+    // A set's questions all weigh the same: it shows no points.
+    share: practice ? undefined : shares.get(q.key),
   }));
   const view = { ...draft, courseTopics: topics };
 
   // What the page knows keeps the exam from being published: its length and
   // the questions as they now stand, and what only the server knows (the
   // points total and the zeroth question) as it was read.
+  // A set needs one complete question only, as the API's practiceProblems.
   const problems: PublishProblemResponse[] = !publish
     ? []
-    : [
-        ...(settings.durationMinutes === null
-          ? [{ kind: "NO_DURATION" as const }]
-          : []),
-        ...(numbered.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
-        ...numbered
-          .filter((q) => q.lacks.length > 0)
-          .map((q) => ({
-            kind: "QUESTION" as const,
-            number: q.number,
-            lacks: q.lacks,
-          })),
-        ...draft.problems.filter(
-          (p) => p.kind === "POINTS" || p.kind === "NO_ZEROTH"
-        ),
-      ];
+    : practice
+      ? // A question kept here after a failed save is not on the server.
+        numbered.some(
+          (q) => q.lacks.length === 0 && !q.failed && (q.id !== "" || q.pending)
+        )
+        ? []
+        : [{ kind: "NO_QUESTION" as const }]
+      : [
+          ...(settings.durationMinutes === null
+            ? [{ kind: "NO_DURATION" as const }]
+            : []),
+          ...(numbered.length === 0 ? [{ kind: "NO_QUESTION" as const }] : []),
+          ...numbered
+            .filter((q) => q.lacks.length > 0)
+            .map((q) => ({
+              kind: "QUESTION" as const,
+              number: q.number,
+              lacks: q.lacks,
+            })),
+          ...draft.problems.filter(
+            (p) => p.kind === "POINTS" || p.kind === "NO_ZEROTH"
+          ),
+        ];
   const [sending, setSending] = useState(false);
   /** Publishing runs after every write queued before it, naming the version they leave. */
   const publishNow = (times: {
     startsAt?: string;
-    latestStartMinutes: number;
+    latestStartMinutes?: number;
   }) => {
     if (!publish) return;
     setSending(true);
@@ -661,6 +687,7 @@ export function ExamEditor({
   return (
     <div className="flex flex-col gap-section">
       <SettingsSection
+        practice={practice}
         settings={settings}
         state={settingsState}
         onSave={saveSettings}
@@ -689,6 +716,7 @@ export function ExamEditor({
             <li key={q.key}>
               {editing === q.key ? (
                 <QuestionForm
+                  practice={practice}
                   draft={view}
                   question={q}
                   onCancel={() =>
@@ -728,9 +756,10 @@ export function ExamEditor({
       </section>
       {publish ? (
         <PublishSection
+          kind={kind}
           problems={problems}
           questionCount={numbered.length}
-          durationMinutes={settings.durationMinutes}
+          durationMinutes={settings.durationMinutes ?? null}
           timeZone={publish.timeZone}
           holding={editing !== null}
           sending={sending}
@@ -746,11 +775,14 @@ export function ExamEditor({
  * together. The fields keep what was typed whatever the server answers.
  */
 function SettingsSection({
+  practice,
   settings,
   state,
   onSave,
   onRetry,
 }: {
+  /** A çalışma seti: no length (MDRS-248). */
+  practice: boolean;
   settings: ExamSettings;
   state: "saved" | "pending" | "failed";
   onSave: (settings: ExamSettings) => void;
@@ -761,7 +793,7 @@ function SettingsSection({
   // No default length: blank until the team types it, and blank is sent as
   // none (the owner, 22 Nov 2026: "sınav süresinin varsayılanı olmasın").
   const [minutes, setMinutes] = useState(
-    settings.durationMinutes === null ? "" : String(settings.durationMinutes)
+    settings.durationMinutes == null ? "" : String(settings.durationMinutes)
   );
   const [instructions, setInstructions] = useState(settings.instructions ?? "");
   const [problem, setProblem] = useState<"title" | "minutes" | null>(null);
@@ -769,12 +801,13 @@ function SettingsSection({
   const typed: ExamSettings | null = (() => {
     const durationMinutes = blankMinutes ? null : minutesFromText(minutes);
     if (title.trim() === "") return null;
-    if (!blankMinutes && durationMinutes === null) return null;
-    return {
+    const rest = {
       title: title.trim(),
-      durationMinutes,
       instructions: instructions.trim() === "" ? null : instructions.trim(),
     };
+    if (practice) return rest;
+    if (!blankMinutes && durationMinutes === null) return null;
+    return { ...rest, durationMinutes };
   })();
   const unchanged =
     typed !== null &&
@@ -784,7 +817,7 @@ function SettingsSection({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (title.trim() === "") return setProblem("title");
-    if (!blankMinutes && minutesFromText(minutes) === null) {
+    if (!practice && !blankMinutes && minutesFromText(minutes) === null) {
       return setProblem("minutes");
     }
     setProblem(null);
@@ -812,7 +845,11 @@ function SettingsSection({
         aria-labelledby="settings-title"
       >
         <Field
-          label={t("OnlineExams.examTitleLabel")}
+          label={
+            practice
+              ? t("Practice.newTitleLabel")
+              : t("OnlineExams.examTitleLabel")
+          }
           error={
             problem === "title" ? t("OnlineExams.titleMissing") : undefined
           }
@@ -823,20 +860,24 @@ function SettingsSection({
             maxLength={200}
           />
         </Field>
-        <Field
-          label={t("OnlineExams.durationLabel")}
-          help={t("OnlineExams.durationHelp")}
-          error={
-            problem === "minutes" ? t("OnlineExams.durationInvalid") : undefined
-          }
-        >
-          <Input
-            inputMode="numeric"
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value.replace(/\D/g, ""))}
-            className="w-24"
-          />
-        </Field>
+        {practice ? null : (
+          <Field
+            label={t("OnlineExams.durationLabel")}
+            help={t("OnlineExams.durationHelp")}
+            error={
+              problem === "minutes"
+                ? t("OnlineExams.durationInvalid")
+                : undefined
+            }
+          >
+            <Input
+              inputMode="numeric"
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value.replace(/\D/g, ""))}
+              className="w-24"
+            />
+          </Field>
+        )}
         <Field
           label={t("OnlineExams.instructionsLabel")}
           help={t("OnlineExams.instructionsHelp")}
@@ -1092,11 +1133,14 @@ function QuestionRow({
 }
 
 function QuestionForm({
+  practice,
   draft,
   question,
   onCancel,
   onSave,
 }: {
+  /** A çalışma seti's question has no points of its own (MDRS-248). */
+  practice: boolean;
   draft: OnlineExamDraftResponse;
   question: Question;
   onCancel: () => void;
@@ -1145,8 +1189,8 @@ function QuestionForm({
   const several = correctCount >= 2;
   const answerMode: AnswerModeValue = several ? mode : "SINGLE";
   const answerScoring = answerMode === "MULTIPLE" ? scoring : null;
-  const own = points.trim() === "" ? null : pointsFromText(points);
-  const pointsInvalid = points.trim() !== "" && own === null;
+  const own = practice || points.trim() === "" ? null : pointsFromText(points);
+  const pointsInvalid = !practice && points.trim() !== "" && own === null;
   const fits = modeFits(answerMode, answerScoring, correctCount);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -1254,18 +1298,20 @@ function QuestionForm({
           ]}
         />
       ) : null}
-      <Field
-        label={t("OnlineExams.ownPointsLabel")}
-        help={t("OnlineExams.ownPointsHelp")}
-        error={pointsInvalid ? t("OnlineExams.pointsInvalid") : undefined}
-      >
-        <Input
-          value={points}
-          onChange={(e) => setPoints(e.target.value)}
-          inputMode="decimal"
-          className="w-24"
-        />
-      </Field>
+      {practice ? null : (
+        <Field
+          label={t("OnlineExams.ownPointsLabel")}
+          help={t("OnlineExams.ownPointsHelp")}
+          error={pointsInvalid ? t("OnlineExams.pointsInvalid") : undefined}
+        >
+          <Input
+            value={points}
+            onChange={(e) => setPoints(e.target.value)}
+            inputMode="decimal"
+            className="w-24"
+          />
+        </Field>
+      )}
       <Field
         label={t("OnlineExams.topicNumbersLabel")}
         help={

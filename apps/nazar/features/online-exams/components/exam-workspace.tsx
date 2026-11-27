@@ -36,12 +36,14 @@ export function ExamWorkspace({
       key="draft"
       courseId={courseId}
       draft={current}
+      kind={current.kind}
       publish={{ timeZone, onPublished: setCurrent }}
     />
   ) : (
     <PublishedExam
       key="published"
       draft={current}
+      kind={current.kind}
       timeZone={timeZone}
       locale={locale}
       onUnpublished={setCurrent}

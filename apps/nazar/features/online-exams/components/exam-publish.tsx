@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  ExamKind,
   OnlineExamDraftResponse,
   PublishProblemResponse,
 } from "@medaris/services/tedrisat";
@@ -82,8 +83,13 @@ function ProblemLines({ problems }: { problems: PublishProblemResponse[] }) {
  * earliest by ten minutes until it is changed by hand. Both are on the
  * viewer's clock. Publishing asks once, then runs after the writes queued
  * before it (`onPublish`).
+ *
+ * A çalışma seti (`kind: PRACTICE`, MDRS-248) has no date, no window and no
+ * length: one "Yayınla", asked once, opens it to the course's talebe from
+ * now on.
  */
 export function PublishSection({
+  kind = "EXAM",
   problems,
   questionCount,
   durationMinutes,
@@ -92,6 +98,7 @@ export function PublishSection({
   sending,
   onPublish,
 }: {
+  kind?: ExamKind;
   problems: PublishProblemResponse[];
   questionCount: number;
   /** Null until the team types it; the exam is not published without it. */
@@ -100,7 +107,10 @@ export function PublishSection({
   /** A question's form is open: publishing would leave it out. */
   holding: boolean;
   sending: boolean;
-  onPublish: (times: { startsAt?: string; latestStartMinutes: number }) => void;
+  onPublish: (times: {
+    startsAt?: string;
+    latestStartMinutes?: number;
+  }) => void;
 }) {
   const t = useTranslations("nazar");
   const [mode, setMode] = useState<"now" | "later">("later");
@@ -165,6 +175,53 @@ export function PublishSection({
       latestStartMinutes: minutes,
     });
   };
+
+  if (kind === "PRACTICE") {
+    return (
+      <section
+        className="mds-card flex flex-col gap-3 p-4"
+        aria-labelledby="publish-title"
+      >
+        <h2 id="publish-title" className="mds-h2">
+          {t("Practice.publishTitle")}
+        </h2>
+        <p className="mds-body-sm text-neutral-muted">{t("Practice.intro")}</p>
+        {problems.length > 0 ? (
+          <Alert tone="warning" title={t("OnlineExams.notReadyTitle")}>
+            <p>{t("Practice.notReady")}</p>
+          </Alert>
+        ) : null}
+        {holding ? (
+          <p className="mds-body-sm text-neutral-muted">
+            {t("OnlineExams.holdingQuestion")}
+          </p>
+        ) : null}
+        <div>
+          <Button
+            onClick={() => setAsking(true)}
+            disabled={holding || problems.length > 0}
+            loading={sending}
+          >
+            {t("Practice.publish")}
+          </Button>
+        </div>
+        <AlertDialog
+          open={asking}
+          onOpenChange={setAsking}
+          title={t("Practice.publishConfirmTitle")}
+          confirmLabel={t("Practice.publish")}
+          cancelLabel={t("OnlineExams.cancel")}
+          closeLabel={t("Shell.close")}
+          onConfirm={() => {
+            setAsking(false);
+            onPublish({});
+          }}
+        >
+          {t("Practice.lockedNote")}
+        </AlertDialog>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -291,14 +348,20 @@ export function PublishSection({
  * A published exam, read-only: where it stands, when it opens and until when
  * a talebe may start, and its questions. Until it opens, "Taslağa al" deletes
  * its celse and gives the editor back (`onUnpublished`).
+ *
+ * A published çalışma seti (`kind: PRACTICE`, MDRS-248) is "Yayında" with
+ * "Yayından kaldır", which the API refuses (EXAM_LOCKED) once a talebe has
+ * started it.
  */
 export function PublishedExam({
   draft,
+  kind = "EXAM",
   timeZone,
   locale,
   onUnpublished,
 }: {
   draft: OnlineExamDraftResponse;
+  kind?: ExamKind;
   timeZone: string;
   locale: string;
   onUnpublished: (next: OnlineExamDraftResponse) => void;
@@ -306,6 +369,7 @@ export function PublishedExam({
   const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
+  const practice = kind === "PRACTICE";
   const { notify } = useToaster();
   const [asking, setAsking] = useState(false);
   const [sending, setSending] = useState(false);
@@ -328,7 +392,10 @@ export function PublishedExam({
         notify({
           tone: "error",
           title: t("OnlineExams.failed"),
-          description: words(onlineExamErrorKey(result.code)),
+          description:
+            practice && result.code === "EXAM_LOCKED"
+              ? t("Practice.locked")
+              : words(onlineExamErrorKey(result.code)),
         });
         if (READS_AGAIN.has(result.code)) router.refresh();
         return;
@@ -341,14 +408,15 @@ export function PublishedExam({
     }
   };
 
-  const badge =
-    draft.status === "SCHEDULED" ? (
-      <Badge variant="brand">{t("OnlineExams.statusScheduledTitle")}</Badge>
-    ) : draft.status === "OPEN" ? (
-      <Badge variant="success">{t("OnlineExams.statusOpen")}</Badge>
-    ) : (
-      <Badge variant="outline">{t("OnlineExams.statusClosed")}</Badge>
-    );
+  const badge = practice ? (
+    <Badge variant="success">{t("Practice.statusOpen")}</Badge>
+  ) : draft.status === "SCHEDULED" ? (
+    <Badge variant="brand">{t("OnlineExams.statusScheduledTitle")}</Badge>
+  ) : draft.status === "OPEN" ? (
+    <Badge variant="success">{t("OnlineExams.statusOpen")}</Badge>
+  ) : (
+    <Badge variant="outline">{t("OnlineExams.statusClosed")}</Badge>
+  );
 
   return (
     <div className="flex flex-col gap-section">
@@ -363,16 +431,46 @@ export function PublishedExam({
           {badge}
         </div>
         <p className="mds-body">
-          {draft.status === "SCHEDULED"
-            ? t("OnlineExams.scheduledBody", {
-                when: when(draft.startsAt),
-                latest: when(draft.latestStartAt),
-              })
-            : draft.status === "OPEN"
-              ? t("OnlineExams.openBody", { latest: when(draft.latestStartAt) })
-              : t("OnlineExams.closedBody")}
+          {practice
+            ? t("Practice.intro")
+            : draft.status === "SCHEDULED"
+              ? t("OnlineExams.scheduledBody", {
+                  when: when(draft.startsAt),
+                  latest: when(draft.latestStartAt),
+                })
+              : draft.status === "OPEN"
+                ? t("OnlineExams.openBody", {
+                    latest: when(draft.latestStartAt),
+                  })
+                : t("OnlineExams.closedBody")}
         </p>
-        {draft.status === "SCHEDULED" ? (
+        {practice ? (
+          <>
+            <p className="mds-body-sm text-neutral-muted">
+              {t("Practice.lockedNote")}
+            </p>
+            <div>
+              <Button
+                variant="secondary"
+                onClick={() => setAsking(true)}
+                loading={sending}
+              >
+                {t("Practice.unpublish")}
+              </Button>
+            </div>
+            <AlertDialog
+              open={asking}
+              onOpenChange={setAsking}
+              title={t("Practice.unpublishTitle")}
+              confirmLabel={t("Practice.unpublish")}
+              cancelLabel={t("OnlineExams.cancel")}
+              closeLabel={t("Shell.close")}
+              onConfirm={unpublish}
+            >
+              {t("Practice.unpublishBody")}
+            </AlertDialog>
+          </>
+        ) : draft.status === "SCHEDULED" ? (
           <>
             <p className="mds-help">{t("OnlineExams.notifiedNote")}</p>
             <p className="mds-body-sm text-neutral-muted">
