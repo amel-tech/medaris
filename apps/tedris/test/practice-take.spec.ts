@@ -13,6 +13,7 @@ import { cleanup, click, render, settle } from "./dom";
 
 const mocks = vi.hoisted(() => ({
   startPractice: vi.fn(),
+  startPracticePool: vi.fn(),
   savePracticeChoice: vi.fn(),
   finishPractice: vi.fn(),
 }));
@@ -46,6 +47,7 @@ const attempt = (
 ): PracticeAttemptResponse => ({
   id: "a1",
   setId: "s1",
+  poolMode: null,
   courseId: "c1",
   title: "Birinci bab",
   status: "IN_PROGRESS",
@@ -58,6 +60,7 @@ const attempt = (
       number: 1,
       text: "Birinci soru",
       answerMode: "SINGLE",
+      setTitle: "Birinci bab",
       options: [
         { id: "a", text: "Elif" },
         { id: "b", text: "Be" },
@@ -69,6 +72,7 @@ const attempt = (
       number: 2,
       text: "İkinci soru",
       answerMode: "SINGLE",
+      setTitle: "Birinci bab",
       options: [
         { id: "c", text: "Cim" },
         { id: "d", text: "Dal" },
@@ -89,11 +93,17 @@ const radio = (host: HTMLElement, label: string) =>
     .find((l) => l.textContent?.trim() === label)
     ?.querySelector("[role=radio]") as HTMLElement;
 
-const mount = async () => {
+const mount = async (
+  source:
+    | { setId: string }
+    | { courseId: string; mode: "ALL" | "RANDOM"; count?: number } = {
+    setId: "s1",
+  }
+) => {
   const { PracticeTake } = await import(
     "~/features/practice/components/practice-take"
   );
-  const host = await render(createElement(PracticeTake, { setId: "s1" }));
+  const host = await render(createElement(PracticeTake, source));
   await settle();
   return host;
 };
@@ -119,6 +129,27 @@ describe("solving a çalışma seti (MDRS-248)", () => {
     expect(radio(host, "Dal").getAttribute("aria-checked")).toBe("true");
     // No clock and no zeroth question.
     expect(host.querySelector("[role=timer]")).toBeNull();
+  });
+
+  it("starts a pool attempt of the course, called a mixed one", async () => {
+    mocks.startPracticePool.mockResolvedValue(
+      ok(attempt({ setId: null, poolMode: "RANDOM", title: "" }))
+    );
+    const host = await mount({ courseId: "c1", mode: "RANDOM", count: 20 });
+    expect(mocks.startPracticePool).toHaveBeenCalledWith("c1", "RANDOM", 20);
+    expect(mocks.startPractice).not.toHaveBeenCalled();
+    expect(host.textContent).toContain("Karışık deneme");
+    expect(host.textContent).toContain("Birinci soru");
+  });
+
+  it("says why a pool attempt could not open", async () => {
+    mocks.startPracticePool.mockResolvedValue({
+      success: false,
+      error: "bad",
+      status: 400,
+    });
+    const host = await mount({ courseId: "c1", mode: "RANDOM", count: 999 });
+    expect(host.textContent).toContain("Karışık deneme açılamadı");
   });
 
   it("saves a choice at once, and says so when it could not", async () => {

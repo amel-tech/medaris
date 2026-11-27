@@ -1,15 +1,21 @@
 import { resources } from "@medaris/i18n";
 import type {
   PracticeAttemptResponse,
+  PracticePoolResponse,
   PracticeSetSummaryResponse,
 } from "@medaris/services/tedrisat";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
   actionOf,
+  againHref,
   blankCount,
+  continueHref,
   groupByCourse,
   percentText,
+  poolHref,
+  poolRequestOf,
+  randomDefault,
   startIndex,
 } from "~/features/practice/practice-model";
 
@@ -57,6 +63,7 @@ const set = (
 const finished: PracticeAttemptResponse = {
   id: "a1",
   setId: "s1",
+  poolMode: null,
   courseId: "c1",
   title: "Birinci bab",
   status: "FINISHED",
@@ -69,6 +76,7 @@ const finished: PracticeAttemptResponse = {
       number: 1,
       text: "Nasara hangi babdandır?",
       answerMode: "SINGLE",
+      setTitle: "Birinci bab",
       options: [
         { id: "o1", text: "Birinci bab", correct: true },
         { id: "o2", text: "İkinci bab", correct: false },
@@ -82,6 +90,7 @@ const finished: PracticeAttemptResponse = {
       number: 2,
       text: "Daraba hangi babdandır?",
       answerMode: "SINGLE",
+      setTitle: "Birinci bab",
       options: [
         { id: "o3", text: "Birinci bab", correct: false },
         { id: "o4", text: "İkinci bab", correct: true },
@@ -95,6 +104,7 @@ const finished: PracticeAttemptResponse = {
       number: 3,
       text: "Fetaha hangi babdandır?",
       answerMode: "SINGLE",
+      setTitle: "Birinci bab",
       options: [
         { id: "o5", text: "Üçüncü bab", correct: true },
         { id: "o6", text: "Dördüncü bab", correct: false },
@@ -162,13 +172,92 @@ describe("the çalışma soruları model (MDRS-248)", () => {
   });
 });
 
+describe("the pool's model (MDRS-248, Faz 4)", () => {
+  it("offers 50 questions at random, or the whole pool when smaller", () => {
+    expect(randomDefault(500)).toBe(50);
+    expect(randomDefault(12)).toBe(12);
+  });
+
+  it("writes and reads the pool page's address", () => {
+    expect(poolHref("c1")).toBe("/calisma-sorulari/havuz/c1");
+    expect(poolHref("c1", "ALL")).toBe("/calisma-sorulari/havuz/c1?mod=ALL");
+    expect(poolHref("c1", "RANDOM", 20)).toBe(
+      "/calisma-sorulari/havuz/c1?mod=RANDOM&sayi=20"
+    );
+    expect(poolRequestOf({})).toEqual({ mode: "ALL" });
+    expect(poolRequestOf({ mod: "RANDOM", sayi: "20" })).toEqual({
+      mode: "RANDOM",
+      count: 20,
+    });
+    // No count, or not a whole number: the API refuses it.
+    expect(poolRequestOf({ mod: "RANDOM", sayi: "2.5" })).toEqual({
+      mode: "RANDOM",
+    });
+  });
+
+  it("leads a pool attempt back to its course's pool", () => {
+    const pooled = { setId: null, courseId: "c1" };
+    expect(continueHref(pooled)).toBe("/calisma-sorulari/havuz/c1");
+    expect(againHref(pooled)).toBe("/calisma-sorulari#ders-c1");
+    expect(againHref({ setId: "s1", courseId: "c1" })).toBe(
+      "/calisma-sorulari/s1"
+    );
+  });
+});
+
 describe("the Çalışma Soruları page (MDRS-248)", () => {
-  const renderList = async (sets: PracticeSetSummaryResponse[] | null) => {
+  const renderList = async (
+    sets: PracticeSetSummaryResponse[] | null,
+    pools?: Map<string, PracticePoolResponse>
+  ) => {
     const { PracticeListPage } = await import(
       "~/features/practice/components/practice-list-page"
     );
-    return renderToStaticMarkup(await PracticeListPage({ sets }));
+    return renderToStaticMarkup(await PracticeListPage({ sets, pools }));
   };
+
+  const pool = (over: Partial<PracticePoolResponse> = {}) =>
+    new Map([
+      [
+        "c1",
+        {
+          courseId: "c1",
+          questionCount: 120,
+          openAttemptId: null,
+          attempts: [],
+          ...over,
+        },
+      ],
+    ]);
+
+  it("offers the course's pool: all of it, or some at random", async () => {
+    const html = await renderList([set({ id: "a" })], pool());
+    expect(html).toContain('data-testid="practice-pool"');
+    expect(html).toContain('href="/calisma-sorulari/havuz/c1?mod=ALL"');
+    expect(html).toContain(">Tüm soruları çöz (120)<");
+    expect(html).toContain('action="/calisma-sorulari/havuz/c1"');
+    expect(html).toContain('name="mod" value="RANDOM"');
+    expect(html).toMatch(/name="sayi"[^>]*/);
+    expect(html).toContain('value="50"');
+    expect(html).toContain('max="120"');
+    expect(html).toContain(">Rastgele soru çöz<");
+    expect(html).not.toContain("Karışık denemeye devam et");
+  });
+
+  it("goes on with an open pool attempt, and shows no pool when it is empty", async () => {
+    const open = await renderList(
+      [set({ id: "a" })],
+      pool({ openAttemptId: "p1" })
+    );
+    expect(open).toContain(">Karışık denemeye devam et<");
+    expect(open).toContain('href="/calisma-sorulari/havuz/c1"');
+    expect(open).not.toContain("Rastgele soru çöz");
+    const empty = await renderList(
+      [set({ id: "a" })],
+      pool({ questionCount: 0 })
+    );
+    expect(empty).not.toContain('data-testid="practice-pool"');
+  });
 
   it("lists the sets by course with their counts and the last result", async () => {
     const html = await renderList([
@@ -220,6 +309,20 @@ describe("a finished çalışma attempt (MDRS-248)", () => {
     expect(html).toContain('href="/calisma-sorulari/s1"');
     expect(html).toContain(">Tekrar çöz<");
     expect(html).toContain(">Çalışma sorularına dön<");
+  });
+
+  it("names each question's set, and calls a pool attempt a mixed one", async () => {
+    const html = await renderResult({
+      ...finished,
+      setId: null,
+      poolMode: "RANDOM",
+      title: "",
+    });
+    expect(html).toContain(">Karışık deneme<");
+    expect(html).toMatch(
+      /data-testid="practice-answer-set"[^>]*>Set: Birinci bab</
+    );
+    expect(html).toContain('href="/calisma-sorulari#ders-c1"');
   });
 
   it("leads an attempt in progress back to it", async () => {

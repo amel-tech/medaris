@@ -25,7 +25,12 @@ import {
   practiceAnswers,
   practiceAttempts,
 } from "../database/schema/practice.schema";
-import { ExamKind } from "../online-exam/domain/online-exam";
+import {
+  type AnswerMode,
+  ExamKind,
+  type Scoring,
+} from "../online-exam/domain/online-exam";
+import type { PoolMode } from "./domain/practice";
 
 type Db = DatabaseService["db"];
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -45,11 +50,32 @@ export interface IPracticeSet {
 
 /** One question of a set as the lists count it. */
 export interface ICountedQuestion {
+  id: string;
   setId: string;
   text: string;
   options: number;
   correct: number;
   topics: number;
+}
+
+/** A question of an attempt, with only what solving and scoring it read. */
+export interface IAttemptQuestion {
+  id: string;
+  setId: string;
+  setTitle: string;
+  text: string;
+  answerMode: AnswerMode;
+  scoring: Scoring | null;
+  ownPoints: number | null;
+  options: Array<{ id: string; text: string; correct: boolean }>;
+}
+
+/** How a set's finished attempts went, for its team. */
+export interface ISetStats {
+  setId: string;
+  talebeCount: number;
+  attemptCount: number;
+  averageHundredths: number | null;
 }
 
 /** A published set of kind PRACTICE. */
@@ -175,6 +201,7 @@ export class PracticeRepository {
     const question = sql`${sql.identifier("exam_questions")}.${sql.identifier("id")}`;
     return this.db
       .select({
+        id: examQuestions.id,
         setId: examQuestions.examId,
         text: examQuestions.text,
         options: sql<number>`(select count(*)::int from ${examOptions} where ${examOptions.questionId} = ${question})`,
@@ -183,6 +210,188 @@ export class PracticeRepository {
       })
       .from(examQuestions)
       .where(inArray(examQuestions.examId, setIds));
+  }
+
+  /**
+   * The course's question pool as the lists count it: every question of
+   * its published çalışma setleri, no exam's and no draft's. Only what tells
+   * a complete question is read, not the options themselves.
+   */
+  async countedPoolQuestions(
+    courseId: string,
+    tx?: Tx
+  ): Promise<ICountedQuestion[]> {
+    const question = sql`${sql.identifier("exam_questions")}.${sql.identifier("id")}`;
+    return (tx ?? this.db)
+      .select({
+        id: examQuestions.id,
+        setId: examQuestions.examId,
+        text: examQuestions.text,
+        options: sql<number>`(select count(*)::int from ${examOptions} where ${examOptions.questionId} = ${question})`,
+        correct: sql<number>`(select count(*)::int from ${examOptions} where ${examOptions.questionId} = ${question} and ${examOptions.correct})`,
+        topics: sql<number>`(select count(*)::int from ${examQuestionTopics} where ${examQuestionTopics.questionId} = ${question})`,
+      })
+      .from(examQuestions)
+      .innerJoin(onlineExams, eq(onlineExams.id, examQuestions.examId))
+      .where(and(eq(onlineExams.courseId, courseId), publishedSet));
+  }
+
+  /** The option ids of the questions, each question's in its own order. */
+  async optionIdsOf(
+    questionIds: string[],
+    tx?: Tx
+  ): Promise<Array<{ id: string; questionId: string }>> {
+    if (questionIds.length === 0) return [];
+    return (tx ?? this.db)
+      .select({ id: examOptions.id, questionId: examOptions.questionId })
+      .from(examOptions)
+      .where(inArray(examOptions.questionId, questionIds))
+      .orderBy(asc(examOptions.position));
+  }
+
+  /**
+   * The questions by id with their set's title and their options: only the
+   * columns an attempt's page and its scoring read, so a pool attempt of
+   * hundreds of questions reads no more than it needs.
+   */
+  async questionsByIds(ids: string[], tx?: Tx): Promise<IAttemptQuestion[]> {
+    if (ids.length === 0) return [];
+    const db = tx ?? this.db;
+    const [questions, options] = await Promise.all([
+      db
+        .select({
+          id: examQuestions.id,
+          setId: examQuestions.examId,
+          setTitle: onlineExams.title,
+          text: examQuestions.text,
+          answerMode: examQuestions.answerMode,
+          scoring: examQuestions.scoring,
+          ownPoints: examQuestions.ownPoints,
+        })
+        .from(examQuestions)
+        .innerJoin(onlineExams, eq(onlineExams.id, examQuestions.examId))
+        .where(inArray(examQuestions.id, ids)),
+      db
+        .select({
+          id: examOptions.id,
+          questionId: examOptions.questionId,
+          text: examOptions.text,
+          correct: examOptions.correct,
+        })
+        .from(examOptions)
+        .where(inArray(examOptions.questionId, ids))
+        .orderBy(asc(examOptions.position)),
+    ]);
+    const byQuestion = new Map<string, IAttemptQuestion["options"]>();
+    for (const { questionId, ...o } of options) {
+      const list = byQuestion.get(questionId) ?? [];
+      list.push(o);
+      byQuestion.set(questionId, list);
+    }
+    return questions.map((q) => ({
+      ...q,
+      options: byQuestion.get(q.id) ?? [],
+    }));
+  }
+
+  /** The caller's pool attempt in progress in the course, or null. */
+  async findOpenPoolAttempt(
+    userId: string,
+    courseId: string,
+    tx?: Tx
+  ): Promise<IPracticeAttempt | null> {
+    const [row] = await (tx ?? this.db)
+      .select()
+      .from(practiceAttempts)
+      .where(
+        and(
+          eq(practiceAttempts.userId, userId),
+          eq(practiceAttempts.courseId, courseId),
+          isNull(practiceAttempts.setId),
+          isNull(practiceAttempts.finishedAt)
+        )
+      )
+      .limit(1);
+    return row ?? null;
+  }
+
+  /** The caller's latest pool attempts in the course, the latest started first. */
+  async poolAttemptsOf(
+    userId: string,
+    courseId: string,
+    limit: number
+  ): Promise<IPracticeAttempt[]> {
+    return this.db
+      .select()
+      .from(practiceAttempts)
+      .where(
+        and(
+          eq(practiceAttempts.userId, userId),
+          eq(practiceAttempts.courseId, courseId),
+          isNull(practiceAttempts.setId)
+        )
+      )
+      .orderBy(desc(practiceAttempts.startedAt), desc(practiceAttempts.id))
+      .limit(limit);
+  }
+
+  /**
+   * Starts a pool attempt in the course, unless one is in progress, which
+   * is returned instead: `practice_attempts_pool_open_uq` settles two
+   * starts at once. The course's published sets are held for share before
+   * `draw` reads their questions on the same connection, so none goes back
+   * to a draft, the only way its questions change, until the attempt is
+   * written (and after that the take-back sees it).
+   */
+  async startPoolAttempt(
+    input: { courseId: string; userId: string; poolMode: PoolMode },
+    draw: (tx: Tx) => Promise<{
+      questionOrder: string[];
+      optionOrder: Record<string, string[]>;
+    }>
+  ): Promise<IPracticeAttempt | null> {
+    return this.db.transaction(async (tx) => {
+      await tx
+        .select({ id: onlineExams.id })
+        .from(onlineExams)
+        .where(and(eq(onlineExams.courseId, input.courseId), publishedSet))
+        .for("share");
+      const [made] = await tx
+        .insert(practiceAttempts)
+        .values({ ...input, setId: null, ...(await draw(tx)) })
+        .onConflictDoNothing()
+        .returning();
+      return made ?? this.findOpenPoolAttempt(input.userId, input.courseId, tx);
+    });
+  }
+
+  /**
+   * How the course's published sets were solved: per set, how many talebe
+   * finished it, how many finished attempts there are and their average
+   * score in hundredths, rounded half up. A set nobody finished is absent.
+   */
+  async setStats(courseId: string): Promise<ISetStats[]> {
+    const rows = await this.db
+      .select({
+        setId: practiceAttempts.setId,
+        talebeCount: sql<number>`count(distinct ${practiceAttempts.userId})::int`,
+        attemptCount: sql<number>`count(*)::int`,
+        averageHundredths: sql<
+          number | null
+        >`round(avg(${practiceAttempts.scoreHundredths}))::int`,
+      })
+      .from(practiceAttempts)
+      .where(
+        and(
+          eq(practiceAttempts.courseId, courseId),
+          isNotNull(practiceAttempts.setId),
+          isNotNull(practiceAttempts.finishedAt)
+        )
+      )
+      .groupBy(practiceAttempts.setId);
+    return rows.flatMap(({ setId, ...row }) =>
+      setId === null ? [] : [{ setId, ...row }]
+    );
   }
 
   /** The caller's attempts at the sets, the latest started first. */

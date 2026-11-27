@@ -27,6 +27,13 @@ import {
     PracticeQuestionResponseToJSON,
     PracticeQuestionResponseToJSONTyped,
 } from './PracticeQuestionResponse';
+import type { PoolMode } from './PoolMode';
+import {
+    PoolModeFromJSON,
+    PoolModeFromJSONTyped,
+    PoolModeToJSON,
+    PoolModeToJSONTyped,
+} from './PoolMode';
 import type { PracticeAttemptStatus } from './PracticeAttemptStatus';
 import {
     PracticeAttemptStatusFromJSON,
@@ -48,11 +55,17 @@ export interface PracticeAttemptResponse {
      */
     id: string;
     /**
-     * 
+     * The set solved; null for a pool attempt.
      * @type {string}
      * @memberof PracticeAttemptResponse
      */
-    setId: string;
+    setId: string | null;
+    /**
+     * How a pool attempt was drawn; null for a set's attempt.
+     * @type {PoolMode}
+     * @memberof PracticeAttemptResponse
+     */
+    poolMode: PoolMode | null;
     /**
      * 
      * @type {string}
@@ -60,7 +73,7 @@ export interface PracticeAttemptResponse {
      */
     courseId: string;
     /**
-     * The set's title.
+     * The set's title; empty for a pool attempt.
      * @type {string}
      * @memberof PracticeAttemptResponse
      */
@@ -111,6 +124,7 @@ export interface PracticeAttemptResponse {
 export function instanceOfPracticeAttemptResponse(value: object): value is PracticeAttemptResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('setId' in value) || value['setId'] === undefined) return false;
+    if (!('poolMode' in value) || value['poolMode'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
@@ -134,6 +148,7 @@ export function PracticeAttemptResponseFromJSONTyped(json: any, ignoreDiscrimina
         
         'id': json['id'],
         'setId': json['setId'],
+        'poolMode': PoolModeFromJSON(json['poolMode']),
         'courseId': json['courseId'],
         'title': json['title'],
         'status': PracticeAttemptStatusFromJSON(json['status']),
@@ -158,6 +173,7 @@ export function PracticeAttemptResponseToJSONTyped(value?: PracticeAttemptRespon
         
         'id': value['id'],
         'setId': value['setId'],
+        'poolMode': PoolModeToJSON(value['poolMode']),
         'courseId': value['courseId'],
         'title': value['title'],
         'status': PracticeAttemptStatusToJSON(value['status']),

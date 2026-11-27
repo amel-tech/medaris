@@ -381,7 +381,7 @@ states:
       FAIL.other: { target: loadFailed, say: "the read failed" }
   examsList:
     title: Sınavlar
-    source: apps/nazar/features/online-exams/components/exams-page.tsx:76
+    source: apps/nazar/features/online-exams/components/exams-page.tsx:113
     description: >-
       Under the h1 "Sınavlar" and "Dersin çoktan seçmeli sınavları. Bir sınav taslakken talebeler onu hiçbir yerde görmez.": the field
       "Yeni sınavın adı" with "Yeni sınav" (off while it is blank); each exam with its title as a link, its question count and its
@@ -393,7 +393,7 @@ states:
       TYPE_TITLE: { target: examsList, effect: [titleTyped], say: "they type the new exam's title" }
       CREATE: { target: creating, effect: [clearNotice], say: "they press Yeni sınav" }
       OPEN_EXAM: { target: opening, effect: [onExam], say: "they open an exam's title" }
-      RESULTS: { target: results_opened, say: "they open Sonuçlar of a published exam", source: "apps/nazar/features/online-exams/components/exams-page.tsx:100" }
+      RESULTS: { target: results_opened, say: "they open Sonuçlar of a published exam", source: "apps/nazar/features/online-exams/components/exams-page.tsx:137" }
       CHANGE_ZEROTH: { target: zerothForm, effect: [zerothOpened], say: "they press the button of the zeroth question" }
       CLOSE_TOAST: { guard: toasting, target: examsList, effect: [clearNotice], say: "they close the toast" }
       NAVIGATE: left

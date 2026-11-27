@@ -10,16 +10,22 @@ import {
   OnlineExamRepository,
 } from "../online-exam/online-exam.repository";
 import {
+  drawPool,
   isCompleteCounted,
+  PoolMode,
   PracticeAttemptStatus,
   partText,
+  poolCountFits,
   practiceResult,
 } from "./domain/practice";
 import type {
   PracticeAnswerSavedResponse,
   PracticeAttemptResponse,
   PracticeAttemptSummaryResponse,
+  PracticePoolAttemptSummaryResponse,
+  PracticePoolResponse,
   PracticeResultResponse,
+  PracticeSetStatsResponse,
   PracticeSetSummaryResponse,
 } from "./dto/practice.dto";
 import {
@@ -27,20 +33,25 @@ import {
   PracticeAttemptFinishedError,
   PracticeAttemptNotFoundError,
   PracticeForbiddenError,
+  PracticePoolCountInvalidError,
   PracticeQuestionNotFoundError,
   PracticeSetNotFoundError,
 } from "./errors/practice.errors";
 import {
+  type IAttemptQuestion,
   type IPracticeAttempt,
   type IPracticeSet,
   PracticeRepository,
   type Tx,
 } from "./practice.repository";
 
+/** How many of the caller's latest pool attempts the pool's page lists. */
+const POOL_ATTEMPTS_LISTED = 10;
+
 /** A random number in [0, 1) from the system's cryptographic source. */
 const fairRandom = () => randomInt(0, 2 ** 32) / 2 ** 32;
 
-const scored = (q: IDraftQuestion) => ({
+const scored = (q: IDraftQuestion | IAttemptQuestion) => ({
   id: q.id,
   answerMode: q.answerMode,
   scoring: q.scoring,
@@ -63,6 +74,18 @@ const statusOf = (a: IPracticeAttempt) =>
   a.finishedAt === null
     ? PracticeAttemptStatus.IN_PROGRESS
     : PracticeAttemptStatus.FINISHED;
+
+const poolSummaryOf = (
+  a: IPracticeAttempt
+): PracticePoolAttemptSummaryResponse => ({
+  id: a.id,
+  mode: a.poolMode ?? PoolMode.ALL,
+  questionCount: a.questionOrder.length,
+  status: statusOf(a),
+  startedAt: a.startedAt,
+  finishedAt: a.finishedAt,
+  result: resultOf(a),
+});
 
 /**
  * A talebe's çalışma soruları in tedris (MDRS-248): the published çalışma
@@ -125,14 +148,42 @@ export class PracticeService {
   }
 
   /** The set's questions, every one as the team wrote it. */
-  private async questionsOf(
+  private async setQuestions(
     courseId: string,
-    setId: string | null,
+    setId: string,
     tx?: Tx
   ): Promise<IDraftQuestion[]> {
-    if (setId === null) return [];
     const draft = await this.exams.findDraft(courseId, setId, tx);
     return draft?.questions ?? [];
+  }
+
+  /**
+   * The attempt's questions, a set's or the pool's alike: only the ones it
+   * drew, by id, with their set's title.
+   */
+  private questionsOf(
+    attempt: IPracticeAttempt,
+    ids: string[] = attempt.questionOrder
+  ): Promise<IAttemptQuestion[]> {
+    return this.repo.questionsByIds(ids);
+  }
+
+  /** Refuses a caller who is no talebe of the course; a course they may not see is not found. */
+  private async assertTalebe(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<void> {
+    await this.courses.getDetail(courseId, user, { read: true });
+    if (!(await this.courses.mayWriteAsTalebe(user, courseId))) {
+      throw new PracticeForbiddenError(courseId);
+    }
+  }
+
+  /** The ids of the course's pool: the complete questions of its published sets. */
+  private async poolIds(courseId: string, tx?: Tx): Promise<string[]> {
+    return (await this.repo.countedPoolQuestions(courseId, tx))
+      .filter(isCompleteCounted)
+      .map((q) => q.id);
   }
 
   /** The course's published sets, for its talebe. */
@@ -142,10 +193,7 @@ export class PracticeService {
   ): Promise<PracticeSetSummaryResponse[]> {
     // A course the caller may not see is not found; one they see but are
     // no talebe of is refused.
-    await this.courses.getDetail(courseId, user, { read: true });
-    if (!(await this.courses.mayWriteAsTalebe(user, courseId))) {
-      throw new PracticeForbiddenError(courseId);
-    }
+    await this.assertTalebe(user, courseId);
     return this.summaries(user.sub, await this.repo.listSets([courseId]));
   }
 
@@ -221,7 +269,7 @@ export class PracticeService {
       { setId, courseId: set.courseId, userId: user.sub },
       async (tx) => {
         const questions = (
-          await this.questionsOf(set.courseId, setId, tx)
+          await this.setQuestions(set.courseId, setId, tx)
         ).filter((q) => lacksOf(q).length === 0);
         return {
           questionOrder: drawOrder(
@@ -261,9 +309,7 @@ export class PracticeService {
   ): Promise<PracticeAnswerSavedResponse> {
     const attempt = await this.attemptFor(user, attemptId);
     const question = attempt.questionOrder.includes(questionId)
-      ? (await this.questionsOf(attempt.courseId, attempt.setId)).find(
-          (q) => q.id === questionId
-        )
+      ? (await this.questionsOf(attempt, [questionId]))[0]
       : undefined;
     if (!question)
       throw new PracticeQuestionNotFoundError(attemptId, questionId);
@@ -313,7 +359,7 @@ export class PracticeService {
     attemptId: string
   ): Promise<PracticeAttemptResponse> {
     const attempt = await this.attemptFor(user, attemptId);
-    const questions = await this.questionsOf(attempt.courseId, attempt.setId);
+    const questions = await this.questionsOf(attempt);
     const finished = await this.repo.inAttempt(
       attemptId,
       user.sub,
@@ -339,6 +385,96 @@ export class PracticeService {
     );
     if (!finished) throw new PracticeAttemptNotFoundError(attemptId);
     return this.view(finished);
+  }
+
+  /**
+   * The course's question pool for its talebe: how many questions it holds,
+   * the pool attempt in progress and the latest ones.
+   */
+  async pool(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<PracticePoolResponse> {
+    await this.assertTalebe(user, courseId);
+    const [ids, attempts] = await Promise.all([
+      this.poolIds(courseId),
+      this.repo.poolAttemptsOf(user.sub, courseId, POOL_ATTEMPTS_LISTED),
+    ]);
+    return {
+      courseId,
+      questionCount: ids.length,
+      openAttemptId: attempts.find((a) => a.finishedAt === null)?.id ?? null,
+      attempts: attempts.map(poolSummaryOf),
+    };
+  }
+
+  /**
+   * Starts a pool attempt: every question of the course's published sets
+   * (ALL), or `count` of them at random, none twice (RANDOM), each one's
+   * options in an order of the attempt's own. A pool attempt in progress is
+   * returned instead, as it stands, whatever was asked.
+   */
+  async startPool(
+    user: AuthenticatedUser,
+    courseId: string,
+    mode: PoolMode,
+    count: number | undefined,
+    retried = false
+  ): Promise<PracticeAttemptResponse> {
+    await this.assertTalebe(user, courseId);
+    const open = await this.repo.findOpenPoolAttempt(user.sub, courseId);
+    if (open) return this.view(open);
+    const made = await this.repo.startPoolAttempt(
+      { courseId, userId: user.sub, poolMode: mode },
+      async (tx) => {
+        const ids = await this.poolIds(courseId, tx);
+        if (!poolCountFits(mode, count, ids.length)) {
+          throw new PracticePoolCountInvalidError(courseId, count, ids.length);
+        }
+        const questionOrder = drawPool(ids, mode, count, (all) =>
+          drawOrder(all, fairRandom)
+        );
+        const options = new Map<string, string[]>();
+        for (const o of await this.repo.optionIdsOf(questionOrder, tx)) {
+          options.set(o.questionId, [
+            ...(options.get(o.questionId) ?? []),
+            o.id,
+          ]);
+        }
+        return {
+          questionOrder,
+          optionOrder: Object.fromEntries(
+            questionOrder.map((id) => [
+              id,
+              drawOrder(options.get(id) ?? [], fairRandom),
+            ])
+          ),
+        };
+      }
+    );
+    // Null only when another start won the race and that attempt was
+    // finished before it could be read back: start again, once.
+    if (!made) {
+      if (retried) throw new PracticeForbiddenError(courseId);
+      return this.startPool(user, courseId, mode, count, true);
+    }
+    return this.view(made);
+  }
+
+  /**
+   * How the course's published sets were solved, for its team: per set,
+   * how many talebe finished it, how many times, and their average
+   * percentage. Pool attempts are not a set's and are not counted.
+   */
+  async setStats(courseId: string): Promise<PracticeSetStatsResponse[]> {
+    const stats = await this.repo.setStats(courseId);
+    return stats.map((s) => ({
+      setId: s.setId,
+      talebeCount: s.talebeCount,
+      attemptCount: s.attemptCount,
+      averagePercent:
+        s.averageHundredths === null ? null : pointsText(s.averageHundredths),
+    }));
   }
 
   /** The caller's attempts at the set, the latest first. */
@@ -368,7 +504,7 @@ export class PracticeService {
     title?: string
   ): Promise<PracticeAttemptResponse> {
     const [questions, answers, set] = await Promise.all([
-      this.questionsOf(attempt.courseId, attempt.setId),
+      this.questionsOf(attempt),
       this.repo.answersOf(attempt.id),
       title === undefined && attempt.setId !== null
         ? this.repo.findSet(attempt.setId)
@@ -386,7 +522,8 @@ export class PracticeService {
       : null;
     return {
       id: attempt.id,
-      setId: attempt.setId ?? "",
+      setId: attempt.setId,
+      poolMode: attempt.poolMode,
       courseId: attempt.courseId,
       title: title ?? set?.title ?? "",
       status: statusOf(attempt),
@@ -401,6 +538,7 @@ export class PracticeService {
           number: i + 1,
           text: q.text,
           answerMode: q.answerMode,
+          setTitle: q.setTitle,
           options: (attempt.optionOrder[q.id] ?? []).flatMap((optionId) => {
             const o = options.get(optionId);
             if (!o) return [];

@@ -22,6 +22,59 @@ export const resultHref = (attemptId: string) =>
 /** A course's sets on the list page, from the course page's link. */
 export const courseAnchor = (courseId: string) => `ders-${courseId}`;
 
+export type PoolMode = "ALL" | "RANDOM";
+
+/** How many questions "Rastgele soru çöz" offers at first: 50, or the whole pool when smaller. */
+export const POOL_RANDOM_DEFAULT = 50;
+export const randomDefault = (poolCount: number): number =>
+  Math.min(POOL_RANDOM_DEFAULT, poolCount);
+
+/**
+ * The course's pool solving page (MDRS-248, Faz 4): it starts a pool
+ * attempt, or goes on with the open one whatever the mode. Without a mode
+ * it is the open one's "devam et".
+ */
+export const poolHref = (
+  courseId: string,
+  mode?: PoolMode,
+  count?: number
+): string => {
+  const base = `${PRACTICE_HREF}/havuz/${courseId}`;
+  if (!mode) return base;
+  const query = new URLSearchParams({ mod: mode });
+  if (mode === "RANDOM" && count !== undefined)
+    query.set("sayi", String(count));
+  return `${base}?${query.toString()}`;
+};
+
+/** What a pool page was asked for: ALL unless `mod=RANDOM`, with its `sayi` when a whole number. */
+export const poolRequestOf = (search: {
+  mod?: string | string[];
+  sayi?: string | string[];
+}): { mode: PoolMode; count?: number } => {
+  const one = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
+  if (one(search.mod) !== "RANDOM") return { mode: "ALL" };
+  const raw = one(search.sayi);
+  const count = raw !== undefined && /^[0-9]+$/.test(raw) ? Number(raw) : NaN;
+  return Number.isSafeInteger(count)
+    ? { mode: "RANDOM", count }
+    : { mode: "RANDOM" };
+};
+
+/** Where an attempt goes on: its set's page, or its course's pool. */
+export const continueHref = (
+  attempt: Pick<PracticeAttemptResponse, "setId" | "courseId">
+): string =>
+  attempt.setId ? solveHref(attempt.setId) : poolHref(attempt.courseId);
+
+/** "Tekrar çöz": the set again, or the course's pool buttons on the list. */
+export const againHref = (
+  attempt: Pick<PracticeAttemptResponse, "setId" | "courseId">
+): string =>
+  attempt.setId
+    ? solveHref(attempt.setId)
+    : `${PRACTICE_HREF}#${courseAnchor(attempt.courseId)}`;
+
 export interface CourseSets {
   courseId: string;
   courseTitle: string;

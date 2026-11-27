@@ -1,5 +1,6 @@
 import {
   type PracticeAttemptResponse,
+  type PracticePoolResponse,
   type PracticeSetSummaryResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
@@ -24,6 +25,30 @@ export const getMyPracticeSets = async (): Promise<
     console.error("Error fetching the caller's practice sets:", error);
     return null;
   }
+};
+
+/**
+ * The pool of each course (MDRS-248, Faz 4), by course id; a course whose
+ * pool could not be read is left out, and its pool buttons with it.
+ */
+export const getPracticePools = async (
+  courseIds: readonly string[]
+): Promise<Map<string, PracticePoolResponse>> => {
+  const { practice } = await memberApi();
+  const read = await Promise.all(
+    courseIds.map(async (id) => {
+      try {
+        return await practice.getPracticePool({ id }, { cache: "no-store" });
+      } catch (error) {
+        await reauthIfRefused(error);
+        console.error("Error fetching a course's practice pool:", error);
+        return null;
+      }
+    })
+  );
+  return new Map(
+    read.flatMap((pool) => (pool ? [[pool.courseId, pool] as const] : []))
+  );
 };
 
 /**

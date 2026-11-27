@@ -23,6 +23,19 @@ export const startPractice = async (
 ): Result<PracticeAttemptResponse> =>
   authenticatedAction((api) => api.practice.startPracticeAttempt({ setId }));
 
+/** Starts a pool attempt of the course (MDRS-248, Faz 4), or gives back the one in progress. */
+export const startPracticePool = async (
+  courseId: string,
+  mode: "ALL" | "RANDOM",
+  count?: number
+): Result<PracticeAttemptResponse> =>
+  authenticatedAction((api) =>
+    api.practice.startPracticePoolAttempt({
+      id: courseId,
+      startPracticePoolDto: mode === "RANDOM" ? { mode, count } : { mode },
+    })
+  );
+
 export const savePracticeChoice = async (
   attemptId: string,
   questionId: string,

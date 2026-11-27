@@ -23,9 +23,15 @@ import {
   writeTextScale,
 } from "~/features/online-exams/take-model";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
-import { finishPractice, savePracticeChoice, startPractice } from "../actions";
+import {
+  finishPractice,
+  savePracticeChoice,
+  startPractice,
+  startPracticePool,
+} from "../actions";
 import {
   blankCount,
+  type PoolMode,
   PRACTICE_HREF,
   readSkipped,
   resultHref,
@@ -51,8 +57,17 @@ const failure = (result: unknown): { status?: number; code?: string } =>
  * fails keeps the choice on screen and says "Cevabın kaydedilemedi, tekrar
  * dene"; its button sends what is still unsent, and "Bitir" sends it first.
  */
-export function PracticeTake({ setId }: { setId: string }) {
+export type PracticeSource =
+  | { setId: string }
+  | { courseId: string; mode: PoolMode; count?: number };
+
+export function PracticeTake(source: PracticeSource) {
   const t = useTranslations("tedris.Practice");
+  const pool = "courseId" in source ? source : null;
+  const setId = "setId" in source ? source.setId : null;
+  const courseId = pool?.courseId ?? null;
+  const mode = pool?.mode ?? null;
+  const count = pool?.count;
   const router = useRouter();
 
   const [phase, setPhase] = useState<Phase>("opening");
@@ -68,7 +83,7 @@ export function PracticeTake({ setId }: { setId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [textStep, setTextStep] = useState(0);
 
-  const scaleKey = `practice:${setId}`;
+  const scaleKey = `practice:${setId ?? `pool-${courseId}`}`;
   useEffect(() => {
     setTextStep(readTextScale(scaleKey, window.sessionStorage));
   }, [scaleKey]);
@@ -94,7 +109,10 @@ export function PracticeTake({ setId }: { setId: string }) {
   const open = useCallback(async () => {
     setPhase("opening");
     try {
-      const result = await startPractice(setId);
+      const result =
+        setId !== null
+          ? await startPractice(setId)
+          : await startPracticePool(courseId ?? "", mode ?? "ALL", count);
       if (sendToSignIn(result)) return;
       if (!result.success) {
         const { status } = failure(result);
@@ -129,7 +147,7 @@ export function PracticeTake({ setId }: { setId: string }) {
     } catch {
       setPhase("failed");
     }
-  }, [router, setId]);
+  }, [router, setId, courseId, mode, count]);
 
   // Once, also under Strict Mode's second effect run: the API would give the
   // same attempt back, but one call is enough.
@@ -246,9 +264,23 @@ export function PracticeTake({ setId }: { setId: string }) {
     return (
       <Alert
         tone={phase === "absent" ? "neutral" : "error"}
-        title={t(phase === "absent" ? "notFoundTitle" : "openFailedTitle")}
+        title={t(
+          phase !== "absent"
+            ? "openFailedTitle"
+            : pool
+              ? "poolNotFoundTitle"
+              : "notFoundTitle"
+        )}
       >
-        <p>{t(phase === "absent" ? "notFound" : "openFailed")}</p>
+        <p>
+          {t(
+            phase !== "absent"
+              ? "openFailed"
+              : pool
+                ? "poolNotFound"
+                : "notFound"
+          )}
+        </p>
         <p className="mbs-3 flex flex-wrap gap-2">
           {phase === "failed" ? (
             <Button size="small" variant="outline" onClick={() => void open()}>
@@ -320,7 +352,7 @@ export function PracticeTake({ setId }: { setId: string }) {
         aria-label={t("barLabel")}
       >
         <h1 className="mds-h3" dir="auto">
-          {attempt.title}
+          {attempt.setId ? attempt.title : t("poolTitle")}
         </h1>
         <p className="mds-body-sm">
           {t("counter", {

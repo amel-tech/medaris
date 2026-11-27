@@ -1105,6 +1105,16 @@
     "resultNotFoundTitle": "لم يُعثر على هذه المحاولة",
     "resultNotFound": "ليست لك، أو لم تعد موجودة.",
     "resultFailedTitle": "تعذّرت قراءة النتيجة",
-    "resultFailed": "تعذّرت قراءة نتيجتك الآن."
+    "resultFailed": "تعذّرت قراءة نتيجتك الآن.",
+    "poolTitle": "تدريب مختلط",
+    "poolLabel": "جميع أسئلة الدرس",
+    "poolIntro": "حلّ أسئلة جميع مجموعات التدريب في هذا الدرس معًا.",
+    "poolAll": "حلّ جميع الأسئلة ({count})",
+    "poolCountLabel": "عدد الأسئلة",
+    "poolRandom": "حلّ أسئلة عشوائية",
+    "poolContinue": "تابع التدريب المختلط",
+    "poolNotFoundTitle": "تعذّر فتح التدريب المختلط",
+    "poolNotFound": "قد يكون العدد أكبر من أسئلة الدرس، أو أنك لست طالبًا في هذا الدرس.",
+    "fromSet": "المجموعة: {title}"
   }
 }

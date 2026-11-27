@@ -25,7 +25,9 @@ import { NewExamForm } from "./new-exam-form";
  * zeroth question its exams ask. Opens with `exam.prepare`. With
  * `kind: PRACTICE` it is "Çalışma Soruları" (MDRS-248): the course's
  * çalışma setleri and "Yeni çalışma seti", with no results and no zeroth
- * question, since a set has neither.
+ * question, since a set has neither. Beside each published set, how many
+ * talebe solved it, how many times, and their average percentage (Faz 4);
+ * a side read, so the list stays when it fails.
  */
 export async function ExamsPage({
   courseId,
@@ -35,7 +37,7 @@ export async function ExamsPage({
   kind?: ExamKind;
 }) {
   const practice = kind === "PRACTICE";
-  const [t, locale, me, exams, permissions, zeroth] = await Promise.all([
+  const [t, locale, me, exams, permissions, zeroth, stats] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
@@ -50,7 +52,42 @@ export async function ExamsPage({
       : readOnce("the course's zeroth question", (api) =>
           api.onlineExams.getCourseZerothQuestion({ id: courseId })
         ),
+    practice
+      ? readOnce("the course's practice set stats", (api) =>
+          api.practice.listPracticeSetStats({ id: courseId })
+        )
+      : null,
   ]);
+  const statsOf = new Map(
+    stats?.status === "ok" ? stats.data.map((s) => [s.setId, s]) : []
+  );
+  const percent = (value: string) =>
+    new Intl.NumberFormat(locale, {
+      style: "percent",
+      maximumFractionDigits: 2,
+    }).format(Number(value) / 100);
+  const solved = (exam: OnlineExamSummaryResponse) => {
+    if (!practice || exam.status === "DRAFT" || stats?.status !== "ok") {
+      return null;
+    }
+    const s = statsOf.get(exam.id);
+    return (
+      <span
+        className="mds-body-sm text-neutral-muted"
+        data-testid="practice-set-stats"
+      >
+        {" · "}
+        {s
+          ? t("Practice.stats", {
+              talebe: s.talebeCount,
+              count: s.attemptCount,
+              percent:
+                s.averagePercent === null ? "" : percent(s.averagePercent),
+            })
+          : t("Practice.statsNone")}
+      </span>
+    );
+  };
   const segment = segmentOf(kind);
   const gate = pageGate([exams], permissions, PAGE_CODES.exams);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
@@ -127,6 +164,7 @@ export async function ExamsPage({
                         })}
                   </span>{" "}
                   {status(exam)}
+                  {solved(exam)}
                   {!practice && exam.status !== "DRAFT" ? (
                     <>
                       {" · "}

@@ -80,3 +80,15 @@ export class PracticeAnswerInvalidError extends BadRequestError {
     );
   }
 }
+
+/** A pool attempt that cannot be drawn: RANDOM without a count from 1 to the pool's size, or an empty pool. */
+export class PracticePoolCountInvalidError extends BadRequestError {
+  static readonly code = "PRACTICE_POOL_COUNT_INVALID";
+  constructor(courseId: string, count: number | undefined, poolSize: number) {
+    super(
+      PracticePoolCountInvalidError.code,
+      `The pool of course ${courseId} holds ${poolSize} questions; ${count ?? "no count"} cannot be drawn`,
+      { courseId, count: count ?? null, poolSize }
+    );
+  }
+}

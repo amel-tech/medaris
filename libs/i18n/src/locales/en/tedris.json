@@ -1105,6 +1105,16 @@
     "resultNotFoundTitle": "This attempt was not found",
     "resultNotFound": "It is not yours, or it no longer exists.",
     "resultFailedTitle": "The result could not be read",
-    "resultFailed": "Your result could not be read just now."
+    "resultFailed": "Your result could not be read just now.",
+    "poolTitle": "Mixed practice",
+    "poolLabel": "All of the course's questions",
+    "poolIntro": "Solve the questions of all this course's practice sets together.",
+    "poolAll": "Solve all questions ({count})",
+    "poolCountLabel": "Number of questions",
+    "poolRandom": "Solve random questions",
+    "poolContinue": "Continue the mixed practice",
+    "poolNotFoundTitle": "The mixed practice could not be opened",
+    "poolNotFound": "The number may be more than the course's questions, or you are not a student of this course.",
+    "fromSet": "Set: {title}"
   }
 }
