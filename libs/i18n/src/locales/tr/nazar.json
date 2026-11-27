@@ -2588,9 +2588,9 @@
     "deleteSet": "Seti sil",
     "deleteTitle": "“{title}” seti silinsin mi?",
     "deleteBody": "Soruları da silinir. Bu işlem geri alınamaz.",
-    "deleteHelp": "Set, bütün sorularıyla birlikte kalıcı olarak silinir. Bir talebe çözmeye başladıktan sonra silinemez.",
-    "deleteLocked": "Bir talebe bu seti çözmeye başladı; artık silinemez.",
-    "deleteLockedShort": "Başlandı, silinemez",
+    "deleteHelp": "Set, bütün sorularıyla birlikte kalıcı olarak silinir. Bir talebe çözmeye başladıktan ya da bir havuz denemesi ondan soru aldıktan sonra silinemez.",
+    "deleteLocked": "Bir talebe bu seti çözmeye başladı ya da bir havuz denemesi ondan soru aldı; artık silinemez.",
+    "deleteLockedShort": "Kullanıldı, silinemez",
     "deleteGone": "Bu set artık yok; liste yeniden okundu.",
     "deleteFailed": "Set silinemedi",
     "deleted": "“{title}” silindi"

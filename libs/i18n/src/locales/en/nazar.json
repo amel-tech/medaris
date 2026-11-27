@@ -2588,9 +2588,9 @@
     "deleteSet": "Delete set",
     "deleteTitle": "Delete the set “{title}”?",
     "deleteBody": "Its questions are deleted too. This cannot be undone.",
-    "deleteHelp": "The set is deleted for good, with all its questions. Once a talebe has started it, it cannot be deleted.",
-    "deleteLocked": "A talebe has started this set; it can no longer be deleted.",
-    "deleteLockedShort": "Started, cannot be deleted",
+    "deleteHelp": "The set is deleted for good, with all its questions. Once a talebe has started it, or a pool attempt drew from it, it cannot be deleted.",
+    "deleteLocked": "A talebe has started this set, or a pool attempt drew questions from it; it can no longer be deleted.",
+    "deleteLockedShort": "In use, cannot be deleted",
     "deleteGone": "This set no longer exists; the list was read again.",
     "deleteFailed": "The set could not be deleted",
     "deleted": "“{title}” was deleted"

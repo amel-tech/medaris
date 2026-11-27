@@ -39,7 +39,16 @@ export function ExamWorkspace({
 }) {
   const [current, setCurrent] = useState(draft);
   useEffect(() => {
-    setCurrent((now) => (draft.version > now.version ? draft : now));
+    // A newer version replaces the page's; `locked` alone moves without a
+    // version (a talebe's start or a pool attempt), so it is taken from
+    // every read of the same set, and "Seti sil" turns off after a refusal.
+    setCurrent((now) =>
+      draft.version > now.version
+        ? draft
+        : draft.id === now.id && draft.locked !== now.locked
+          ? { ...now, locked: draft.locked }
+          : now
+    );
   }, [draft]);
   const view =
     current.status === "DRAFT" ? (

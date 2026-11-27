@@ -9,7 +9,14 @@ import {
   type PracticeSetRow,
   PracticeSetsTable,
 } from "~/features/online-exams/components/practice-sets-table";
-import { cleanup, click, render, settle, type as typeInto } from "./dom";
+import {
+  cleanup,
+  click,
+  render,
+  rerender,
+  settle,
+  type as typeInto,
+} from "./dom";
 
 const refresh = vi.fn();
 const push = vi.fn();
@@ -145,8 +152,10 @@ describe("Sil in Çalışma Soruları (MDRS-248)", () => {
     const reason = document.getElementById(
       started.getAttribute("aria-describedby") as string
     );
-    expect(reason?.textContent).toBe("Başlandı, silinemez");
-    expect(rowOf("Kıyas tekrarı").textContent).toContain("Başlandı, silinemez");
+    expect(reason?.textContent).toBe("Kullanıldı, silinemez");
+    expect(rowOf("Kıyas tekrarı").textContent).toContain(
+      "Kullanıldı, silinemez"
+    );
   });
 
   it("asks, naming the set, then deletes it and reads the list again", async () => {
@@ -186,7 +195,7 @@ describe("Sil in Çalışma Soruları (MDRS-248)", () => {
     await settle(60);
     expect(document.body.textContent).toContain("Set silinemedi");
     expect(document.body.textContent).toContain(
-      "Bir talebe bu seti çözmeye başladı; artık silinemez."
+      "Bir talebe bu seti çözmeye başladı ya da bir havuz denemesi ondan soru aldı; artık silinemez."
     );
     expect(refresh).toHaveBeenCalled();
   });
@@ -205,6 +214,25 @@ describe("Seti sil on a set's page (MDRS-248)", () => {
     expect(push).toHaveBeenCalledWith("/ders/c1/calisma-sorulari");
   });
 
+  it("turns off when a read of the same version says the set is locked", async () => {
+    const root = await page(set);
+    expect((button(root, "Seti sil") as HTMLButtonElement).disabled).toBe(
+      false
+    );
+    await rerender(
+      root,
+      wrap(
+        <ExamWorkspace
+          courseId="c1"
+          draft={{ ...set, locked: true } as OnlineExamDraftResponse}
+          timeZone="Europe/Istanbul"
+          locale="tr"
+        />
+      )
+    );
+    expect((button(root, "Seti sil") as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("is off on a set a talebe started, and says why", async () => {
     const root = await page({
       ...set,
@@ -216,7 +244,9 @@ describe("Seti sil on a set's page (MDRS-248)", () => {
     expect(
       document.getElementById(off.getAttribute("aria-describedby") as string)
         ?.textContent
-    ).toBe("Bir talebe bu seti çözmeye başladı; artık silinemez.");
+    ).toBe(
+      "Bir talebe bu seti çözmeye başladı ya da bir havuz denemesi ondan soru aldı; artık silinemez."
+    );
   });
 });
 
@@ -253,6 +283,22 @@ describe("Soru ekle while a saved question is open (MDRS-248)", () => {
     await settle(40);
     expect(textarea()?.value).toBe("");
     expect(root.textContent).toContain("Kıyasın rükünleri kaç tanedir?");
+  });
+
+  it("counts a topic name typed under + Konu as a change", async () => {
+    const root = await page(set);
+    await click(button(root, "Düzenle") as HTMLButtonElement);
+    await click(button(root, "+ Konu") as HTMLButtonElement);
+    await settle(20);
+    await typeInto(
+      document.querySelector("input[data-new-topic]") as HTMLInputElement,
+      "Kıyas"
+    );
+    await click(button(root, "Soru ekle") as HTMLButtonElement);
+    await settle(40);
+    expect(dialog()?.textContent).toContain(
+      "Açık sorudaki değişiklikler kaydedilmedi"
+    );
   });
 
   it("opens the new question at once when nothing changed", async () => {

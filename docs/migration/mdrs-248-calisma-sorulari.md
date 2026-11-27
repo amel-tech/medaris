@@ -241,7 +241,7 @@ the set's course like every preparing route; another course's team is 403.
   in the course purge's order: the questions' options and topics, the
   questions, any zeroth options, the picked topics, the set. `audit_log`
   gets `online_exam.delete` with the set's title and course.
-- Nazar: "Sil" in each row of "Çalışma Soruları" (off, with "Başlandı,
+- Nazar: "Sil" in each row of "Çalışma Soruları" (off, with "Kullanıldı,
   silinemez" beside it, on a locked set; the reason is the button's
   `aria-describedby`), and "Seti sil" at the foot of the set's page, draft or
   published. Both ask "“<ad>” seti silinsin mi? Soruları da silinir." first;

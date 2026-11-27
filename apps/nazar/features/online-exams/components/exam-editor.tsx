@@ -1483,7 +1483,16 @@ function QuestionForm({
   }, [typing, onTyping]);
   // What the form holds against what it opened with: "Soru ekle" or another
   // question's "Düzenle" asks before a change is dropped (MDRS-248).
-  const now = JSON.stringify([text, options, topicIds, mode, scoring, points]);
+  // A topic name typed under "+ Konu" is saved with the question, so it counts.
+  const now = JSON.stringify([
+    text,
+    options,
+    topicIds,
+    mode,
+    scoring,
+    points,
+    (newTopic ?? "").trim(),
+  ]);
   const [opened] = useState(now);
   const changed = now !== opened;
   useEffect(() => {
