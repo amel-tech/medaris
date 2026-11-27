@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.21](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.20...nazar-web-v0.2.21) (2026-11-27)
+
+
+### Features
+
+* **nazar-web, i18n, docs:** MDRS-248 çalışma soruları for the hoca ([#459](https://github.com/amel-tech/medaris/issues/459)) ([7ad4684](https://github.com/amel-tech/medaris/commit/7ad4684191e9d3b82d923263eebc6526741a0243))
+* **nazar-web, i18n, docs:** MDRS-248 çalışma soruları UX pass for the hoca ([#464](https://github.com/amel-tech/medaris/issues/464)) ([1f35b9b](https://github.com/amel-tech/medaris/commit/1f35b9b476e228cd19a674a96e89ac0bd7e0cc9e))
+* **nazar-web, tedris-web, i18n, docs:** MDRS-248 quick option entry and aligned status badges ([#465](https://github.com/amel-tech/medaris/issues/465)) ([02399a9](https://github.com/amel-tech/medaris/commit/02399a9b5ceb3b0944bb87abad9d61c35cfd3b8a))
+* **tedrisat, services, tedris-web, nazar-web, i18n, docs:** MDRS-248 çalışma havuzu ([#462](https://github.com/amel-tech/medaris/issues/462)) ([8bb242c](https://github.com/amel-tech/medaris/commit/8bb242c758a6e0eb3b0963471c27eeb2ec4366d7))
+* **tedrisat, tedris-web, nazar-web, services, i18n:** MDRS-248 notify a talebe of an answer ([#456](https://github.com/amel-tech/medaris/issues/456)) ([0231291](https://github.com/amel-tech/medaris/commit/02312915e6dd3da2c136d1ff3e9feeb502ec4047))
+
 ## [0.2.20](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.19...nazar-web-v0.2.20) (2026-11-25)
 
 
