@@ -60,6 +60,8 @@ GET /courses/:id/my-submissions -> course.view on byExistingCourse
 GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 GET /courses/:id/online-exams -> exam.prepare on course
 GET /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
+GET /courses/:id/practice-pool -> course.view on course
+GET /courses/:id/practice-set-stats -> exam.prepare on course
 GET /courses/:id/practice-sets -> course.view on course
 GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
@@ -225,6 +227,7 @@ POST /courses/:id/exam-topics -> exam.prepare on course
 POST /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 POST /courses/:id/online-exams -> exam.prepare on course
 POST /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
+POST /courses/:id/practice-pool/attempts -> course.view on course
 POST /courses/:id/resources/files -> course.edit on byExistingCourse
 POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /courses/:id/submissions/:submissionId/review/files -> submission.read on byExistingCourse

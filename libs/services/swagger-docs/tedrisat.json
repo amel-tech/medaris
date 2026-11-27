@@ -16459,6 +16459,151 @@
         ]
       }
     },
+    "/courses/{id}/practice-pool": {
+      "get": {
+        "description": "How many questions the pool holds (the complete questions of the course's published çalışma setleri; no exam's and no draft's), the caller's pool attempt in progress and their latest pool attempts.",
+        "operationId": "getPracticePool",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticePoolResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's question pool, for its talebe",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/courses/{id}/practice-pool/attempts": {
+      "post": {
+        "description": "ALL: every question of the course's published çalışma setleri; RANDOM: `count` of them at random, none twice. Each question's options in an order of the attempt's own, with no clock. The caller's pool attempt in progress is returned instead, as it stands. The attempt is then read, answered and finished on the `practice-attempts` routes; each question carries its set's title.",
+        "operationId": "startPracticePoolAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartPracticePoolDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "PRACTICE_POOL_COUNT_INVALID (RANDOM without a count from 1 to the pool's size, or an empty pool), VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start solving the course's question pool",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/courses/{id}/practice-set-stats": {
+      "get": {
+        "description": "Per published set with a finished attempt: how many talebe finished it, how many times, and the average percentage. A set nobody finished is absent; pool attempts are not counted.",
+        "operationId": "listPracticeSetStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeSetStatsResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How the course's çalışma setleri were solved, for its team",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
     "/my-practice-sets": {
       "get": {
         "description": "The published sets of the courses where the caller holds an ENROLLED or COMPLETED seat and may write as a talebe, each with its course's title and the caller's standing on it, as `listPracticeSets` gives them.",
@@ -33951,11 +34096,159 @@
           "publishedAt"
         ]
       },
+      "PoolMode": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "RANDOM"
+        ]
+      },
       "PracticeAttemptStatus": {
         "type": "string",
         "enum": [
           "IN_PROGRESS",
           "FINISHED"
+        ]
+      },
+      "PracticeResultResponse": {
+        "type": "object",
+        "properties": {
+          "correct": {
+            "type": "number",
+            "description": "Questions got whole."
+          },
+          "wrong": {
+            "type": "number",
+            "description": "Questions answered and not got whole."
+          },
+          "blank": {
+            "type": "number",
+            "description": "Questions left without an answer."
+          },
+          "total": {
+            "type": "number",
+            "description": "The attempt's questions."
+          },
+          "percent": {
+            "type": "string",
+            "example": "66.67",
+            "description": "The parts got over the number of questions, as a percentage with two decimals, rounded half up once."
+          }
+        },
+        "required": [
+          "correct",
+          "wrong",
+          "blank",
+          "total",
+          "percent"
+        ]
+      },
+      "PracticePoolAttemptSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PoolMode"
+              }
+            ]
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "The questions it drew."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeAttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "result": {
+            "nullable": true,
+            "description": "Null while it is in progress.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeResultResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "questionCount",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "result"
+        ]
+      },
+      "PracticePoolResponse": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "The complete questions of the course's published çalışma setleri: no exam's, no draft's."
+          },
+          "openAttemptId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The caller's pool attempt in progress, which starting the pool again goes on with; null when none."
+          },
+          "attempts": {
+            "description": "The caller's latest pool attempts, ten at most.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PracticePoolAttemptSummaryResponse"
+            }
+          }
+        },
+        "required": [
+          "courseId",
+          "questionCount",
+          "openAttemptId",
+          "attempts"
+        ]
+      },
+      "StartPracticePoolDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "description": "ALL: every question of the course's published çalışma setleri; RANDOM: `count` of them at random, none twice.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PoolMode"
+              }
+            ]
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "description": "RANDOM only, and required there: how many questions, from 1 to the pool's size. Not read under ALL."
+          }
+        },
+        "required": [
+          "mode"
         ]
       },
       "PracticeOptionResponse": {
@@ -34001,6 +34294,10 @@
           "text": {
             "type": "string"
           },
+          "setTitle": {
+            "type": "string",
+            "description": "The title of the çalışma seti the question is of: in a pool attempt, where it came from."
+          },
           "answerMode": {
             "allOf": [
               {
@@ -34041,42 +34338,10 @@
           "id",
           "number",
           "text",
+          "setTitle",
           "answerMode",
           "options",
           "chosenOptionIds"
-        ]
-      },
-      "PracticeResultResponse": {
-        "type": "object",
-        "properties": {
-          "correct": {
-            "type": "number",
-            "description": "Questions got whole."
-          },
-          "wrong": {
-            "type": "number",
-            "description": "Questions answered and not got whole."
-          },
-          "blank": {
-            "type": "number",
-            "description": "Questions left without an answer."
-          },
-          "total": {
-            "type": "number",
-            "description": "The attempt's questions."
-          },
-          "percent": {
-            "type": "string",
-            "example": "66.67",
-            "description": "The parts got over the number of questions, as a percentage with two decimals, rounded half up once."
-          }
-        },
-        "required": [
-          "correct",
-          "wrong",
-          "blank",
-          "total",
-          "percent"
         ]
       },
       "PracticeAttemptResponse": {
@@ -34088,7 +34353,18 @@
           },
           "setId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "nullable": true,
+            "description": "The set solved; null for a pool attempt."
+          },
+          "poolMode": {
+            "nullable": true,
+            "description": "How a pool attempt was drawn; null for a set's attempt.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PoolMode"
+              }
+            ]
           },
           "courseId": {
             "type": "string",
@@ -34096,7 +34372,7 @@
           },
           "title": {
             "type": "string",
-            "description": "The set's title."
+            "description": "The set's title; empty for a pool attempt."
           },
           "status": {
             "allOf": [
@@ -34140,6 +34416,7 @@
         "required": [
           "id",
           "setId",
+          "poolMode",
           "courseId",
           "title",
           "status",
@@ -34148,6 +34425,35 @@
           "currentQuestionId",
           "questions",
           "result"
+        ]
+      },
+      "PracticeSetStatsResponse": {
+        "type": "object",
+        "properties": {
+          "setId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "talebeCount": {
+            "type": "number",
+            "description": "How many talebe finished it at least once."
+          },
+          "attemptCount": {
+            "type": "number",
+            "description": "How many times it was finished."
+          },
+          "averagePercent": {
+            "type": "string",
+            "nullable": true,
+            "example": "72.50",
+            "description": "The average percentage of its finished attempts, with two decimals; null when none."
+          }
+        },
+        "required": [
+          "setId",
+          "talebeCount",
+          "attemptCount",
+          "averagePercent"
         ]
       },
       "PracticeAttemptSummaryResponse": {

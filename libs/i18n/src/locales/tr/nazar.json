@@ -2546,7 +2546,9 @@
     "unpublishTitle": "Seti yayından kaldır",
     "unpublishBody": "Talebeler seti artık görmez. Sorular olduğu gibi kalır; yeniden yayınlayabilirsiniz.",
     "publishConfirmTitle": "Çalışma setini yayınla",
-    "lockedEdit": "Set yayınlanmış; sayfa yeniden okundu."
+    "lockedEdit": "Set yayınlanmış; sayfa yeniden okundu.",
+    "stats": "{talebe} talebe {count} kez çözdü · ortalama {percent}",
+    "statsNone": "Henüz çözülmedi"
   },
   "ExamResults": {
     "title": "Sonuçlar",

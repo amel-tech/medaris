@@ -24,8 +24,9 @@ import { examQuestions, onlineExams } from "./online-exam.schema";
  * holder and no tab count, unlike `exam_attempts`, which this does not touch.
  *
  * `set_id` null is a solving of the course's question pool rather than of
- * one set, with `pool_mode` saying how it was drawn (ALL or RANDOM); nothing
- * writes one yet (MDRS-248 Faz 4). RESTRICT like every foreign key under a
+ * one set, with `pool_mode` saying how it was drawn (ALL or RANDOM); one
+ * pool attempt per talebe and course is open at a time
+ * (`practice_attempts_pool_open_uq`, MDRS-248 Faz 4). RESTRICT like every foreign key under a
  * course: the course purge removes these before the sets.
  */
 export const practiceAttempts = table(
@@ -62,6 +63,9 @@ export const practiceAttempts = table(
     uniqueIndex("practice_attempts_open_uq")
       .on(t.userId, t.setId)
       .where(sql`${t.finishedAt} is null and ${t.setId} is not null`),
+    uniqueIndex("practice_attempts_pool_open_uq")
+      .on(t.userId, t.courseId)
+      .where(sql`${t.finishedAt} is null and ${t.setId} is null`),
     check(
       "practice_attempts_pool_check",
       sql`(${t.setId} is null) = (${t.poolMode} is not null) and (${t.poolMode} is null or ${t.poolMode} in ('ALL', 'RANDOM'))`

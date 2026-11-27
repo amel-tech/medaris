@@ -1104,6 +1104,16 @@
     "resultNotFoundTitle": "Bu deneme bulunamadı",
     "resultNotFound": "Deneme sana ait değil ya da artık yok.",
     "resultFailedTitle": "Sonuç okunamadı",
-    "resultFailed": "Sonucun şu an okunamadı."
+    "resultFailed": "Sonucun şu an okunamadı.",
+    "poolTitle": "Karışık deneme",
+    "poolLabel": "Dersin bütün soruları",
+    "poolIntro": "Bu dersin bütün çalışma setlerindeki soruları bir arada çöz.",
+    "poolAll": "Tüm soruları çöz ({count})",
+    "poolCountLabel": "Soru sayısı",
+    "poolRandom": "Rastgele soru çöz",
+    "poolContinue": "Karışık denemeye devam et",
+    "poolNotFoundTitle": "Karışık deneme açılamadı",
+    "poolNotFound": "Soru sayısı dersteki soru sayısından fazla olabilir ya da bu dersin talebesi değilsin.",
+    "fromSet": "Set: {title}"
   }
 }

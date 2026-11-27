@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScoredQuestion } from "../../../src/online-exam/domain/exam-attempt";
+import { drawOrder } from "../../../src/online-exam/domain/exam-attempt";
 import {
   AnswerMode,
   practiceProblems,
@@ -7,10 +8,13 @@ import {
   Scoring,
 } from "../../../src/online-exam/domain/online-exam";
 import {
+  drawPool,
   isCompleteCounted,
   outcomeOf,
+  PoolMode,
   PracticeOutcome,
   partText,
+  poolCountFits,
   practiceResult,
 } from "../../../src/practice/domain/practice";
 
@@ -139,5 +143,45 @@ describe("çalışma soruları (MDRS-248)", () => {
   it("is a draft until published, and open from then on", () => {
     expect(practiceStatus(null)).toBe("DRAFT");
     expect(practiceStatus(new Date())).toBe("OPEN");
+  });
+});
+
+describe("the pool (Faz 4)", () => {
+  const ids = Array.from({ length: 20 }, (_, i) => `q${i}`);
+  let seed = 7;
+  const random = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+  const shuffle = (all: readonly string[]) => drawOrder(all, random);
+
+  it("draws every question under ALL, in a new order", () => {
+    const drawn = drawPool(ids, PoolMode.ALL, undefined, shuffle);
+    expect([...drawn].sort()).toEqual([...ids].sort());
+  });
+
+  it("draws exactly N under RANDOM, none twice, all of the pool", () => {
+    for (const n of [1, 5, 19, 20]) {
+      const drawn = drawPool(ids, PoolMode.RANDOM, n, shuffle);
+      expect(drawn).toHaveLength(n);
+      expect(new Set(drawn).size).toBe(n);
+      for (const id of drawn) expect(ids).toContain(id);
+    }
+  });
+
+  it("takes a count from 1 to the pool's size under RANDOM only", () => {
+    expect(poolCountFits(PoolMode.RANDOM, 1, 20)).toBe(true);
+    expect(poolCountFits(PoolMode.RANDOM, 20, 20)).toBe(true);
+    expect(poolCountFits(PoolMode.RANDOM, 21, 20)).toBe(false);
+    expect(poolCountFits(PoolMode.RANDOM, 0, 20)).toBe(false);
+    expect(poolCountFits(PoolMode.RANDOM, 2.5, 20)).toBe(false);
+    expect(poolCountFits(PoolMode.RANDOM, undefined, 20)).toBe(false);
+    expect(poolCountFits(PoolMode.RANDOM, 1, 0)).toBe(false);
+  });
+
+  it("draws ALL from a pool with a question in it, whatever the count", () => {
+    expect(poolCountFits(PoolMode.ALL, undefined, 1)).toBe(true);
+    expect(poolCountFits(PoolMode.ALL, 99, 1)).toBe(true);
+    expect(poolCountFits(PoolMode.ALL, undefined, 0)).toBe(false);
   });
 });

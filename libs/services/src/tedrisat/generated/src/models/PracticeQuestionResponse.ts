@@ -60,6 +60,12 @@ export interface PracticeQuestionResponse {
      */
     text: string;
     /**
+     * The title of the çalışma seti the question is of: in a pool attempt, where it came from.
+     * @type {string}
+     * @memberof PracticeQuestionResponse
+     */
+    setTitle: string;
+    /**
      * 
      * @type {AnswerMode}
      * @memberof PracticeQuestionResponse
@@ -100,6 +106,7 @@ export function instanceOfPracticeQuestionResponse(value: object): value is Prac
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('number' in value) || value['number'] === undefined) return false;
     if (!('text' in value) || value['text'] === undefined) return false;
+    if (!('setTitle' in value) || value['setTitle'] === undefined) return false;
     if (!('answerMode' in value) || value['answerMode'] === undefined) return false;
     if (!('options' in value) || value['options'] === undefined) return false;
     if (!('chosenOptionIds' in value) || value['chosenOptionIds'] === undefined) return false;
@@ -119,6 +126,7 @@ export function PracticeQuestionResponseFromJSONTyped(json: any, ignoreDiscrimin
         'id': json['id'],
         'number': json['number'],
         'text': json['text'],
+        'setTitle': json['setTitle'],
         'answerMode': AnswerModeFromJSON(json['answerMode']),
         'options': ((json['options'] as Array<any>).map(PracticeOptionResponseFromJSON)),
         'chosenOptionIds': json['chosenOptionIds'],
@@ -141,6 +149,7 @@ export function PracticeQuestionResponseToJSONTyped(value?: PracticeQuestionResp
         'id': value['id'],
         'number': value['number'],
         'text': value['text'],
+        'setTitle': value['setTitle'],
         'answerMode': AnswerModeToJSON(value['answerMode']),
         'options': ((value['options'] as Array<any>).map(PracticeOptionResponseToJSON)),
         'chosenOptionIds': value['chosenOptionIds'],

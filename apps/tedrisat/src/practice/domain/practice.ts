@@ -13,8 +13,8 @@ import {
 import { lacksOf, pointsText } from "../../online-exam/domain/online-exam";
 
 /**
- * How a solving of the course's question pool was drawn (MDRS-248 Faz 4,
- * not built yet): every question of the course's sets, or some at random.
+ * How a solving of the course's question pool was drawn (MDRS-248 Faz 4):
+ * every question of the course's published sets, or some at random.
  */
 export enum PoolMode {
   ALL = "ALL",
@@ -147,4 +147,38 @@ export const practiceResult = (
     blank,
     scoreHundredths: Number((BigInt(2) * top + bottom) / (BigInt(2) * bottom)),
   };
+};
+
+/** The most questions a random pool attempt is offered by default. */
+export const POOL_RANDOM_DEFAULT = 50;
+
+/**
+ * Whether a pool attempt may be drawn: ALL from a pool with a question in
+ * it; RANDOM with a whole count from 1 to the pool's size.
+ */
+export const poolCountFits = (
+  mode: PoolMode,
+  count: number | undefined,
+  poolSize: number
+): boolean =>
+  mode === PoolMode.ALL
+    ? poolSize > 0
+    : count !== undefined &&
+      Number.isInteger(count) &&
+      count >= 1 &&
+      count <= poolSize;
+
+/**
+ * The questions of a pool attempt, in its order: every one under ALL, the
+ * first `count` of a random order under RANDOM, so none twice. `shuffle`
+ * is the attempt's draw (`drawOrder`).
+ */
+export const drawPool = <T>(
+  ids: readonly T[],
+  mode: PoolMode,
+  count: number | undefined,
+  shuffle: (ids: readonly T[]) => T[]
+): T[] => {
+  const order = shuffle(ids);
+  return mode === PoolMode.ALL ? order : order.slice(0, count);
 };

@@ -2546,7 +2546,9 @@
     "unpublishTitle": "Unpublish the set",
     "unpublishBody": "Students no longer see the set. The questions stay as they are; you can publish it again.",
     "publishConfirmTitle": "Publish the practice set",
-    "lockedEdit": "The set has been published; the page was read again."
+    "lockedEdit": "The set has been published; the page was read again.",
+    "stats": "{talebe} students solved it {count} times · average {percent}",
+    "statsNone": "Not solved yet"
   },
   "ExamResults": {
     "title": "Results",

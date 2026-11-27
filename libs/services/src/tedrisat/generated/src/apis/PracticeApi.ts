@@ -18,8 +18,11 @@ import type {
   PracticeAnswerSavedResponse,
   PracticeAttemptResponse,
   PracticeAttemptSummaryResponse,
+  PracticePoolResponse,
+  PracticeSetStatsResponse,
   PracticeSetSummaryResponse,
   SavePracticeAnswerDto,
+  StartPracticePoolDto,
 } from '../models/index';
 import {
     PracticeAnswerSavedResponseFromJSON,
@@ -28,10 +31,16 @@ import {
     PracticeAttemptResponseToJSON,
     PracticeAttemptSummaryResponseFromJSON,
     PracticeAttemptSummaryResponseToJSON,
+    PracticePoolResponseFromJSON,
+    PracticePoolResponseToJSON,
+    PracticeSetStatsResponseFromJSON,
+    PracticeSetStatsResponseToJSON,
     PracticeSetSummaryResponseFromJSON,
     PracticeSetSummaryResponseToJSON,
     SavePracticeAnswerDtoFromJSON,
     SavePracticeAnswerDtoToJSON,
+    StartPracticePoolDtoFromJSON,
+    StartPracticePoolDtoToJSON,
 } from '../models/index';
 
 export interface FinishPracticeAttemptRequest {
@@ -42,8 +51,16 @@ export interface GetPracticeAttemptRequest {
     attemptId: string;
 }
 
+export interface GetPracticePoolRequest {
+    id: string;
+}
+
 export interface ListPracticeAttemptsRequest {
     setId: string;
+}
+
+export interface ListPracticeSetStatsRequest {
+    id: string;
 }
 
 export interface ListPracticeSetsRequest {
@@ -58,6 +75,11 @@ export interface SavePracticeAnswerRequest {
 
 export interface StartPracticeAttemptRequest {
     setId: string;
+}
+
+export interface StartPracticePoolAttemptRequest {
+    id: string;
+    startPracticePoolDto: StartPracticePoolDto;
 }
 
 /**
@@ -154,6 +176,50 @@ export class PracticeApi extends runtime.BaseAPI {
     }
 
     /**
+     * How many questions the pool holds (the complete questions of the course\'s published çalışma setleri; no exam\'s and no draft\'s), the caller\'s pool attempt in progress and their latest pool attempts.
+     * The course\'s question pool, for its talebe
+     */
+    async getPracticePoolRaw(requestParameters: GetPracticePoolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PracticePoolResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getPracticePool().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/practice-pool`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PracticePoolResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * How many questions the pool holds (the complete questions of the course\'s published çalışma setleri; no exam\'s and no draft\'s), the caller\'s pool attempt in progress and their latest pool attempts.
+     * The course\'s question pool, for its talebe
+     */
+    async getPracticePool(requestParameters: GetPracticePoolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PracticePoolResponse> {
+        const response = await this.getPracticePoolRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The published sets of the courses where the caller holds an ENROLLED or COMPLETED seat and may write as a talebe, each with its course\'s title and the caller\'s standing on it, as `listPracticeSets` gives them.
      * Çalışma setlerim: the sets of every course of the caller
      */
@@ -230,6 +296,50 @@ export class PracticeApi extends runtime.BaseAPI {
      */
     async listPracticeAttempts(requestParameters: ListPracticeAttemptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PracticeAttemptSummaryResponse>> {
         const response = await this.listPracticeAttemptsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Per published set with a finished attempt: how many talebe finished it, how many times, and the average percentage. A set nobody finished is absent; pool attempts are not counted.
+     * How the course\'s çalışma setleri were solved, for its team
+     */
+    async listPracticeSetStatsRaw(requestParameters: ListPracticeSetStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PracticeSetStatsResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listPracticeSetStats().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/practice-set-stats`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PracticeSetStatsResponseFromJSON));
+    }
+
+    /**
+     * Per published set with a finished attempt: how many talebe finished it, how many times, and the average percentage. A set nobody finished is absent; pool attempts are not counted.
+     * How the course\'s çalışma setleri were solved, for its team
+     */
+    async listPracticeSetStats(requestParameters: ListPracticeSetStatsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PracticeSetStatsResponse>> {
+        const response = await this.listPracticeSetStatsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -380,6 +490,60 @@ export class PracticeApi extends runtime.BaseAPI {
      */
     async startPracticeAttempt(requestParameters: StartPracticeAttemptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PracticeAttemptResponse> {
         const response = await this.startPracticeAttemptRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * ALL: every question of the course\'s published çalışma setleri; RANDOM: `count` of them at random, none twice. Each question\'s options in an order of the attempt\'s own, with no clock. The caller\'s pool attempt in progress is returned instead, as it stands. The attempt is then read, answered and finished on the `practice-attempts` routes; each question carries its set\'s title.
+     * Start solving the course\'s question pool
+     */
+    async startPracticePoolAttemptRaw(requestParameters: StartPracticePoolAttemptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PracticeAttemptResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling startPracticePoolAttempt().'
+            );
+        }
+
+        if (requestParameters['startPracticePoolDto'] == null) {
+            throw new runtime.RequiredError(
+                'startPracticePoolDto',
+                'Required parameter "startPracticePoolDto" was null or undefined when calling startPracticePoolAttempt().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/practice-pool/attempts`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: StartPracticePoolDtoToJSON(requestParameters['startPracticePoolDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PracticeAttemptResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * ALL: every question of the course\'s published çalışma setleri; RANDOM: `count` of them at random, none twice. Each question\'s options in an order of the attempt\'s own, with no clock. The caller\'s pool attempt in progress is returned instead, as it stands. The attempt is then read, answered and finished on the `practice-attempts` routes; each question carries its set\'s title.
+     * Start solving the course\'s question pool
+     */
+    async startPracticePoolAttempt(requestParameters: StartPracticePoolAttemptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PracticeAttemptResponse> {
+        const response = await this.startPracticePoolAttemptRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

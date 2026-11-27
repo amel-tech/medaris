@@ -41,6 +41,11 @@ const api = {
       madrasah: null,
     }),
   },
+  practice: {
+    listPracticeSetStats: record("listPracticeSetStats", [
+      { setId: "s1", talebeCount: 3, attemptCount: 5, averagePercent: "72.50" },
+    ]),
+  },
   courses: {
     getMyCoursePermissions: record("getMyCoursePermissions", {
       permissions: ["course.view", "exam.prepare"],
@@ -94,6 +99,12 @@ describe("Çalışma Soruları (MDRS-248)", () => {
     expect(text).toContain("Yeni çalışma seti");
     expect(text).toContain("Kıyas tekrarı 4 soru Yayında");
     expect(text).toContain("Tarifler 0 soru Taslak");
+    // How a published set was solved; a draft says nothing.
+    expect(text).toContain("3 talebe 5 kez çözdü · ortalama %72,5");
+    expect(asked).toContainEqual({
+      method: "listPracticeSetStats",
+      request: { id: "c1" },
+    });
     expect(markup).toContain('href="/ders/c1/calisma-sorulari/s1"');
     // A set has no results and no zeroth question.
     expect(markup).not.toContain("/sonuclar");
@@ -104,8 +115,18 @@ describe("Çalışma Soruları (MDRS-248)", () => {
     });
   });
 
+  it("says a published set nobody solved yet", async () => {
+    api.practice.listPracticeSetStats = record("listPracticeSetStats", []);
+    const text = textOf(
+      await html(<ExamsPage courseId="c1" kind="PRACTICE" />)
+    );
+    expect(text).toContain("Kıyas tekrarı 4 soru Yayında · Henüz çözülmedi");
+    expect(text).not.toContain("Tarifler 0 soru Taslak ·");
+  });
+
   it("leaves Sınavlar asking for the exams only", async () => {
     await html(<ExamsPage courseId="c1" />);
+    expect(asked.map((a) => a.method)).not.toContain("listPracticeSetStats");
     expect(asked).toContainEqual({
       method: "listOnlineExams",
       request: { id: "c1" },

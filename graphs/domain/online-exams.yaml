@@ -239,16 +239,16 @@ entities:
       at: { type: string, format: date-time }
 
   PracticeAttempt: # one talebe's solving of a çalışma seti (MDRS-248): its order, where they are and, once finished, how it went
-    source: apps/tedrisat/src/database/schema/practice.schema.ts:31
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:32
     key: [id]
     required: [id, courseId, userId, questionOrder, optionOrder, startedAt]
     fields:
       id: { type: string, format: uuid }
       courseId: { type: string, format: uuid, references: Course }
       userId: { type: string, format: uuid, sensitivity: personal }
-      setId: { type: [string, "null"], format: uuid, references: OnlineExam, note: "a set of kind PRACTICE; null is a solving of the course's pool (Faz 4, nothing writes one yet)" }
+      setId: { type: [string, "null"], format: uuid, references: OnlineExam, note: "a set of kind PRACTICE; null is a solving of the course's pool (Faz 4): the complete questions of its published sets" }
       poolMode: { enum: [ALL, RANDOM, "null"], note: "set exactly when setId is null" }
-      questionOrder: { type: array, items: { type: string, format: uuid }, note: "the set's complete questions, drawn for this attempt" }
+      questionOrder: { type: array, items: { type: string, format: uuid }, note: "the set's complete questions, or the pool's (all, or N at random, none twice), drawn for this attempt" }
       optionOrder: { type: object, note: "each question's options in this attempt's order" }
       currentQuestionId: { type: [string, "null"], format: uuid, note: "the question last answered" }
       startedAt: { type: string, format: date-time }
@@ -259,10 +259,11 @@ entities:
       scoreHundredths: { type: [integer, "null"], note: "the parts got over the number of questions, in hundredths of a percent, rounded half up once; set when it finishes" }
     lifecycle:
       - "none -> in progress: startPracticeAttempt, unless one of the set is in progress (one at a time per talebe and set)"
+      - "none -> in progress (pool): startPracticePoolAttempt, unless a pool attempt of the course is in progress (one at a time per talebe and course)"
       - "in progress -> finished: finishPracticeAttempt; a new attempt may start then"
 
   PracticeAnswer: # a talebe's answer to one question of a practice attempt, saved when it is chosen
-    source: apps/tedrisat/src/database/schema/practice.schema.ts:80
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:84
     key: [attemptId, questionId]
     required: [attemptId, questionId, optionIds, savedAt]
     fields:
@@ -485,7 +486,7 @@ actions:
   listPracticeSets:
     summary: A course's çalışma setleri, for its talebe
     route: GET /courses/{id}/practice-sets
-    source: apps/tedrisat/src/practice/practice.controller.ts:126
+    source: apps/tedrisat/src/practice/practice.controller.ts:129
     needs: course.view on the course, and a talebe's seat that may write (ENROLLED or COMPLETED, not barred, content open)
     result: { status: 200, type: array, description: "each published set, the latest first: id, courseId, courseTitle, title, instructions, questionCount (its complete questions), attemptCount (finished), lastPercent, openAttemptId, publishedAt" }
     refusals:
@@ -496,7 +497,7 @@ actions:
   listMyPracticeSets:
     summary: Çalışma setlerim, the sets of every course of the caller
     route: GET /my-practice-sets
-    source: apps/tedrisat/src/practice/practice.controller.ts:142
+    source: apps/tedrisat/src/practice/practice.controller.ts:216
     needs: a token; the caller's own seats (no AuthzGuard, scoped to the caller, as Sınavlarım)
     result: { status: 200, type: array, description: "as listPracticeSets, over every course the caller may solve sets in" }
     refusals:
@@ -505,7 +506,7 @@ actions:
   startPracticeAttempt:
     summary: Start a çalışma seti, or go on with the attempt in progress
     route: POST /practice-sets/{setId}/attempts
-    source: apps/tedrisat/src/practice/practice.controller.ts:160
+    source: apps/tedrisat/src/practice/practice.controller.ts:234
     needs: course.view on the set's course (resolver byPracticeSetCourse) and a talebe's seat that may write
     result: { status: 201, note: "the attempt as getPracticeAttempt; no option says whether it is correct" }
     refusals:
@@ -515,10 +516,43 @@ actions:
     sideEffects:
       - "a PracticeAttempt with the set's complete questions and their options in an order of its own"
 
+  getPracticePool:
+    summary: A course's question pool, for its talebe
+    route: GET /courses/{id}/practice-pool
+    source: apps/tedrisat/src/practice/practice.controller.ts:152
+    needs: course.view on the course, and a talebe's seat that may write
+    result: { status: 200, type: object, description: "courseId, questionCount (the complete questions of its published sets; no exam's, no draft's), openAttemptId, attempts (the caller's ten latest pool attempts: id, mode, questionCount, status, startedAt, finishedAt, result)" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/practice/errors/practice.errors.ts:16 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  startPracticePoolAttempt:
+    summary: Solve the course's pool, all of it or N at random, or go on with the pool attempt in progress
+    route: POST /courses/{id}/practice-pool/attempts
+    source: apps/tedrisat/src/practice/practice.controller.ts:180
+    needs: course.view on the course, and a talebe's seat that may write
+    body:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: { enum: [ALL, RANDOM] }
+        count: { type: integer, minimum: 1, description: "RANDOM only, and required there: from 1 to the pool's size" }
+    result: { status: 201, note: "the attempt as getPracticeAttempt; the open pool attempt whatever is asked" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/practice/errors/practice.errors.ts:16 }
+      PRACTICE_POOL_COUNT_INVALID: { status: 400, source: apps/tedrisat/src/practice/errors/practice.errors.ts:86, note: "RANDOM with a count over the pool's size, or an empty pool" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "a PracticeAttempt with setId null and its poolMode, its questions and their options in an order of its own; each set it drew from can no longer be taken back to a draft"
+
   listPracticeAttempts:
     summary: The caller's attempts at a çalışma seti
     route: GET /practice-sets/{setId}/attempts
-    source: apps/tedrisat/src/practice/practice.controller.ts:179
+    source: apps/tedrisat/src/practice/practice.controller.ts:253
     needs: course.view on the set's course and a talebe's seat that may write
     result: { status: 200, type: array, description: "the caller's own, the latest started first: id, status, startedAt, finishedAt, result ({ correct, wrong, blank, total, percent } or null)" }
     refusals:
@@ -529,12 +563,12 @@ actions:
   getPracticeAttempt:
     summary: One of the caller's practice attempts
     route: GET /practice-attempts/{attemptId}
-    source: apps/tedrisat/src/practice/practice.controller.ts:198
+    source: apps/tedrisat/src/practice/practice.controller.ts:272
     needs: the caller's own attempt (resolver byPracticeAttemptCourse), course.view on its course and a talebe's seat that may write
     result:
       status: 200
       type: object
-      description: "id, setId, courseId, title, status, startedAt, finishedAt, currentQuestionId, the questions in the attempt's order with their options and the options chosen, and result. In progress no option carries `correct` and result is null; finished, each option carries `correct`, each question its outcome (CORRECT, WRONG, BLANK) and part, and result the counts and percent"
+      description: "id, setId (null for a pool attempt), poolMode, courseId, title (empty for a pool attempt), status, startedAt, finishedAt, currentQuestionId, the questions in the attempt's order with their set's title (setTitle), their options and the options chosen, and result. In progress no option carries `correct` and result is null; finished, each option carries `correct`, each question its outcome (CORRECT, WRONG, BLANK) and part, and result the counts and percent"
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       PRACTICE_ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/practice/errors/practice.errors.ts:38, note: "anyone else's, or of a course the caller is no longer a talebe of" }
@@ -543,7 +577,7 @@ actions:
   savePracticeAnswer:
     summary: Answer a question of a practice attempt
     route: PUT /practice-attempts/{attemptId}/answers/{questionId}
-    source: apps/tedrisat/src/practice/practice.controller.ts:223
+    source: apps/tedrisat/src/practice/practice.controller.ts:297
     needs: the caller's own attempt in progress, course.view on its course and a talebe's seat that may write
     body:
       type: object
@@ -566,7 +600,7 @@ actions:
   finishPracticeAttempt:
     summary: Bitir, the attempt ends and is counted
     route: POST /practice-attempts/{attemptId}/finish
-    source: apps/tedrisat/src/practice/practice.controller.ts:249
+    source: apps/tedrisat/src/practice/practice.controller.ts:323
     needs: the caller's own attempt, course.view on its course and a talebe's seat that may write
     result: { status: 200, note: "the finished attempt as getPracticeAttempt; finishing a finished one changes nothing" }
     refusals:
@@ -587,6 +621,16 @@ actions:
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       VALIDATION_ERROR: { status: 400, note: "planned: an unknown filter" }
+
+  listPracticeSetStats:
+    summary: How the course's çalışma setleri were solved, on its Çalışma Soruları page
+    route: GET /courses/{id}/practice-set-stats
+    source: apps/tedrisat/src/practice/practice.controller.ts:201
+    needs: exam.prepare on the course
+    result: { status: 200, type: array, description: "per published set with a finished attempt: setId, talebeCount, attemptCount, averagePercent; pool attempts are not counted" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
 
   listOnlineExams:
     summary: A course's online exams, on its Sınavlar page
@@ -1106,7 +1150,7 @@ invariants:
       No answer about a practice attempt in progress says which options are correct; a finished attempt shows them with each
       question's outcome and the percentage at once (MDRS-248).
     holds: true
-    source: apps/tedrisat/src/practice/practice.service.ts:407
+    source: apps/tedrisat/src/practice/practice.service.ts:545
 
   - id: practice-set-has-no-celse
     rule: >-
@@ -1117,7 +1161,14 @@ invariants:
   - id: practice-one-open-attempt
     rule: A talebe has at most one attempt of a çalışma seti in progress; starting it again goes on with that one.
     holds: true
-    source: apps/tedrisat/src/database/schema/practice.schema.ts:62
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:63
+
+  - id: practice-one-open-pool-attempt
+    rule: >-
+      A talebe has at most one pool attempt of a course in progress; starting the pool again goes on with that one. The pool is the
+      complete questions of the course's published çalışma setleri, never an exam's or a draft's (MDRS-248 Faz 4).
+    holds: true
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:66
 
   - id: zeroth-answers-never-traced
     rule: An aggregate of the zeroth answers never carries a name, a user id or a single answer. Its counts are exact.

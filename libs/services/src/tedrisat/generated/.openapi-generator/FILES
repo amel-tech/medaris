@@ -431,14 +431,18 @@ src/models/PlatformPolicyKey.ts
 src/models/PlatformPolicyListResponse.ts
 src/models/PlatformPolicyResponse.ts
 src/models/PolicyPersonResponse.ts
+src/models/PoolMode.ts
 src/models/PracticeAnswerSavedResponse.ts
 src/models/PracticeAttemptResponse.ts
 src/models/PracticeAttemptStatus.ts
 src/models/PracticeAttemptSummaryResponse.ts
 src/models/PracticeOptionResponse.ts
 src/models/PracticeOutcome.ts
+src/models/PracticePoolAttemptSummaryResponse.ts
+src/models/PracticePoolResponse.ts
 src/models/PracticeQuestionResponse.ts
 src/models/PracticeResultResponse.ts
+src/models/PracticeSetStatsResponse.ts
 src/models/PracticeSetSummaryResponse.ts
 src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
@@ -518,6 +522,7 @@ src/models/SetPartnerKosksDto.ts
 src/models/SetPlatformPolicyDto.ts
 src/models/SetQuestionPointsDto.ts
 src/models/SetRecordingAvailabilityDto.ts
+src/models/StartPracticePoolDto.ts
 src/models/StartRecordingUploadDto.ts
 src/models/SubmissionFileResponse.ts
 src/models/SubmissionReviewResponse.ts

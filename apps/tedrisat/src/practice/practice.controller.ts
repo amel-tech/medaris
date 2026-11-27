@@ -39,8 +39,11 @@ import {
   PracticeAnswerSavedResponse,
   PracticeAttemptResponse,
   PracticeAttemptSummaryResponse,
+  PracticePoolResponse,
+  PracticeSetStatsResponse,
   PracticeSetSummaryResponse,
   SavePracticeAnswerDto,
+  StartPracticePoolDto,
 } from "./dto/practice.dto";
 import {
   PracticeAttemptNotFoundError,
@@ -129,6 +132,77 @@ export class PracticeController {
     @Param("id", ParseUUIDPipe) courseId: string
   ): Promise<PracticeSetSummaryResponse[]> {
     return this.service.listCourseSets(request.user, courseId);
+  }
+
+  @ApiOperation({
+    summary: "The course's question pool, for its talebe",
+    description:
+      "How many questions the pool holds (the complete questions of the course's published çalışma setleri; no exam's and no draft's), the caller's pool attempt in progress and their latest pool attempts.",
+    operationId: "getPracticePool",
+  })
+  @ApiOkResponse({ type: PracticePoolResponse })
+  @ApiForbiddenResponse({
+    description:
+      "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)",
+  })
+  @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
+  @UseGuards(AuthzGuard)
+  @Authz(PERMISSIONS.COURSE_VIEW, byParam(ENTITIES.COURSE, "id"))
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/practice-pool")
+  pool(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) courseId: string
+  ): Promise<PracticePoolResponse> {
+    return this.service.pool(request.user, courseId);
+  }
+
+  @ApiOperation({
+    summary: "Start solving the course's question pool",
+    description:
+      "ALL: every question of the course's published çalışma setleri; RANDOM: `count` of them at random, none twice. Each question's options in an order of the attempt's own, with no clock. The caller's pool attempt in progress is returned instead, as it stands. The attempt is then read, answered and finished on the `practice-attempts` routes; each question carries its set's title.",
+    operationId: "startPracticePoolAttempt",
+  })
+  @ApiCreatedResponse({ type: PracticeAttemptResponse })
+  @ApiBadRequestResponse({
+    description:
+      "PRACTICE_POOL_COUNT_INVALID (RANDOM without a count from 1 to the pool's size, or an empty pool), VALIDATION_ERROR",
+  })
+  @ApiForbiddenResponse({
+    description:
+      "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)",
+  })
+  @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
+  @UseGuards(AuthzGuard)
+  @Authz(PERMISSIONS.COURSE_VIEW, byParam(ENTITIES.COURSE, "id"))
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @Header("Cache-Control", "private, no-store")
+  @Post("courses/:id/practice-pool/attempts")
+  startPool(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) courseId: string,
+    @Body() dto: StartPracticePoolDto
+  ): Promise<PracticeAttemptResponse> {
+    return this.service.startPool(request.user, courseId, dto.mode, dto.count);
+  }
+
+  @ApiOperation({
+    summary: "How the course's çalışma setleri were solved, for its team",
+    description:
+      "Per published set with a finished attempt: how many talebe finished it, how many times, and the average percentage. A set nobody finished is absent; pool attempts are not counted.",
+    operationId: "listPracticeSetStats",
+  })
+  @ApiOkResponse({ type: [PracticeSetStatsResponse] })
+  @ApiForbiddenResponse({ description: "No `exam.prepare` on the course." })
+  @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
+  @UseGuards(AuthzGuard)
+  @Authz(PERMISSIONS.EXAM_PREPARE, byParam(ENTITIES.COURSE, "id"))
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/practice-set-stats")
+  setStats(
+    @Param("id", ParseUUIDPipe) courseId: string
+  ): Promise<PracticeSetStatsResponse[]> {
+    return this.service.setStats(courseId);
   }
 
   @ApiOperation({

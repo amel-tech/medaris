@@ -9,7 +9,12 @@ import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { textProps } from "~/features/online-exams/arabic";
 import type { LooseTranslator } from "~/lib/i18n/loose";
-import { PRACTICE_HREF, percentText, solveHref } from "../practice-model";
+import {
+  againHref,
+  continueHref,
+  PRACTICE_HREF,
+  percentText,
+} from "../practice-model";
 import type { PracticeAttemptRead } from "../reads";
 
 // Narrow on purpose: the full translator type hits TS2589 (MDRS-176).
@@ -102,12 +107,12 @@ function Result({
 }) {
   const heading = (
     <h1 className="mds-h1" dir="auto">
-      {attempt.title}
+      {attempt.setId ? attempt.title : t("poolTitle")}
     </h1>
   );
   const actions = (
     <div className="flex flex-wrap gap-2">
-      <Button href={solveHref(attempt.setId)}>{t("again")}</Button>
+      <Button href={againHref(attempt)}>{t("again")}</Button>
       <Button variant="secondary" href={PRACTICE_HREF}>
         {t("backToList")}
       </Button>
@@ -121,7 +126,7 @@ function Result({
         <Alert tone="neutral" title={t("inProgressTitle")}>
           <p>{t("inProgress")}</p>
           <p className="mbs-3">
-            <Button size="small" href={solveHref(attempt.setId)}>
+            <Button size="small" href={continueHref(attempt)}>
               {t("continue")}
             </Button>
           </p>
@@ -211,6 +216,12 @@ function AnsweredQuestion({
         {...textProps(question.text, "var(--fs-body)", 1)}
       >
         {question.text}
+      </p>
+      <p
+        className="mds-caption text-neutral-muted"
+        data-testid="practice-answer-set"
+      >
+        {t("fromSet", { title: question.setTitle })}
       </p>
       <ul className="flex flex-col gap-1">
         {question.options.map((o) => {

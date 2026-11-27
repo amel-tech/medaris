@@ -17,7 +17,7 @@ needs:
       - state: closed
       - node: scheduledBadge
       - node: openBadge
-      - source: apps/nazar/features/online-exams/components/exams-page.tsx:49
+      - source: apps/nazar/features/online-exams/components/exams-page.tsx:51
     note: "Owner: \"sınav hazırlanırken taslak, yayında, 'şu gün şu saat yayında' gibi durumlar olacak\"."
 
   - id: checked-before-it-is-published
