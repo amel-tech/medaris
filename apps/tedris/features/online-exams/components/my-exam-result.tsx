@@ -6,6 +6,7 @@ import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
+import { showsNote } from "~/features/question-notes/note-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { scoreText, takeHref } from "../my-exams-model";
 import type { MyResultRead } from "../my-reads";
@@ -296,4 +297,7 @@ const reviewItemOf = (
     got: scoreText(q.got, locale),
     points: scoreText(q.points, locale),
   }),
+  note: showsNote(q)
+    ? { enabled: q.talebeNotes === true, initial: q.myNote ?? null }
+    : null,
 });

@@ -576,11 +576,11 @@ entries:
   - { from: account, to: accountPublicProfile, how: link, label: "The address /account/public-profile, typed in or bookmarked (the Hesap card that links to it is not drawn while the switch is off)", data: true, source: apps/tedris/features/account/components/account-settings.tsx:376 }
   - { from: accountCalendar, to: account, how: link, label: CalendarSubscription.breadcrumbAccount, source: apps/tedris/app/account/calendar/page.tsx:26 }
   - { from: accountCalendar, to: calendarFeed, how: link, label: CalendarSubscription.appleOpen, data: true, source: apps/tedris/features/courses/components/calendar-subscription.tsx:185 } # the webcal link, shown once when the link is created
-  - { from: notifications, to: course, how: link, label: "A notification about a course", data: true, source: apps/tedris/features/notifications/notification-view.ts:64 }
-  - { from: notifications, to: celse, how: link, label: "A notification about a celse", data: true, source: apps/tedris/features/notifications/notification-view.ts:67 }
-  - { from: notifications, to: deck, how: link, label: "A notification about a deck", data: true, source: apps/tedris/features/notifications/notification-view.ts:70 }
-  - { from: notifications, to: kosk, how: link, label: "A notification about a köşk", data: true, source: apps/tedris/features/notifications/notification-view.ts:72 }
-  - { from: notifications, to: notFound, how: link, label: "A notification whose course, celse, deck or köşk can no longer be opened", data: true, source: apps/tedris/features/notifications/notification-view.ts:63 }
+  - { from: notifications, to: course, how: link, label: "A notification about a course", data: true, source: apps/tedris/features/notifications/notification-view.ts:76 }
+  - { from: notifications, to: celse, how: link, label: "A notification about a celse", data: true, source: apps/tedris/features/notifications/notification-view.ts:81 }
+  - { from: notifications, to: deck, how: link, label: "A notification about a deck", data: true, source: apps/tedris/features/notifications/notification-view.ts:89 }
+  - { from: notifications, to: kosk, how: link, label: "A notification about a köşk", data: true, source: apps/tedris/features/notifications/notification-view.ts:91 }
+  - { from: notifications, to: notFound, how: link, label: "A notification whose course, celse, deck or köşk can no longer be opened", data: true, source: apps/tedris/features/notifications/notification-view.ts:73 }
 
 goals:
   - { id: tedris.shell.home, say: "Land on Ana sayfa after signing in", page: home, for: [talebe], within: 0 }

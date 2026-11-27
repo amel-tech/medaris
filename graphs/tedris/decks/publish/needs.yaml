@@ -73,7 +73,7 @@ needs:
       - node: whoPublished
       - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:128
       - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:147
-      - source: apps/tedris/features/notifications/notification-view.ts:171
+      - source: apps/tedris/features/notifications/notification-view.ts:181
     note: >-
       the notification is built and carries the reason; the page shows the new status only after a reload
       (stale-page-tells-the-truth)

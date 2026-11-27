@@ -47,6 +47,11 @@ vi.mock("@medaris/ui/mds/toast", () => ({
 }));
 vi.mock("~/lib/send-to-sign-in", () => ({ sendToSignIn: () => false }));
 vi.mock("~/features/online-exams/actions", () => mocks);
+// The note icon's Server Actions (soru notları), never called here.
+vi.mock("~/features/question-notes/actions", () => ({
+  saveMyQuestionNote: vi.fn(),
+  deleteMyQuestionNote: vi.fn(),
+}));
 
 const ok = <T>(data: T) => ({ success: true as const, data });
 

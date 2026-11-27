@@ -12,6 +12,7 @@ import {
   AnswerReview,
   type ReviewItem,
 } from "~/features/online-exams/components/answer-review";
+import { showsNote } from "~/features/question-notes/note-model";
 import { againHref, PRACTICE_HREF, percentText } from "../practice-model";
 
 type Outcome = NonNullable<PracticeQuestionResponse["outcome"]>;
@@ -153,4 +154,7 @@ export const reviewItemOf = (
     correct: o.correct,
   })),
   setTitle: pooled ? q.setTitle : null,
+  note: showsNote(q)
+    ? { enabled: q.talebeNotes === true, initial: q.myNote ?? null }
+    : null,
 });

@@ -579,7 +579,7 @@ assertions:
   - id: a-row-without-a-target-leads-nowhere
     never: "state in ['course_opened', 'celse_opened', 'deck_opened', 'kosk_opened'] and row == 'nowhere'"
     say: "A row with no target is not a link, so the person cannot leave by it"
-    source: apps/tedris/features/notifications/notification-view.ts:60
+    source: apps/tedris/features/notifications/notification-view.ts:64
   - id: unread-tab-is-read-once
     never: "state == 'loadingUnread' and unreadSeen == 'yes'"
     say: "The tab Okunmamış asks the API for its first page once in a visit, the first time it is opened; after that it shows the rows the page kept"

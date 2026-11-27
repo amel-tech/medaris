@@ -570,6 +570,10 @@
       "EXAM_RESULTS_RELEASED": {
         "title": "Sınav sonucun açıklandı",
         "body": "{courseTitle} dersinin sınav sonucunu Notlarım’da görebilirsin."
+      },
+      "QUESTION_NOTE_REPLIED": {
+        "title": "Hocan notunu cevapladı",
+        "body": "{courseTitle} dersinde, {setTitle} içindeki bir soruya yazdığın notun cevabını Çalışma Soruları › Notlarım’da görebilirsin."
       }
     }
   },
@@ -1151,5 +1155,53 @@
     "textSizeLabel": "Yazı boyutu",
     "textSizeFact": "Soruların yazısını büyütüp küçültebilirsin: sınav sırasında üst çubuktaki A− ve A+ düğmeleri bunu yapar.",
     "keysHint": "Kısayollar: şık seçmek için 1–9 ya da A–Z, sonraki soru için Enter."
+  },
+  "QuestionNotes": {
+    "buttonLabel": "{number}. soruya not yaz",
+    "buttonLabelWritten": "{number}. sorudaki notun",
+    "buttonLabelReplied": "{number}. sorudaki notun, hocan cevapladı",
+    "buttonLabelNewReply": "{number}. sorudaki notun, hocanın yeni cevabı var",
+    "panelTitle": "{number}. soru: notun",
+    "close": "Kapat",
+    "bodyLabel": "Notun",
+    "bodyPlaceholder": "Bu soruyla ilgili notunu yaz…",
+    "counter": "{count}/{max}",
+    "share": "Hocaya gönder",
+    "shareHelp": "Hocan notunu görür ve cevaplayabilir.",
+    "shareLockedExam": "Sınav bitince hocana gönderebilirsin; şimdilik not yalnız sende.",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "saved": "Notun kaydedildi.",
+    "deleted": "Notun silindi.",
+    "saveFailed": "Notun kaydedilemedi, tekrar dene.",
+    "deleteFailed": "Notun silinemedi, tekrar dene.",
+    "disabled": "Hocan bu soruda notları kapattı. Notunu okuyabilir ve silebilirsin.",
+    "shareLocked": "Sınav bitmeden notunu hocana gönderemezsin. Kişisel not olarak kaydedebilirsin.",
+    "notFound": "Bu soru artık bulunamadı.",
+    "forbidden": "Bu derste not yazamazsın.",
+    "teacherReply": "Hocanın cevabı:",
+    "yourNote": "Notun",
+    "sharedBadge": "Hocaya gönderildi",
+    "personalBadge": "Yalnız sende",
+    "newReplyBadge": "Yeni cevap",
+    "noReplyYet": "Hocan henüz cevaplamadı.",
+    "notesLink": "Notlarım",
+    "notesLinkLabel": "Notlarım: {course} dersindeki soru notların",
+    "notesTitle": "Soru notlarım",
+    "notesIntro": "Çözdüğün sorulara yazdığın notlar. Hocana gönderdiklerinin cevabı burada görünür.",
+    "notesEmpty": "Bu derste henüz soru notun yok. Soru çözerken sorunun yanındaki not ikonuyla not yazabilirsin.",
+    "notesCount": "{count} not",
+    "notesLoadFailedTitle": "Notların okunamadı",
+    "notesLoadFailed": "Notların şu an okunamadı.",
+    "notesNotFoundTitle": "Bu dersin notları açılamadı",
+    "notesNotFound": "Bu dersin talebesi değilsin ya da ders artık yok.",
+    "notesSet": "Set:",
+    "notesExam": "Sınav:",
+    "openSet": "Seti çöz",
+    "openResult": "Sınav sonucunu aç",
+    "updatedAt": "Son düzenleme: {at}",
+    "deleteTitle": "Not silinsin mi?",
+    "deleteBody": "Hocanın cevabı da notla birlikte silinir.",
+    "cancel": "Vazgeç"
   }
 }

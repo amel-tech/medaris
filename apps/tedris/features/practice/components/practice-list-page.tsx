@@ -7,8 +7,10 @@ import { Badge, type BadgeVariant } from "@medaris/ui/mds/badge";
 import { Button, type ButtonVariant } from "@medaris/ui/mds/button";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Field } from "@medaris/ui/mds/field";
+import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { getLocale, getTranslations } from "next-intl/server";
+import { notesHref } from "~/features/question-notes/note-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
   actionOf,
@@ -69,6 +71,9 @@ export async function PracticeListPage({
   pools?: ReadonlyMap<string, PracticePoolResponse>;
 }) {
   const t: Translate = (await getTranslations("tedris.Practice")) as never;
+  const tn: Translate = (await getTranslations(
+    "tedris.QuestionNotes"
+  )) as never;
   const locale = await getLocale();
 
   return (
@@ -114,15 +119,32 @@ export async function PracticeListPage({
                 <h2 id={`${anchor}-title`} className="mds-h2" dir="auto">
                   {group.courseTitle}
                 </h2>
-                <p
-                  className="mds-body-sm text-neutral-muted"
-                  data-testid="practice-course-summary"
-                >
-                  {t("courseSummary", {
-                    sets: group.sets.length,
-                    solved,
-                  })}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <p
+                    className="mds-body-sm text-neutral-muted"
+                    data-testid="practice-course-summary"
+                  >
+                    {t("courseSummary", {
+                      sets: group.sets.length,
+                      solved,
+                    })}
+                  </p>
+                  {/* The course's question notes (soru notları). No count: the
+                      API marks the answers read as it lists them, so only the
+                      notes page itself reads them. */}
+                  <Button
+                    size="small"
+                    variant="outline"
+                    href={notesHref(group.courseId)}
+                    iconLeft={<Icon name="note" size="sm" />}
+                    aria-label={tn("notesLinkLabel", {
+                      course: group.courseTitle,
+                    })}
+                    data-testid="practice-notes-link"
+                  >
+                    {tn("notesLink")}
+                  </Button>
+                </div>
               </div>
               <SetTable
                 sets={group.sets}

@@ -29,7 +29,7 @@ needs:
       - state: awaitingRelease
       - node: handedIn
       - node: awaitingText
-      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:166
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:167
       - test: apps/tedris/test/my-exams.spec.ts
         name: "before the release says only that it was handed in"
       - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
@@ -45,7 +45,7 @@ needs:
       - node: scoreText
       - node: countsText
       - node: handedIn
-      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:143
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:144
       - test: apps/tedris/test/my-exams.spec.ts
         name: "after the release shows the score, the counts and the topics, the weakest first"
     note: The points of each question are nazar.exams.edit's; a blank or a skipped question gets no points.
@@ -58,7 +58,7 @@ needs:
       - state: resultShown
       - node: topicLine
       - node: topicBar
-      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:178
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:179
       - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
         name: "scores and stands by topic once released, and opens the answers once closed for everyone"
     note: "Owner: \"konulara göre talebe hangi konularda ne durumda olduğunu görebilecek\"; asked how it is shown: \"Yalnız yüzde\"."
@@ -68,7 +68,7 @@ needs:
     evidence:
       - state: resultShown
       - node: courseTopicLine
-      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:233
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:234
       - test: apps/tedrisat/test/e2e/my-exams.e2e.spec.ts
         name: "adds the standing up across the course's released exams"
     note: "The topics are the course's (owner, asked whose they are: \"dersin\"), so they add up across exams."
@@ -104,4 +104,4 @@ needs:
       - state: resultShown
       - node: topicLine
       - node: courseTopicLine
-      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:195
+      - source: apps/tedris/features/online-exams/components/my-exam-result.tsx:196

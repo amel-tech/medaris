@@ -11,6 +11,11 @@ import { intlMock } from "./intl-mock";
  */
 
 vi.mock("next-intl", async (orig) => intlMock(await orig()));
+// The note icon's Server Actions (soru notları), never called here.
+vi.mock("~/features/question-notes/actions", () => ({
+  saveMyQuestionNote: vi.fn(),
+  deleteMyQuestionNote: vi.fn(),
+}));
 
 const OUTCOMES = ["correct", "wrong", "blank"] as const;
 const item = (n: number, over: Partial<ReviewItem> = {}): ReviewItem => ({

@@ -3,6 +3,7 @@
 import type {
   ExamAttemptResponse,
   ExamBriefingResponse,
+  MyQuestionNoteResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
@@ -12,6 +13,8 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { unstable_isUnrecognizedActionError as isStaleAction } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { QuestionNote } from "~/features/question-notes/components/question-note";
+import { notesOf, showsNote } from "~/features/question-notes/note-model";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   answerZerothQuestion,
@@ -108,6 +111,10 @@ export function ExamTake({
   );
   const [attempt, setAttempt] = useState<ExamAttemptResponse | null>(null);
   const [answers, setAnswers] = useState<Map<string, LocalAnswer>>(new Map());
+  // The talebe's note of each question (soru notları), as the icon shows it.
+  const [notes, setNotes] = useState<
+    Map<string, MyQuestionNoteResponse | null>
+  >(new Map());
   const [index, setIndex] = useState(0);
   const [left, setLeft] = useState(0);
   const [offline, setOffline] = useState(false);
@@ -259,6 +266,7 @@ export function ExamTake({
       // A choice made while the connection was lost stands over the server's.
       for (const [id, answer] of unsent.current) held.set(id, answer);
       setAnswers(held);
+      setNotes(notesOf(a.questions));
       const at = a.questions.findIndex((q) => q.id === a.currentQuestionId);
       setIndex(at === -1 ? 0 : at);
       setLeft(a.secondsLeft);
@@ -638,11 +646,29 @@ export function ExamTake({
                 className="mds-card flex flex-col gap-3"
                 aria-labelledby="exam-question"
               >
-                <p className="mds-caption text-neutral-muted">
-                  {t("questionPoints", {
-                    points: pointsText(q.points, locale),
-                  })}
-                </p>
+                {/* The note icon at the end of this line (soru notları): a
+                    personal note may be written during the exam; sending it
+                    to the hoca waits until the exam is over. */}
+                <div className="question-note-anchor flex min-h-8 items-center justify-between gap-2">
+                  <p className="mds-caption text-neutral-muted">
+                    {t("questionPoints", {
+                      points: pointsText(q.points, locale),
+                    })}
+                  </p>
+                  {showsNote(q) ? (
+                    <QuestionNote
+                      key={q.id}
+                      questionId={q.id}
+                      questionNumber={index + 1}
+                      note={notes.get(q.id) ?? null}
+                      onChange={(note) =>
+                        setNotes((all) => new Map(all).set(q.id, note))
+                      }
+                      enabled={q.talebeNotes === true}
+                      shareLock
+                    />
+                  ) : null}
+                </div>
                 <ArabicText
                   as="h1"
                   id="exam-question"
