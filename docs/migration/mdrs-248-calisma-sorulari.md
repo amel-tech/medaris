@@ -135,6 +135,11 @@ Generated client: `PracticeApi` (`createTedrisatAPIs().practice`), the models
 
 ## Follow-ups
 
+- Once a talebe has started a set, the team can neither edit it nor take it
+  back, as with an exam once it has opened (decision 2: the same lock). A
+  wrong answer key in a started set therefore stays; whether a started set
+  may be withdrawn or corrected is the owner's call (code review, this PR).
+
 - Faz 2 (nazar): preparing sets on the course's page, with `kind: PRACTICE`.
 - Faz 3 (tedris): the talebe's list and solving screens on these routes.
 - Faz 4: the pool (`set_id` null, `pool_mode`), all of a course's questions or
