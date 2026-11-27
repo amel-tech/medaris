@@ -275,6 +275,16 @@ const AnswerCard = memo(function AnswerCard({
   const lines = question.options.filter((o) => o.chosen || o.correct);
   // The card keeps its note: the icon's panel writes it, the summary shows it.
   const [note, setNote] = useState(question.note?.initial ?? null);
+  // A newer note from the server (a refresh after the hoca answered) wins;
+  // keyed on its times, not on the object, which every render makes anew.
+  const initial = question.note?.initial ?? null;
+  const initialAt = initial ? new Date(initial.updatedAt).getTime() : null;
+  const initialReplyAt = initial?.repliedAt
+    ? new Date(initial.repliedAt).getTime()
+    : null;
+  useEffect(() => {
+    setNote(initial);
+  }, [initialAt, initialReplyAt]);
   return (
     <article
       id={id}

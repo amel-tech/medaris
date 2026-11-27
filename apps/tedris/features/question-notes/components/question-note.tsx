@@ -1,6 +1,7 @@
 "use client";
 
 import type { MyQuestionNoteResponse } from "@medaris/services/tedrisat";
+import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
@@ -70,6 +71,7 @@ export function QuestionNote({
   // The server's word wins over the props: a lock it reported stays.
   const [lockedBy, setLockedBy] = useState<"exam" | null>(null);
   const [off, setOff] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   // The mds Textarea takes no ref: the panel's one textarea is found in it.
@@ -84,10 +86,9 @@ export function QuestionNote({
     if (focusBack) buttonRef.current?.focus();
   };
 
-  // Opened: the panel starts from the note as it is, and the text takes the focus.
+  // Opened: the text takes the focus. A draft not saved is kept across a
+  // close (an outside press, Esc, "Sonraki"), so nothing typed is lost.
   const show = () => {
-    setBody(note?.body ?? "");
-    setShared(note?.sharedWithTeacher ?? false);
     setError(null);
     setStatus(null);
     setOpen(true);
@@ -104,9 +105,11 @@ export function QuestionNote({
     }
   }, [open]);
 
-  // A press outside the icon and the panel closes it; the focus stays where it went.
+  // A press outside the icon and the panel closes it, the focus staying
+  // where it went; Esc closes it wherever the focus is, back to the icon.
+  // Neither while "Sil" asks: its dialog is outside the panel.
   useEffect(() => {
-    if (!open) return;
+    if (!open || confirming) return;
     const onDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
@@ -114,26 +117,35 @@ export function QuestionNote({
       if (buttonRef.current?.contains(target)) return;
       setOpen(false);
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      setOpen(false);
+      buttonRef.current?.focus();
+    };
     document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
-  }, [open]);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, confirming]);
 
   const trimmed = body.trim();
+  // While sending is locked, a note already sent stays sent: the API keeps it
+  // sent only when the request says so.
+  const sending = locked ? (note?.sharedWithTeacher ?? false) : shared;
   const changed =
     trimmed !== (note?.body ?? "") ||
-    shared !== (note?.sharedWithTeacher ?? false);
+    sending !== (note?.sharedWithTeacher ?? false);
 
   const save = async () => {
-    if (!writable || busy || trimmed === "") return;
+    if (!writable || busy || trimmed === "" || !changed) return;
     setBusy("save");
     setError(null);
     setStatus(null);
     try {
-      const result = await saveMyQuestionNote(
-        questionId,
-        trimmed,
-        locked ? false : shared
-      );
+      const result = await saveMyQuestionNote(questionId, trimmed, sending);
       if (sendToSignIn(result)) return;
       if (result.success) {
         onChange(result.data);
@@ -300,7 +312,7 @@ export function QuestionNote({
             <Switch
               label={t("share")}
               description={locked ? t("shareLockedExam") : t("shareHelp")}
-              checked={locked ? false : shared}
+              checked={sending}
               disabled={locked}
               onCheckedChange={(checked: boolean) => {
                 setShared(checked);
@@ -326,7 +338,10 @@ export function QuestionNote({
                 variant="ghost"
                 loading={busy === "delete"}
                 disabled={busy !== null}
-                onClick={() => void remove()}
+                onClick={() =>
+                  // The hoca's answer goes with the note: asked first.
+                  note.teacherReply ? setConfirming(true) : void remove()
+                }
               >
                 {t("delete")}
               </Button>
@@ -344,6 +359,20 @@ export function QuestionNote({
           </div>
         </div>
       ) : null}
+      <AlertDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={t("deleteTitle")}
+        confirmLabel={t("delete")}
+        confirmVariant="destructive"
+        cancelLabel={t("cancel")}
+        onConfirm={() => {
+          setConfirming(false);
+          void remove();
+        }}
+      >
+        <p>{t("deleteBody")}</p>
+      </AlertDialog>
     </>
   );
 }

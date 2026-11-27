@@ -364,6 +364,81 @@ describe("an exam's notes (soru notları)", () => {
   });
 });
 
+describe("the panel keeps what the talebe wrote (soru notları)", () => {
+  it("keeps a draft across an outside press, and Esc closes it from the icon too", async () => {
+    await mountNote();
+    await click(icon() as HTMLButtonElement);
+    await type(textarea(), "Yarım kalan not");
+    await act(async () => {
+      document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    });
+    expect(panel()).toBeNull();
+    await click(icon() as HTMLButtonElement);
+    expect(textarea().value).toBe("Yarım kalan not");
+    // The focus back on the icon, the panel still open: Esc closes it.
+    (icon() as HTMLButtonElement).focus();
+    await key(icon() as HTMLButtonElement, "Escape");
+    expect(panel()).toBeNull();
+  });
+
+  it("does not save an unchanged note with Ctrl+Enter", async () => {
+    await mountNote({ note: note() });
+    await click(icon() as HTMLButtonElement);
+    await act(async () => {
+      textarea().dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+    await settle();
+    expect(notes.saveMyQuestionNote).not.toHaveBeenCalled();
+  });
+
+  it("keeps a sent note sent while sending is locked", async () => {
+    const sent = note({ sharedWithTeacher: true, sharedAt: new Date() });
+    await mountNote({ note: sent, shareLock: true });
+    await click(icon() as HTMLButtonElement);
+    expect(toggle().getAttribute("aria-checked")).toBe("true");
+    notes.saveMyQuestionNote.mockResolvedValue(ok(sent));
+    await type(textarea(), "Elif neden mansub? Bir daha baktım.");
+    await click(button("Kaydet"));
+    await settle();
+    expect(notes.saveMyQuestionNote).toHaveBeenCalledWith(
+      "q1",
+      "Elif neden mansub? Bir daha baktım.",
+      true
+    );
+  });
+
+  it("asks before deleting a note the hoca answered", async () => {
+    await mountNote({
+      note: note({
+        sharedWithTeacher: true,
+        sharedAt: new Date(),
+        teacherReply: "Cevap",
+        repliedAt: new Date(),
+      }),
+    });
+    await click(icon() as HTMLButtonElement);
+    await click(button("Sil"));
+    expect(notes.deleteMyQuestionNote).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain(
+      "Hocanın cevabı da notla birlikte silinir."
+    );
+    notes.deleteMyQuestionNote.mockResolvedValue(ok(undefined));
+    const confirm = [
+      ...document.querySelectorAll("[role=alertdialog] button"),
+    ].find((b) => b.textContent?.trim() === "Sil") as HTMLButtonElement;
+    await click(confirm);
+    await settle();
+    expect(notes.deleteMyQuestionNote).toHaveBeenCalledWith("q1");
+  });
+});
+
 describe("a result card's note (soru notları)", () => {
   it("shows the note, whether it was sent and the hoca's answer, and opens it to edit", async () => {
     const { AnswerReview } = await import(

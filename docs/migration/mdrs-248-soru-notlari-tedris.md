@@ -27,7 +27,8 @@ kaplamasın": on every screen the note is one small icon in the question's top l
     "Hocaya gönder" (`Switch`), "Kaydet" and "Sil". Each is written at once through a Server
     Action (`features/question-notes/actions.ts`). Ctrl/⌘+Enter saves.
   - The focus goes to the text when it opens and back to the icon when it closes (the icon, the
-    ×, Esc); a press outside closes it. The question screen's keys (A–Z, 1–9, Enter) leave the
+    ×, Esc wherever the focus is); a press outside closes it. A draft not saved is kept across a
+    close. "Sil" asks first when the hoca answered (the answer goes with the note). The question screen's keys (A–Z, 1–9, Enter) leave the
     panel alone, because `TakeKeys` already skips anything inside a `role="dialog"`.
   - Refusals in words: `NOTES_DISABLED` (and the panel stops writing), `NOTES_SHARE_LOCKED`
     (and the switch locks), `NOTE_QUESTION_NOT_FOUND`, 403, anything else. A delete answered
@@ -65,7 +66,7 @@ kaplamasın": on every screen the note is one small icon in the question's top l
 
 ## Verified
 
-- `apps/tedris/test/question-notes.spec.ts` (15 tests): the icon only where allowed, a note
+- `apps/tedris/test/question-notes.spec.ts` (19 tests): the icon only where allowed, a note
   kept after notes were turned off, the panel's focus, save and send, Esc, the screen's keys,
   a failed save, delete, the exam's lock (switch disabled, sent as personal), a
   `NOTES_SHARE_LOCKED` and a `NOTES_DISABLED` answer, a result card with the answer and the
@@ -90,6 +91,20 @@ kaplamasın": on every screen the note is one small icon in the question's top l
 - The exam screens (`exam-take`, "Cevaplarım") were not opened in a browser: the recording data
   has no exam a talebe can sit. They are covered by the component tests only.
 - The e2e scenario was not run (see above).
+
+## Review
+
+Findings of the pull request's review, all fixed:
+
+- A draft was lost when the panel closed (an outside press, "Sonraki"): it is kept now.
+- While sending was locked a save sent `sharedWithTeacher: false`, which would have taken back
+  a note already sent: it now sends the note's own state, and the switch shows it.
+- "Sil" on an answered note deleted the hoca's answer with one press: it asks first.
+- Ctrl/⌘+Enter saved an unchanged note: it does not.
+- Esc closed the panel only from inside it: it closes it from anywhere.
+- "1 notes" in English: the count is an ICU plural in en and ar.
+- A result card kept its first note after a refresh: it follows a newer one from the server.
+- The e2e scenario picked the first course's Notlarım: it picks the seeded course's.
 
 ## Seen, not fixed here
 

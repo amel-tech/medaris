@@ -166,6 +166,7 @@ test("a note on a question: written, sent, answered, read under Notlarım (soru 
   await expect(question).toBeVisible();
   const text = (await question.locator("h2").textContent())?.trim();
   const q = questions.find((it) => it.text === text);
+  expect(q, "the question shown is one of the seeded ones").toBeDefined();
 
   const icon = question.getByTestId("question-note-button");
   await icon.click();
@@ -187,7 +188,10 @@ test("a note on a question: written, sent, answered, read under Notlarım (soru 
   );
 
   await page.goto("/calisma-sorulari");
-  await page.getByTestId("practice-notes-link").first().click();
+  await page
+    .locator(`#ders-${fixture.courseId}`)
+    .getByTestId("practice-notes-link")
+    .click();
   await expect(page).toHaveURL(/\/calisma-sorulari\/notlar\?ders=/);
   const item = page.getByTestId("notes-item").filter({ hasText: text ?? "" });
   await expect(item).toContainText("Bu fiilin babını nasıl bulurum?");

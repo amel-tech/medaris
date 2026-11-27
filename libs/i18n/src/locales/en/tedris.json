@@ -1190,7 +1190,7 @@
     "notesTitle": "My question notes",
     "notesIntro": "The notes you wrote on the questions you solved. The answers to those you sent to your teacher show here.",
     "notesEmpty": "You have no question notes in this course yet. While solving, write one with the note icon beside the question.",
-    "notesCount": "{count} notes",
+    "notesCount": "{count, plural, one {# note} other {# notes}}",
     "notesLoadFailedTitle": "Your notes could not be read",
     "notesLoadFailed": "Your notes cannot be read right now.",
     "notesNotFoundTitle": "This course's notes could not be opened",
@@ -1199,6 +1199,9 @@
     "notesExam": "Exam:",
     "openSet": "Solve the set",
     "openResult": "Open the exam result",
-    "updatedAt": "Last edited: {at}"
+    "updatedAt": "Last edited: {at}",
+    "deleteTitle": "Delete the note?",
+    "deleteBody": "Your teacher's answer is deleted with the note.",
+    "cancel": "Cancel"
   }
 }

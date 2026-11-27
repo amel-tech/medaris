@@ -1199,6 +1199,9 @@
     "notesExam": "Sınav:",
     "openSet": "Seti çöz",
     "openResult": "Sınav sonucunu aç",
-    "updatedAt": "Son düzenleme: {at}"
+    "updatedAt": "Son düzenleme: {at}",
+    "deleteTitle": "Not silinsin mi?",
+    "deleteBody": "Hocanın cevabı da notla birlikte silinir.",
+    "cancel": "Vazgeç"
   }
 }
