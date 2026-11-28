@@ -22,7 +22,8 @@
 #     "konu silebilmek de lazım sadece ekleme var" (22 Nov). A topic that questions use is not deleted (my choice).
 #   - Results: those who prepare the exam see them, "görebilsin, soruları hazırlayanlar için değerli olabilir sonraki hazırlamada" (22
 #     Nov); each talebe's answers too, "talebeye tıklayıp hangi soruya ne cevap verdiğini ayrıca görebilmek lazım" (22 Nov). The release
-#     stays with the existing releaseExamResults.
+#     stays with the existing releaseExamResults. Releasing an online exam's results ends it for everyone and waits until it has
+#     opened: "Önerini uygula" (24 Nov), after a hoca's talebe saw no answers because one attempt left open kept the exam open.
 #   - The talebe's rank: "sınava şu kadar kişi girdi, senin puanın şu, bu kadar kişiden şu sıradasınız … aynı şekilde konu başına da bu
 #     sıralama olsun. eşit puan alanlar 'şu sıradasınız şu kadar kişi sizinle aynı puanı aldı' görsün" (22 Nov). Competition ranking
 #     (1, 2, 2, 4) and counting only finished attempts are my choices.
@@ -38,6 +39,20 @@
 #   - the medrese's zeroth question with madrasah.settings_edit; the aggregate with exam.zeroth_read (a Medaris nazımı by grant in the
 #     platform scope, a köşk nazımı in their köşk, the başnazım by bypass).
 #
+# Çalışma soruları (MDRS-248, Faz 1, the API only): a çalışma seti is an OnlineExam of kind PRACTICE, prepared with the same routes.
+# Published, it makes no celse and reaches no calendar or notification; it has no length, no late window, no points editor and no
+# zeroth question, every question weighs the same, and it is solved from its complete questions only. The talebe solve it as often as
+# they like (PracticeAttempt, apart from ExamAttempt) and see their result and the correct options as soon as they finish. The
+# routes of one kind refuse the other (EXAM_KIND_MISMATCH; a set's routes on an exam are PRACTICE_SET_NOT_FOUND). The pool of a
+# course's sets (setId null, poolMode ALL or RANDOM) has its columns and nothing that writes it yet (Faz 4).
+#
+# Soru notları (MDRS-248): a talebe's note on a question they got in an attempt of their own (a set's, the pool's or their sitting of
+# an exam), kept to themselves or sent to the course's hoca, who reads the notes sent on the set and answers them. The team turns
+# notes on or off per question (ExamQuestion.talebeNotes: on in a çalışma seti, off in an exam, by default), on a published or
+# locked set too, since it is no part of the content. An exam's note goes to the hoca only once the exam is over for everyone or its
+# results are open. The owner asked for the per question icon ("ikon olarak dursun, tıklanırsa soruya eklensin, gereksiz yer
+# kaplamasın soru ekleme alanında", 27 Nov, relayed).
+#
 # Not built: copying an earlier exam of the course (copyOnlineExam), the team's Sınavlarım across courses (listMyTeachingExams), a
 # preview of the exam as the talebe sees it, and changing a scheduled exam in place (today it is taken back to a draft and published
 # again).
@@ -47,7 +62,7 @@ id: medaris.api
 
 entities:
   CourseTopic: # one topic of a course's exams: a number and a short name, kept by the course and picked by its exams and questions
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:32
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:37
     key: [id]
     required: [id, courseId, number, name, nameKey, createdAt, updatedAt]
     fields:
@@ -60,12 +75,13 @@ entities:
       updatedAt: { type: string, format: date-time }
 
   OnlineExam: # an online exam of a course: a draft with no celse, then published with the celse it makes
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:71
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:80
     key: [id]
     required: [id, courseId, title, version, createdBy, createdAt, updatedAt]
     fields:
       id: { type: string, format: uuid }
       courseId: { type: string, format: uuid, references: Course }
+      kind: { enum: [EXAM, PRACTICE], note: "EXAM by default; PRACTICE is a çalışma seti (MDRS-248), whose lessonId stays null (check online_exams_kind_lesson_check)" }
       lessonId: { type: [string, "null"], format: uuid, unique: true, references: Lesson, note: "null while a draft; the celse publishing made, whose scheduledAt is the earliest start and whose LessonExam has format MULTIPLE_CHOICE and maxScore 100" }
       title: { type: string, minLength: 1, maxLength: 200 }
       durationMinutes: { type: [integer, "null"], minimum: 1, maximum: 2147483647, note: "no default and no upper bound; null until the team types it, and publishing refuses an exam without it (NO_DURATION, the owner 22 Nov)" }
@@ -73,7 +89,7 @@ entities:
       zerothQuestion: { type: [string, "null"], note: "the course's or the medrese's zeroth question as publishing copied it; a later change to theirs does not reach it" }
       latestStartAt: { type: [string, "null"], format: date-time, note: "set at publish: the start plus latestStartMinutes (10 when left out)" }
       publishedAt: { type: [string, "null"], format: date-time, note: "null while a draft" }
-      closedEarlyAt: { type: [string, "null"], format: date-time, note: "set by closeOnlineExamEarly" }
+      closedEarlyAt: { type: [string, "null"], format: date-time, note: "set by closeOnlineExamEarly, or by releaseExamResults at the release's time" }
       version: { type: integer, minimum: 1, maximum: 2147483647, note: "bumped by every write of the exam, its questions, its points and a topic delete that changes its pick; a write naming an older one is EXAM_STALE, and every write's answer carries the new one" }
       createdBy: { type: string, format: uuid, note: "Keycloak sub" }
       createdAt: { type: string, format: date-time }
@@ -82,10 +98,12 @@ entities:
       - "none -> draft: createOnlineExam, a title only"
       - "draft -> scheduled | open: publishOnlineExam (later, or now); the celse and its LessonExam are made, the zeroth question copied"
       - "scheduled -> draft: unpublishOnlineExam until it opens; the celse is deleted"
-      - "open -> closed: the late window has passed and no attempt runs, or closeOnlineExamEarly"
+      - "open -> closed: the late window has passed and no attempt runs, or closeOnlineExamEarly, or releaseExamResults"
+      - "a çalışma seti (PRACTICE): draft -> open with publishOnlineExam, no celse; open -> draft with unpublishOnlineExam until a talebe starts it"
+      - "a çalışma seti (PRACTICE): draft | open -> none with deleteOnlineExam until a talebe starts it or a pool attempt draws from it"
 
   ExamTopic: # a topic an exam has picked from its course's list
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:109
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:124
     key: [examId, topicId]
     required: [examId, topicId, position]
     fields:
@@ -94,7 +112,7 @@ entities:
       position: { type: integer, minimum: 0 }
 
   ZerothOption: # one option of the exam's copy of the zeroth question: none is correct and none carries points
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:130
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:145
     key: [id]
     required: [id, examId, position, text]
     fields:
@@ -104,7 +122,7 @@ entities:
       text: { type: string, minLength: 1, maxLength: 300 }
 
   ExamQuestion: # one multiple-choice question of an exam
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:150
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:165
     key: [id]
     required: [id, examId, position, text, answerMode, createdAt, updatedAt]
     fields:
@@ -115,11 +133,12 @@ entities:
       answerMode: { enum: [SINGLE, MULTIPLE], note: "SINGLE: one choice, and any correct option gets the points; MULTIPLE: check boxes" }
       scoring: { enum: [ALL_OR_NOTHING, IN_SHARES, ANY_CORRECT, "null"], note: "MULTIPLE only, with two correct options or more (QUESTION_MODE_INVALID otherwise); ANY_CORRECT: one correct mark and no wrong one is the whole points" }
       ownPoints: { type: [integer, "null"], minimum: 1, maximum: 10000, note: "hundredths; null takes an equal, exact share of what the own points leave of 100" }
+      talebeNotes: { type: boolean, note: "whether the talebe may write a note on it (soru notları); a new question takes its set's default, true in a PRACTICE set and false in an EXAM; turned with setExamQuestionTalebeNotes, never a content write" }
       createdAt: { type: string, format: date-time }
       updatedAt: { type: string, format: date-time }
 
   ExamQuestionTopic: # a topic a question carries
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:185
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:205
     key: [questionId, topicId]
     required: [questionId, topicId]
     fields:
@@ -127,7 +146,7 @@ entities:
       topicId: { type: string, format: uuid, references: CourseTopic }
 
   ExamOption: # one option of a question
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:202
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:222
     key: [id]
     required: [id, questionId, position, text, correct]
     fields:
@@ -138,7 +157,7 @@ entities:
       correct: { type: boolean, note: "never sent to a talebe before the exam has closed for everyone and its results are released" }
 
   MadrasahZerothQuestion: # the medrese's zeroth question, edited in Medrese ayarları: every course's default
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:225
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:245
     key: [madrasahId]
     required: [madrasahId, text, updatedAt, updatedBy]
     fields:
@@ -148,7 +167,7 @@ entities:
       updatedBy: { type: string, format: uuid }
 
   MadrasahZerothOption: # one option of the medrese's zeroth question
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:237
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:257
     key: [id]
     required: [id, madrasahId, position, text]
     fields:
@@ -158,7 +177,7 @@ entities:
       text: { type: string, minLength: 1, maxLength: 300, note: "2 to 10 options, each different (my choice, #411)" }
 
   CourseZerothQuestion: # a course's own zeroth question, over the medrese's; a köşk-only course needs it to publish
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:267
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:287
     key: [courseId]
     required: [courseId, text, updatedAt, updatedBy]
     fields:
@@ -168,7 +187,7 @@ entities:
       updatedBy: { type: string, format: uuid }
 
   CourseZerothOption: # one option of a course's own zeroth question
-    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:279
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:299
     key: [id]
     required: [id, courseId, position, text]
     fields:
@@ -227,6 +246,65 @@ entities:
       id: { type: string, format: uuid }
       attemptId: { type: string, format: uuid, references: ExamAttempt }
       at: { type: string, format: date-time }
+
+  PracticeAttempt: # one talebe's solving of a çalışma seti (MDRS-248): its order, where they are and, once finished, how it went
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:32
+    key: [id]
+    required: [id, courseId, userId, questionOrder, optionOrder, startedAt]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course }
+      userId: { type: string, format: uuid, sensitivity: personal }
+      setId: { type: [string, "null"], format: uuid, references: OnlineExam, note: "a set of kind PRACTICE; null is a solving of the course's pool (Faz 4): the complete questions of its published sets" }
+      poolMode: { enum: [ALL, RANDOM, "null"], note: "set exactly when setId is null" }
+      questionOrder: { type: array, items: { type: string, format: uuid }, note: "the set's complete questions, or the pool's (all, or N at random, none twice), drawn for this attempt" }
+      optionOrder: { type: object, note: "each question's options in this attempt's order" }
+      currentQuestionId: { type: [string, "null"], format: uuid, note: "the question last answered" }
+      startedAt: { type: string, format: date-time }
+      finishedAt: { type: [string, "null"], format: date-time }
+      correctCount: { type: [integer, "null"] }
+      wrongCount: { type: [integer, "null"] }
+      blankCount: { type: [integer, "null"] }
+      scoreHundredths: { type: [integer, "null"], note: "the parts got over the number of questions, in hundredths of a percent, rounded half up once; set when it finishes" }
+    lifecycle:
+      - "none -> in progress: startPracticeAttempt, unless one of the set is in progress (one at a time per talebe and set)"
+      - "none -> in progress (pool): startPracticePoolAttempt, unless a pool attempt of the course is in progress (one at a time per talebe and course)"
+      - "in progress -> finished: finishPracticeAttempt; a new attempt may start then"
+
+  PracticeAnswer: # a talebe's answer to one question of a practice attempt, saved when it is chosen
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:84
+    key: [attemptId, questionId]
+    required: [attemptId, questionId, optionIds, savedAt]
+    fields:
+      attemptId: { type: string, format: uuid, references: PracticeAttempt }
+      questionId: { type: string, format: uuid, references: ExamQuestion }
+      optionIds: { type: array, items: { type: string, format: uuid }, note: "empty when cleared" }
+      savedAt: { type: string, format: date-time }
+
+  QuestionNote: # a talebe's note on one question, kept to them or sent to the hoca (soru notları)
+    source: apps/tedrisat/src/database/schema/question-note.schema.ts:31
+    key: [id]
+    required: [id, courseId, examId, questionId, userId, body, sharedWithTeacher, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid }
+      examId: { type: string, format: uuid, references: OnlineExam }
+      questionId: { type: string, format: uuid, references: ExamQuestion }
+      userId: { type: string, format: uuid, note: "the talebe; one note per talebe and question" }
+      body: { type: string, minLength: 1, maxLength: 1000 }
+      sharedWithTeacher: { type: boolean }
+      sharedAt: { type: [string, "null"], format: date-time, note: "set exactly while it is sent" }
+      teacherReply: { type: [string, "null"], maxLength: 1000 }
+      repliedBy: { type: [string, "null"], format: uuid }
+      repliedAt: { type: [string, "null"], format: date-time }
+      replySeenAt: { type: [string, "null"], format: date-time, note: "when the talebe last read their list after the answer" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time, note: "the talebe's last write, never the hoca's answer" }
+    lifecycle:
+      - "none -> kept: saveMyQuestionNote with sharedWithTeacher false"
+      - "none | kept -> sent: saveMyQuestionNote with sharedWithTeacher true; an exam's only once it is over for everyone or its results are open"
+      - "sent -> answered: replyQuestionNote; an empty reply takes the answer back"
+      - "kept | sent | answered -> none: deleteMyQuestionNote, deleteOnlineExam, removeExamQuestion or the course purge"
 
 actions:
   # ----- the talebe ---------------------------------------------------------------------------------------------------------------
@@ -437,6 +515,134 @@ actions:
       ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-attempt.errors.ts:58, note: "the caller has no attempt of this exam" }
       EXAM_NOT_FOUND: { status: 404, note: "no published online exam at this celse" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      HTTP_429: { status: 429, source: libs/common/src/throttler/throttler.module.ts, note: "the throttlers' budget of the route spent (invariant rate-limit-before-auth); listed because tedris.exams.result draws what the talebe meets then" }
+
+  listPracticeSets:
+    summary: A course's çalışma setleri, for its talebe
+    route: GET /courses/{id}/practice-sets
+    source: apps/tedrisat/src/practice/practice.controller.ts:129
+    needs: course.view on the course, and a talebe's seat that may write (ENROLLED or COMPLETED, not barred, content open)
+    result: { status: 200, type: array, description: "each published set, the latest first: id, courseId, courseTitle, title, instructions, questionCount (its complete questions), attemptCount (finished), lastPercent, openAttemptId, publishedAt" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/practice/errors/practice.errors.ts:16, note: "no talebe of the course: not enrolled, barred, or its content closed" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  listMyPracticeSets:
+    summary: Çalışma setlerim, the sets of every course of the caller
+    route: GET /my-practice-sets
+    source: apps/tedrisat/src/practice/practice.controller.ts:216
+    needs: a token; the caller's own seats (no AuthzGuard, scoped to the caller, as Sınavlarım)
+    result: { status: 200, type: array, description: "as listPracticeSets, over every course the caller may solve sets in" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+
+  startPracticeAttempt:
+    summary: Start a çalışma seti, or go on with the attempt in progress
+    route: POST /practice-sets/{setId}/attempts
+    source: apps/tedrisat/src/practice/practice.controller.ts:234
+    needs: course.view on the set's course (resolver byPracticeSetCourse) and a talebe's seat that may write
+    result: { status: 201, note: "the attempt as getPracticeAttempt; no option says whether it is correct" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_SET_NOT_FOUND: { status: 404, source: apps/tedrisat/src/practice/errors/practice.errors.ts:28, note: "a draft, an exam, or a set of a course the caller is no talebe of" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "a PracticeAttempt with the set's complete questions and their options in an order of its own"
+
+  getPracticePool:
+    summary: A course's question pool, for its talebe
+    route: GET /courses/{id}/practice-pool
+    source: apps/tedrisat/src/practice/practice.controller.ts:152
+    needs: course.view on the course, and a talebe's seat that may write
+    result: { status: 200, type: object, description: "courseId, questionCount (the complete questions of its published sets; no exam's, no draft's), openAttemptId, attempts (the caller's ten latest pool attempts: id, mode, questionCount, status, startedAt, finishedAt, result)" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/practice/errors/practice.errors.ts:16 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  startPracticePoolAttempt:
+    summary: Solve the course's pool, all of it or N at random, or go on with the pool attempt in progress
+    route: POST /courses/{id}/practice-pool/attempts
+    source: apps/tedrisat/src/practice/practice.controller.ts:180
+    needs: course.view on the course, and a talebe's seat that may write
+    body:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: { enum: [ALL, RANDOM] }
+        count: { type: integer, minimum: 1, description: "RANDOM only, and required there: from 1 to the pool's size" }
+    result: { status: 201, note: "the attempt as getPracticeAttempt; the open pool attempt whatever is asked" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/practice/errors/practice.errors.ts:16 }
+      PRACTICE_POOL_COUNT_INVALID: { status: 400, source: apps/tedrisat/src/practice/errors/practice.errors.ts:86, note: "RANDOM with a count over the pool's size, or an empty pool" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "a PracticeAttempt with setId null and its poolMode, its questions and their options in an order of its own; each set it drew from can no longer be taken back to a draft"
+
+  listPracticeAttempts:
+    summary: The caller's attempts at a çalışma seti
+    route: GET /practice-sets/{setId}/attempts
+    source: apps/tedrisat/src/practice/practice.controller.ts:253
+    needs: course.view on the set's course and a talebe's seat that may write
+    result: { status: 200, type: array, description: "the caller's own, the latest started first: id, status, startedAt, finishedAt, result ({ correct, wrong, blank, total, percent } or null)" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_SET_NOT_FOUND: { status: 404, source: apps/tedrisat/src/practice/errors/practice.errors.ts:28 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  getPracticeAttempt:
+    summary: One of the caller's practice attempts
+    route: GET /practice-attempts/{attemptId}
+    source: apps/tedrisat/src/practice/practice.controller.ts:272
+    needs: the caller's own attempt (resolver byPracticeAttemptCourse), course.view on its course and a talebe's seat that may write
+    result:
+      status: 200
+      type: object
+      description: "id, setId (null for a pool attempt), poolMode, courseId, title (empty for a pool attempt), status, startedAt, finishedAt, currentQuestionId, the questions in the attempt's order with their set's title (setTitle), their options and the options chosen, and result. In progress no option carries `correct` and result is null; finished, each option carries `correct`, each question its outcome (CORRECT, WRONG, BLANK) and part, and result the counts and percent"
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/practice/errors/practice.errors.ts:38, note: "anyone else's, or of a course the caller is no longer a talebe of" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  savePracticeAnswer:
+    summary: Answer a question of a practice attempt
+    route: PUT /practice-attempts/{attemptId}/answers/{questionId}
+    source: apps/tedrisat/src/practice/practice.controller.ts:297
+    needs: the caller's own attempt in progress, course.view on its course and a talebe's seat that may write
+    body:
+      type: object
+      additionalProperties: false
+      required: [optionIds]
+      properties:
+        optionIds: { type: array, items: { type: string, format: uuid }, description: "none clears the answer" }
+    result: { status: 200, note: "{ questionId, optionIds, savedAt }" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/practice/errors/practice.errors.ts:38 }
+      PRACTICE_QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/practice/errors/practice.errors.ts:62 }
+      PRACTICE_ANSWER_INVALID: { status: 400, source: apps/tedrisat/src/practice/errors/practice.errors.ts:74, note: "an option of another question, one twice, or several for a SINGLE question" }
+      PRACTICE_ATTEMPT_FINISHED: { status: 409, source: apps/tedrisat/src/practice/errors/practice.errors.ts:50 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "the PracticeAnswer replaced; the attempt's currentQuestionId"
+
+  finishPracticeAttempt:
+    summary: Bitir, the attempt ends and is counted
+    route: POST /practice-attempts/{attemptId}/finish
+    source: apps/tedrisat/src/practice/practice.controller.ts:323
+    needs: the caller's own attempt, course.view on its course and a talebe's seat that may write
+    result: { status: 200, note: "the finished attempt as getPracticeAttempt; finishing a finished one changes nothing" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      PRACTICE_ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/practice/errors/practice.errors.ts:38 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "finishedAt, the counts and scoreHundredths of the attempt"
 
   # ----- the course team ----------------------------------------------------------------------------------------------------------
 
@@ -450,12 +656,27 @@ actions:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       VALIDATION_ERROR: { status: 400, note: "planned: an unknown filter" }
 
+  listPracticeSetStats:
+    summary: How the course's çalışma setleri were solved, on its Çalışma Soruları page
+    route: GET /courses/{id}/practice-set-stats
+    source: apps/tedrisat/src/practice/practice.controller.ts:201
+    needs: exam.prepare on the course
+    result: { status: 200, type: array, description: "per published set with a finished attempt: setId, talebeCount, attemptCount, averagePercent; pool attempts are not counted" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
   listOnlineExams:
     summary: A course's online exams, on its Sınavlar page
     route: GET /courses/{id}/online-exams
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:108
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:115
     needs: exam.prepare on the course
-    result: { status: 200, type: array, description: "each exam's title, status (DRAFT, SCHEDULED, OPEN, CLOSED), start, length and question count" }
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        kind: { enum: [EXAM, PRACTICE], description: "left out, EXAM: the çalışma setleri are listed only when asked for (MDRS-248)" }
+    result: { status: 200, type: array, description: "each exam's kind, title, status (DRAFT, SCHEDULED, OPEN, CLOSED; a set is DRAFT or OPEN), start, length and question count" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
@@ -463,7 +684,7 @@ actions:
   createOnlineExam:
     summary: Yeni sınav, a draft with its title
     route: POST /courses/{id}/online-exams
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:128
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:136
     needs: exam.prepare on the course
     body:
       type: object
@@ -471,7 +692,8 @@ actions:
       required: [title]
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
-    result: { status: 201, note: "{ id, version }: a draft with no celse, no length and no question" }
+        kind: { enum: [EXAM, PRACTICE], description: "left out, EXAM; PRACTICE opens a çalışma seti (MDRS-248)" }
+    result: { status: 201, note: "{ id }: a draft with no celse, no length and no question; getOnlineExamDraft gives its version" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
@@ -482,7 +704,7 @@ actions:
   getOnlineExamDraft:
     summary: An exam as the team edits it, with what keeps it from being published
     route: GET /online-exams/{examId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:147
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:155
     needs: exam.prepare on the exam's course (resolver byOnlineExamCourse)
     result:
       status: 200
@@ -496,7 +718,7 @@ actions:
   updateOnlineExam:
     summary: Save the exam's settings (Ayarlar) or its picked topics
     route: PATCH /online-exams/{examId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:168
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:179
     needs: exam.prepare on the exam's course; a draft
     body:
       type: object
@@ -515,6 +737,7 @@ actions:
       EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "the exam is published" }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
       TOPIC_NOT_FOUND: { status: 400, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:99, note: "a topic that is not the course's" }
+      EXAM_KIND_MISMATCH: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:188, note: "a length on a çalışma seti" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
       VALIDATION_ERROR: { status: 400 }
     sideEffects:
@@ -533,10 +756,111 @@ actions:
       EXAM_STALE: { status: 409 }
       EXAM_NOT_FOUND: { status: 404 }
 
+  saveMyQuestionNote:
+    summary: The talebe's note on a question, kept or sent to the hoca
+    route: PUT /exam-questions/{questionId}/my-note
+    source: apps/tedrisat/src/question-note/question-note.controller.ts:125
+    needs: course.view on the question's course; a talebe who may write on it and got the question in an attempt of their own
+    body:
+      type: object
+      additionalProperties: false
+      required: [body, sharedWithTeacher]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 1000 }
+        sharedWithTeacher: { type: boolean }
+    result: { status: 200, note: "the note as its talebe reads it: body, sharedWithTeacher, sharedAt, teacherReply, repliedAt, newReply, updatedAt" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      NOTE_QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:12, note: "no such question, or one the caller never got" }
+      NOTES_DISABLED: { status: 409, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:32, note: "the team turned the question's notes off" }
+      NOTES_SHARE_LOCKED: { status: 409, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:42, note: "an exam's note, sent before the exam is over for everyone or its results are open" }
+      QUESTION_NOTES_FORBIDDEN: { status: 403, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:54 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "sending it notifies the course's müderris (QUESTION_NOTE_SHARED); the hoca's answer stays through a new text"
+
+  deleteMyQuestionNote:
+    summary: Delete the talebe's note on a question
+    route: DELETE /exam-questions/{questionId}/my-note
+    source: apps/tedrisat/src/question-note/question-note.controller.ts:147
+    needs: course.view on the question's course; the caller's own note
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      NOTE_QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:12 }
+      QUESTION_NOTE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:24, note: "no note of the caller's on it" }
+      QUESTION_NOTES_FORBIDDEN: { status: 403, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:54 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  listMyQuestionNotes:
+    summary: The talebe's question notes in a course
+    route: GET /courses/{id}/my-question-notes
+    source: apps/tedrisat/src/question-note/question-note.controller.ts:166
+    needs: course.view on the course; the caller's own notes
+    result: { status: 200, type: array, description: "each note with its question's text and its set's title, the latest written first" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      QUESTION_NOTES_FORBIDDEN: { status: 403, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:54 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "marks the hoca's answers on them read (newReply false)"
+
+  listExamQuestionNotes:
+    summary: The notes the talebe sent on a set's or an exam's questions
+    route: GET /online-exams/{examId}/notes
+    source: apps/tedrisat/src/question-note/question-note.controller.ts:185
+    needs: exam.prepare on the exam's course
+    result: { status: 200, type: array, description: "only the notes sent: question number and text, the talebe's name, the note, the answer and the times; the unanswered first" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+
+  replyQuestionNote:
+    summary: The hoca's answer to a talebe's note
+    route: PUT /question-notes/{noteId}/reply
+    source: apps/tedrisat/src/question-note/question-note.controller.ts:208
+    needs: exam.prepare on the note's course; a note sent to the hoca
+    body:
+      type: object
+      additionalProperties: false
+      required: [reply]
+      properties:
+        reply: { type: string, maxLength: 1000, description: "empty takes the answer back" }
+    result: { status: 200, note: "the note as the hoca's list reads it" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      QUESTION_NOTE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/question-note/errors/question-note.errors.ts:24, note: "no such note, or one its talebe kept" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+      VALIDATION_ERROR: { status: 400 }
+    sideEffects:
+      - "audit:question_note.reply; the first answer notifies the talebe (QUESTION_NOTE_REPLIED)"
+
+  setExamQuestionTalebeNotes:
+    summary: The question's talebe notes icon, on or off
+    route: PUT /online-exams/{examId}/questions/{questionId}/talebe-notes
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:320
+    needs: exam.prepare on the exam's course; a draft, a published or a locked exam alike, with no version
+    body:
+      type: object
+      additionalProperties: false
+      required: [talebeNotes]
+      properties:
+        talebeNotes: { type: boolean }
+    result: { status: 200, note: "{ questionId, talebeNotes }; the exam's version stays" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:111 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "audit:exam_question.talebe_notes"
+
   addExamQuestion:
     summary: Soru ekle (made on the question's first save)
     route: POST /online-exams/{examId}/questions
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:238
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:250
     needs: exam.prepare on the exam's course; a draft
     body:
       type: object
@@ -557,7 +881,7 @@ actions:
   saveExamQuestion:
     summary: Save a question's text, options, mode, scoring and topics
     route: PUT /online-exams/{examId}/questions/{questionId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:262
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:274
     needs: exam.prepare on the exam's course; a draft
     body:
       type: object
@@ -587,7 +911,7 @@ actions:
   removeExamQuestion:
     summary: Sil, a question
     route: DELETE /online-exams/{examId}/questions/{questionId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:283
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:295
     needs: exam.prepare on the exam's course; a draft; ?version=
     result: { status: 200, note: "{ version }" }
     refusals:
@@ -601,7 +925,7 @@ actions:
   setExamQuestionPoints:
     summary: A question's own points, or back into the equal share
     route: PUT /online-exams/{examId}/questions/{questionId}/points
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:313
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:353
     needs: exam.prepare on the exam's course; a draft
     body:
       type: object
@@ -618,13 +942,14 @@ actions:
       EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27 }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
       QUESTION_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:111 }
+      EXAM_KIND_MISMATCH: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:188, note: "a çalışma seti, whose questions all weigh the same" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
       VALIDATION_ERROR: { status: 400, note: "0, 0,00, above 100 or more than two decimals" }
 
   listCourseTopics:
     summary: The course's numbered topics
     route: GET /courses/{id}/exam-topics
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:333
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:373
     needs: exam.prepare on the course
     result: { status: 200, type: array, returns: CourseTopic }
     refusals:
@@ -635,7 +960,7 @@ actions:
   createCourseTopic:
     summary: Konu ekle
     route: POST /courses/{id}/exam-topics
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:354
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:394
     needs: exam.prepare on the course
     body:
       type: object
@@ -658,7 +983,7 @@ actions:
   renameCourseTopic:
     summary: Rename or renumber a topic (the API has it; the page offers no control yet)
     route: PATCH /courses/{id}/exam-topics/{topicId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:377
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:417
     needs: exam.prepare on the course
     body:
       type: object
@@ -679,7 +1004,7 @@ actions:
   removeCourseTopic:
     summary: A topic's remove control
     route: DELETE /courses/{id}/exam-topics/{topicId}
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:398
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:438
     needs: exam.prepare on the course
     result: { status: 200, note: "{ exams: [{ id, version }] }: the exams whose pick it took off, with their new versions" }
     refusals:
@@ -693,7 +1018,7 @@ actions:
   publishOnlineExam:
     summary: Yayınla, now or at a day and time
     route: POST /online-exams/{examId}/publish
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:193
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:204
     needs: exam.prepare on the exam's course; a draft with no publish problem
     body:
       type: object
@@ -704,7 +1029,7 @@ actions:
         startsAt: { type: string, format: date-time, description: "left out: now; seconds dropped" }
         latestStartAt: { type: string, format: date-time, description: "wins over latestStartMinutes when given" }
         latestStartMinutes: { type: integer, minimum: 0, maximum: 10080, description: "the late window after the start the server sets; left out, 10" }
-    result: { status: 200, note: "the exam as getOnlineExamDraft, now SCHEDULED or OPEN" }
+    result: { status: 200, note: "the exam as getOnlineExamDraft, now SCHEDULED or OPEN. A çalışma seti is OPEN at once with no celse, no window and no zeroth question; the times are not read, and its only problem is NO_QUESTION (no complete question)" }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       EXAM_NOT_READY: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:155, note: "context.problems: NO_DURATION, NO_QUESTION, QUESTION (number, lacks), POINTS (total), NO_ZEROTH" }
@@ -720,7 +1045,7 @@ actions:
   unpublishOnlineExam:
     summary: Taslağa al, until it opens
     route: POST /online-exams/{examId}/unpublish
-    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:217
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:229
     needs: exam.prepare on the exam's course
     body:
       type: object
@@ -732,22 +1057,38 @@ actions:
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       EXAM_NOT_PUBLISHED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:174 }
-      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "it has opened" }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "it has opened; a çalışma seti, once a talebe has started it" }
       EXAM_STALE: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:12 }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
     sideEffects:
       - "deletes the celse it was published with (the talebe get the calendar CANCEL); audit:online_exam.unpublish"
 
+  deleteOnlineExam:
+    summary: Seti sil, a çalışma seti with its questions
+    route: DELETE /online-exams/{examId}
+    source: apps/tedrisat/src/online-exam/online-exam.controller.ts:204
+    needs: exam.prepare on the exam's course; a çalışma seti (PRACTICE), draft or published, that no talebe started and no pool attempt drew from
+    result: { status: 204 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_KIND_MISMATCH: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:188, note: "an exam: its celse, sittings and results make deleting one a decision of its own" }
+      EXAM_LOCKED: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:27, note: "a talebe started it, or a pool attempt drew one of its questions" }
+      EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
+    sideEffects:
+      - "deletes its questions with their options and topics, its zeroth options and picked topics, then the set, in one transaction; audit:online_exam.delete"
+
   closeOnlineExamEarly:
     summary: Sınavı erken bitir
     route: POST /online-exams/{examId}/close
-    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:94
+    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:104
     needs: exam.prepare on the exam's course; the exam is open
     result: { status: 200 }
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
-      EXAM_NOT_OPEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:9, note: "before it opens, or once it has closed" }
+      EXAM_NOT_OPEN: { status: 409, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:10, note: "before it opens, or once it has closed" }
+      EXAM_KIND_MISMATCH: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:188, note: "a çalışma seti" }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
     sideEffects:
@@ -756,7 +1097,7 @@ actions:
   getOnlineExamResults:
     summary: Sonuçlar, the team's results of an exam
     route: GET /online-exams/{examId}/results
-    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:56
+    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:60
     needs: exam.prepare on the exam's course
     result:
       status: 200
@@ -765,12 +1106,13 @@ actions:
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145, note: "no published exam" }
+      EXAM_KIND_MISMATCH: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:188, note: "a çalışma seti, which has no results for the team" }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
 
   getOnlineExamTalebeAnswers:
     summary: One talebe's answers, question by question
     route: GET /online-exams/{examId}/results/{userId}
-    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:74
+    source: apps/tedrisat/src/online-exam/exam-results.controller.ts:82
     needs: exam.prepare on the exam's course
     result:
       status: 200
@@ -778,7 +1120,8 @@ actions:
       description: "the talebe's name, state and how it ended, score, switches with their times, zeroth answer, and each question in the exam's order with its options, the correct ones, the talebe's choice, skipped or blank, and the points earned"
     refusals:
       HTTP_401: { status: 401, note: "no token, or one that does not verify" }
-      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:17, note: "no seat or no attempt of this exam" }
+      ATTEMPT_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/exam-results.errors.ts:18, note: "no seat or no attempt of this exam" }
+      EXAM_KIND_MISMATCH: { status: 409, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:188, note: "a çalışma seti" }
       EXAM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/online-exam/errors/online-exam.errors.ts:145 }
       AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92 }
 
@@ -895,12 +1238,12 @@ invariants:
       The points of an online exam's questions total 100: each question's own points, and an equal, exact share of what is left for the
       questions that have none. An exam whose points do not total 100 is not published (POINTS).
     holds: true
-    source: apps/tedrisat/src/online-exam/domain/online-exam.ts:204
+    source: apps/tedrisat/src/online-exam/domain/online-exam.ts:216
 
   - id: online-exam-length-required
     rule: An online exam is published only with a length; a new draft has none (NO_DURATION).
     holds: true
-    source: apps/tedrisat/src/online-exam/domain/online-exam.ts:210
+    source: apps/tedrisat/src/online-exam/domain/online-exam.ts:222
 
   - id: online-exam-order-is-the-talebe-s-own
     rule: >-
@@ -915,6 +1258,23 @@ invariants:
       released.
     holds: true
     source: apps/tedrisat/src/online-exam/my-exams.service.ts
+
+  - id: online-exam-release-ends-it
+    rule: >-
+      Releasing an online exam's results ends it for everyone, in the release's transaction, as closeOnlineExamEarly does: every
+      attempt in progress ends with its saved answers (CLOSED_EARLY) and is scored, the exam is closed early at the release's time,
+      and no one starts it any more. An exam that has closed for everyone already keeps its close as it was. So each talebe reads
+      their answers with the correct ones as soon as the results are released.
+    holds: true
+    source: apps/tedrisat/src/online-exam/exam-results.service.ts:451
+    note: "The owner, 24 Nov 2026: \"Önerini uygula\" (an attempt whose talebe left without finishing had kept a released exam open for good)."
+
+  - id: online-exam-released-only-once-open
+    rule: >-
+      An online exam's results are released only once it has opened; before, the release is refused (EXAM_NOT_OPEN) and changes
+      nothing, so it can never close an exam nobody could take.
+    holds: true
+    source: apps/tedrisat/src/online-exam/exam-results.service.ts:458
 
   - id: online-exam-taken-once
     rule: A talebe has at most one attempt of an exam; a finished attempt is not started again (EXAM_ALREADY_TAKEN).
@@ -932,8 +1292,47 @@ invariants:
     rule: >-
       An attempt's time is used only while the page that holds it calls; the time lost to a dropped connection is not counted.
     holds: true
-    source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:548
+    source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:557
     note: "The owner: \"talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir\"."
+
+  - id: practice-correct-options-only-when-finished
+    rule: >-
+      No answer about a practice attempt in progress says which options are correct; a finished attempt shows them with each
+      question's outcome and the percentage at once (MDRS-248).
+    holds: true
+    source: apps/tedrisat/src/practice/practice.service.ts:550
+
+  - id: practice-set-has-no-celse
+    rule: >-
+      A çalışma seti (kind PRACTICE) never has a celse: publishing it plans nothing, so it reaches no calendar and no notification.
+    holds: true
+    source: apps/tedrisat/src/database/schema/online-exam.schema.ts:117
+
+  - id: practice-one-open-attempt
+    rule: A talebe has at most one attempt of a çalışma seti in progress; starting it again goes on with that one.
+    holds: true
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:63
+
+  - id: practice-one-open-pool-attempt
+    rule: >-
+      A talebe has at most one pool attempt of a course in progress; starting the pool again goes on with that one. The pool is the
+      complete questions of the course's published çalışma setleri, never an exam's or a draft's (MDRS-248 Faz 4).
+    holds: true
+    source: apps/tedrisat/src/database/schema/practice.schema.ts:66
+
+  - id: question-note-is-its-talebe-s-own
+    rule: >-
+      A talebe's note is read by that talebe alone until they send it; the hoca's list holds only the notes sent, and a note carries
+      nothing of the question's correct options.
+    holds: true
+    source: apps/tedrisat/src/question-note/question-note.repository.ts
+
+  - id: question-note-waits-for-the-exam
+    rule: >-
+      A note on an exam's question goes to the hoca only once the exam is over for everyone (closed early, or past its latest start
+      with no sitting still running) or its results are open, so that it is never a channel while talebe sit it.
+    holds: true
+    source: apps/tedrisat/src/question-note/domain/question-note.ts:97
 
   - id: zeroth-answers-never-traced
     rule: An aggregate of the zeroth answers never carries a name, a user id or a single answer. Its counts are exact.

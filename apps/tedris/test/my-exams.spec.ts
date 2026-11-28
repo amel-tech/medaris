@@ -10,6 +10,7 @@ import {
   groupExams,
   scoreText,
 } from "~/features/online-exams/my-exams-model";
+import { intlMock } from "./intl-mock";
 
 /**
  * Sınavlarım and a talebe's own screen of a past exam (MDRS-299,
@@ -30,6 +31,8 @@ const lookup = (key: string, values: Record<string, unknown> = {}) =>
     (acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)),
     text(key)
   );
+// The answers are a client component: the real catalogue behind useTranslations.
+vi.mock("next-intl", async (orig) => intlMock(await orig()));
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => lookup,
   getLocale: async () => "tr",
@@ -266,6 +269,10 @@ describe("a talebe's screen of a past exam (MDRS-299)", () => {
     expect(html).toContain("1. soru");
     expect(html).toContain("Yanlış");
     expect(html).toContain("0 / 50 puan");
+    // The same cards and strip as a çalışma attempt's result.
+    expect(html).toContain('data-testid="answer-strip"');
+    expect(html).toContain('aria-label="1. soru: Yanlış"');
+    expect(html).toContain('data-testid="answer-grid"');
     expect(html).toMatch(/data-chosen="true"[^>]*>.*?Üç/);
     expect(html).toMatch(/data-correct="true"[^>]*>.*?Dört/);
   });

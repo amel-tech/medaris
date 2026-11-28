@@ -21,7 +21,7 @@
 # nothing in the way. Nothing the seed holds is touched and no seeded course is edited. SQL is used for one read-only check (the effect `tooHigh`).
 # Every run of these helpers by hand takes the replay lock (CONVENTIONS, round R2).
 #
-# The scenarios differ by `given`, which the replay never lets a transition change:
+# The scenarios differ by `given`, which the replay never lets a transition change. Every one plans a written exam (format written, exam-data.mjs):
 #   scores      board ready,      before closed   the story: 120 refused, 85 saved, Girmedi, back to the table, the release (e2e exam#2 a1-a7)
 #   reopened    board ready,      before opened   the exam was released before this visit: the exam screen shows the badge at once
 #   noTalebe    board noTalebe,   before closed   an exam and nobody seated: one sentence, no table
@@ -32,6 +32,9 @@
 # FAIL.refused of a save or a release (a talebe who left the course between the page and the press, a permission taken away mid-walk) and FAIL.signedOut
 # (the session cannot be ended mid-walk) have no helper that does that between two steps; the states `loadFailed`, `not_found` and `sent_to_sign_in` are
 # therefore not walked and say "not bound". The Excel link is only looked at: pressing it is nazar.files.download's.
+# Not bound either: `format: online` (an online exam's column, MDRS-299), and with it the state `confirmRelease` and the release's FAIL.notOpen. Its exam
+# would come from helpers/exams.mjs, and the effects here read `made.exam`, which only exam-data.mjs writes; a release of an open online exam also ends it
+# for everyone. The question and the refusal's words are pinned by apps/nazar/test/evaluation.spec.tsx; the locators for the question's buttons are below.
 #
 # What a walk does on the way and what it checks outside the screen:
 #   - the typed events are `events` (a box has no node that sends them): a number into the box of applicantE, Enter, which commits it. The focus move of
@@ -52,7 +55,7 @@ data:
 
 scenarios:
   scores:
-    given: { board: ready, before: closed }
+    given: { board: ready, before: closed, format: written }
     as: muderris
     open: '{nazar}/ders/{made.course}'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
@@ -70,7 +73,7 @@ scenarios:
       - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi exam-scores"']
         expect: clear
   reopened:
-    given: { board: ready, before: opened }
+    given: { board: ready, before: opened, format: written }
     as: muderris
     open: '{nazar}/ders/{made.course}'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
@@ -88,7 +91,7 @@ scenarios:
       - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi exam-scores"']
         expect: clear
   noTalebe:
-    given: { board: noTalebe, before: closed }
+    given: { board: noTalebe, before: closed, format: written }
     as: muderris
     open: '{nazar}/ders/{made.course}'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
@@ -103,7 +106,7 @@ scenarios:
       - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi exam-scores"']
         expect: clear
   noColumns:
-    given: { board: noColumns, before: closed }
+    given: { board: noColumns, before: closed, format: written }
     as: muderris
     open: '{nazar}/ders/{made.course}'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
@@ -115,7 +118,7 @@ scenarios:
         expect: removed
   # the ders nazırı's post holds no code, so the menu has no Değerlendirme: the address is typed, as e2e evaluation#2 does
   forbidden:
-    given: { board: forbidden, before: closed }
+    given: { board: forbidden, before: closed, format: written }
     as: dersNazir
     open: '{nazar}/ders/{made.course}/degerlendirme'
     setup:
@@ -165,6 +168,9 @@ nodes:
   count: { testId: exam-count, hasText: '/^\d+\/2 girildi$/' }
   # the exam's list has no name; the page's other lists are the menu's
   talebeList: { css: '[data-testid="exam-column"] ul' }
+  # the question's own "Kapat" and "Vazgeç" (an online exam's column), apart from a toast's "Kapat"
+  releaseX: { role: button, name: Kapat, within: { role: alertdialog, name: Sonuçlar talebelere açılsın mı? } }
+  releaseCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Sonuçlar talebelere açılsın mı? } }
 
 # What a step leaves outside the screen, read through the API as the people concerned.
 effects:

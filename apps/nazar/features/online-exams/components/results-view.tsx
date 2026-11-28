@@ -13,7 +13,9 @@ import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { releaseExamResults } from "~/features/evaluation/actions";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
+import { paragraphDir } from "../arabic";
 import { closeExamEarly, readExamResults } from "../results-actions";
+import { ArabicText } from "./arabic-text";
 
 type Results = OnlineExamResultsResponse;
 
@@ -30,9 +32,9 @@ const failedCode = (result: unknown): string | null =>
     : null;
 
 /**
- * What "Sınavı erken bitir" draws before tedrisat answers: no one is in the
- * exam any more, and the ones who were are finished by the team. Their
- * scores come with the read that follows.
+ * What "Sınavı erken bitir" and a release draw before tedrisat answers: no one
+ * is in the exam any more, and the ones who were are finished by the team.
+ * Their scores come with the read that follows.
  */
 export const closedNow = (results: Results, at: Date): Results => {
   const ended = results.talebe.filter((r) => r.state === "IN_PROGRESS").length;
@@ -66,11 +68,21 @@ export const closedNow = (results: Results, at: Date): Results => {
 };
 
 /**
+ * Whether the exam has opened, as tedrisat's read says it: it has closed for
+ * everyone, or it may be closed early, which is "it has opened" while it has
+ * not closed (`mayCloseEarly`). The release waits for it: it ends the exam
+ * for everyone, and tedrisat refuses it before (EXAM_NOT_OPEN).
+ */
+export const hasOpened = (results: Results): boolean =>
+  results.exam.closed || results.exam.mayClose;
+
+/**
  * One online exam's results for the course team (MDRS-299,
  * nazar.exams.results): the talebe, the topics, the questions and the zeroth
- * question, "Sınavı erken bitir" and "Sonuçları talebelere aç". While the
- * exam is open the page reads again every 30 seconds. Both writes show at
- * once and are put back, with a toast, when tedrisat refuses them.
+ * question, "Sınavı erken bitir" and "Sonuçları talebelere aç", which ends
+ * the exam for everyone as the early close does. While the exam is open the
+ * page reads again every 30 seconds. Both writes show at once and are put
+ * back, with a toast, when tedrisat refuses them.
  */
 export function ResultsView({ initial }: { initial: Results }) {
   const t = useTranslations("nazar");
@@ -153,7 +165,10 @@ export function ResultsView({ initial }: { initial: Results }) {
   const release = async () => {
     setAsking(null);
     const before = results;
-    setResults({ ...before, released: true, releasedAt: new Date() });
+    const at = new Date();
+    // The release ends an exam still open for everyone, as the early close.
+    const ended = before.exam.closed ? before : closedNow(before, at);
+    setResults({ ...ended, released: true, releasedAt: at });
     writing.current += 1;
     try {
       const result = await releaseExamResults(before.exam.lessonId);
@@ -165,6 +180,8 @@ export function ResultsView({ initial }: { initial: Results }) {
         return;
       }
       notify({ tone: "success", title: t("Evaluation.releasedToast") });
+      const fresh = await readExamResults(examId);
+      if ("success" in fresh && fresh.success) setResults(fresh.data);
     } catch {
       setResults(before);
       refused(t("Evaluation.releaseFailed"), null);
@@ -218,7 +235,12 @@ export function ResultsView({ initial }: { initial: Results }) {
       key: "state",
       header: t("ExamResults.colState"),
       render: (row) => (
-        <Badge variant={row.state === "IN_PROGRESS" ? "brand" : "secondary"}>
+        <Badge
+          variant={row.state === "IN_PROGRESS" ? "brand" : "secondary"}
+          // One width for every state, so the column lines up (MDRS-248);
+          // nazar has only the system's spacing steps, so 20 (80px), not 24.
+          className="min-inline-20 justify-center"
+        >
           {stateOf(row)}
         </Badge>
       ),
@@ -271,7 +293,7 @@ export function ResultsView({ initial }: { initial: Results }) {
         row.zerothOptionId === null ? (
           t("ExamResults.noZeroth")
         ) : (
-          <span dir="auto">
+          <span dir={paragraphDir(zerothText.get(row.zerothOptionId) ?? "")}>
             {zerothText.get(row.zerothOptionId) ?? t("ExamResults.none")}
           </span>
         ),
@@ -324,7 +346,7 @@ export function ResultsView({ initial }: { initial: Results }) {
                   })
                 : t("Evaluation.released")}
             </Badge>
-          ) : results.mayRelease && results.releasable ? (
+          ) : results.mayRelease && results.releasable && hasOpened(results) ? (
             <Button onClick={() => setAsking("release")}>
               {t("Evaluation.release")}
             </Button>
@@ -413,13 +435,13 @@ export function ResultsView({ initial }: { initial: Results }) {
                   })}
                 </span>
               </div>
-              <p className="mds-body" dir="auto">
-                {q.text}
+              <p className="mds-body" dir={paragraphDir(q.text)}>
+                <ArabicText text={q.text} />
               </p>
               <ul className="mds-body-sm flex flex-col gap-1">
                 {q.options.map((o) => (
                   <li key={o.id} className="flex flex-wrap items-center gap-2">
-                    <span dir="auto">
+                    <span dir={paragraphDir(o.text)}>
                       {t("ExamResults.optionChosen", {
                         option: o.text,
                         chosen: o.chosen,
@@ -442,15 +464,15 @@ export function ResultsView({ initial }: { initial: Results }) {
         <h2 id="results-zeroth" className="mds-h2">
           {t("ExamResults.zerothTitle")}
         </h2>
-        <p className="mds-body" dir="auto">
-          {results.zeroth.question}
+        <p className="mds-body" dir={paragraphDir(results.zeroth.question)}>
+          <ArabicText text={results.zeroth.question} />
         </p>
         <p className="mds-body-sm text-neutral-muted">
           {t("ExamResults.zerothNoScore")}
         </p>
         <ul className="mds-body-sm flex flex-col gap-1">
           {results.zeroth.options.map((o) => (
-            <li key={o.id} dir="auto">
+            <li key={o.id} dir={paragraphDir(o.text)}>
               {t("ExamResults.zerothOptionCount", {
                 option: o.text,
                 count: o.count,
@@ -481,12 +503,13 @@ export function ResultsView({ initial }: { initial: Results }) {
         closeLabel={t("Shell.close")}
         onConfirm={release}
       >
-        <p>{t("ExamResults.releaseConfirmBody")}</p>
+        {open ? <p>{t("ExamResults.releaseEndsExam")}</p> : null}
         {counts.inProgress > 0 ? (
           <p>
             {t("ExamResults.releaseStillIn", { inProgress: counts.inProgress })}
           </p>
         ) : null}
+        <p>{t("ExamResults.releaseConfirmBody")}</p>
       </AlertDialog>
     </div>
   );

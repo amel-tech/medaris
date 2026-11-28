@@ -1,109 +1,143 @@
-# The screens of nazar.exams.publish: the "Yayınla" section under the exam's questions and, once published, the exam's read-only view.
-# BUILT (MDRS-299, #415, #431; features/online-exams/components/exam-publish.tsx). No node carries a `source`: the graph is `proposed`.
-# The late window is a number of minutes ("Geç kalanlar kaç dakika sonrasına kadar başlayabilir", 10 by default), not a second date and
-# time; its words are nazar.json's (OnlineExams). Moving a scheduled exam in place is drawn as the plan and not built.
+# The screens of nazar.exams.publish: the section "Yayınla" under a draft's questions (what keeps it from being published, or the form
+# that publishes it now or at a day and time, and its question), the exam's page once it is published (scheduled with "Taslağa al" and
+# its question, open, over), the toasts that answer a write, and the page's refusal and failed read. Read from the code of MDRS-299
+# (#415, #431) on 24 Nov 2026: apps/nazar/features/online-exams/components/exam-page.tsx, exam-workspace.tsx, exam-publish.tsx, the
+# queue and the toasts of exam-editor.tsx, and libs/ui/src/mds (alert, alert-dialog, radio-group, field, input, button, toast). The
+# editor above the section is nazar.exams.edit's. Nothing was seen in a browser by its writer: every behaviour is "from the code" unless
+# a rule says otherwise.
+#
+# Words: every key that has no `composed.` prefix is copied letter for letter from libs/i18n/src/locales/tr/nazar.json (the key is the
+# path under its root), except `Changes.note`, the one authored message of this catalog (the app has no one place that says what
+# publishing and taking back change). The `composed.*` keys are text the page builds in code; each has its code line here, and a
+# placeholder the binding gives no sample for matches any text:
+#   composed.Exams.title          "{title}"         the exam's title, the page's h1 (exam-page.tsx:57)
+#   composed.Exams.text           "{text}"          a question's text, or an option's (exam-publish.tsx:418, 423)
+#   composed.Exams.optionCorrect  "{text} · Doğru"  a correct option, its text and " · " and OnlineExams.correct in one <li> (exam-publish.tsx:423-424)
+#   composed.Button.loading       "Yükleniyor"      the busy button's hidden status, a default of the kit (libs/ui/src/mds/button.tsx:62)
+#   composed.Toast.close          "Kapat"           the toast's close button, a literal of the kit (libs/ui/src/mds/toast.tsx:97)
 schema: delurio-graph/0
 kind: ui
 id: nazar.exams.publish
 flow: nazar.exams.publish
-status: proposed
+status: captured
 kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }
 samples:
   title: Ara sınav
-  when: "28 Kas Cum 21:00"
-  latest: "28 Kas Cum 21:10"
+  text: Aşağıdakilerden hangisi mebnidir?
+  when: "28 Kasım 2026 21:00"
+  latest: "28 Kasım 2026 21:10"
   minutes: "10"
   time: "21:10"
-  latestTime: "21:10"
   n: "7"
-  total: "98,00"
-  course: Nahiv I
+  number: "7"
+  total: "98.00"
   duration: "60"
   count: "50"
-  zone: İstanbul (UTC+3)
-  started: "18"
-  inProgress: "4"
-  finished: "14"
+  zone: Europe/Istanbul
 
 nodes:
-  # --- the page, its title and where the exam stands -----------------------------------------------------------------------------------
-  publishPage: { type: page, component: Page, role: main, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly, closed, forbidden, loadFailed] } # the shell's one <main>; whether the page moves the focus on load is not decided (rule focus-not-decided)
-  examTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly, closed] } # h1
-  formatBadge: { type: status, component: Status, text: { key: planned.Exams.formatMultipleChoice }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused, scheduled, open, unpublishing, unpublishRefused, closeAsk, closingEarly, closed] }
-  closedBadge: { type: status, component: Status, text: { key: planned.Exams.statusClosed }, in: [closed] } # "Bitti": every attempt has ended
-  draftBadge: { type: status, component: Status, text: { key: planned.Exams.statusDraft }, in: [notReady, choose, publishingNow, scheduleForm, scheduling, scheduleRefused], when: "status == 'draft'" }
-  scheduledBadge: { type: status, component: Status, text: { key: planned.Exams.statusScheduled, params: { when: exam.startsAt } }, in: [scheduled, unpublishing, scheduleForm, scheduling, scheduleRefused], when: isScheduled }
-  openBadge: { type: status, component: Status, text: { key: planned.Exams.statusOpen }, in: [open, unpublishRefused, closeAsk, closingEarly, unpublishing], when: isOpen }
-  changedNotice: { type: alert, component: Alert, role: status, text: { key: planned.Exams.changedMeanwhile }, in: [notReady, choose, scheduled, open], when: "notice == 'changed'" } # the exam changed between the read and the publish: it was checked again
+  # ---- the exam's page: its head, the same for a draft and a published exam -----------------------------------------------------------
+  examMain: { type: page, component: Page, role: main, in: [notReady, choose, publishingNow, scheduling, scheduled, unpublishing, open, closed, forbidden, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name; no code moves the focus on load (rule focus-not-decided)
+  backLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: OnlineExams.backToList }, in: [notReady, choose, publishingNow, scheduling, scheduled, unpublishing, open, closed], emits: NAVIGATE, source: apps/nazar/features/online-exams/components/exam-page.tsx:60 } # "Sınavlar", a plain <a>; while the editor writes, leaving asks first
+  examHeading: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: exam.title } }, in: [notReady, choose, publishingNow, scheduling, scheduled, unpublishing, open, closed], source: apps/nazar/features/online-exams/components/exam-page.tsx:63 } # h1, the title as the server read it
+  resultsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: ExamResults.link }, in: [scheduled, unpublishing, open, closed], duringStep: true, emits: RESULTS, source: apps/nazar/features/online-exams/components/exam-page.tsx:65 } # "Sonuçlar" under the h1, once the exam is not a draft
 
-  # --- not ready: what keeps it from being published -----------------------------------------------------------------------------------
-  notReadyAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.notReadyTitle }, text: { key: planned.Exams.notReadyBody }, in: [notReady] }
-  problemsList: { type: list, component: List, role: list, name: { key: planned.Exams.notReadyTitle }, in: [notReady] }
-  problemLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { oneOf: [planned.Exams.problemNoQuestion, planned.Exams.problemNoCorrect, planned.Exams.problemNoTopic, planned.Exams.problemFewOptions, planned.Exams.problemPoints, planned.Exams.problemNoZeroth] }, in: [notReady], emits: FIX, repeat: exam.problems } # one per problem; each leads to the editor, at the question it is about
+  # ---- the section under a draft's questions ------------------------------------------------------------------------------------------
+  draftSection: { type: page, component: Page, role: region, name: { labelledBy: draftTitle }, in: [notReady, choose, publishingNow, scheduling], source: apps/nazar/features/online-exams/components/exam-publish.tsx:170 } # a card <section aria-labelledby>
+  draftTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExams.publishTitle }, in: [notReady, choose, publishingNow, scheduling], source: apps/nazar/features/online-exams/components/exam-publish.tsx:174 } # h2 "Yayınla"
+  notReadyAlert: { type: alert, component: Alert, role: status, text: { key: OnlineExams.notReadyTitle }, in: [notReady], source: apps/nazar/features/online-exams/components/exam-publish.tsx:178 } # a warning Alert is a role=status, its title a <p>; no name of its own; it is drawn again as the editor changes
+  notReadyBody: { type: text, component: Text, text: { key: OnlineExams.notReadyBody }, in: [notReady], source: apps/nazar/features/online-exams/components/exam-publish.tsx:179 }
+  problemsList: { type: list, component: List, role: list, in: [notReady], source: apps/nazar/features/online-exams/components/exam-publish.tsx:70 } # an unnamed <ul>
+  problemLink: { type: text, component: ListItem, role: listitem, text: { oneOf: [OnlineExams.problemNoDuration, OnlineExams.problemNoQuestion, OnlineExams.problemPoints, OnlineExams.problemNoZeroth, OnlineExams.problemNoText, OnlineExams.problemFewOptions, OnlineExams.problemNoCorrect, OnlineExams.problemNoTopic] }, in: [notReady], repeat: exam.problems, source: apps/nazar/features/online-exams/components/exam-publish.tsx:72 } # one line per problem, in the API's order; not a link (EXM-PUB-2). The points total and the zeroth question are the read's (EXM-PUB-1)
+  whenGroup: { type: list, component: List, role: radiogroup, name: { key: OnlineExams.publishWhen }, in: [choose, publishingNow, scheduling], source: apps/nazar/features/online-exams/components/exam-publish.tsx:184 } # Base UI's RadioGroup, named by its legend "Ne zaman açılsın?"
+  scheduleLater: { type: field, component: ListItem, role: radio, text: { key: OnlineExams.publishLater }, checked: "mode == 'later'", in: [choose, publishingNow, scheduling], duringStep: true, emits: PICK_LATER, source: apps/nazar/features/online-exams/components/exam-publish.tsx:190 } # chosen first
+  publishNow: { type: field, component: ListItem, role: radio, text: { key: OnlineExams.publishNow }, checked: isNow, in: [choose, publishingNow, scheduling], duringStep: true, emits: PICK_NOW, source: apps/nazar/features/online-exams/components/exam-publish.tsx:191 } # the press itself becomes the earliest start
+  earliestGroup: { type: list, component: List, role: group, name: { key: OnlineExams.earliestStartLabel }, in: [choose, publishingNow, scheduling], when: "mode == 'later'", source: apps/nazar/features/online-exams/components/exam-publish.tsx:195 } # a <fieldset> with the legend "En erken başlama"
+  earliestField: { type: field, component: TextField, native: date, text: { key: OnlineExams.dateLabel }, in: [choose, publishingNow, scheduling], when: "mode == 'later'", duringStep: true, emits: TYPE_TIME, source: apps/nazar/features/online-exams/components/exam-publish.tsx:204 } # "Tarih": the next whole hour's date at first, on the viewer's clock; it becomes the exam celse's date
+  timePassedError: { type: alert, component: Text, text: { oneOf: [OnlineExams.pickTime, OnlineExams.startPassed] }, in: [choose], when: "notice == 'pickTime' or notice == 'startPassed'", source: apps/nazar/features/online-exams/components/exam-publish.tsx:202 } # the date's Field error, once the button has been pressed; it follows the fields after that
+  earliestTimeField: { type: field, component: TextField, native: time, text: { key: OnlineExams.timeLabel }, in: [choose, publishingNow, scheduling], when: "mode == 'later'", source: apps/nazar/features/online-exams/components/exam-publish.tsx:213 } # "Saat": the next whole hour at first
+  earliestHelp: { type: text, component: Text, text: { key: OnlineExams.earliestStartHelp }, in: [choose, publishingNow, scheduling], when: "mode == 'later'", source: apps/nazar/features/online-exams/components/exam-publish.tsx:222 }
+  lateMinutesField: { type: field, component: TextField, role: textbox, text: { key: OnlineExams.lateMinutesLabel }, value: { literal: "10" }, in: [choose, publishingNow, scheduling], source: apps/nazar/features/online-exams/components/exam-publish.tsx:229 } # inputMode=numeric, digits only, 1 to 10080; counted from the press for Şimdi yayınla, from the chosen time otherwise (#431)
+  lateInvalidError: { type: alert, component: Text, text: { key: OnlineExams.lateMinutesInvalid }, in: [choose], when: "notice == 'lateInvalid'", source: apps/nazar/features/online-exams/components/exam-publish.tsx:227 } # the Field's error, in place of nothing: the field has no help of its own
+  latestHelp: { type: text, component: Text, text: { oneOf: [OnlineExams.lateMinutesHelp, OnlineExams.lateMinutesHelpNow, OnlineExams.latestStartHelp] }, in: [choose, publishingNow, scheduling], source: apps/nazar/features/online-exams/components/exam-publish.tsx:238 } # the time it comes to, following the clock every 15 seconds for Şimdi yayınla; the third when no time or no minutes are typed
+  timeZoneNote: { type: text, component: Text, text: { key: OnlineExams.timeZoneNote, params: { zone: viewer.timeZone } }, in: [choose, publishingNow, scheduling], source: apps/nazar/features/online-exams/components/exam-publish.tsx:252 } # the zone's IANA name, "Europe/Istanbul"
+  holdingNote: { type: text, component: Text, text: { key: OnlineExams.holdingQuestion }, in: [choose], when: "formOpen == 'yes'", source: apps/nazar/features/online-exams/components/exam-publish.tsx:256 }
+  publishButton: { type: action, component: Button, role: button, intent: confirm, text: { oneOf: [OnlineExams.scheduleConfirm, OnlineExams.publish] }, in: [choose, publishingNow, scheduling], disabledIn: [publishingNow, scheduling], disabledWhen: "formOpen == 'yes'", emits: PUBLISH, source: apps/nazar/features/online-exams/components/exam-publish.tsx:260 } # "Zamanla" or "Yayınla"; disabled while a question's form is open, busy (aria-disabled) while it publishes
+  publishBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [publishingNow, scheduling], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> of the busy button
 
-  # --- publish now, or at a day and time -----------------------------------------------------------------------------------------------
-  chooseRegion: { type: page, component: Page, role: region, name: { labelledBy: chooseTitle }, in: [choose, publishingNow] }
-  chooseTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.publish }, in: [choose, publishingNow] } # h2
-  publishSummary: { type: text, component: Text, text: { key: planned.Exams.publishSummary, params: { course: exam.courseTitle, duration: exam.durationMinutes, count: exam.questionCount } }, in: [choose, publishingNow] } # what the talebe will see
-  lateMinutesField: { type: field, component: TextField, role: spinbutton, text: { key: planned.Exams.lateMinutesLabel }, in: [choose, publishingNow, scheduleForm, scheduling, scheduleRefused], disabledIn: [publishingNow, scheduling] } # 10 by default, 1 to 10080; counted from the press for Şimdi yayınla, from the chosen time otherwise (#431)
-  latestHelp: { type: text, component: Text, text: { key: planned.Exams.lateMinutesHelp, params: { minutes: minutes, time: latestTime } }, in: [choose, publishingNow, scheduleForm, scheduling, scheduleRefused] } # the time it comes to, following the clock for Şimdi yayınla
-  latestBeforeError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.latestBefore }, in: [choose], when: "notice == 'latestBefore'" } # under the latest start's field
-  publishNow: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.publishNow }, in: [choose, publishingNow], disabledIn: [publishingNow], emits: PUBLISH_NOW } # the exam celse's date and time become now; the talebe of the course are told
-  scheduleLater: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.publishLater }, in: [choose], emits: SCHEDULE }
-  chooseCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [choose], emits: CANCEL } # back to the editor
+  # ---- the question before publishing: the kit's AlertDialog ------------------------------------------------------------------------
+  confirmDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: confirmTitle }, in: [confirmPublish], initialFocus: confirmCancel, source: apps/nazar/features/online-exams/components/exam-publish.tsx:266 } # modal: the page behind is inert, so no page node is drawn in this state
+  confirmTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExams.publishConfirmTitle }, in: [confirmPublish], source: libs/ui/src/mds/alert-dialog.tsx:80 } # "Sınavı yayınla", Base UI's Title, an h2
+  publishSummary: { type: text, component: Text, text: { key: OnlineExams.publishSummary, params: { duration: exam.durationMinutes, count: exam.questionCount } }, in: [confirmPublish], source: apps/nazar/features/online-exams/components/exam-publish.tsx:279 } # what the talebe will see, and that they are told
+  confirmX: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmPublish], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:88 }
+  confirmCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: OnlineExams.cancel }, in: [confirmPublish], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:102 } # the focus starts here (alert-dialog.tsx:70)
+  confirmPublishButton: { type: action, component: Button, role: button, intent: confirm, text: { oneOf: [OnlineExams.scheduleConfirm, OnlineExams.publish] }, in: [confirmPublish], emits: CONFIRM, source: libs/ui/src/mds/alert-dialog.tsx:109 } # as the section's button read
 
-  # --- the day and time it opens -------------------------------------------------------------------------------------------------------
-  scheduleRegion: { type: page, component: Page, role: region, name: { labelledBy: scheduleTitle }, in: [scheduleForm, scheduling, scheduleRefused] }
-  scheduleTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.publishLater }, in: [scheduleForm, scheduling, scheduleRefused] } # h2
-  earliestField: { type: field, component: TextField, native: datetime-local, text: { key: planned.Exams.earliestStartLabel }, in: [scheduleForm, scheduling, scheduleRefused], disabledIn: [scheduling] } # it becomes the exam celse's date and time
-  earliestHelp: { type: text, component: Text, text: { key: planned.Exams.earliestStartHelp }, in: [scheduleForm, scheduling, scheduleRefused] }
-  timeZoneNote: { type: text, component: Text, text: { key: planned.Exams.timeZoneNote, params: { zone: viewer.timeZone } }, in: [scheduleForm, scheduling, scheduleRefused] } # the talebe's own time is shown beside each where their time zone differs (tedris.exams.mine)
-  timePassedError: { type: alert, component: Text, role: alert, text: { key: planned.Exams.timePassed }, in: [scheduleRefused] } # under the field it is about; nothing is scheduled
-  fixTime: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.changeTime }, in: [scheduleRefused], emits: FIX }
-  scheduleConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.scheduleConfirm }, in: [scheduleForm, scheduling], disabledIn: [scheduling], emits: CONFIRM }
-  scheduleCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [scheduleForm], emits: CANCEL }
+  # ---- the published exam: read-only ------------------------------------------------------------------------------------------------
+  publishedSection: { type: page, component: Page, role: region, name: { labelledBy: publishedTitle }, in: [scheduled, unpublishing, open, closed], source: apps/nazar/features/online-exams/components/exam-publish.tsx:355 } # a card <section aria-labelledby>
+  publishedTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExams.publishTitle }, in: [scheduled, unpublishing, open, closed], source: apps/nazar/features/online-exams/components/exam-publish.tsx:360 } # h2 "Yayınla", over a published exam too
+  scheduledBadge: { type: text, component: Text, text: { key: OnlineExams.statusScheduledTitle }, in: [scheduled, unpublishing], source: apps/nazar/features/online-exams/components/exam-publish.tsx:346 } # a brand badge "Zamanlandı"
+  scheduledAlert: { type: text, component: Text, text: { key: OnlineExams.scheduledBody, params: { when: exam.startsAt, latest: exam.latestStartAt } }, in: [scheduled, unpublishing], source: apps/nazar/features/online-exams/components/exam-publish.tsx:367 } # a <p>; the dates long, on the viewer's clock
+  notifiedNote: { type: text, component: Text, text: { key: OnlineExams.notifiedNote }, in: [scheduled, unpublishing], source: apps/nazar/features/online-exams/components/exam-publish.tsx:377 }
+  publishedNote: { type: text, component: Text, text: { key: OnlineExams.publishedNote }, in: [scheduled, unpublishing], source: apps/nazar/features/online-exams/components/exam-publish.tsx:379 }
+  toDraftScheduled: { type: action, component: Button, role: button, intent: secondary, text: { key: OnlineExams.toDraft }, in: [scheduled, unpublishing], disabledIn: [unpublishing], emits: TO_DRAFT, source: apps/nazar/features/online-exams/components/exam-publish.tsx:382 } # a secondary button; busy (aria-disabled) while it runs
+  toDraftBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [unpublishing], source: libs/ui/src/mds/button.tsx:114 }
+  openBadge: { type: text, component: Text, text: { key: OnlineExams.statusOpen }, in: [open], source: apps/nazar/features/online-exams/components/exam-publish.tsx:348 } # a success badge "Yayında"
+  openAlert: { type: text, component: Text, text: { key: OnlineExams.openBody, params: { latest: exam.latestStartAt } }, in: [open], source: apps/nazar/features/online-exams/components/exam-publish.tsx:372 } # no counts, no close early: those are on the results page
+  closedBadge: { type: text, component: Text, text: { key: OnlineExams.statusClosed }, in: [closed], source: apps/nazar/features/online-exams/components/exam-publish.tsx:350 } # an outline badge "Bitti"
+  closedText: { type: text, component: Text, text: { key: OnlineExams.closedBody }, in: [closed], source: apps/nazar/features/online-exams/components/exam-publish.tsx:373 }
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExams.questionsTitle, params: { count: exam.questionCount } }, in: [scheduled, unpublishing, open, closed], source: apps/nazar/features/online-exams/components/exam-publish.tsx:409 } # h2 "Sorular (50)", naming its section
+  questionsList: { type: list, component: List, role: list, in: [scheduled, unpublishing, open, closed], source: apps/nazar/features/online-exams/components/exam-publish.tsx:412 } # an <ol> of cards
+  questionNumber: { type: text, component: Text, text: { key: OnlineExams.questionNumber, params: { number: row.number } }, in: [scheduled, unpublishing, open, closed], repeat: exam.questions, source: apps/nazar/features/online-exams/components/exam-publish.tsx:416 } # a <strong>
+  questionText: { type: text, component: Text, text: { key: composed.Exams.text, params: { text: row.text } }, in: [scheduled, unpublishing, open, closed], repeat: exam.questions, source: apps/nazar/features/online-exams/components/exam-publish.tsx:419 } # dir="auto" only: no Arabic font here, where the editor gives one
+  optionText: { type: text, component: Text, text: { oneOf: [composed.Exams.text, composed.Exams.optionCorrect] }, in: [scheduled, unpublishing, open, closed], repeat: exam.questions.options, source: apps/nazar/features/online-exams/components/exam-publish.tsx:424 } # a list lettered A, B, C; a correct one ends in " · Doğru", in words
 
-  # --- scheduled: until it opens -------------------------------------------------------------------------------------------------------
-  scheduledAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.statusScheduledTitle }, text: { key: planned.Exams.scheduledBody, params: { when: exam.startsAt, latest: exam.latestStartAt } }, in: [scheduled, unpublishing], when: isScheduled }
-  notifiedNote: { type: text, component: Text, text: { key: planned.Exams.notifiedNote }, in: [scheduled] }
-  moveButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.move }, in: [scheduled], emits: MOVE } # publishing again moves it, and its reminder
-  editButton: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.edit }, in: [scheduled], emits: EDIT } # a scheduled exam can be changed until it opens
-  toDraftScheduled: { type: action, component: Button, role: button, intent: dismiss, text: { key: planned.Exams.toDraft }, in: [scheduled, unpublishing], when: isScheduled, disabledIn: [unpublishing], emits: TO_DRAFT }
+  # ---- the question before "Taslağa al": the kit's AlertDialog ----------------------------------------------------------------------
+  toDraftDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: toDraftTitle }, in: [toDraftAsk], initialFocus: toDraftCancel, source: apps/nazar/features/online-exams/components/exam-publish.tsx:390 }
+  toDraftTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExams.toDraftTitle }, in: [toDraftAsk], source: libs/ui/src/mds/alert-dialog.tsx:80 }
+  toDraftBody: { type: text, component: Text, text: { key: OnlineExams.toDraftBody }, in: [toDraftAsk], source: apps/nazar/features/online-exams/components/exam-publish.tsx:400 }
+  toDraftX: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [toDraftAsk], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:88 }
+  toDraftCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: OnlineExams.cancel }, in: [toDraftAsk], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:102 }
+  toDraftConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: OnlineExams.toDraft }, in: [toDraftAsk], emits: CONFIRM, source: libs/ui/src/mds/alert-dialog.tsx:109 }
 
-  # --- open: started until the latest start, each with the full length -----------------------------------------------------------------
-  openAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.statusOpen }, text: { key: planned.Exams.openBody, params: { latest: exam.latestStartAt } }, in: [open, unpublishRefused, closeAsk, closingEarly, unpublishing], when: isOpen }
-  openCounts: { type: status, component: Status, role: status, text: { key: planned.Exams.openCounts, params: { started: counts.started, inProgress: counts.inProgress, finished: counts.finished } }, in: [open, unpublishRefused, closeAsk, closingEarly] } # read again as talebe start and finish
-  resultsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.results }, in: [open], emits: RESULTS }
-  closeEarly: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.closeEarly }, in: [open], when: someoneIn, emits: CLOSE_EARLY } # only once a talebe has started
-  unpublishRefusedDialog: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Exams.unpublishRefusedTitle }, text: { key: planned.Exams.unpublishRefusedBody, params: { inProgress: counts.inProgress } }, in: [unpublishRefused] }
-  refusedCloseEarly: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.closeEarly }, in: [unpublishRefused, closingEarly], disabledIn: [closingEarly], emits: CLOSE_EARLY }
-  refusedKeepOpen: { type: action, component: Button, role: button, intent: dismiss, text: { key: planned.Exams.keepOpen }, in: [unpublishRefused], emits: CANCEL }
-  closeDialog: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Exams.closeEarlyTitle }, text: { key: planned.Exams.closeEarlyBody, params: { inProgress: counts.inProgress } }, in: [closeAsk] } # cannot be undone
-  closeConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Exams.closeEarly }, in: [closeAsk], emits: CONFIRM }
-  closeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [closeAsk], emits: CANCEL }
+  # ---- the toasts: the kit's region "Bildirimler"; an error is an alertdialog that stays until closed ---------------------------------
+  readAgainToast: { type: alert, component: Alert, role: alertdialog, name: { key: OnlineExams.failed }, text: { oneOf: [OnlineExams.notReadyRefused, OnlineExams.locked, OnlineExams.stale, OnlineExams.notPublished] }, in: [notReady, choose, scheduled, open, closed], when: "notice == 'readAgain'", source: apps/nazar/features/online-exams/components/exam-editor.tsx:267 } # "Kaydedilemedi" over why; the page was read again (unpublishing's own toast: exam-publish.tsx:328)
+  timePassedToast: { type: alert, component: Alert, role: alertdialog, name: { key: OnlineExams.failed }, text: { key: OnlineExams.timePassed }, in: [choose], when: "notice == 'timePassed'", source: apps/nazar/features/online-exams/components/exam-editor.tsx:267 }
+  refusedToast: { type: alert, component: Alert, role: alertdialog, name: { key: OnlineExams.failed }, text: { key: Problems.actionForbidden }, in: [choose, scheduled], when: "notice == 'refused'", source: apps/nazar/features/online-exams/components/exam-editor.tsx:267 }
+  invalidToast: { type: alert, component: Alert, role: alertdialog, name: { key: OnlineExams.failed }, text: { key: OnlineExams.pointsInvalid }, in: [choose], when: "notice == 'invalid'", source: apps/nazar/features/online-exams/components/exam-editor.tsx:267 } # a VALIDATION_ERROR in the points' words (EXM-EDIT-1)
+  failedToast: { type: alert, component: Alert, role: alertdialog, name: { key: OnlineExams.failed }, in: [choose, scheduled], when: "notice == 'failed'", source: apps/nazar/features/online-exams/components/exam-editor.tsx:267 } # "Kaydedilemedi" alone when the call threw (exam-editor.tsx:274, exam-publish.tsx:338), over "Bir şeyler ters gitti…" when tedrisat refused with no code of its own, or "Medaris güncellendi" with Yenile after a new deployment
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [notReady, choose, scheduled, open, closed], when: toasting, emits: CLOSE_TOAST, source: libs/ui/src/mds/toast.tsx:95 } # an icon button named only by a literal aria-label of the kit
 
-  # --- a refusal, a failed read, a failed write ----------------------------------------------------------------------------------------
-  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden] } # as the pages' own PageProblem draws it
-  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.loadFailedTitle }, text: { key: Problems.actionGeneric }, in: [loadFailed] }
-  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.retry }, in: [loadFailed], emits: RETRY }
-  failedToast: { type: alert, component: Alert, role: alertdialog, name: { key: Sessions.failed }, text: { key: Problems.actionGeneric }, in: [choose, scheduleForm, scheduled, open], when: "notice == 'failed'" } # an alert dialog that stays until closed, as the session pages' failures
+  # ---- a refusal and a failed read ----------------------------------------------------------------------------------------------------
+  problemHeading: { type: text, component: Heading, role: heading, text: { key: OnlineExams.title }, in: [forbidden, loadFailed], source: apps/nazar/features/online-exams/components/exam-page.tsx:43 } # h1 "Sınavlar"; the exam's title is not shown
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a neutral Alert is a role=status, its title a <p>; no name of its own
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:26 }
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState inside the shell is a <section aria-labelledby>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: OnlineExams.loadFailedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # a second h1, "Sınavlar okunamadı": LoadFailed passes no headingLevel
+  failedText: { type: text, component: Text, text: { key: OnlineExams.loadFailed }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:46 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 } # router.refresh in a transition
 
 edges:
-  - { labelledBy: [chooseRegion, chooseTitle] }
-  - { labelledBy: [scheduleRegion, scheduleTitle] }
-  - { triggers: [publishNow, publishingNow] }
-  - { triggers: [scheduleConfirm, scheduling] }
-  - { triggers: [toDraftScheduled, unpublishing] }
-  - { triggers: [refusedCloseEarly, closingEarly] }
-  - { triggers: [closeConfirm, closingEarly] }
-  - { triggers: [problemLink, editor_opened] }
+  - { labelledBy: [draftSection, draftTitle] }
+  - { labelledBy: [publishedSection, publishedTitle] }
+  - { labelledBy: [confirmDialog, confirmTitle] }
+  - { labelledBy: [toDraftDialog, toDraftTitle] }
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { triggers: [publishButton, confirmPublish] }
+  - { triggers: [confirmPublishButton, publishingNow] }
+  - { triggers: [toDraftScheduled, toDraftAsk] }
+  - { triggers: [toDraftConfirm, unpublishing] }
   - { triggers: [resultsLink, results_opened] }
+  - { triggers: [retryButton, reading] }
 
 rules:
-  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1; a refused time moves the focus to the field it is about; a dialog takes the focus and gives it back to the button that opened it. Nothing is built, so the graph sets no initialFocus." }
-  - { id: latest-start-ten-minutes, rule: "The late window is asked in minutes, 10 by default (the owner, 22 Nov: \"defaultta 10 dakika sonra olacak\"; \"belki 10 dk değil 20 dk seçecek hoca\"), and counted from the exam's real opening: the press for Şimdi yayınla, so minutes spent before pressing do not shorten it (#431). Under the field, the time it comes to." }
-  - { id: time-zones, rule: "The dates are typed and shown in the team member's time zone, named beside them; a talebe whose time zone differs is shown their own time as well (tedris.exams.mine, tedris.exams.take)." }
-  - { id: planned-words, rule: "Every key planned.Exams.* and Changes.note is a proposal for the owner to review; Sessions.* and Problems.* are the app's own." }
+  - { id: focus-not-decided, rule: "No code of the page moves the focus: not on load, not after publishing or taking back, when the section turns into the published exam or back (exam-workspace.tsx:34-49) and the pressed button is gone. The two alert dialogs are the kit's AlertDialog, whose focus starts on Vazgeç (alert-dialog.tsx:70). So no state names a focus. Read from the code, not seen." }
+  - { id: latest-start-ten-minutes, rule: "The late window is asked in minutes, 10 by default (LATEST_START_DEFAULT_MINUTES, exam-publish.tsx:26; the owner, 22 Nov: \"defaultta 10 dakika sonra olacak\"; \"belki 10 dk değil 20 dk seçecek hoca\"), and counted from the exam's real opening: the press for Şimdi yayınla, so minutes spent before pressing do not shorten it (#431). Under the field, the time it comes to." }
+  - { id: time-zones, rule: "The dates are typed and shown on the team member's clock (resolveTimeZone of the viewer's profile, exam-page.tsx:71), named under the form by its IANA name. A talebe whose zone differs is shown their own time (tedris.exams.mine, tedris.exams.take)." }
+  - { id: MDRS-233, rule: "The toasts' close button is named by the literal aria-label 'Kapat' and their region by the literal 'Bildirimler' (libs/ui/src/mds/toast.tsx:97, 127), not by the catalog. Cross-cutting, the kit's." }
+  - { id: EXM-PUB-1, rule: "What keeps the exam from being published is the page's own reckoning for the length and the questions, but the points total and the zeroth question are taken from the read (exam-editor.tsx:738-740). Own points changed on the page leave \"Puanların toplamı 100 değil\" standing, or offer the button while the total is off, until the page is read again; a zeroth question written meanwhile on the Sınavlar page likewise. The API's EXAM_NOT_READY then reads the page again. Fix: reckon the total on the page from the shares it already draws (sharesOf). Read from the code, not seen." }
+  - { id: EXM-PUB-2, rule: "Each problem is a plain line (exam-publish.tsx:70-74), not a link to the field or the question it is about; with 50 questions the team looks for \"7. sorunun doğru şıkkı işaretli değil.\" by scrolling. Fix: link each line to its question's row, or to Ayarlar for the length. Need checked-before-it-is-published is missing for it. Read from the code, not seen." }
+  - { id: EXM-PUB-3, rule: "The form speaks to the person in two ways: \"1 ile 10080 arasında bir dakika yaz.\" and \"… yayınladığın andan … şimdi yayınlarsan …\" (OnlineExams.lateMinutesInvalid, OnlineExams.lateMinutesHelpNow) say sen, where every other sentence of the section says siz (\"tamamlayın\", \"seçin\"). Fix: siz throughout. Read from the code, not seen." }

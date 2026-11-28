@@ -1,4 +1,7 @@
-import type { OnlineExamSummaryResponse } from "@medaris/services/tedrisat";
+import type {
+  ExamKind,
+  OnlineExamSummaryResponse,
+} from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
@@ -13,26 +16,73 @@ import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
+import { segmentOf } from "../online-exams";
 import { CourseZerothSection } from "./course-zeroth-section";
 import { NewExamForm } from "./new-exam-form";
+import {
+  NotesBadge,
+  type PracticeSetRow,
+  PracticeSetsTable,
+} from "./practice-sets-table";
 
 /**
  * "Sınavlar" of a course (MDRS-299): its online exams, "Yeni sınav", and the
- * zeroth question its exams ask. Opens with `exam.prepare`.
+ * zeroth question its exams ask. Opens with `exam.prepare`. With
+ * `kind: PRACTICE` it is "Çalışma Soruları" (MDRS-248): the course's
+ * çalışma setleri and "Yeni çalışma seti", with no results and no zeroth
+ * question, since a set has neither. The sets are a table: beside each
+ * published set, how many talebe solved it, how many times, and their
+ * average percentage (Faz 4); a side read, so the table stays when it fails
+ * and says so above it.
  */
-export async function ExamsPage({ courseId }: { courseId: string }) {
-  const [t, locale, me, exams, permissions, zeroth] = await Promise.all([
+export async function ExamsPage({
+  courseId,
+  kind = "EXAM",
+}: {
+  courseId: string;
+  kind?: ExamKind;
+}) {
+  const practice = kind === "PRACTICE";
+  const [t, locale, me, exams, permissions, zeroth, stats] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
     readOnce("the course's online exams", (api) =>
-      api.onlineExams.listOnlineExams({ id: courseId })
+      api.onlineExams.listOnlineExams(
+        practice ? { id: courseId, kind: "PRACTICE" } : { id: courseId }
+      )
     ),
     readCoursePermissions(courseId),
-    readOnce("the course's zeroth question", (api) =>
-      api.onlineExams.getCourseZerothQuestion({ id: courseId })
-    ),
+    practice
+      ? null
+      : readOnce("the course's zeroth question", (api) =>
+          api.onlineExams.getCourseZerothQuestion({ id: courseId })
+        ),
+    practice
+      ? readOnce("the course's practice set stats", (api) =>
+          api.practice.listPracticeSetStats({ id: courseId })
+        )
+      : null,
   ]);
+  const statsOf = new Map(
+    stats?.status === "ok" ? stats.data.map((s) => [s.setId, s]) : []
+  );
+  const practiceRows = (list: OnlineExamSummaryResponse[]): PracticeSetRow[] =>
+    list.map((exam) => {
+      const s = exam.status === "DRAFT" ? undefined : statsOf.get(exam.id);
+      return {
+        id: exam.id,
+        title: exam.title,
+        draft: exam.status === "DRAFT",
+        locked: exam.locked,
+        questionCount: exam.questionCount,
+        talebeCount: s?.talebeCount ?? null,
+        attemptCount: s?.attemptCount ?? null,
+        averagePercent: s?.averagePercent ?? null,
+        unansweredNotes: exam.unansweredNotes ?? 0,
+      };
+    });
+  const segment = segmentOf(kind);
   const gate = pageGate([exams], permissions, PAGE_CODES.exams);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
   const when = (at: Date | null) =>
@@ -58,23 +108,39 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
   return (
     <>
       <header className="flex max-inline-measure flex-col gap-1">
-        <h1 className="mds-h1">{t("OnlineExams.title")}</h1>
+        <h1 className="mds-h1">
+          {practice ? t("Practice.title") : t("OnlineExams.title")}
+        </h1>
         <p className="mds-body-sm text-neutral-muted">
-          {t("OnlineExams.intro")}
+          {practice ? t("Practice.intro") : t("OnlineExams.intro")}
         </p>
       </header>
       {exams.status !== "ok" || gate !== "ok" ? (
         <PageProblem
           status={gate === "forbidden" ? "forbidden" : "failed"}
           failed={{
-            title: t("OnlineExams.loadFailedTitle"),
+            title: practice
+              ? t("Practice.loadFailedTitle")
+              : t("OnlineExams.loadFailedTitle"),
             text: t("OnlineExams.loadFailed"),
           }}
         />
       ) : (
         <>
-          <NewExamForm courseId={courseId} />
-          {exams.data.length === 0 ? (
+          <NewExamForm courseId={courseId} kind={kind} />
+          {practice ? (
+            <>
+              {stats?.status === "ok" || exams.data.length === 0 ? null : (
+                <p className="mds-body-sm text-neutral-muted">
+                  {t("Practice.statsFailed")}
+                </p>
+              )}
+              <PracticeSetsTable
+                courseId={courseId}
+                rows={practiceRows(exams.data)}
+              />
+            </>
+          ) : exams.data.length === 0 ? (
             <p className="mds-body-sm text-neutral-muted">
               {t("OnlineExams.none")}
             </p>
@@ -84,7 +150,7 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
                 <li key={exam.id}>
                   <a
                     className="mds-link"
-                    href={`/ders/${courseId}/sinavlar/${exam.id}`}
+                    href={`/ders/${courseId}/${segment}/${exam.id}`}
                   >
                     {exam.title}
                   </a>{" "}
@@ -93,7 +159,14 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
                       count: exam.questionCount,
                     })}
                   </span>{" "}
-                  {status(exam)}
+                  {status(exam)}{" "}
+                  <NotesBadge
+                    courseId={courseId}
+                    kind="EXAM"
+                    id={exam.id}
+                    title={exam.title}
+                    count={exam.unansweredNotes ?? 0}
+                  />
                   {exam.status !== "DRAFT" ? (
                     <>
                       {" · "}
@@ -113,7 +186,7 @@ export async function ExamsPage({ courseId }: { courseId: string }) {
             </ul>
           )}
           {/* A side read: if it fails, its place says so and the list stays. */}
-          {zeroth.status === "ok" ? (
+          {zeroth === null ? null : zeroth.status === "ok" ? (
             <CourseZerothSection courseId={courseId} initial={zeroth.data} />
           ) : (
             <Alert tone="error" title={t("OnlineExams.zeroth.title")}>
@@ -131,10 +204,16 @@ export async function ExamsLoading() {
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>
-      <Skeleton width="12rem" height="2.5rem" />
-      {[0, 1, 2].map((row) => (
-        <Skeleton key={row} height="2rem" />
-      ))}
+      <div className="flex flex-col gap-1">
+        <Skeleton width="12rem" height="2.5rem" />
+        <Skeleton width="24rem" height="1rem" className="max-w-full" />
+      </div>
+      <Skeleton width="22rem" height="4rem" className="max-w-full" />
+      <div className="flex flex-col gap-2">
+        {[0, 1, 2, 3].map((row) => (
+          <Skeleton key={row} height="2.75rem" />
+        ))}
+      </div>
     </output>
   );
 }

@@ -204,7 +204,7 @@ states:
     title: The celse page, with its resources and its homework's files
     by: human
     goal: true
-    source: apps/tedris/features/courses/components/session-resources.tsx:74
+    source: apps/tedris/features/courses/components/session-resources.tsx:75
     description: >-
       Two cards of the celse page (the other cards and the header are other flows'). "Ödev" comes first, a section named by its h2 and drawn when
       the celse stands, the content is open and the talebe holds a seat: the homework the müderris set, and under "Ödevin dosyaları" one row for

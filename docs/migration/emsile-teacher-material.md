@@ -14,7 +14,7 @@ Five pieces of work on one branch (`feat/emsile-sarf-engine`), so that a müderr
 
 `libs/sarf` is `scope:shared` and carries no `platform:*` tag, so both web apps import it. It takes a three-letter sâlim root and a bâb and gives the 24 sîgas of the Emsile-i Muhtelife with every çekim.
 
-All five tables are made by one migration, `0081_emsile_teacher_material.sql`, with one hand-written rollback in `src/database/rollbacks/`. The branch was cut at `a0248bb4` and first carried them as 0069 to 0072; `main` took those four numbers for other work in the meantime, so when `main` was merged in the four were replaced by one generated on top of `main`'s 0080. Nothing had applied the old four outside a developer's machine.
+All five tables are made by one migration, `0084_emsile_teacher_material.sql`, with one hand-written rollback in `src/database/rollbacks/`. The branch was cut at `a0248bb4` and first carried them as 0069 to 0072; `main` took those four numbers for other work in the meantime, so when `main` was merged in the four were replaced by one generated on top of `main`'s 0080. Nothing had applied the old four outside a developer's machine. The same happened once more on 28 November 2026: `main` took 0081 to 0083 for the çalışma soruları work, so this migration moved from 0081 to 0084 and the permanent-ban one from 0082 to 0085, with their snapshots rebuilt on top of `main`'s 0083 and their SQL unchanged.
 
 Each table hangs off a course or a lesson with `ON DELETE RESTRICT`, so every purge that deletes a course, a week or a session names it: `purgeCourses` and `deleteSession` in `src/course/course-purge.ts`, and the two purge branches of `src/archive/archive.repository.ts`.
 

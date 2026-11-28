@@ -103,7 +103,7 @@ needs:
       - state: sent
       - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
       - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:124
-      - source: apps/tedris/features/notifications/notification-view.ts:168
+      - source: apps/tedris/features/notifications/notification-view.ts:178
     note: >-
       Unwalked here: the notification is written when management decides, which is nizam.applications.decide's walk, and read on
       tedris.account.notifications. The person has no page for the application itself and no way to take it back.

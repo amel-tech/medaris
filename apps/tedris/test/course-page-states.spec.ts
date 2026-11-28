@@ -144,6 +144,7 @@ const render = async (
     resources?: Record<string, unknown>[];
     /** a lesson's kind changed from LIVE, by its id */
     retyped?: Record<string, string>;
+    hasPractice?: boolean;
   } = {}
 ) => {
   const { CoursePage } = await import(
@@ -248,6 +249,16 @@ describe("tedris/12: an enrolled talebe", () => {
     expect(html).toContain(tr.progressNote);
     expect(html).not.toContain("İlerlemeni güncelle");
     expect(html).toContain(tr.tabDeck);
+  });
+
+  it("links to Çalışma Soruları only when the course has a published set (MDRS-248)", async () => {
+    const without = await render("ENROLLED");
+    expect(without).not.toContain("course-practice-link");
+    const html = await render("ENROLLED", { hasPractice: true });
+    expect(html).toMatch(
+      /href="\/calisma-sorulari#ders-[^"]+"[^>]*data-testid="course-practice-link"|data-testid="course-practice-link"[^>]*href="\/calisma-sorulari#ders-/
+    );
+    expect(html).toContain(`>${tr.practiceLink}</a>`);
   });
 
   it("does not count a cancelled session in its week or in the totals", async () => {

@@ -4,17 +4,17 @@ import { Client } from "pg";
 import { useDatabaseForThisFile } from "../helpers/test-app.helper";
 
 /**
- * MDRS-194: migration 0082 adds the PLATFORM ban scope and the decision
+ * MDRS-194: migration 0085 adds the PLATFORM ban scope and the decision
  * columns of a permanent-ban request without touching a ban or a request
  * that exists before it; its rollback takes them off again. Like the other
  * migration specs, the schema is built file by file so that rows can exist
- * BEFORE 0082 runs, and 0082 runs in a transaction of its own, as drizzle's
+ * BEFORE 0085 runs, and 0085 runs in a transaction of its own, as drizzle's
  * migrator runs it: a new enum value cannot be named in the transaction that
  * adds it, which is why the checks on `bans` compare the scope as text.
  */
 const MIGRATIONS = join(__dirname, "../../src/database/migrations");
 const ROLLBACKS = join(__dirname, "../../src/database/rollbacks");
-const TARGET = "0082_permanent_ban_decisions";
+const TARGET = "0085_permanent_ban_decisions";
 
 const statementsOf = (file: string): string[] =>
   readFileSync(file, "utf8")
@@ -22,7 +22,7 @@ const statementsOf = (file: string): string[] =>
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-describe("0082_permanent_ban_decisions migration (e2e)", () => {
+describe("0085_permanent_ban_decisions migration (e2e)", () => {
   let client: Client;
 
   const run = async (file: string) => {
@@ -108,7 +108,7 @@ describe("0082_permanent_ban_decisions migration (e2e)", () => {
     await client?.end();
   });
 
-  it("keeps the bans and requests that exist, accepts a platform ban, refuses a mixed-up row, and the rollback restores 0080's shape", async () => {
+  it("keeps the bans and requests that exist, accepts a platform ban, refuses a mixed-up row, and the rollback restores the shape before it", async () => {
     expect(await scopes()).toEqual(["COURSE", "KOSK", "MADRASAH"]);
     const columnsBefore = await requestColumns();
     const shapeBefore = await banShape();
@@ -181,7 +181,7 @@ describe("0082_permanent_ban_decisions migration (e2e)", () => {
     );
     expect(requests).toEqual([{ ban_id: courseBan, reason: "neden" }]);
 
-    // And forward again: the rollback leaves exactly the state 0082 expects.
+    // And forward again: the rollback leaves exactly the state 0085 expects.
     await runInOneTransaction(join(MIGRATIONS, `${TARGET}.sql`));
     expect(await scopes()).toEqual(["COURSE", "KOSK", "MADRASAH", "PLATFORM"]);
   });

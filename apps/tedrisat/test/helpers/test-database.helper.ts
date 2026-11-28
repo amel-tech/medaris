@@ -45,6 +45,9 @@ export async function assignRole(
  */
 export const COURSE_TREE_TABLES = [
   "role_assignments",
+  "question_notes",
+  "practice_answers",
+  "practice_attempts",
   "exam_answers",
   "exam_tab_switches",
   "exam_attempts",

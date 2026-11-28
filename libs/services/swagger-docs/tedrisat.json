@@ -6580,7 +6580,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, QUESTION_NOTE_SHARED, QUESTION_NOTE_REPLIED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6621,7 +6621,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, QUESTION_NOTE_SHARED, QUESTION_NOTE_REPLIED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6661,7 +6661,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, QUESTION_ANSWERED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, QUESTION_NOTE_SHARED, QUESTION_NOTE_REPLIED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -11759,7 +11759,7 @@
     },
     "/lessons/{id}/exam-results/release": {
       "post": {
-        "description": "\"Sonuçları talebelere aç\": `session.manage` on the course. From then on each talebe reads their own score on `GET /courses/:id/my-grades`; before it, nobody but the course team does. Once only: opening them again changes nothing and tells nobody. The first time, the course's talebe are told (`EXAM_RESULTS_RELEASED`) and it is written to `audit_log` as `exam.release`.",
+        "description": "\"Sonuçları talebelere aç\": `session.manage` on the course. From then on each talebe reads their own score on `GET /courses/:id/my-grades`; before it, nobody but the course team does. Once only: opening them again changes nothing and tells nobody. The first time, the course's talebe are told (`EXAM_RESULTS_RELEASED`) and it is written to `audit_log` as `exam.release`. An online exam's celse (MDRS-299) is released only once the exam has opened (otherwise 409 EXAM_NOT_OPEN), and the release ends it for everyone in the same transaction, as `closeOnlineExamEarly` does: every attempt in progress ends with its saved answers and is scored, the exam is closed early at the release's time (`online_exam.close` with `via: exam.release`) and no one starts it any more. An online exam that has closed for everyone already keeps its close as it was.",
         "operationId": "releaseExamResults",
         "parameters": [
           {
@@ -11787,6 +11787,9 @@
           },
           "404": {
             "description": "LESSON_NOT_FOUND, EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_NOT_OPEN: an online exam that has not opened yet"
           }
         },
         "security": [
@@ -15561,7 +15564,7 @@
     },
     "/courses/{id}/online-exams": {
       "get": {
-        "description": "Nazar's \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.",
+        "description": "Nazar's \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.",
         "operationId": "listOnlineExams",
         "parameters": [
           {
@@ -15570,6 +15573,14 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ExamKind"
             }
           }
         ],
@@ -15586,6 +15597,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
           },
           "403": {
             "description": "No `exam.prepare` on the course."
@@ -15605,7 +15619,7 @@
         ]
       },
       "post": {
-        "description": "\"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.",
+        "description": "\"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.",
         "operationId": "createOnlineExam",
         "parameters": [
           {
@@ -15745,7 +15759,7 @@
             "description": "EXAM_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_STALE, EXAM_LOCKED"
+            "description": "EXAM_STALE, EXAM_LOCKED, EXAM_KIND_MISMATCH (a length on a çalışma seti)"
           }
         },
         "security": [
@@ -15757,11 +15771,48 @@
         "tags": [
           "online-exams"
         ]
+      },
+      "delete": {
+        "description": "A çalışma seti (PRACTICE, MDRS-248), draft or published, goes with its questions, their options and topics, and its picked topics, in one transaction. Once a talebe has started it or a pool attempt drew one of its questions (the summary's and the draft's `locked`), it is 409 EXAM_LOCKED: those attempts are the talebe's record. An exam (EXAM) is 409 EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and deleting one is a decision of its own. Written to `audit_log` as `online_exam.delete`.",
+        "operationId": "deleteOnlineExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_LOCKED (a talebe started it, or a pool attempt drew from it), EXAM_KIND_MISMATCH (an exam)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Seti sil: delete a çalışma seti with its questions",
+        "tags": [
+          "online-exams"
+        ]
       }
     },
     "/online-exams/{examId}/publish": {
       "post": {
-        "description": "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+        "description": "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question, for which a topic is not needed (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.",
         "operationId": "publishOnlineExam",
         "parameters": [
           {
@@ -15860,7 +15911,7 @@
             "description": "EXAM_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened), EXAM_STALE"
+            "description": "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened; a çalışma seti once a talebe has started it), EXAM_STALE"
           }
         },
         "security": [
@@ -15932,7 +15983,7 @@
     },
     "/online-exams/{examId}/questions/{questionId}": {
       "put": {
-        "description": "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or a topic is kept as incomplete, and the answer says what it lacks. Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
+        "description": "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or, in an exam, a topic is kept as incomplete, and the answer says what it lacks; a çalışma seti's question needs no topic (MDRS-248). Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
         "operationId": "saveExamQuestion",
         "parameters": [
           {
@@ -16057,6 +16108,70 @@
         ]
       }
     },
+    "/online-exams/{examId}/questions/{questionId}/talebe-notes": {
+      "put": {
+        "description": "The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question's content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.",
+        "operationId": "setExamQuestionTalebeNotes",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTalebeNotesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionTalebeNotesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turn a question's talebe notes on or off",
+        "tags": [
+          "online-exams"
+        ]
+      }
+    },
     "/online-exams/{examId}/questions/{questionId}/points": {
       "put": {
         "description": "A number with at most two decimals from 0.01 to 100, or null. The points left (100 minus every question's own) are shared equally, kept exact, over the questions with none. Refused (409 POINTS_OVER_TOTAL, with `pointsLeft`) when the total would pass 100 or nothing would be left for the questions that share. Written to `audit_log` as `exam_question.points`.",
@@ -16110,7 +16225,7 @@
             "description": "EXAM_NOT_FOUND, QUESTION_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL"
+            "description": "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL, EXAM_KIND_MISMATCH (a çalışma seti, whose questions all weigh the same)"
           }
         },
         "security": [
@@ -17048,6 +17163,9 @@
           },
           "404": {
             "description": "EXAM_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_KIND_MISMATCH (a çalışma seti, which has no results for the team)"
           }
         },
         "security": [
@@ -17099,6 +17217,9 @@
           },
           "404": {
             "description": "EXAM_NOT_FOUND, ATTEMPT_NOT_FOUND"
+          },
+          "409": {
+            "description": "EXAM_KIND_MISMATCH (a çalışma seti, which has no results for the team)"
           }
         },
         "security": [
@@ -17144,7 +17265,7 @@
             "description": "EXAM_NOT_FOUND"
           },
           "409": {
-            "description": "EXAM_NOT_OPEN"
+            "description": "EXAM_NOT_OPEN, EXAM_KIND_MISMATCH (a çalışma seti)"
           }
         },
         "security": [
@@ -17407,6 +17528,694 @@
         "summary": "The exams that asked one zeroth question, each with its counts",
         "tags": [
           "nizam"
+        ]
+      }
+    },
+    "/exam-questions/{questionId}/my-note": {
+      "put": {
+        "description": "A new note, or the caller's note written again whole, on a question they got in an attempt of their own (a çalışma seti's, the pool's or their sitting of an exam). `sharedWithTeacher: true` sends it to the course's hoca, who is notified (QUESTION_NOTE_SHARED); false keeps it to the caller. An answer the hoca gave stays through a new text. A question the team turned notes off for is 409 NOTES_DISABLED. Sending an exam's note before the exam is over for everyone or its results are open is 409 NOTES_SHARE_LOCKED; the note may be kept to the caller meanwhile.",
+        "operationId": "saveMyQuestionNote",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMyQuestionNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyQuestionNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "QUESTION_NOTES_FORBIDDEN (not a talebe of the course who may write on it)"
+          },
+          "404": {
+            "description": "NOTE_QUESTION_NOT_FOUND (no such question, or one the caller never got in an attempt of their own)"
+          },
+          "409": {
+            "description": "NOTES_DISABLED, NOTES_SHARE_LOCKED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write the caller's note on a question",
+        "tags": [
+          "question-notes"
+        ]
+      },
+      "delete": {
+        "description": "The note goes with the hoca's answer on it, whether or not the team turned notes off since.",
+        "operationId": "deleteMyQuestionNote",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "403": {
+            "description": "QUESTION_NOTES_FORBIDDEN (not a talebe of the course who may write on it)"
+          },
+          "404": {
+            "description": "NOTE_QUESTION_NOT_FOUND (no such question, or one the caller never got in an attempt of their own), QUESTION_NOTE_NOT_FOUND (no note of the caller's on it)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the caller's note on a question",
+        "tags": [
+          "question-notes"
+        ]
+      }
+    },
+    "/courses/{id}/my-question-notes": {
+      "get": {
+        "description": "Every note of the caller's on a question of the course's çalışma setleri and exams, the latest written first, each with its question's text and its set's title. Reading them marks the hoca's answers on them read (`newReply`).",
+        "operationId": "listMyQuestionNotes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyQuestionNoteListItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "QUESTION_NOTES_FORBIDDEN (not a talebe of the course who may write on it)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's question notes in the course",
+        "tags": [
+          "question-notes"
+        ]
+      }
+    },
+    "/online-exams/{examId}/notes": {
+      "get": {
+        "description": "Only the notes sent to the hoca: each with its question's number and text, the talebe's name, the note, the answer and the times, the unanswered first (the longest waiting first), then the answered (the latest answered first). A note kept to its talebe is never listed.",
+        "operationId": "listExamQuestionNotes",
+        "parameters": [
+          {
+            "name": "examId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExamQuestionNoteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "EXAM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The notes the talebe sent on a set's or an exam's questions",
+        "tags": [
+          "question-notes"
+        ]
+      }
+    },
+    "/question-notes/{noteId}/reply": {
+      "put": {
+        "description": "Sets the hoca's answer on a note sent to them, replacing an earlier one; an empty `reply` takes it back. The first answer tells the talebe (QUESTION_NOTE_REPLIED). Written to `audit_log` as `question_note.reply`.",
+        "operationId": "replyQuestionNote",
+        "parameters": [
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyQuestionNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamQuestionNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "QUESTION_NOTE_NOT_FOUND (no such note, or one its talebe kept to themselves)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer a talebe's note",
+        "tags": [
+          "question-notes"
+        ]
+      }
+    },
+    "/courses/{id}/practice-sets": {
+      "get": {
+        "description": "Each published set of the course, the latest published first, with its question count (its complete questions), how many times the caller finished it, the percentage of their latest finish and the attempt they have in progress. A draft is not listed.",
+        "operationId": "listPracticeSets",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeSetSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's çalışma setleri, for its talebe",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/courses/{id}/practice-pool": {
+      "get": {
+        "description": "How many questions the pool holds (the complete questions of the course's published çalışma setleri; no exam's and no draft's), the caller's pool attempt in progress and their latest pool attempts.",
+        "operationId": "getPracticePool",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticePoolResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's question pool, for its talebe",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/courses/{id}/practice-pool/attempts": {
+      "post": {
+        "description": "ALL: every question of the course's published çalışma setleri; RANDOM: `count` of them at random, none twice. Each question's options in an order of the attempt's own, with no clock. The caller's pool attempt in progress is returned instead, as it stands. The attempt is then read, answered and finished on the `practice-attempts` routes; each question carries its set's title.",
+        "operationId": "startPracticePoolAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartPracticePoolDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "PRACTICE_POOL_COUNT_INVALID (RANDOM without a count from 1 to the pool's size, or an empty pool), VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "PRACTICE_FORBIDDEN (not a talebe of the course: not enrolled, barred, or its content closed)"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start solving the course's question pool",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/courses/{id}/practice-set-stats": {
+      "get": {
+        "description": "Per published set with a finished attempt: how many talebe finished it, how many times, and the average percentage. A set nobody finished is absent; pool attempts are not counted.",
+        "operationId": "listPracticeSetStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeSetStatsResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `exam.prepare` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How the course's çalışma setleri were solved, for its team",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/my-practice-sets": {
+      "get": {
+        "description": "The published sets of the courses where the caller holds an ENROLLED or COMPLETED seat and may write as a talebe, each with its course's title and the caller's standing on it, as `listPracticeSets` gives them.",
+        "operationId": "listMyPracticeSets",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeSetSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Çalışma setlerim: the sets of every course of the caller",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-sets/{setId}/attempts": {
+      "post": {
+        "description": "Starts an attempt: the set's complete questions, and each one's options, in an order of this attempt's own, with no clock. An attempt in progress is returned instead, as it stands. Nothing says which options are correct until the attempt is finished.",
+        "operationId": "startPracticeAttempt",
+        "parameters": [
+          {
+            "name": "setId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_SET_NOT_FOUND (a draft, an exam, or a set of a course the caller is no talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a çalışma seti",
+        "tags": [
+          "practice"
+        ]
+      },
+      "get": {
+        "description": "Every attempt of the caller's own at the set, the latest started first, each with its counts and percentage once finished.",
+        "operationId": "listPracticeAttempts",
+        "parameters": [
+          {
+            "name": "setId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeAttemptSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_SET_NOT_FOUND (a draft, an exam, or a set of a course the caller is no talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's attempts at a çalışma seti",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-attempts/{attemptId}": {
+      "get": {
+        "description": "In progress: the questions and their options in the attempt's order and the options chosen, and nothing that says which are correct. Finished: each question's options with `correct`, its outcome (CORRECT, WRONG, BLANK) and the part it got, and the counts and the percentage (every question weighs the same).",
+        "operationId": "getPracticeAttempt",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_ATTEMPT_NOT_FOUND (anyone else's, or of a course the caller is no longer a talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One of the caller's attempts",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-attempts/{attemptId}/answers/{questionId}": {
+      "put": {
+        "description": "Saved the moment it is chosen, replacing the answer before; none clears it. The question becomes the one the attempt goes on from.",
+        "operationId": "savePracticeAnswer",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePracticeAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAnswerSavedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "PRACTICE_ANSWER_INVALID, VALIDATION_ERROR"
+          },
+          "404": {
+            "description": "PRACTICE_ATTEMPT_NOT_FOUND (anyone else's, or of a course the caller is no longer a talebe of), PRACTICE_QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "PRACTICE_ATTEMPT_FINISHED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer a question of an attempt",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/practice-attempts/{attemptId}/finish": {
+      "post": {
+        "description": "\"Bitir\": the attempt ends with the answers saved, and the answer is the finished attempt with the correct options, each question's outcome and the counts and percentage. Finishing a finished attempt changes nothing. Starting the set again then begins a new attempt.",
+        "operationId": "finishPracticeAttempt",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAttemptResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PRACTICE_ATTEMPT_NOT_FOUND (anyone else's, or of a course the caller is no longer a talebe of)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Finish an attempt",
+        "tags": [
+          "practice"
         ]
       }
     }
@@ -25283,9 +26092,12 @@
               "KOSK_APPLICATION_RESULT",
               "DECK_PUBLISH_RESULT",
               "SUBMISSION_REVIEWED",
+              "QUESTION_ANSWERED",
               "EXAM_SCHEDULED",
               "EXAM_REMINDER",
               "EXAM_RESULTS_RELEASED",
+              "QUESTION_NOTE_SHARED",
+              "QUESTION_NOTE_REPLIED",
               "COURSE_BAN_PLACED",
               "KOSK_BAN_PLACED"
             ],
@@ -32822,12 +33634,26 @@
           "koskIds"
         ]
       },
+      "ExamKind": {
+        "type": "string",
+        "enum": [
+          "EXAM",
+          "PRACTICE"
+        ]
+      },
       "OnlineExamSummaryResponse": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
           },
           "title": {
             "type": "string"
@@ -32844,6 +33670,10 @@
               "CLOSED"
             ]
           },
+          "locked": {
+            "type": "boolean",
+            "description": "Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft."
+          },
           "startsAt": {
             "format": "date-time",
             "type": "string",
@@ -32853,13 +33683,19 @@
           "updatedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "unansweredNotes": {
+            "type": "number",
+            "description": "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
           }
         },
         "required": [
           "id",
+          "kind",
           "title",
           "questionCount",
           "status",
+          "locked",
           "startsAt",
           "updatedAt"
         ]
@@ -32871,6 +33707,15 @@
             "type": "string",
             "maxLength": 200,
             "example": "Ara sınav"
+          },
+          "kind": {
+            "default": "EXAM",
+            "description": "EXAM, left out: an exam sat once with its celse. PRACTICE: a çalışma seti, which the course's talebe solve whenever they like, as often as they like, with no celse, length, points or zeroth question (MDRS-248).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
           }
         },
         "required": [
@@ -33024,6 +33869,10 @@
           "complete": {
             "type": "boolean"
           },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the talebe may write a note on it (MDRS-248, soru notları). A new question starts off, in a çalışma seti and an exam alike. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
           "lacks": {
             "type": "array",
             "description": "What it still lacks, in the form's order.",
@@ -33101,6 +33950,14 @@
             "type": "string",
             "format": "uuid"
           },
+          "kind": {
+            "description": "An exam, or a çalışma seti (PRACTICE), which has no celse, no length, no points and no zeroth question; its `status` is DRAFT or OPEN.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
+          },
           "title": {
             "type": "string"
           },
@@ -33157,6 +34014,10 @@
               "CLOSED"
             ]
           },
+          "locked": {
+            "type": "boolean",
+            "description": "Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft."
+          },
           "startsAt": {
             "format": "date-time",
             "type": "string",
@@ -33175,6 +34036,10 @@
               "$ref": "#/components/schemas/PublishProblemResponse"
             }
           },
+          "unansweredNotes": {
+            "type": "number",
+            "description": "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
           "version": {
             "type": "number"
           }
@@ -33182,6 +34047,7 @@
         "required": [
           "id",
           "courseId",
+          "kind",
           "title",
           "durationMinutes",
           "instructions",
@@ -33192,6 +34058,7 @@
           "questions",
           "pointsTotal",
           "status",
+          "locked",
           "startsAt",
           "latestStartAt",
           "problems",
@@ -33371,6 +34238,10 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the talebe may write a note on it (MDRS-248, soru notları); left out, it stays as it is. On a published set, `PUT …/talebe-notes` turns it. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
           }
         },
         "required": [
@@ -33379,6 +34250,34 @@
           "options",
           "answerMode",
           "topicIds"
+        ]
+      },
+      "SetTalebeNotesDto": {
+        "type": "object",
+        "properties": {
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the talebe may write a note on the question."
+          }
+        },
+        "required": [
+          "talebeNotes"
+        ]
+      },
+      "QuestionTalebeNotesResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "talebeNotes": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "questionId",
+          "talebeNotes"
         ]
       },
       "SetQuestionPointsDto": {
@@ -33875,6 +34774,57 @@
           "text"
         ]
       },
+      "MyQuestionNoteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sharedWithTeacher": {
+            "type": "boolean",
+            "description": "Whether it was sent to the course's hoca."
+          },
+          "sharedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When it was sent."
+          },
+          "teacherReply": {
+            "type": "string",
+            "nullable": true,
+            "description": "The hoca's answer."
+          },
+          "repliedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "newReply": {
+            "type": "boolean",
+            "description": "An answer the caller has not read yet: `GET /courses/:id/my-question-notes` marks every answer of the course read."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "The caller's last write of it."
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sharedWithTeacher",
+          "sharedAt",
+          "teacherReply",
+          "repliedAt",
+          "newReply",
+          "updatedAt"
+        ]
+      },
       "AttemptQuestionResponse": {
         "type": "object",
         "properties": {
@@ -33906,6 +34856,20 @@
             "items": {
               "$ref": "#/components/schemas/AttemptOptionResponse"
             }
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. A note is kept to the caller during the exam: sending it to the hoca waits until the exam is over for everyone (409 NOTES_SHARE_LOCKED). Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
+          "myNote": {
+            "nullable": true,
+            "description": "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyQuestionNoteResponse"
+              }
+            ]
           }
         },
         "required": [
@@ -35058,6 +36022,20 @@
             "items": {
               "$ref": "#/components/schemas/MyAnsweredOptionResponse"
             }
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
+          "myNote": {
+            "nullable": true,
+            "description": "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyQuestionNoteResponse"
+              }
+            ]
           }
         },
         "required": [
@@ -35372,6 +36350,731 @@
           "answered",
           "options",
           "exams"
+        ]
+      },
+      "SaveMyQuestionNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Plain text, trimmed."
+          },
+          "sharedWithTeacher": {
+            "type": "boolean",
+            "description": "true sends it to the course's hoca, who reads and may answer it; false keeps it to the caller. On an exam's question, true is 409 NOTES_SHARE_LOCKED until the exam is over for everyone or its results are open."
+          }
+        },
+        "required": [
+          "body",
+          "sharedWithTeacher"
+        ]
+      },
+      "MyQuestionNoteListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sharedWithTeacher": {
+            "type": "boolean",
+            "description": "Whether it was sent to the course's hoca."
+          },
+          "sharedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When it was sent."
+          },
+          "teacherReply": {
+            "type": "string",
+            "nullable": true,
+            "description": "The hoca's answer."
+          },
+          "repliedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "newReply": {
+            "type": "boolean",
+            "description": "An answer the caller has not read yet: `GET /courses/:id/my-question-notes` marks every answer of the course read."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "The caller's last write of it."
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamKind"
+              }
+            ]
+          },
+          "setTitle": {
+            "type": "string",
+            "description": "The çalışma seti's or the exam's title."
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The exam's celse, for its links; null for a çalışma seti."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "sharedWithTeacher",
+          "sharedAt",
+          "teacherReply",
+          "repliedAt",
+          "newReply",
+          "updatedAt",
+          "questionId",
+          "questionText",
+          "examId",
+          "examKind",
+          "setTitle",
+          "lessonId",
+          "createdAt"
+        ]
+      },
+      "QuestionNoteTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ExamQuestionNoteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionNumber": {
+            "type": "number",
+            "description": "1 for the first, in the preparer's order."
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "talebe": {
+            "$ref": "#/components/schemas/QuestionNoteTalebeResponse"
+          },
+          "body": {
+            "type": "string"
+          },
+          "sharedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the talebe sent it."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "The talebe's last write of it."
+          },
+          "editedAfterReply": {
+            "type": "boolean",
+            "description": "Whether the talebe wrote it again after it was answered."
+          },
+          "teacherReply": {
+            "type": "string",
+            "nullable": true
+          },
+          "repliedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "repliedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "questionId",
+          "questionNumber",
+          "questionText",
+          "talebe",
+          "body",
+          "sharedAt",
+          "updatedAt",
+          "editedAfterReply",
+          "teacherReply",
+          "repliedAt",
+          "repliedBy"
+        ]
+      },
+      "ReplyQuestionNoteDto": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Plain text, trimmed; empty takes the answer back."
+          }
+        },
+        "required": [
+          "reply"
+        ]
+      },
+      "PracticeSetSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string",
+            "description": "The course's title."
+          },
+          "title": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string",
+            "nullable": true,
+            "description": "The team's own words about the set."
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "The questions an attempt is given: the set's complete questions."
+          },
+          "attemptCount": {
+            "type": "number",
+            "description": "How many times the caller finished it."
+          },
+          "lastPercent": {
+            "type": "string",
+            "nullable": true,
+            "example": "66.67",
+            "description": "The percentage of the caller's latest finished attempt, with two decimals; null before the first."
+          },
+          "openAttemptId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The caller's attempt in progress, which starting the set again goes on with; null when none."
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "courseTitle",
+          "title",
+          "instructions",
+          "questionCount",
+          "attemptCount",
+          "lastPercent",
+          "openAttemptId",
+          "publishedAt"
+        ]
+      },
+      "PoolMode": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "RANDOM"
+        ]
+      },
+      "PracticeAttemptStatus": {
+        "type": "string",
+        "enum": [
+          "IN_PROGRESS",
+          "FINISHED"
+        ]
+      },
+      "PracticeResultResponse": {
+        "type": "object",
+        "properties": {
+          "correct": {
+            "type": "number",
+            "description": "Questions got whole."
+          },
+          "wrong": {
+            "type": "number",
+            "description": "Questions answered and not got whole."
+          },
+          "blank": {
+            "type": "number",
+            "description": "Questions left without an answer."
+          },
+          "total": {
+            "type": "number",
+            "description": "The attempt's questions."
+          },
+          "percent": {
+            "type": "string",
+            "example": "66.67",
+            "description": "The parts got over the number of questions, as a percentage with two decimals, rounded half up once."
+          }
+        },
+        "required": [
+          "correct",
+          "wrong",
+          "blank",
+          "total",
+          "percent"
+        ]
+      },
+      "PracticePoolAttemptSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PoolMode"
+              }
+            ]
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "The questions it drew."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeAttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "result": {
+            "nullable": true,
+            "description": "Null while it is in progress.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeResultResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "questionCount",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "result"
+        ]
+      },
+      "PracticePoolResponse": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionCount": {
+            "type": "number",
+            "description": "The complete questions of the course's published çalışma setleri: no exam's, no draft's."
+          },
+          "openAttemptId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The caller's pool attempt in progress, which starting the pool again goes on with; null when none."
+          },
+          "attempts": {
+            "description": "The caller's latest pool attempts, ten at most.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PracticePoolAttemptSummaryResponse"
+            }
+          }
+        },
+        "required": [
+          "courseId",
+          "questionCount",
+          "openAttemptId",
+          "attempts"
+        ]
+      },
+      "StartPracticePoolDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "description": "ALL: every question of the course's published çalışma setleri; RANDOM: `count` of them at random, none twice.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PoolMode"
+              }
+            ]
+          },
+          "count": {
+            "type": "number",
+            "minimum": 1,
+            "description": "RANDOM only, and required there: how many questions, from 1 to the pool's size. Not read under ALL."
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "PracticeOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "correct": {
+            "type": "boolean",
+            "description": "Whether it is a correct option: sent only once the attempt is finished, never before."
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "PracticeOutcome": {
+        "type": "string",
+        "enum": [
+          "CORRECT",
+          "WRONG",
+          "BLANK"
+        ],
+        "description": "How the answer did; only once the attempt is finished."
+      },
+      "PracticeQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "number",
+            "description": "1 up, in the attempt's order."
+          },
+          "text": {
+            "type": "string"
+          },
+          "setTitle": {
+            "type": "string",
+            "description": "The title of the çalışma seti the question is of: in a pool attempt, where it came from."
+          },
+          "answerMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnswerMode"
+              }
+            ]
+          },
+          "options": {
+            "description": "In the attempt's order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PracticeOptionResponse"
+            }
+          },
+          "chosenOptionIds": {
+            "description": "The options the caller chose; none when blank.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "outcome": {
+            "description": "How the answer did; only once the attempt is finished.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeOutcome"
+              }
+            ]
+          },
+          "part": {
+            "type": "string",
+            "example": "0.50",
+            "description": "The part of the question the answer got, from 0.00 to 1.00 (a part only under IN_SHARES); only once the attempt is finished."
+          },
+          "talebeNotes": {
+            "type": "boolean",
+            "description": "Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları)."
+          },
+          "myNote": {
+            "nullable": true,
+            "description": "The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyQuestionNoteResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "setTitle",
+          "answerMode",
+          "options",
+          "chosenOptionIds"
+        ]
+      },
+      "PracticeAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "setId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The set solved; null for a pool attempt."
+          },
+          "poolMode": {
+            "nullable": true,
+            "description": "How a pool attempt was drawn; null for a set's attempt.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PoolMode"
+              }
+            ]
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The set's title; empty for a pool attempt."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeAttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The question last answered, where the page goes on."
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PracticeQuestionResponse"
+            }
+          },
+          "result": {
+            "nullable": true,
+            "description": "Null while the attempt is in progress.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeResultResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "setId",
+          "poolMode",
+          "courseId",
+          "title",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "currentQuestionId",
+          "questions",
+          "result"
+        ]
+      },
+      "PracticeSetStatsResponse": {
+        "type": "object",
+        "properties": {
+          "setId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "talebeCount": {
+            "type": "number",
+            "description": "How many talebe finished it at least once."
+          },
+          "attemptCount": {
+            "type": "number",
+            "description": "How many times it was finished."
+          },
+          "averagePercent": {
+            "type": "string",
+            "nullable": true,
+            "example": "72.50",
+            "description": "The average percentage of its finished attempts, with two decimals; null when none."
+          }
+        },
+        "required": [
+          "setId",
+          "talebeCount",
+          "attemptCount",
+          "averagePercent"
+        ]
+      },
+      "PracticeAttemptSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeAttemptStatus"
+              }
+            ]
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "result": {
+            "nullable": true,
+            "description": "Null while it is in progress.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PracticeResultResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "result"
+        ]
+      },
+      "SavePracticeAnswerDto": {
+        "type": "object",
+        "properties": {
+          "optionIds": {
+            "description": "The options chosen, of this question only; none clears the answer. A radio question (SINGLE) takes one at most.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "optionIds"
+        ]
+      },
+      "PracticeAnswerSavedResponse": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "optionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "savedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "optionIds",
+          "savedAt"
         ]
       }
     }

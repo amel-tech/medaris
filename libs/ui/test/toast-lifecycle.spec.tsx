@@ -123,6 +123,34 @@ describe("the unified kit's toaster across navigation", () => {
     await settle();
     expect(mdsToasts().length).toBe(1);
   });
+
+  it("keeps notify and dismiss the same across renders, a toast shown or closed included (EXM-TAKE-15)", async () => {
+    const seen: Array<ReturnType<typeof useToaster>> = [];
+    let bump: () => void = () => {};
+    function Recorder() {
+      const [, setCount] = useState(0);
+      bump = () => setCount((n) => n + 1);
+      seen.push(useToaster());
+      return null;
+    }
+    await render(
+      <AppProviders>
+        <Recorder />
+      </AppProviders>
+    );
+    await act(async () => bump());
+    await act(async () => {
+      seen[0]?.notify({ id: "same", tone: "error", title: "Ders açılamadı" });
+    });
+    await settle();
+    await act(async () => seen[0]?.dismiss("same"));
+    await settle(50);
+    expect(seen.length).toBeGreaterThan(2);
+    for (const later of seen) {
+      expect(later.notify).toBe(seen[0]?.notify);
+      expect(later.dismiss).toBe(seen[0]?.dismiss);
+    }
+  });
 });
 
 function SonnerHarness() {

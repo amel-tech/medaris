@@ -2,9 +2,12 @@ import { type AuthenticatedUser, ValidationError } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { CourseService } from "../course/course.service";
 import { ExamFormat } from "../course/domain/exam";
+import { QuestionNoteRepository } from "../question-note/question-note.repository";
 import {
   AnswerMode,
+  ExamKind,
   examStatus,
+  isLocked,
   LATEST_START_DEFAULT_MINUTES,
   lacksOf,
   modeFits,
@@ -12,6 +15,8 @@ import {
   pointsFit,
   pointsFromText,
   pointsText,
+  practiceProblems,
+  practiceStatus,
   publishedMinutes,
   publishProblems,
   publishTimeProblem,
@@ -32,6 +37,7 @@ import type {
   OnlineExamSummaryResponse,
 } from "./dto/online-exam.dto";
 import {
+  ExamKindMismatchError,
   ExamLockedError,
   ExamNotPublishedError,
   ExamNotReadyError,
@@ -70,7 +76,8 @@ export class OnlineExamService {
   constructor(
     private readonly repo: OnlineExamRepository,
     private readonly courses: CourseService,
-    private readonly zeroth: ZerothQuestionRepository
+    private readonly zeroth: ZerothQuestionRepository,
+    private readonly notes: QuestionNoteRepository
   ) {}
 
   /** The course as the caller may write to it: a hidden or draft course they may not see is not found. */
@@ -81,28 +88,44 @@ export class OnlineExamService {
 
   async listExams(
     courseId: string,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
+    kind: ExamKind = ExamKind.EXAM
   ): Promise<OnlineExamSummaryResponse[]> {
     await this.course(courseId, user);
-    const exams = await this.repo.listExams(courseId);
+    const exams = await this.repo.listExams(courseId, kind);
+    const [started, unanswered] = await Promise.all([
+      this.repo.startedPracticeIds(
+        exams.filter((e) => e.kind === ExamKind.PRACTICE).map((e) => e.id)
+      ),
+      this.notes.unansweredCounts(exams.map((e) => e.id)),
+    ]);
     const now = new Date();
     return exams.map((e) => ({
       id: e.id,
+      kind: e.kind,
       title: e.title,
       questionCount: Number(e.questionCount),
-      status: examStatus(e, now),
+      status:
+        e.kind === ExamKind.PRACTICE
+          ? practiceStatus(e.publishedAt)
+          : examStatus(e, now),
+      locked: isLocked(e, started.has(e.id), now),
       startsAt: e.startsAt,
       updatedAt: e.updatedAt,
+      unansweredNotes: unanswered.get(e.id) ?? 0,
     }));
   }
 
   async createExam(
     courseId: string,
     title: string,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
+    kind: ExamKind = ExamKind.EXAM
   ): Promise<{ id: string }> {
     await this.course(courseId, user);
-    return { id: await this.repo.createExam(courseId, title, user.sub) };
+    return {
+      id: await this.repo.createExam(courseId, title, kind, user.sub),
+    };
   }
 
   async getDraft(
@@ -110,10 +133,12 @@ export class OnlineExamService {
     user: AuthenticatedUser
   ): Promise<OnlineExamDraftResponse> {
     const courseId = await this.courseOf(examId, user);
-    const [draft, topics, hasZeroth] = await Promise.all([
+    const [draft, topics, hasZeroth, started, unanswered] = await Promise.all([
       this.repo.findDraft(courseId, examId),
       this.repo.listTopics(courseId),
       this.zerothOfCourse(courseId).then((q) => q !== null),
+      this.repo.startedPracticeIds([examId]),
+      this.notes.unansweredCounts([examId]),
     ]);
     if (!draft) throw new OnlineExamNotFoundError(examId);
     const shares = sharePoints(
@@ -128,6 +153,7 @@ export class OnlineExamService {
     return {
       id: draft.id,
       courseId: draft.courseId,
+      kind: draft.kind,
       title: draft.title,
       durationMinutes: draft.durationMinutes,
       instructions: draft.instructions,
@@ -140,15 +166,20 @@ export class OnlineExamService {
       })),
       topicIds: draft.topicIds,
       questions: draft.questions.map((q, i) =>
-        this.questionOf(q, i, shares.points.get(q.id))
+        this.questionOf(q, i, shares.points.get(q.id), draft.kind)
       ),
       pointsTotal,
-      status: examStatus(draft, new Date()),
+      status:
+        draft.kind === ExamKind.PRACTICE
+          ? practiceStatus(draft.publishedAt)
+          : examStatus(draft, new Date()),
+      locked: isLocked(draft, started.has(draft.id), new Date()),
       startsAt: draft.startsAt,
       latestStartAt: draft.latestStartAt,
       problems: draft.publishedAt
         ? []
         : this.problemsOf(draft, pointsTotal, hasZeroth),
+      unansweredNotes: unanswered.get(draft.id) ?? 0,
       version: draft.version,
     };
   }
@@ -173,6 +204,9 @@ export class OnlineExamService {
     user: AuthenticatedUser
   ): Promise<OnlineExamDraftResponse> {
     const w = await this.writeOf(examId, input.version, user);
+    if ((await this.repo.kindOf(examId)) === ExamKind.PRACTICE) {
+      return this.publishPractice(w, user);
+    }
     const now = new Date();
     const startsAt = toMinute(input.startsAt ?? now);
     const latestStartAt = toMinute(
@@ -251,6 +285,32 @@ export class OnlineExamService {
   }
 
   /**
+   * "Yayınla" of a çalışma seti (MDRS-248): it is open to the course's talebe
+   * from now on, with no celse, no window and no zeroth question, so nothing
+   * reaches a calendar or a notification. One complete question is enough;
+   * the incomplete ones are not solved. Locked as a published exam is.
+   */
+  private async publishPractice(
+    w: IExamWrite,
+    user: AuthenticatedUser
+  ): Promise<OnlineExamDraftResponse> {
+    const draft = await this.repo.findDraft(w.courseId, w.examId);
+    if (!draft) throw new OnlineExamNotFoundError(w.examId);
+    if (draft.publishedAt) throw new ExamLockedError(w.examId);
+    if (draft.version !== w.version) {
+      throw new ExamStaleError(w.examId, w.version);
+    }
+    const problems = practiceProblems(draft.questions);
+    if (problems.length > 0) throw new ExamNotReadyError(w.examId, problems);
+    await this.repo.write(
+      w,
+      { action: "online_exam.publish", details: { kind: ExamKind.PRACTICE } },
+      (tx) => this.repo.publishPractice(tx, w.examId)
+    );
+    return this.getDraft(w.examId, user);
+  }
+
+  /**
    * "Taslağa al", until the exam opens: its celse is deleted and it is a
    * draft again, with everything it had. Once it has opened it is
    * EXAM_LOCKED.
@@ -263,6 +323,19 @@ export class OnlineExamService {
     const w = await this.writeOf(examId, version, user);
     const draft = await this.repo.findDraft(w.courseId, examId);
     if (!draft) throw new OnlineExamNotFoundError(examId);
+    if (draft.kind === ExamKind.PRACTICE) {
+      // No celse to withdraw; refused once a talebe has started the set.
+      await this.repo.write(
+        w,
+        {
+          action: "online_exam.unpublish",
+          details: { kind: ExamKind.PRACTICE },
+        },
+        (t) => this.repo.unpublish(t, examId),
+        { of: "published" }
+      );
+      return this.getDraft(examId, user);
+    }
     if (!draft.publishedAt || !draft.lessonId) {
       throw new ExamNotPublishedError(examId);
     }
@@ -278,12 +351,25 @@ export class OnlineExamService {
     return this.getDraft(examId, user);
   }
 
+  /**
+   * "Seti sil" (MDRS-248): a çalışma seti goes with its questions, draft or
+   * published, as long as no talebe has started it and no pool attempt drew
+   * from it (else EXAM_LOCKED). An exam is EXAM_KIND_MISMATCH.
+   */
+  async deleteExam(examId: string, user: AuthenticatedUser): Promise<void> {
+    const courseId = await this.courseOf(examId, user);
+    await this.repo.deletePractice(courseId, examId, user.sub);
+  }
+
   /** What keeps the draft from being published; empty when it can be. */
   private problemsOf(
     draft: IOnlineExamDraft,
     pointsTotal: string,
     hasZeroth: boolean
   ): PublishProblem[] {
+    if (draft.kind === ExamKind.PRACTICE) {
+      return practiceProblems(draft.questions);
+    }
     return publishProblems({
       durationMinutes: draft.durationMinutes,
       questions: draft.questions,
@@ -309,6 +395,10 @@ export class OnlineExamService {
     user: AuthenticatedUser
   ): Promise<ExamVersionResponse> {
     const w = await this.writeOf(examId, input.version, user);
+    // A çalışma seti has no length (MDRS-248).
+    if (input.durationMinutes !== undefined) {
+      await this.assertKind(examId, ExamKind.EXAM);
+    }
     const { version: _, ...changes } = input;
     const { version } = await this.repo.write(
       w,
@@ -345,6 +435,7 @@ export class OnlineExamService {
       answerMode: AnswerMode;
       scoring?: Scoring | null;
       topicIds: string[];
+      talebeNotes?: boolean;
     },
     user: AuthenticatedUser
   ): Promise<ExamQuestionWriteResponse> {
@@ -375,10 +466,35 @@ export class OnlineExamService {
           answerMode: input.answerMode,
           scoring,
           topicIds: input.topicIds,
+          talebeNotes: input.talebeNotes,
         });
       }
     );
     return { question: await this.questionNow(w, questionId), version };
+  }
+
+  /**
+   * The question's talebe notes on or off (MDRS-248, soru notları): the
+   * team's icon on the question. Not a write of the exam's content, so it
+   * names no version, bumps none, and is taken on a published or locked set
+   * as on a draft. What the talebe wrote stays readable when it is turned
+   * off; only new writes are refused.
+   */
+  async setTalebeNotes(
+    examId: string,
+    questionId: string,
+    talebeNotes: boolean,
+    user: AuthenticatedUser
+  ): Promise<{ questionId: string; talebeNotes: boolean }> {
+    const courseId = await this.courseOf(examId, user);
+    await this.repo.setTalebeNotes(
+      courseId,
+      examId,
+      questionId,
+      talebeNotes,
+      user.sub
+    );
+    return { questionId, talebeNotes };
   }
 
   async removeQuestion(
@@ -413,6 +529,8 @@ export class OnlineExamService {
       });
     }
     const w = await this.writeOf(examId, input.version, user);
+    // Every question of a çalışma seti weighs the same (MDRS-248).
+    await this.assertKind(examId, ExamKind.EXAM);
     const { result, version } = await this.repo.write(
       w,
       {
@@ -491,6 +609,15 @@ export class OnlineExamService {
     if (words > TOPIC_WORDS_MAX) throw new TopicTooLongError(words);
   }
 
+  /** EXAM_KIND_MISMATCH unless the exam is of the kind the route is for. */
+  private async assertKind(examId: string, expected: ExamKind): Promise<void> {
+    const kind = await this.repo.kindOf(examId);
+    if (kind === null) throw new OnlineExamNotFoundError(examId);
+    if (kind !== expected) {
+      throw new ExamKindMismatchError(examId, kind, expected);
+    }
+  }
+
   private async courseOf(
     examId: string,
     user: AuthenticatedUser
@@ -527,16 +654,18 @@ export class OnlineExamService {
     return this.questionOf(
       draft.questions[index],
       index,
-      shares.points.get(questionId)
+      shares.points.get(questionId),
+      draft.kind
     );
   }
 
   private questionOf(
     q: IOnlineExamDraft["questions"][number],
     index: number,
-    share: { numerator: number; denominator: number } | undefined
+    share: { numerator: number; denominator: number } | undefined,
+    kind: ExamKind
   ): ExamQuestionResponse {
-    const lacks = lacksOf(q);
+    const lacks = lacksOf(q, kind);
     return {
       id: q.id,
       number: index + 1,
@@ -548,6 +677,7 @@ export class OnlineExamService {
       ownPoints: q.ownPoints === null ? null : pointsText(q.ownPoints),
       points: share ? shareText(share) : pointsText(0),
       complete: lacks.length === 0,
+      talebeNotes: q.talebeNotes,
       lacks,
     };
   }

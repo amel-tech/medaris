@@ -1,6 +1,6 @@
--- Reverses migrations/0081_emsile_teacher_material.sql. The app never runs
+-- Reverses migrations/0084_emsile_teacher_material.sql. The app never runs
 -- this: drizzle's migrator only moves forward. To roll back by hand, run these
--- statements in one transaction, then delete 0081's row from
+-- statements in one transaction, then delete 0084's row from
 -- "drizzle"."__drizzle_migrations" so that the next boot applies it again.
 --
 -- Lost, and each table is the only copy:

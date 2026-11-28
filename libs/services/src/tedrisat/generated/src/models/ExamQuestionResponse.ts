@@ -102,6 +102,12 @@ export interface ExamQuestionResponse {
      */
     complete: boolean;
     /**
+     * Whether the talebe may write a note on it (MDRS-248, soru notları). A new question starts off, in a çalışma seti and an exam alike. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {boolean}
+     * @memberof ExamQuestionResponse
+     */
+    talebeNotes?: boolean;
+    /**
      * What it still lacks, in the form's order.
      * @type {Array<string>}
      * @memberof ExamQuestionResponse
@@ -160,6 +166,7 @@ export function ExamQuestionResponseFromJSONTyped(json: any, ignoreDiscriminator
         'ownPoints': json['ownPoints'],
         'points': json['points'],
         'complete': json['complete'],
+        'talebeNotes': json['talebeNotes'] == null ? undefined : json['talebeNotes'],
         'lacks': json['lacks'],
     };
 }
@@ -185,6 +192,7 @@ export function ExamQuestionResponseToJSONTyped(value?: ExamQuestionResponse | n
         'ownPoints': value['ownPoints'],
         'points': value['points'],
         'complete': value['complete'],
+        'talebeNotes': value['talebeNotes'],
         'lacks': value['lacks'],
     };
 }

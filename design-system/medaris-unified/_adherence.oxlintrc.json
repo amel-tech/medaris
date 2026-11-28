@@ -463,6 +463,7 @@
       }
     },
     "tokens": [
+      "--arabic-scale",
       "--background-action-bold",
       "--background-action-bold-hover",
       "--background-brand-bold",
@@ -515,6 +516,7 @@
       "--fs-arabic",
       "--fs-arabic-inline",
       "--fs-arabic-min",
+      "--fs-arabic-text-min",
       "--fs-body",
       "--fs-body-sm",
       "--fs-caption",
@@ -746,6 +748,7 @@
       "--ring-focus-color": "color",
       "--ring-focus-gap": "color",
       "--theme": "other",
+      "--arabic-scale": "other",
       "--font-ui": "font",
       "--font-reading": "font",
       "--fs-eyebrow": "spacing",
@@ -778,6 +781,7 @@
       "--fs-arabic": "spacing",
       "--fs-arabic-inline": "spacing",
       "--fs-arabic-min": "spacing",
+      "--fs-arabic-text-min": "spacing",
       "--weight-book": "font",
       "--lh-arabic": "other",
       "--lh-arabic-text": "other",

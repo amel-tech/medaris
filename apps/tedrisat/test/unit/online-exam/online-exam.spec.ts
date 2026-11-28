@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   AnswerMode,
+  ExamKind,
   examStatus,
+  isLocked,
   lacksOf,
   modeFits,
   nextFreeTopicNumber,
@@ -34,22 +36,59 @@ describe("online exam rules (MDRS-299)", () => {
   });
 
   it("says what a question lacks, in the form's order", () => {
-    expect(lacksOf({ text: "", options: [], topicIds: [] })).toEqual([
-      "text",
-      "option",
-      "correct",
-      "topic",
-    ]);
     expect(
-      lacksOf({
-        text: "Kıyasın rükünleri kaç tanedir?",
-        options: [
-          { text: "Üç", correct: false },
-          { text: "Dört", correct: true },
-        ],
-        topicIds: ["t"],
-      })
+      lacksOf({ text: "", options: [], topicIds: [] }, ExamKind.EXAM)
+    ).toEqual(["text", "option", "correct", "topic"]);
+    expect(
+      lacksOf(
+        {
+          text: "Kıyasın rükünleri kaç tanedir?",
+          options: [
+            { text: "Üç", correct: false },
+            { text: "Dört", correct: true },
+          ],
+          topicIds: ["t"],
+        },
+        ExamKind.EXAM
+      )
     ).toEqual([]);
+  });
+
+  it("asks a topic of an exam's question only, not of a çalışma seti's (MDRS-248)", () => {
+    const untopiced = {
+      text: "Kıyasın rükünleri kaç tanedir?",
+      options: [
+        { text: "Üç", correct: false },
+        { text: "Dört", correct: true },
+      ],
+      topicIds: [],
+    };
+    expect(lacksOf(untopiced, ExamKind.EXAM)).toEqual(["topic"]);
+    expect(lacksOf(untopiced, ExamKind.PRACTICE)).toEqual([]);
+    expect(
+      lacksOf({ text: "", options: [], topicIds: [] }, ExamKind.PRACTICE)
+    ).toEqual(["text", "option", "correct"]);
+  });
+
+  it("locks a published exam once its celse starts, and a set once it is started (MDRS-248)", () => {
+    const now = new Date("2026-11-27T10:00:00Z");
+    const before = new Date("2026-11-27T09:59:00Z");
+    const after = new Date("2026-11-27T10:01:00Z");
+    const exam = { kind: ExamKind.EXAM, publishedAt: before };
+    expect(
+      isLocked({ ...exam, publishedAt: null, startsAt: null }, false, now)
+    ).toBe(false);
+    expect(isLocked({ ...exam, startsAt: after }, true, now)).toBe(false);
+    expect(isLocked({ ...exam, startsAt: before }, false, now)).toBe(true);
+    expect(isLocked({ ...exam, startsAt: now }, false, now)).toBe(true);
+    const set = {
+      kind: ExamKind.PRACTICE,
+      publishedAt: before,
+      startsAt: null,
+    };
+    expect(isLocked(set, false, now)).toBe(false);
+    expect(isLocked(set, true, now)).toBe(true);
+    expect(isLocked({ ...set, publishedAt: null }, true, now)).toBe(false);
   });
 
   it("fits check boxes only to two correct options and a scoring", () => {

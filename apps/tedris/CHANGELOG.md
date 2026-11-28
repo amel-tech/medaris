@@ -1,5 +1,44 @@
 # Changelog
 
+## [2.19.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.18.0...tedris-web-v2.19.0) (2026-11-27)
+
+
+### Features
+
+* **nazar-web, tedris-web, ui, i18n:** MDRS-248 one question sheet for hoca and talebe ([#482](https://github.com/amel-tech/medaris/issues/482)) ([71e16fb](https://github.com/amel-tech/medaris/commit/71e16fbe0c5bd577f05bcf373e0d885cff01d356))
+* **tedris-web, i18n, docs:** MDRS-248 option cards and Bitir apart on the solving screen ([#472](https://github.com/amel-tech/medaris/issues/472)) ([d98bfda](https://github.com/amel-tech/medaris/commit/d98bfda202ca7c8c948362d3fd0d82692e60c1b0))
+* **tedris-web, i18n, docs:** MDRS-248 question notes for the talebe (soru notları) ([#474](https://github.com/amel-tech/medaris/issues/474)) ([04d2804](https://github.com/amel-tech/medaris/commit/04d28048aa3a1b0b46f9834e058e06ea1d75dd4e))
+* **tedris-web, i18n, docs:** MDRS-248 talebe result cards, outcome strip and one A−/A+ ([#468](https://github.com/amel-tech/medaris/issues/468)) ([b95b5c8](https://github.com/amel-tech/medaris/commit/b95b5c884d34fb514c359403b067d38920895d78))
+* **tedris-web, i18n:** MDRS-248 one-screen question page and letter answer cards ([#481](https://github.com/amel-tech/medaris/issues/481)) ([3a274fc](https://github.com/amel-tech/medaris/commit/3a274fc36f9fcb7ea0db658a0d22261da729ab6d))
+* **tedris-web, i18n:** MDRS-248 option tiles and equal answer cards ([#477](https://github.com/amel-tech/medaris/issues/477)) ([bb8b77e](https://github.com/amel-tech/medaris/commit/bb8b77ea9c2612d48eb051ac8eb545548f0166b1))
+* **tedris-web, nazar-web, i18n:** MDRS-248 long questions and no shortcut line ([#478](https://github.com/amel-tech/medaris/issues/478)) ([b716f49](https://github.com/amel-tech/medaris/commit/b716f49f8a71a928159312cbb4a9efc276637310))
+* **tedrisat, tokens:** MDRS-248 practice topic, locked flag, Arabic text standard ([#466](https://github.com/amel-tech/medaris/issues/466)) ([965ccb9](https://github.com/amel-tech/medaris/commit/965ccb9d42bfcfd6e3673ff784d54547a1d9e968))
+
+
+### Bug Fixes
+
+* **nazar-web, tedris-web, tokens, docs:** MDRS-248 cancelled blank question, Arabic brackets ([#471](https://github.com/amel-tech/medaris/issues/471)) ([9c0680a](https://github.com/amel-tech/medaris/commit/9c0680acbcd2f5ff4d19fc012a02974f1f97cb2e))
+* **nazar-web, tedris-web, tokens, docs:** MDRS-248 mixed Arabic-Turkish text in the page direction ([#476](https://github.com/amel-tech/medaris/issues/476)) ([7b5c0b7](https://github.com/amel-tech/medaris/commit/7b5c0b7c71ac4e748ec7c43a65a3eeb5b14961d0))
+
+## [2.18.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.17.1...tedris-web-v2.18.0) (2026-11-27)
+
+
+### Features
+
+* **nazar-web, tedris-web, i18n, docs:** MDRS-248 quick option entry and aligned status badges ([#465](https://github.com/amel-tech/medaris/issues/465)) ([02399a9](https://github.com/amel-tech/medaris/commit/02399a9b5ceb3b0944bb87abad9d61c35cfd3b8a))
+* **tedris-web, i18n, docs:** MDRS-248 çalışma soruları for the talebe ([#460](https://github.com/amel-tech/medaris/issues/460)) ([e397931](https://github.com/amel-tech/medaris/commit/e397931c66f22ba7ed6cbcb542db4840cf871135))
+* **tedris-web, i18n, docs:** MDRS-248 çalışma soruları UX for the talebe ([#463](https://github.com/amel-tech/medaris/issues/463)) ([2593d7a](https://github.com/amel-tech/medaris/commit/2593d7a32d05e03312481eb1e3da08a276345538))
+* **tedris-web, i18n, docs:** MDRS-248 list every course document on one tab ([#461](https://github.com/amel-tech/medaris/issues/461)) ([6c7a3d2](https://github.com/amel-tech/medaris/commit/6c7a3d250d97811baca8b4ced188a4c89aee8a63))
+* **tedrisat, services, tedris-web, nazar-web, i18n, docs:** MDRS-248 çalışma havuzu ([#462](https://github.com/amel-tech/medaris/issues/462)) ([8bb242c](https://github.com/amel-tech/medaris/commit/8bb242c758a6e0eb3b0963471c27eeb2ec4366d7))
+* **tedrisat, tedris-web, nazar-web, services, i18n:** MDRS-248 notify a talebe of an answer ([#456](https://github.com/amel-tech/medaris/issues/456)) ([0231291](https://github.com/amel-tech/medaris/commit/02312915e6dd3da2c136d1ff3e9feeb502ec4047))
+
+## [2.17.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.17.0...tedris-web-v2.17.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **tedrisat, tedris-web, nazar-web, ui, services, i18n, docs:** MDRS-299 release closes exam ([#452](https://github.com/amel-tech/medaris/issues/452)) ([01f6144](https://github.com/amel-tech/medaris/commit/01f614414226cf8fe0be36d12b35193c5f451ebc))
+
 ## [2.17.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.16.1...tedris-web-v2.17.0) (2026-11-24)
 
 

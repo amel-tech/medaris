@@ -1,5 +1,6 @@
 "use client";
 
+import type { ExamKind } from "@medaris/services/tedrisat";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
@@ -10,10 +11,21 @@ import { type FormEvent, useState } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { createOnlineExam } from "../actions";
-import { onlineExamErrorKey } from "../online-exams";
+import { onlineExamErrorKey, segmentOf } from "../online-exams";
 
-/** "Yeni sınav": a draft with its title; the page opens it to prepare. */
-export function NewExamForm({ courseId }: { courseId: string }) {
+/**
+ * "Yeni sınav": a draft with its title; the page opens it to prepare. With
+ * `kind: PRACTICE` it is "Yeni çalışma seti" (MDRS-248), opened under
+ * "Çalışma Soruları".
+ */
+export function NewExamForm({
+  courseId,
+  kind = "EXAM",
+}: {
+  courseId: string;
+  kind?: ExamKind;
+}) {
+  const practice = kind === "PRACTICE";
   const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
@@ -25,7 +37,7 @@ export function NewExamForm({ courseId }: { courseId: string }) {
     event.preventDefault();
     if (title.trim() === "") return;
     setBusy(true);
-    const result = await createOnlineExam(courseId, title.trim());
+    const result = await createOnlineExam(courseId, title.trim(), kind);
     setBusy(false);
     if (handleUnauthenticated(result)) return;
     if (!result.success) {
@@ -36,7 +48,7 @@ export function NewExamForm({ courseId }: { courseId: string }) {
       });
       return;
     }
-    router.push(`/ders/${courseId}/sinavlar/${result.data.id}`);
+    router.push(`/ders/${courseId}/${segmentOf(kind)}/${result.data.id}`);
   };
 
   return (
@@ -45,16 +57,27 @@ export function NewExamForm({ courseId }: { courseId: string }) {
       onSubmit={submit}
       noValidate
     >
-      <Field label={t("OnlineExams.newTitleLabel")}>
+      <Field
+        label={
+          practice
+            ? t("Practice.newTitleLabel")
+            : t("OnlineExams.newTitleLabel")
+        }
+      >
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={t("OnlineExams.newTitlePlaceholder")}
+          placeholder={
+            practice
+              ? t("Practice.newTitlePlaceholder")
+              : t("OnlineExams.newTitlePlaceholder")
+          }
           maxLength={200}
+          className={practice ? "w-80 max-w-full" : undefined}
         />
       </Field>
       <Button type="submit" loading={busy} disabled={title.trim() === ""}>
-        {t("OnlineExams.newExam")}
+        {practice ? t("Practice.newSet") : t("OnlineExams.newExam")}
       </Button>
     </form>
   );

@@ -80,3 +80,35 @@ export async function type(element: Element, value: string): Promise<void> {
     element.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
+
+/**
+ * Picks `label` in a searchable list (MultiCombobox): types it into the
+ * field as a person does, so the list opens, then takes the matching option.
+ */
+export async function pick(
+  input: HTMLInputElement,
+  label: string
+): Promise<void> {
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value"
+  )?.set;
+  await act(async () => {
+    input.focus();
+    setter?.call(input, label);
+    input.dispatchEvent(
+      new InputEvent("input", {
+        bubbles: true,
+        inputType: "insertText",
+        data: label,
+      })
+    );
+  });
+  await settle(60);
+  const option = [...document.querySelectorAll("[role=option]")].find(
+    (o) => o.textContent === label
+  );
+  if (!option) throw new Error(`no option "${label}"`);
+  await click(option);
+  await settle(30);
+}

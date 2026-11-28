@@ -81,7 +81,7 @@ needs:
       The course team downloads the evaluation board as a spreadsheet from Değerlendirme ("Excel indir"), saved as an .xlsx whose
       headers and words follow the viewer's language, and only a person who may manage the course's celses can.
     missing: >-
-      no Linear issue; evaluation-export-invalid-path: tedrisat serves the sheet (apps/tedrisat/test/e2e/exams.e2e.spec.ts:476
+      no Linear issue; evaluation-export-invalid-path: tedrisat serves the sheet (apps/tedrisat/test/e2e/exams.e2e.spec.ts:497
       downloads it and reads its zip header) and the page offers the link, but the web route between them is refused by the file
       proxy's own path check on every call
     note: >-

@@ -17,7 +17,7 @@ needs:
       - state: briefing
       - node: briefingFacts
       - node: startButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:822
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:796
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says in the briefing what A− and A+ do, and draws them"
     note: "Owner: \"sınava girerken talebeye 'bilmeniz gerekenler' ekranı gösterilecek\"."
@@ -33,7 +33,7 @@ needs:
       - node: hadithArabic
       - node: zerothOptions
       - node: startHint
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:866
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:840
       - test: apps/tedris/test/exam-take.spec.ts
         name: "asks for the zeroth answer before the start"
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
@@ -103,7 +103,7 @@ needs:
     evidence:
       - state: resuming
       - state: question
-      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:372
+      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:381
       - test: apps/tedris/test/exam-take.spec.ts
         name: "goes on with an attempt in progress where the talebe was"
 
@@ -116,8 +116,8 @@ needs:
       - state: question
       - node: radioOptions
       - node: checkOptions
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:675
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:692
+      - source: libs/ui/src/mds/question-sheet.tsx:114
+      - source: libs/ui/src/mds/question-sheet.tsx:140
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
         name: "saves every answer by the page's count, and only what fits the question"
     note: >-
@@ -132,8 +132,8 @@ needs:
     evidence:
       - state: question
       - node: savedLine
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:241
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:607
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:219
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:605
       - test: apps/tedris/test/exam-take.spec.ts
         name: "shows a choice at once, and a late answer to an earlier save does not take it back"
     note: "Owner: \"her soruda cevap seçildiğinde ilerle geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek direk 'sınav bitti tüm cevapları tek seferde gönder' demeye gerek yok\"."
@@ -143,12 +143,10 @@ needs:
       When an answer cannot be saved because the connection is gone, the page says so at that question, keeps the choice, and sends
       it as soon as it can. It never shows an answer as saved that the server does not hold.
     evidence:
-      - state: offline
       - state: question
       - node: offlineAlert
-      - node: notSavedLine
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:622
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:613
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:630
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:611
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload"
     note: >-
@@ -163,7 +161,9 @@ needs:
     evidence:
       - state: question
       - node: timer
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:589
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:587
+      - test: apps/tedris/test/exam-take.spec.ts
+        name: "asks the server for the clock every 10 seconds while the countdown runs (EXM-TAKE-15)"
     note: "Owner: \"sınav ekranında geri sayım olacak\"."
 
   - id: the-last-five-minutes-stand-out
@@ -173,7 +173,7 @@ needs:
     evidence:
       - state: question
       - node: lastFive
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:593
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:591
     note: "Owner: \"son 5 dk kala geri sayım mesela kırmızı olacak ki anlaşılsın\"."
 
   - id: the-time-running-out-ends-it
@@ -199,7 +199,7 @@ needs:
     evidence:
       - state: question
       - node: questionList
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:728
+      - source: apps/tedris/features/online-exams/components/question-parts.tsx:275
       - test: apps/tedris/test/exam-take.spec.ts
         name: "colours the question list: unanswered plain, answered blue, skipped dark yellow, the current one ringed"
     note: "Owner: \"soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir böylece\"."
@@ -210,8 +210,8 @@ needs:
       - state: question
       - node: previousButton
       - node: nextButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:708
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:721
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:696
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:714
 
   - id: skip-a-question
     need: >-
@@ -220,7 +220,7 @@ needs:
     evidence:
       - state: question
       - node: skipButton
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:710
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:713
     note: "Owner: \"soruyu atla seçeneği olacak\"."
 
   - id: the-skipped-come-back-after-the-last
@@ -230,7 +230,7 @@ needs:
     evidence:
       - state: skippedTurn
       - node: skippedNotice
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:529
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:510
     note: "Owner: \"son soruya gelindiğinde atlanan sorulara dönülecek\"."
 
   - id: finish-asks-once
@@ -242,7 +242,7 @@ needs:
       - state: finished
       - node: finishButton
       - node: finishDialog
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:771
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:745
     note: "Owner: \"en son sınavı bitir butonuyla sınav bitecek\"."
 
   - id: resume-after-a-lost-connection
@@ -251,10 +251,10 @@ needs:
       where they stopped: the same question, every saved answer, and the time that was left when the connection was lost, since the
       clock does not run meanwhile. The page says the exam was resumed.
     evidence:
-      - state: offline
+      - state: question
       - state: resuming
       - node: resumedNotice
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:423
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:404
       - test: apps/tedris/test/exam-take.spec.ts
         name: "sends the choices kept before a reload once the attempt is taken back"
     note: >-
@@ -290,7 +290,7 @@ needs:
       - state: notingSwitch
       - node: factSwitch
       - node: switchedNotice
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:829
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:803
 
   - id: one-place-at-a-time
     need: >-
@@ -313,7 +313,7 @@ needs:
       scores the exam. No talebe can read another's order or answers.
     evidence:
       - state: question
-      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:311
+      - source: apps/tedrisat/src/online-exam/exam-attempt.service.ts:320
       - test: apps/tedrisat/test/e2e/exam-attempts.e2e.spec.ts
         name: "starts only with the zeroth question answered, in an order of the talebe's own"
 
@@ -356,10 +356,12 @@ needs:
       question, the question's number and the count are said ("12/50"), going to a question puts the focus on its text, and the
       question list says each question's state in words, not by colour alone.
     evidence:
-      - state: question
       - node: radioOptions
       - node: questionListItem
     missing: "MDRS-299: built with roles and names (the options as a radio group or check boxes, the list's numbers named with their state, the countdown a timer), but not walked with the keyboard alone or with a screen reader"
+    note: >-
+      It is about the state question, which is built. Read from the code, not walked: the options' group is named "Şıklar", not by the
+      question, and nothing moves the focus to a question (rules EXM-TAKE-9, EXM-TAKE-10).
 
   - id: the-end-says-what-comes-next
     need: >-
@@ -369,8 +371,8 @@ needs:
       - state: finished
       - node: resultWhere
       - node: toMine
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:931
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:933
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:905
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:907
 
   - id: the-text-size-can-change
     need: >-
@@ -381,7 +383,7 @@ needs:
       - node: textSmallerButton
       - node: textBiggerButton
       - node: factTextSize
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:647
+      - source: apps/tedris/features/online-exams/components/question-parts.tsx:144
       - test: apps/tedris/test/exam-take.spec.ts
         name: "zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload"
       - test: apps/tedris/test/exam-take.spec.ts
@@ -412,8 +414,8 @@ needs:
       When a new version of Medaris is deployed while the exam is open, the page says so and how to go on, and no choice made on it is
       lost.
     evidence:
-      - state: offline
-      - source: apps/tedris/features/online-exams/components/exam-take.tsx:613
+      - state: question
+      - source: apps/tedris/features/online-exams/components/exam-take.tsx:611
       - test: apps/tedris/test/exam-take.spec.ts
         name: "says Medaris was updated when a save names a gone Server Action, and keeps the choice for the reload"
       - test: apps/tedris/test/exam-take.spec.ts

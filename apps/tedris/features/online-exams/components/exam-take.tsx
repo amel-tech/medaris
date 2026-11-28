@@ -3,22 +3,18 @@
 import type {
   ExamAttemptResponse,
   ExamBriefingResponse,
+  MyQuestionNoteResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Button } from "@medaris/ui/mds/button";
-import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { unstable_isUnrecognizedActionError as isStaleAction } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { QuestionNote } from "~/features/question-notes/components/question-note";
+import { notesOf, showsNote } from "~/features/question-notes/note-model";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   answerZerothQuestion,
@@ -30,7 +26,6 @@ import {
   startExamAttempt,
   tickExamClock,
 } from "../actions";
-import { textProps } from "../arabic";
 import {
   clockText,
   holderIdFor,
@@ -38,7 +33,6 @@ import {
   type LocalAnswer,
   nextIndex,
   pointsText,
-  type QuestionState,
   readTextScale,
   readUnsent,
   stateOf,
@@ -48,6 +42,15 @@ import {
   writeTextScale,
   writeUnsent,
 } from "../take-model";
+import { ArabicText } from "./arabic-text";
+import {
+  QuestionListToggle,
+  QuestionNavigator,
+  QuestionSheet,
+  TakeKeys,
+  TextSizeButtons,
+  useQuestionList,
+} from "./question-parts";
 
 type Phase = "briefing" | "running" | "elsewhere" | "ended";
 
@@ -76,41 +79,6 @@ const lostConnection = (result: unknown) => {
  * opens the exam takes the attempt; this one says so and can take it back.
  * Coming back from another tab is counted for the team.
  */
-/**
- * The question list's colours (the owner, 22 Nov 2026: "cevaplanmamışsa sarı
- * olsun, atlanmışsa turuncu olsun, cevaplanmışsa beyaz/dark olsun"), set
- * inline so no stylesheet order can undo them. Unanswered is the warning
- * pair; skipped is the warning's bold fill, the closest the system has to
- * orange (it has no orange token); answered is the sheet itself, white by
- * day and dark by night. The current question carries a brand ring on top.
- * Each button's name says its state too, so colour is never the only cue.
- */
-const INDICATOR: Record<QuestionState, CSSProperties> = {
-  // Not answered yet: plain.
-  unseen: {
-    background: "var(--background-neutral-surface)",
-    borderColor: "var(--border-neutral-strong)",
-    color: "var(--text-neutral-default)",
-  },
-  // Skipped: dark yellow.
-  skipped: {
-    background: "var(--background-warning-bold)",
-    borderColor: "var(--border-warning-default)",
-    color: "var(--text-neutral-on-bold)",
-  },
-  // Answered: blue.
-  answered: {
-    background: "var(--background-info-bold)",
-    borderColor: "var(--border-info-default)",
-    color: "var(--text-neutral-on-bold)",
-  },
-};
-
-const CURRENT: CSSProperties = {
-  boxShadow:
-    "0 0 0 2px var(--background-neutral-page), 0 0 0 4px var(--border-brand-default)",
-};
-
 /** How long the page must be away before coming back counts as a switch. */
 export const SWITCH_MIN_MS = 2000;
 
@@ -124,6 +92,7 @@ export function ExamTake({
   briefing: ExamBriefingResponse;
 }) {
   const t = useTranslations("tedrisLearn.OnlineExam");
+  const tb = useTranslations("tedris.TakeBar");
   const locale = useLocale();
   const { notify } = useToaster();
   const at = (value: Date | string) =>
@@ -144,6 +113,10 @@ export function ExamTake({
   );
   const [attempt, setAttempt] = useState<ExamAttemptResponse | null>(null);
   const [answers, setAnswers] = useState<Map<string, LocalAnswer>>(new Map());
+  // The talebe's note of each question (soru notları), as the icon shows it.
+  const [notes, setNotes] = useState<
+    Map<string, MyQuestionNoteResponse | null>
+  >(new Map());
   const [index, setIndex] = useState(0);
   const [left, setLeft] = useState(0);
   const [offline, setOffline] = useState(false);
@@ -165,6 +138,7 @@ export function ExamTake({
   const [notice, setNotice] = useState<string | null>(null);
   // A− / A+ on the questions' text, kept for this exam in this tab (a reload keeps it).
   const [textStep, setTextStep] = useState(0);
+  const list = useQuestionList();
   // The page's width without its scrollbar: the running exam grows with A+
   // and takes all of it at the largest step.
   const [pageWidth, setPageWidth] = useState(0);
@@ -230,6 +204,11 @@ export function ExamTake({
     },
     [notify, reread, t]
   );
+  // The latest `refused`, for the effects that must outlive a render: the
+  // countdown renders every second, and an interval restarted with it never
+  // reached its 10 seconds (EXM-TAKE-15).
+  const refusedRef = useRef(refused);
+  refusedRef.current = refused;
 
   const send = useCallback(
     async (questionId: string, answer: LocalAnswer) => {
@@ -290,6 +269,7 @@ export function ExamTake({
       // A choice made while the connection was lost stands over the server's.
       for (const [id, answer] of unsent.current) held.set(id, answer);
       setAnswers(held);
+      setNotes(notesOf(a.questions));
       const at = a.questions.findIndex((q) => q.id === a.currentQuestionId);
       setIndex(at === -1 ? 0 : at);
       setLeft(a.secondsLeft);
@@ -321,7 +301,9 @@ export function ExamTake({
     if (initial.attempt?.status === "IN_PROGRESS") void resume();
   }, []);
 
-  // The countdown between the server's counts, and the count itself.
+  // The countdown between the server's counts, and the count itself. Both
+  // run for as long as the exam does: nothing that changes with a render
+  // restarts them.
   useEffect(() => {
     if (phase !== "running" || offline) return;
     const second = window.setInterval(
@@ -331,7 +313,7 @@ export function ExamTake({
     const tick = window.setInterval(async () => {
       try {
         const result = await tickExamClock(lessonId, holderId());
-        if (!result.success) return refused(result);
+        if (!result.success) return refusedRef.current(result);
         if (result.data.status === "FINISHED") {
           await reread();
           setPhase("ended");
@@ -347,7 +329,7 @@ export function ExamTake({
       window.clearInterval(second);
       window.clearInterval(tick);
     };
-  }, [phase, offline, lessonId, refused, reread]);
+  }, [phase, offline, lessonId, reread]);
 
   // At zero the server is asked at once, and it ends the attempt.
   const atZero = phase === "running" && left === 0;
@@ -395,7 +377,7 @@ export function ExamTake({
         if (result.success) {
           notify({ tone: "info", title: t("switchCounted") });
         } else {
-          refused(result);
+          refusedRef.current(result);
         }
       } catch (error) {
         if (isStaleAction(error)) setStale(true);
@@ -415,7 +397,7 @@ export function ExamTake({
       window.removeEventListener("blur", away);
       window.removeEventListener("focus", onFocus);
     };
-  }, [lessonId, notify, refused, t]);
+  }, [lessonId, notify, t]);
 
   // The connection back: the attempt is taken back and the kept choices sent.
   useEffect(() => {
@@ -545,9 +527,18 @@ export function ExamTake({
     // A− / A+ zoom the whole exam: the bar, the question, its buttons and the
     // list. The area widens with each step past the page's column, and the
     // largest step spans the whole width of the screen.
+    // The end: the last question, or every one answered. "Bitir" then takes
+    // "Sonraki"'s place under the options; the bar has it all along.
+    const following = nextIndex(ids, answers, index);
+    const atEnd =
+      following === null || index === questions.length - 1 || unanswered === 0;
+    const goOn = () => {
+      if (atEnd) setAsking(true);
+      else go(following, following !== null && following <= index);
+    };
+
     const scale = TEXT_SCALES[textStep];
     const widest = textStep === TEXT_SCALES.length - 1;
-    const optionText = (text: string) => textProps(text, "var(--fs-body)", 1);
 
     return (
       <div
@@ -571,12 +562,20 @@ export function ExamTake({
           }}
         >
           <div
-            className="flex flex-col gap-section"
+            className="take-column flex flex-col gap-section"
+            data-take-screen
             style={{ zoom: scale }}
             data-text-scale={scale}
           >
+            <TakeKeys
+              question={q}
+              chosen={mine?.optionIds ?? []}
+              onChoose={choose}
+              onEnter={goOn}
+              off={asking}
+            />
             <section
-              className="mds-card flex flex-wrap items-center justify-between gap-3"
+              className="mds-card take-bar take-bar--exam flex flex-wrap items-center justify-between gap-3"
               aria-label={t("barLabel")}
             >
               <p
@@ -607,6 +606,24 @@ export function ExamTake({
                     ? t("saved")
                     : ""}
               </p>
+              {/* Once, for the whole exam: the step zooms every question. */}
+              <TextSizeButtons
+                step={textStep}
+                onStep={stepText}
+                smallerLabel={t("textSmaller")}
+                biggerLabel={t("textBigger")}
+                groupLabel={tb("textSizeLabel")}
+              />
+              <QuestionListToggle list={list} label={t("questionsTitle")} />
+              {/* Up here, away from "Sonraki": ending is never one slip from going on. */}
+              <Button
+                size="small"
+                variant="secondary"
+                onClick={() => setAsking(true)}
+                data-testid="finish-in-bar"
+              >
+                {t("finish")}
+              </Button>
             </section>
 
             {offline && stale ? (
@@ -630,139 +647,97 @@ export function ExamTake({
             ) : null}
 
             {q ? (
-              <section
-                className="mds-card flex flex-col gap-3"
-                aria-labelledby="exam-question"
+              // As on the çalışma soruları (practice-take.tsx): the question
+              // above its options, side by side only when that does not fit.
+              <QuestionSheet
+                textId="exam-question"
+                textAs="h1"
+                text={q.text}
+                question={q}
+                chosen={mine?.optionIds ?? []}
+                onChoose={choose}
+                legend={t("optionsLegend")}
+                multiHint={tb("multiHint")}
+                questionPaneLabel={tb("questionPane")}
+                optionsPaneLabel={tb("optionsPane")}
+                watch={q.id}
+                fit
+                head={
+                  // The note icon at the end of this line (soru notları): a
+                  // personal note may be written during the exam; sending it
+                  // to the hoca waits until the exam is over.
+                  <>
+                    <p className="mds-caption text-neutral-muted">
+                      {t("questionPoints", {
+                        points: pointsText(q.points, locale),
+                      })}
+                    </p>
+                    {showsNote(q) ? (
+                      <QuestionNote
+                        key={q.id}
+                        questionId={q.id}
+                        questionNumber={index + 1}
+                        note={notes.get(q.id) ?? null}
+                        onChange={(note) =>
+                          setNotes((all) => new Map(all).set(q.id, note))
+                        }
+                        enabled={q.talebeNotes === true}
+                        shareLock
+                      />
+                    ) : null}
+                  </>
+                }
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="mds-caption text-neutral-muted">
-                    {t("questionPoints", {
-                      points: pointsText(q.points, locale),
-                    })}
-                  </p>
-                  <div className="flex gap-1">
+                {/* As on the çalışma soruları (practice-take.tsx): right under
+                    the options, back and skip on the start side, the one
+                    button that leads on the end side, "Bitir" at the end. */}
+                <div className="take-nav" data-testid="take-nav">
+                  <div className="take-nav__back">
                     <Button
-                      size="small"
                       variant="outline"
-                      aria-label={t("textSmaller")}
-                      disabled={textStep === 0}
-                      onClick={() => stepText(-1)}
+                      disabled={index === 0}
+                      onClick={() => go(index - 1)}
                     >
-                      A−
+                      {t("previous")}
                     </Button>
-                    <Button
-                      size="small"
-                      variant="outline"
-                      aria-label={t("textBigger")}
-                      disabled={textStep === TEXT_SCALES.length - 1}
-                      onClick={() => stepText(1)}
-                    >
-                      A+
+                    <Button variant="ghost" onClick={skip}>
+                      {t("skip")}
                     </Button>
                   </div>
-                </div>
-                <h1
-                  id="exam-question"
-                  className="mds-body"
-                  {...textProps(q.text, "var(--fs-body)", 1)}
-                >
-                  {q.text}
-                </h1>
-                {q.answerMode === "MULTIPLE" ? (
-                  <fieldset className="mds-choice-group">
-                    <legend className="mds-label">{t("optionsLegend")}</legend>
-                    {q.options.map((o) => (
-                      <Checkbox
-                        key={o.id}
-                        label={<span {...optionText(o.text)}>{o.text}</span>}
-                        checked={mine?.optionIds.includes(o.id) ?? false}
-                        onCheckedChange={(on) =>
-                          choose(
-                            on
-                              ? [...(mine?.optionIds ?? []), o.id]
-                              : (mine?.optionIds ?? []).filter(
-                                  (id) => id !== o.id
-                                )
-                          )
-                        }
-                      />
-                    ))}
-                  </fieldset>
-                ) : (
-                  <RadioGroup
-                    legend={t("optionsLegend")}
-                    value={mine?.optionIds[0] ?? null}
-                    onChange={(value) => choose([value])}
-                    options={q.options.map((o) => ({
-                      value: o.id,
-                      label: <span {...optionText(o.text)}>{o.text}</span>,
-                    }))}
-                  />
-                )}
-                <div className="flex flex-wrap gap-2">
                   <Button
-                    variant="outline"
-                    disabled={index === 0}
-                    onClick={() => go(index - 1)}
+                    className="take-nav__go"
+                    aria-keyshortcuts="Enter"
+                    onClick={goOn}
                   >
-                    {t("previous")}
+                    {atEnd ? t("finish") : t("next")}
                   </Button>
-                  <Button variant="ghost" onClick={skip}>
-                    {t("skip")}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={nextIndex(ids, answers, index) === null}
-                    onClick={() => {
-                      const to = nextIndex(ids, answers, index);
-                      go(to, to !== null && to <= index);
-                    }}
-                  >
-                    {t("next")}
-                  </Button>
-                  <Button onClick={() => setAsking(true)}>{t("finish")}</Button>
                 </div>
-              </section>
+              </QuestionSheet>
             ) : null}
 
-            <nav
-              className="mds-card flex flex-col gap-2"
-              aria-label={t("questionsTitle")}
-            >
-              <h2 className="mds-h3">{t("questionsTitle")}</h2>
-              <ol className="flex flex-wrap gap-2">
-                {questions.map((it, i) => {
-                  const state = stateOf(answers.get(it.id));
-                  return (
-                    <li key={it.id}>
-                      <Button
-                        size="small"
-                        variant="outline"
-                        data-state={state}
-                        style={{
-                          ...INDICATOR[state],
-                          ...(i === index ? CURRENT : null),
-                        }}
-                        aria-current={i === index ? "step" : undefined}
-                        aria-label={t("listItemLabel", {
-                          number: String(i + 1),
-                          state: t(
-                            state === "answered"
-                              ? "stateAnswered"
-                              : state === "skipped"
-                                ? "stateSkipped"
-                                : "stateUnseen"
-                          ),
-                        })}
-                        onClick={() => go(i)}
-                      >
-                        {i + 1}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
+            <QuestionNavigator
+              items={questions.map((it) => ({
+                id: it.id,
+                state: stateOf(answers.get(it.id)),
+              }))}
+              index={index}
+              onGo={(i) => go(i)}
+              title={t("questionsTitle")}
+              list={list}
+              closeLabel={tb("listClose")}
+              itemLabel={(number, state) =>
+                t("listItemLabel", {
+                  number: String(number),
+                  state: t(
+                    state === "answered"
+                      ? "stateAnswered"
+                      : state === "skipped"
+                        ? "stateSkipped"
+                        : "stateUnseen"
+                  ),
+                })
+              }
+            />
 
             <AlertDialog
               open={asking}
@@ -816,9 +791,14 @@ export function ExamTake({
         aria-labelledby="exam-briefing"
       >
         <p className="mds-caption text-neutral-muted">{brief.courseTitle}</p>
-        <h1 id="exam-briefing" className="mds-h2" dir="auto">
-          {brief.title}
-        </h1>
+        <ArabicText
+          as="h1"
+          id="exam-briefing"
+          className="mds-h2"
+          size="var(--fs-h2)"
+          weight="var(--weight-semibold)"
+          text={brief.title}
+        />
         <h2 className="mds-h3">{t("briefingTitle")}</h2>
         <ul className="mds-body flex list-disc flex-col gap-1 ps-5">
           <li>{t("factLength", { minutes: String(brief.durationMinutes) })}</li>
@@ -830,7 +810,7 @@ export function ExamTake({
           <li>{t("factSkip")}</li>
           <li>{t("factColors")}</li>
           <li>
-            {t("factTextSize")}{" "}
+            {tb("textSizeFact")}{" "}
             {/* What the two buttons look like; the sentence says what they do. */}
             <span
               className="inline-flex gap-1 align-middle"
@@ -870,12 +850,12 @@ export function ExamTake({
           </p>
           <p className="mds-body text-center">{t("hadithMeaning")}</p>
           <RadioGroup
-            legend={<span dir="auto">{brief.zeroth.question}</span>}
+            legend={<ArabicText text={brief.zeroth.question} />}
             value={zeroth}
             onChange={(value) => void chooseZeroth(value)}
             options={brief.zeroth.options.map((o) => ({
               value: o.id,
-              label: <span dir="auto">{o.text}</span>,
+              label: <ArabicText text={o.text} />,
             }))}
             help={t("zerothNote")}
             error={zerothFailed ? t("notSaved") : undefined}

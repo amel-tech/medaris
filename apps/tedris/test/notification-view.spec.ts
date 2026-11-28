@@ -165,6 +165,65 @@ describe("describeNotification (tedris/36 sentences)", () => {
     expect(notificationHref(n)).toBe(`/courses/${COURSE}/lessons/${SESSION}`);
   });
 
+  it("words an answered question and leads to the celse's questions (MDRS-248)", () => {
+    const n = notification({
+      type: "QUESTION_ANSWERED",
+      targetType: "SESSION",
+      targetId: SESSION,
+      params: {
+        courseTitle: "Emsile ve Bina",
+        courseId: COURSE,
+        sessionLabel: "Birinci bab",
+        source: "Nûruosmaniye Köşkü",
+      },
+    });
+    expect(describeAs(n)).toEqual({
+      title: "Soruna cevap verildi",
+      body: "Emsile ve Bina dersinin Birinci bab celsesinde sorduğun soruya cevap verildi.",
+      source: "Nûruosmaniye Köşkü",
+    });
+    expect(describeAs(n, "en")).toMatchObject({
+      title: "Your question was answered",
+      body: "The question you asked on Birinci bab in Emsile ve Bina was answered.",
+    });
+    expect(notificationIcon("QUESTION_ANSWERED")).toBe("chats");
+    expect(notificationHref(n)).toBe(
+      `/courses/${COURSE}/lessons/${SESSION}/izle?soru=1`
+    );
+    expect(notificationHref({ ...n, params: {} })).toBeNull();
+  });
+
+  it("words an answered question note and leads to the course's notes (MDRS-248, soru notları)", () => {
+    const n = notification({
+      type: "QUESTION_NOTE_REPLIED",
+      targetType: "COURSE",
+      targetId: COURSE,
+      params: {
+        courseTitle: "Emsile ve Bina",
+        courseId: COURSE,
+        examId: "e1",
+        setTitle: "Birinci bab",
+        examKind: "PRACTICE",
+        source: "Nûruosmaniye Köşkü",
+      },
+    });
+    expect(describeAs(n)).toEqual({
+      title: "Hocan notunu cevapladı",
+      body: "Emsile ve Bina dersinde, Birinci bab içindeki bir soruya yazdığın notun cevabını Çalışma Soruları › Notlarım’da görebilirsin.",
+      source: "Nûruosmaniye Köşkü",
+    });
+    expect(describeAs(n, "en").title).toBe("Your teacher answered your note");
+    expect(describeAs(n, "ar").title).toBe("أجاب أستاذك عن ملاحظتك");
+    // No set title is no broken sentence.
+    expect(describeAs({ ...n, params: {} }).body).not.toContain("{");
+    expect(notificationIcon("QUESTION_NOTE_REPLIED")).toBe("note");
+    expect(notificationHref(n)).toBe(`/calisma-sorulari/notlar?ders=${COURSE}`);
+    // Every other course notification still leads to the course.
+    expect(notificationHref({ ...n, type: "ENROLLMENT_APPROVED" })).toBe(
+      `/courses/${COURSE}`
+    );
+  });
+
   it("words a recording whose session has no start without one (MDRS-283)", () => {
     const text = describeAs(
       notification({
@@ -248,7 +307,7 @@ describe("describeNotification (tedris/36 sentences)", () => {
 
   it("has a sentence for every type in every language", () => {
     const types = Object.keys(resources.tr.tedris.NotificationsPage.types);
-    expect(types).toHaveLength(14);
+    expect(types).toHaveLength(16);
     for (const locale of ["tr", "en", "ar"] as const) {
       for (const type of types) {
         const text = describeAs(

@@ -23,6 +23,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -86,12 +87,15 @@ export class ExamController {
   @ApiOperation({
     summary: "Open an exam's results to its talebe",
     description:
-      '"Sonuçları talebelere aç": `session.manage` on the course. From then on each talebe reads their own score on `GET /courses/:id/my-grades`; before it, nobody but the course team does. Once only: opening them again changes nothing and tells nobody. The first time, the course\'s talebe are told (`EXAM_RESULTS_RELEASED`) and it is written to `audit_log` as `exam.release`.',
+      "\"Sonuçları talebelere aç\": `session.manage` on the course. From then on each talebe reads their own score on `GET /courses/:id/my-grades`; before it, nobody but the course team does. Once only: opening them again changes nothing and tells nobody. The first time, the course's talebe are told (`EXAM_RESULTS_RELEASED`) and it is written to `audit_log` as `exam.release`. An online exam's celse (MDRS-299) is released only once the exam has opened (otherwise 409 EXAM_NOT_OPEN), and the release ends it for everyone in the same transaction, as `closeOnlineExamEarly` does: every attempt in progress ends with its saved answers and is scored, the exam is closed early at the release's time (`online_exam.close` with `via: exam.release`) and no one starts it any more. An online exam that has closed for everyone already keeps its close as it was.",
     operationId: "releaseExamResults",
   })
   @ApiOkResponse({ type: ExamReleaseResponse })
   @ApiForbiddenResponse({ description: "No `session.manage` on the course." })
   @ApiNotFoundResponse({ description: "LESSON_NOT_FOUND, EXAM_NOT_FOUND" })
+  @ApiConflictResponse({
+    description: "EXAM_NOT_OPEN: an online exam that has not opened yet",
+  })
   @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
   @HttpCode(HttpStatus.OK)
   @Post("lessons/:id/exam-results/release")

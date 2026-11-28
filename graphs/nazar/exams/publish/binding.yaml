@@ -1,0 +1,253 @@
+# nazar.exams.publish on the local stack: the section "Yayınla" of a draft online exam of a course the walk makes, and its page once
+# published, as the course's hoca (muderris), at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/exams/publish --bind graphs/nazar/exams/publish/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# Each scenario makes its own course with helpers/course.mjs (published, in the seed's second köşk, the müderris as its hoca, one week of
+# one celse, no talebe) and its own exam with helpers/exams.mjs (three complete questions and the course's own zeroth question, 20
+# minutes), and removes both in `teardown` (exams.mjs remove first: the notifications and mails of the exam's celse). Tags begin with xn.
+#   draft     the main story. "Deneme sınavı xnPqNow", a complete draft: "Şimdi yayınla", the question, and the open exam; from the same
+#             start the walks also schedule it at the next whole hour, take it back to a draft, and make each write fail.
+#   lateZero  the same draft with 0 typed as the late window: the field says what it takes, and nothing is asked.
+#   pastDate  the same draft with 15 Jan 2020 typed as the date: "Bu saat geçti; ileri bir saat seçin."
+#   noDate    the same draft with the date cleared: "Tarih ve saat seçin."
+#   notReady  "Deneme sınavı xnPqPart", made --incomplete --no-zeroth: its last question has no right option and the course has no
+#             zeroth question, so the section lists both and offers no button.
+#   scheduled "Deneme sınavı xnPqLater", published two hours ahead: "Zamanlandı" and "Taslağa al".
+#   opened    "Deneme sınavı xnPqOpen", published now: "Yayında", read-only, with no counts and no close.
+#   over      "Deneme sınavı xnPqOver", published now and closed by the team: "Bitti".
+#   shutOut   the seeded ders nazırı (dersNazir) with no code on "Deneme dersi xnPbShut": the page refuses her.
+# Not bound, and why:
+#   - formOpen "yes" (the button off while a question's form is open in the editor): the form is nazar.exams.edit's; no walk of this
+#     flow opens one.
+#   - FAIL.timePassed, FAIL.readAgain, FAIL.forbidden and FAIL.invalid of the three writes: the page checks the time and the
+#     minutes before it sends, and nothing on the stack makes tedrisat refuse in between (someone else publishing, the grant taken
+#     away). FAIL.other is walked by aborting the page's server action in the browser (`fail: abort`): the toast says "Kaydedilemedi".
+#   - FAIL.gone and FAIL.other of the read, and loadFailed's RETRY: a 404 or a failed read of tedrisat the walk cannot cause.
+#   - OPENS of a scheduled exam: the page is not drawn again when it opens (need opens-by-itself, missing).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.exams.publish
+
+browser: { width: 1440, height: 900 }
+
+data:
+  xnPbNow: { json: ../.local/made/xnPbNow.json }
+  xnPqNow: { json: ../.local/made/xnPqNow.json }
+  xnPbPart: { json: ../.local/made/xnPbPart.json }
+  xnPqPart: { json: ../.local/made/xnPqPart.json }
+  xnPbLater: { json: ../.local/made/xnPbLater.json }
+  xnPqLater: { json: ../.local/made/xnPqLater.json }
+  xnPbOpen: { json: ../.local/made/xnPbOpen.json }
+  xnPqOpen: { json: ../.local/made/xnPqOpen.json }
+  xnPbOver: { json: ../.local/made/xnPbOver.json }
+  xnPqOver: { json: ../.local/made/xnPqOver.json }
+  xnPbShut: { json: ../.local/made/xnPbShut.json }
+  xnPqShut: { json: ../.local/made/xnPqShut.json }
+
+samples:
+  duration: '20'
+  count: '3'
+
+scenarios:
+  draft:
+    given: { may: yes, status: draft, complete: yes, formOpen: "no", lateMinutes: fit, when: future }
+    as: muderris
+    open: '{nazar}/ders/{xnPbNow.course}/sinavlar/{xnPqNow.exam}'
+    vars: { quiz: xnPqNow, late: '10', date: '2030-01-15' }
+    samples: { title: Deneme sınavı xnPqNow, minutes: '10' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbNow, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbNow"'
+      - run: [node, helpers/exams.mjs, make, xnPqNow, --course, xnPbNow]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqNow]
+      - run: [node, helpers/course.mjs, remove, xnPbNow]
+        expect: course remove xnPbNow
+  lateZero:
+    given: { may: yes, status: draft, complete: yes, formOpen: "no", lateMinutes: unfit, when: future }
+    as: muderris
+    open: '{nazar}/ders/{xnPbNow.course}/sinavlar/{xnPqNow.exam}'
+    vars: { quiz: xnPqNow, late: '0', date: '2030-01-15' }
+    samples: { title: Deneme sınavı xnPqNow }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbNow, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbNow"'
+      - run: [node, helpers/exams.mjs, make, xnPqNow, --course, xnPbNow]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqNow]
+      - run: [node, helpers/course.mjs, remove, xnPbNow]
+        expect: course remove xnPbNow
+  pastDate:
+    given: { may: yes, status: draft, complete: yes, formOpen: "no", lateMinutes: fit, when: past }
+    as: muderris
+    open: '{nazar}/ders/{xnPbNow.course}/sinavlar/{xnPqNow.exam}'
+    vars: { quiz: xnPqNow, late: '10', date: '2020-01-15' }
+    samples: { title: Deneme sınavı xnPqNow }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbNow, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbNow"'
+      - run: [node, helpers/exams.mjs, make, xnPqNow, --course, xnPbNow]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqNow]
+      - run: [node, helpers/course.mjs, remove, xnPbNow]
+        expect: course remove xnPbNow
+  noDate:
+    given: { may: yes, status: draft, complete: yes, formOpen: "no", lateMinutes: fit, when: unset }
+    as: muderris
+    open: '{nazar}/ders/{xnPbNow.course}/sinavlar/{xnPqNow.exam}'
+    vars: { quiz: xnPqNow, late: '10', date: '' }
+    samples: { title: Deneme sınavı xnPqNow }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbNow, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbNow"'
+      - run: [node, helpers/exams.mjs, make, xnPqNow, --course, xnPbNow]
+        expect: '"status":"DRAFT"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqNow]
+      - run: [node, helpers/course.mjs, remove, xnPbNow]
+        expect: course remove xnPbNow
+  notReady:
+    given: { may: yes, status: draft, complete: "no", formOpen: "no", lateMinutes: fit, when: future }
+    as: muderris
+    open: '{nazar}/ders/{xnPbPart.course}/sinavlar/{xnPqPart.exam}'
+    vars: { quiz: xnPqPart, late: '10', date: '2030-01-15' }
+    samples: { title: Deneme sınavı xnPqPart, n: '3' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbPart, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbPart"'
+      - run: [node, helpers/exams.mjs, make, xnPqPart, --course, xnPbPart, --incomplete, --no-zeroth]
+        expect: '"problems":["QUESTION","NO_ZEROTH"]'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqPart]
+      - run: [node, helpers/course.mjs, remove, xnPbPart]
+        expect: course remove xnPbPart
+  scheduled:
+    given: { may: yes, status: scheduled, complete: yes, formOpen: "no", lateMinutes: fit, when: future }
+    as: muderris
+    open: '{nazar}/ders/{xnPbLater.course}/sinavlar/{xnPqLater.exam}'
+    vars: { quiz: xnPqLater, late: '10', date: '2030-01-15' }
+    samples: { title: Deneme sınavı xnPqLater }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbLater, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbLater"'
+      - run: [node, helpers/exams.mjs, make, xnPqLater, --course, xnPbLater, --publish, '+120']
+        expect: '"status":"SCHEDULED"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqLater]
+      - run: [node, helpers/course.mjs, remove, xnPbLater]
+        expect: course remove xnPbLater
+  opened:
+    given: { may: yes, status: open, complete: yes, formOpen: "no", lateMinutes: fit, when: future }
+    as: muderris
+    open: '{nazar}/ders/{xnPbOpen.course}/sinavlar/{xnPqOpen.exam}'
+    vars: { quiz: xnPqOpen, late: '10', date: '2030-01-15' }
+    samples: { title: Deneme sınavı xnPqOpen }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbOpen, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbOpen"'
+      - run: [node, helpers/exams.mjs, make, xnPqOpen, --course, xnPbOpen, --publish, now]
+        expect: '"status":"OPEN"'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqOpen]
+      - run: [node, helpers/course.mjs, remove, xnPbOpen]
+        expect: course remove xnPbOpen
+  over:
+    given: { may: yes, status: closed, complete: yes, formOpen: "no", lateMinutes: fit, when: future }
+    as: muderris
+    open: '{nazar}/ders/{xnPbOver.course}/sinavlar/{xnPqOver.exam}'
+    vars: { quiz: xnPqOver, late: '10', date: '2030-01-15' }
+    samples: { title: Deneme sınavı xnPqOver }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbOver, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbOver"'
+      - run: [node, helpers/exams.mjs, make, xnPqOver, --course, xnPbOver, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, close, xnPqOver]
+        expect: CLOSED
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xnPqOver]
+      - run: [node, helpers/course.mjs, remove, xnPbOver]
+        expect: course remove xnPbOver
+  shutOut:
+    given: { may: "no", status: draft, complete: yes, formOpen: "no", lateMinutes: fit, when: future }
+    as: dersNazir
+    open: '{nazar}/ders/{xnPbShut.course}/sinavlar/{xnPqShut.exam}'
+    vars: { quiz: xnPqShut, late: '10', date: '2030-01-15' }
+    setup:
+      - run: [node, helpers/course.mjs, make, xnPbShut, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi xnPbShut"'
+      - run: [node, helpers/exams.mjs, make, xnPqShut, --course, xnPbShut]
+        expect: '"status":"DRAFT"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnPbShut.course}', --nazir, dersNazir, --codes, none]
+        expect: course-nazir-grants DERS_NAZIR
+    teardown:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{xnPbShut.course}', --dismiss]
+      - run: [node, helpers/exams.mjs, remove, xnPqShut]
+      - run: [node, helpers/course.mjs, remove, xnPbShut]
+        expect: course remove xnPbShut
+
+events:
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+  # the late window is typed before the press: the scenario says what (`late`), 10 as the form starts with or 0
+  PUBLISH:
+    - fill: { role: textbox, name: Geç kalanlar kaç dakika sonrasına kadar başlayabilir, value: '{late}' }
+    - click: { role: button, name: '/^(Zamanla|Yayınla)$/', within: { role: region, name: Yayınla } }
+  # the date of "En erken başlama" (a native date input takes YYYY-MM-DD; an empty value clears it)
+  TYPE_TIME: [{ fill: { label: Tarih, value: '{date}' } }]
+  # the problems are plain lines: the team goes up to the questions
+  FIX: [{ click: { role: heading, name: '/^Sorular \(/' } }]
+
+# The writes are server actions, a POST to the exam page's own address (its reads are GETs with a query, so the anchored glob matches
+# only the POST); `abort` makes the browser's fetch fail, which the page answers with "Kaydedilemedi".
+states:
+  notReady: { url: '{nazar}/ders/*/sinavlar/*' }
+  choose: { url: '{nazar}/ders/*/sinavlar/*' }
+  scheduled: { url: '{nazar}/ders/*/sinavlar/*' }
+  open: { url: '{nazar}/ders/*/sinavlar/*' }
+  closed: { url: '{nazar}/ders/*/sinavlar/*' }
+  publishingNow:
+    call: '{nazar}/ders/*/sinavlar/*'
+    fail: { FAIL.other: abort }
+  scheduling:
+    call: '{nazar}/ders/*/sinavlar/*'
+    fail: { FAIL.other: abort }
+  unpublishing:
+    call: '{nazar}/ders/*/sinavlar/*'
+    fail: { FAIL.other: abort }
+  left: { url: '{nazar}/bildirimler' }
+  results_opened: { url: '{nazar}/ders/*/sinavlar/*/sonuclar' }
+  # the editor of the same page: the problems are fixed above the section
+  editor_opened: { url: '{nazar}/ders/*/sinavlar/*', text: Ayarları kaydet }
+  # "Taslağa al" gives the editor back without reading the page again
+  draft_again: { url: '{nazar}/ders/*/sinavlar/*', text: Ayarları kaydet }
+
+# What a write leaves: the exam's status as its hoca reads it (helpers/exams.mjs state).
+effects:
+  nowOpen:
+    - run: [node, helpers/exams.mjs, state, '{quiz}']
+      expect: OPEN
+  nowScheduled:
+    - run: [node, helpers/exams.mjs, state, '{quiz}']
+      expect: SCHEDULED
+  unpublishOnlineExam:
+    - run: [node, helpers/exams.mjs, state, '{quiz}']
+      expect: DRAFT
+
+nodes:
+  publishButton: { role: button, name: '/^(Zamanla|Yayınla)$/', within: { role: region, name: Yayınla } }
+  publishBusy: { css: output, hasText: Yükleniyor }
+  toDraftBusy: { css: output, hasText: Yükleniyor }
+  questionText: { text: '/^Soru \d$/' }
+  optionText: { text: '/^(Doğru \d · Doğru|Yanlış \d-[ab])$/' }
+  confirmX: { role: button, name: Kapat, within: { role: alertdialog, name: Sınavı yayınla } }
+  confirmCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Sınavı yayınla } }
+  confirmPublishButton: { role: button, name: '/^(Zamanla|Yayınla)$/', within: { role: alertdialog, name: Sınavı yayınla } }
+  toDraftX: { role: button, name: Kapat, within: { role: alertdialog, name: Sınavı taslağa al } }
+  toDraftCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Sınavı taslağa al } }
+  toDraftConfirm: { role: button, name: Taslağa al, within: { role: alertdialog, name: Sınavı taslağa al } }
+  toastClose: { role: button, name: Kapat, within: { role: region, name: Bildirimler } }

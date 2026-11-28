@@ -15,7 +15,8 @@ import {
  * (MDRS-213): the producers of the course types in `notification-types.ts`.
  * `CourseService` calls one method per transition, after the write has
  * succeeded; `RecordingService` and the encoding poll call `recordingAdded`
- * (MDRS-283).
+ * (MDRS-283), and `LessonQuestionService` calls `questionAnswered`
+ * (MDRS-248).
  *
  * Like every producer, a notification that cannot be written never undoes the
  * change: the failure is logged and the write stands. Nobody is told of their
@@ -157,6 +158,40 @@ export class CourseNotifier {
   }
 
   /**
+   * A talebe's question answered for the first time (MDRS-248). The caller
+   * says when it is the first time, so an answer that is rewritten afterwards
+   * is not news again. `sessionLabel` is the celse's title, as in
+   * SUBMISSION_REVIEWED; the target is the celse, where tedris shows the
+   * question with its answer.
+   */
+  async questionAnswered(
+    question: { lessonId: string; lessonTitle: string; authorId: string },
+    actorId: string
+  ): Promise<void> {
+    if (question.authorId === actorId) return;
+    try {
+      const course = await this.repo.findSessionCourse(question.lessonId);
+      if (!course) return;
+      await this.notifications.notify({
+        userId: question.authorId,
+        type: "QUESTION_ANSWERED",
+        targetType: "SESSION",
+        targetId: question.lessonId,
+        params: {
+          ...courseParams(course),
+          courseId: course.courseId,
+          sessionLabel: question.lessonTitle,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Could not notify of QUESTION_ANSWERED for session ${question.lessonId}`,
+        error
+      );
+    }
+  }
+
+  /**
    * A celse planned as an exam (MDRS-248, "Sınav"): its talebe are told when
    * it is, apart from the calendar invitation every planned celse sends. One
    * already over is not news.
@@ -193,6 +228,75 @@ export class CourseNotifier {
       { id: lessonId },
       actorId,
       sessionAt ? { sessionAt: sessionAt.toISOString() } : {}
+    );
+  }
+
+  /**
+   * A talebe sent their note on a question to the hoca (MDRS-248, soru
+   * notları): the course's müderris are told, the talebe never of their own
+   * note. The target is the course; `examId` and `setTitle` name the set or
+   * exam, where nazar lists its notes.
+   */
+  async questionNoteShared(
+    note: { courseId: string; examId: string; setTitle: string; kind: string },
+    actorId: string
+  ): Promise<void> {
+    try {
+      const course = await this.repo.findCourse(note.courseId);
+      if (!course) return;
+      const recipients = (
+        await this.repo.findMuderrisIds(note.courseId)
+      ).filter((id) => id !== actorId);
+      if (recipients.length === 0) return;
+      const params = {
+        ...courseParams(course),
+        courseId: note.courseId,
+        examId: note.examId,
+        setTitle: note.setTitle,
+        examKind: note.kind,
+      };
+      await this.notifications.notify(
+        ...recipients.map((userId) => ({
+          userId,
+          type: "QUESTION_NOTE_SHARED" as const,
+          targetType: "COURSE" as const,
+          targetId: note.courseId,
+          params,
+        }))
+      );
+    } catch (error) {
+      this.logger.error(
+        `Could not notify of QUESTION_NOTE_SHARED in ${note.courseId}`,
+        error
+      );
+    }
+  }
+
+  /**
+   * The hoca answered a talebe's note for the first time (MDRS-248, soru
+   * notları); a rewrite of the answer is not news again.
+   */
+  questionNoteReplied(
+    note: {
+      courseId: string;
+      examId: string;
+      setTitle: string;
+      kind: string;
+      talebeId: string;
+    },
+    actorId: string
+  ): Promise<void> {
+    return this.tellTalebe(
+      "QUESTION_NOTE_REPLIED",
+      note.courseId,
+      note.talebeId,
+      actorId,
+      {
+        courseId: note.courseId,
+        examId: note.examId,
+        setTitle: note.setTitle,
+        examKind: note.kind,
+      }
     );
   }
 

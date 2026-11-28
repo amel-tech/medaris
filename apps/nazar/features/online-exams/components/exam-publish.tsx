@@ -1,7 +1,9 @@
 "use client";
 
 import type {
+  ExamKind,
   OnlineExamDraftResponse,
+  PracticeSetStatsResponse,
   PublishProblemResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
@@ -13,13 +15,16 @@ import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { fieldsOf, instantOf } from "~/features/sessions/sessions";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { unpublishOnlineExam } from "../actions";
 import { onlineExamErrorKey, READS_AGAIN } from "../online-exams";
+import { wholePercent } from "./practice-sets-table";
+import { HocaSheet, QuestionsBoard, usePickedQuestion } from "./question-board";
+import { QuestionNotesSwitch } from "./talebe-notes-toggle";
 
 const MINUTE = 60_000;
 /** The latest start the page fills in: the earliest plus ten minutes (decided 22 Nov 2026). */
@@ -82,25 +87,38 @@ function ProblemLines({ problems }: { problems: PublishProblemResponse[] }) {
  * earliest by ten minutes until it is changed by hand. Both are on the
  * viewer's clock. Publishing asks once, then runs after the writes queued
  * before it (`onPublish`).
+ *
+ * A çalışma seti (`kind: PRACTICE`, MDRS-248) has no date, no window and no
+ * length: one "Yayınla", asked once, opens it to the course's talebe from
+ * now on. Its incomplete questions do not stop it, but the talebe never gets
+ * them, which the panel says (`incompleteCount`).
  */
 export function PublishSection({
+  kind = "EXAM",
   problems,
   questionCount,
+  incompleteCount = 0,
   durationMinutes,
   timeZone,
   holding,
   sending,
   onPublish,
 }: {
+  kind?: ExamKind;
   problems: PublishProblemResponse[];
   questionCount: number;
+  /** A çalışma seti's questions that are not complete: published, never asked. */
+  incompleteCount?: number;
   /** Null until the team types it; the exam is not published without it. */
   durationMinutes: number | null;
   timeZone: string;
   /** A question's form is open: publishing would leave it out. */
   holding: boolean;
   sending: boolean;
-  onPublish: (times: { startsAt?: string; latestStartMinutes: number }) => void;
+  onPublish: (times: {
+    startsAt?: string;
+    latestStartMinutes?: number;
+  }) => void;
 }) {
   const t = useTranslations("nazar");
   const [mode, setMode] = useState<"now" | "later">("later");
@@ -165,6 +183,59 @@ export function PublishSection({
       latestStartMinutes: minutes,
     });
   };
+
+  if (kind === "PRACTICE") {
+    return (
+      <section
+        className="mds-card flex flex-col gap-3 p-4"
+        aria-labelledby="publish-title"
+      >
+        <h2 id="publish-title" className="mds-h2">
+          {t("Practice.publishTitle")}
+        </h2>
+        <p className="mds-body-sm text-neutral-muted">
+          {t("Practice.publishBody")}
+        </p>
+        {problems.length > 0 ? (
+          <Alert tone="warning" title={t("Practice.notReadyTitle")}>
+            <p>{t("Practice.notReady")}</p>
+          </Alert>
+        ) : incompleteCount > 0 ? (
+          <p className="mds-help">
+            {t("Practice.incompleteNote", { count: incompleteCount })}
+          </p>
+        ) : null}
+        {holding ? (
+          <p className="mds-body-sm text-neutral-muted">
+            {t("OnlineExams.holdingQuestion")}
+          </p>
+        ) : null}
+        <div>
+          <Button
+            onClick={() => setAsking(true)}
+            disabled={holding || problems.length > 0}
+            loading={sending}
+          >
+            {t("Practice.publish")}
+          </Button>
+        </div>
+        <AlertDialog
+          open={asking}
+          onOpenChange={setAsking}
+          title={t("Practice.publishConfirmTitle")}
+          confirmLabel={t("Practice.publish")}
+          cancelLabel={t("OnlineExams.cancel")}
+          closeLabel={t("Shell.close")}
+          onConfirm={() => {
+            setAsking(false);
+            onPublish({});
+          }}
+        >
+          {t("Practice.lockedNote")}
+        </AlertDialog>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -291,24 +362,41 @@ export function PublishSection({
  * A published exam, read-only: where it stands, when it opens and until when
  * a talebe may start, and its questions. Until it opens, "Taslağa al" deletes
  * its celse and gives the editor back (`onUnpublished`).
+ *
+ * A published çalışma seti (`kind: PRACTICE`, MDRS-248) is "Yayında" with
+ * "Yayından kaldır", which the API refuses (EXAM_LOCKED) once a talebe has
+ * started it.
  */
 export function PublishedExam({
   draft,
+  kind = "EXAM",
   timeZone,
   locale,
+  practiceStats,
   onUnpublished,
 }: {
   draft: OnlineExamDraftResponse;
+  kind?: ExamKind;
   timeZone: string;
   locale: string;
+  /** A çalışma seti's figures: null when nobody finished it, undefined when unread. */
+  practiceStats?: PracticeSetStatsResponse | null;
   onUnpublished: (next: OnlineExamDraftResponse) => void;
 }) {
   const t = useTranslations("nazar");
+  const format = useFormatter();
+  // The API's `locked` (MDRS-248): a set a talebe started or a pool trial
+  // drew from, an exam whose celse began. It refuses to unpublish those
+  // (EXAM_LOCKED), so the page offers no button. A finished attempt was
+  // started first, so the figures say it too when an older read lacks it.
+  const locked = draft.locked || (practiceStats?.attemptCount ?? 0) > 0;
   const words = t as unknown as Messages;
   const router = useRouter();
+  const practice = kind === "PRACTICE";
   const { notify } = useToaster();
   const [asking, setAsking] = useState(false);
   const [sending, setSending] = useState(false);
+  const { picked, pick, placeId } = usePickedQuestion();
   const when = (at: Date | string | null | undefined) =>
     at
       ? new Intl.DateTimeFormat(locale, {
@@ -328,7 +416,10 @@ export function PublishedExam({
         notify({
           tone: "error",
           title: t("OnlineExams.failed"),
-          description: words(onlineExamErrorKey(result.code)),
+          description:
+            practice && result.code === "EXAM_LOCKED"
+              ? t("Practice.locked")
+              : words(onlineExamErrorKey(result.code)),
         });
         if (READS_AGAIN.has(result.code)) router.refresh();
         return;
@@ -341,14 +432,15 @@ export function PublishedExam({
     }
   };
 
-  const badge =
-    draft.status === "SCHEDULED" ? (
-      <Badge variant="brand">{t("OnlineExams.statusScheduledTitle")}</Badge>
-    ) : draft.status === "OPEN" ? (
-      <Badge variant="success">{t("OnlineExams.statusOpen")}</Badge>
-    ) : (
-      <Badge variant="outline">{t("OnlineExams.statusClosed")}</Badge>
-    );
+  const badge = practice ? (
+    <Badge variant="success">{t("Practice.statusOpen")}</Badge>
+  ) : draft.status === "SCHEDULED" ? (
+    <Badge variant="brand">{t("OnlineExams.statusScheduledTitle")}</Badge>
+  ) : draft.status === "OPEN" ? (
+    <Badge variant="success">{t("OnlineExams.statusOpen")}</Badge>
+  ) : (
+    <Badge variant="outline">{t("OnlineExams.statusClosed")}</Badge>
+  );
 
   return (
     <div className="flex flex-col gap-section">
@@ -358,21 +450,73 @@ export function PublishedExam({
       >
         <div className="flex flex-wrap items-center gap-2">
           <h2 id="published-title" className="mds-h2">
-            {t("OnlineExams.publishTitle")}
+            {practice
+              ? t("Practice.publishedTitle")
+              : t("OnlineExams.publishTitle")}
           </h2>
           {badge}
         </div>
         <p className="mds-body">
-          {draft.status === "SCHEDULED"
-            ? t("OnlineExams.scheduledBody", {
-                when: when(draft.startsAt),
-                latest: when(draft.latestStartAt),
-              })
-            : draft.status === "OPEN"
-              ? t("OnlineExams.openBody", { latest: when(draft.latestStartAt) })
-              : t("OnlineExams.closedBody")}
+          {practice
+            ? t("Practice.publishedBody")
+            : draft.status === "SCHEDULED"
+              ? t("OnlineExams.scheduledBody", {
+                  when: when(draft.startsAt),
+                  latest: when(draft.latestStartAt),
+                })
+              : draft.status === "OPEN"
+                ? t("OnlineExams.openBody", {
+                    latest: when(draft.latestStartAt),
+                  })
+                : t("OnlineExams.closedBody")}
         </p>
-        {draft.status === "SCHEDULED" ? (
+        {practice && practiceStats ? (
+          <p className="mds-body-sm" data-testid="practice-set-stats">
+            {t("Practice.stats", {
+              talebe: practiceStats.talebeCount,
+              count: practiceStats.attemptCount,
+              percent:
+                practiceStats.averagePercent === null
+                  ? ""
+                  : wholePercent(format, practiceStats.averagePercent),
+            })}
+          </p>
+        ) : null}
+        {practice && locked ? (
+          <p className="mds-body-sm text-neutral-muted">
+            {t("Practice.lockedNow")}
+          </p>
+        ) : practice ? (
+          <>
+            <p className="mds-body-sm text-neutral-muted">
+              {t("Practice.lockedNote")}
+            </p>
+            <div>
+              <Button
+                variant="secondary"
+                onClick={() => setAsking(true)}
+                loading={sending}
+              >
+                {t("Practice.unpublish")}
+              </Button>
+            </div>
+            <AlertDialog
+              open={asking}
+              onOpenChange={setAsking}
+              title={t("Practice.unpublishTitle")}
+              confirmLabel={t("Practice.unpublish")}
+              cancelLabel={t("OnlineExams.cancel")}
+              closeLabel={t("Shell.close")}
+              onConfirm={unpublish}
+            >
+              {t("Practice.unpublishBody")}
+            </AlertDialog>
+          </>
+        ) : locked ? (
+          <p className="mds-body-sm text-neutral-muted">
+            {t("OnlineExams.lockedExam")}
+          </p>
+        ) : draft.status === "SCHEDULED" ? (
           <>
             <p className="mds-help">{t("OnlineExams.notifiedNote")}</p>
             <p className="mds-body-sm text-neutral-muted">
@@ -408,26 +552,49 @@ export function PublishedExam({
         <h2 id="published-questions" className="mds-h2">
           {t("OnlineExams.questionsTitle", { count: draft.questions.length })}
         </h2>
-        <ol className="flex flex-col gap-3">
-          {draft.questions.map((q) => (
-            <li key={q.id} className="mds-card flex flex-col gap-2 p-4">
-              <strong>
-                {t("OnlineExams.questionNumber", { number: q.number })}
-              </strong>
-              <p className="mds-body" dir="auto">
-                {q.text}
-              </p>
-              <ol className="mds-body-sm flex flex-col gap-1" type="A">
-                {q.options.map((o) => (
-                  <li key={o.id} dir="auto">
-                    {o.text}
-                    {o.correct ? ` · ${t("OnlineExams.correct")}` : ""}
-                  </li>
-                ))}
-              </ol>
-            </li>
-          ))}
-        </ol>
+        {/* As the editor shows them (question-board.tsx, MDRS-248 ortak
+            görünüm): each question as the talebe sees it, one line each on
+            the end side of a desk. */}
+        <QuestionsBoard
+          lines={draft.questions.map((q) => ({
+            key: q.id,
+            number: q.number,
+            text: q.text,
+          }))}
+          picked={picked}
+          placeId={placeId}
+          onPick={(key) => pick(key)}
+        >
+          <ol className="flex list-none flex-col gap-3 ps-0">
+            {draft.questions.map((q) => (
+              <li key={q.id} id={placeId(q.id)} className="scroll-mt-4">
+                <article
+                  className="flex flex-col gap-2"
+                  aria-label={t("OnlineExams.questionNumber", {
+                    number: q.number,
+                  })}
+                  tabIndex={-1}
+                >
+                  <HocaSheet
+                    question={q}
+                    number={q.number}
+                    picked={q.id === picked}
+                    tools={
+                      // The talebe-notes icon works on a published and a
+                      // locked set or exam too (MDRS-248): it is not the
+                      // question's content.
+                      <QuestionNotesSwitch
+                        examId={draft.id}
+                        kind={kind}
+                        question={q}
+                      />
+                    }
+                  />
+                </article>
+              </li>
+            ))}
+          </ol>
+        </QuestionsBoard>
       </section>
     </div>
   );

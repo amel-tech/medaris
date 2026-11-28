@@ -260,6 +260,7 @@ describe("the pages behind the menu", () => {
       "sorular",
       "odevler",
       "sinavlar",
+      "calisma-sorulari",
       "degerlendirme",
       "kayitlar",
       "deste",

@@ -19,6 +19,7 @@ import type {
   CourseZerothQuestionResponse,
   CreateCourseTopicDto,
   CreateOnlineExamDto,
+  ExamKind,
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   ExamVersionResponse,
@@ -29,9 +30,11 @@ import type {
   OnlineExamResultsResponse,
   OnlineExamSummaryResponse,
   PublishOnlineExamDto,
+  QuestionTalebeNotesResponse,
   SaveExamQuestionDto,
   SaveZerothQuestionDto,
   SetQuestionPointsDto,
+  SetTalebeNotesDto,
   TalebeAnswersResponse,
   TopicRemovedResponse,
   UpdateCourseTopicDto,
@@ -47,6 +50,8 @@ import {
     CreateCourseTopicDtoToJSON,
     CreateOnlineExamDtoFromJSON,
     CreateOnlineExamDtoToJSON,
+    ExamKindFromJSON,
+    ExamKindToJSON,
     ExamPointsResponseFromJSON,
     ExamPointsResponseToJSON,
     ExamQuestionWriteResponseFromJSON,
@@ -67,12 +72,16 @@ import {
     OnlineExamSummaryResponseToJSON,
     PublishOnlineExamDtoFromJSON,
     PublishOnlineExamDtoToJSON,
+    QuestionTalebeNotesResponseFromJSON,
+    QuestionTalebeNotesResponseToJSON,
     SaveExamQuestionDtoFromJSON,
     SaveExamQuestionDtoToJSON,
     SaveZerothQuestionDtoFromJSON,
     SaveZerothQuestionDtoToJSON,
     SetQuestionPointsDtoFromJSON,
     SetQuestionPointsDtoToJSON,
+    SetTalebeNotesDtoFromJSON,
+    SetTalebeNotesDtoToJSON,
     TalebeAnswersResponseFromJSON,
     TalebeAnswersResponseToJSON,
     TopicRemovedResponseFromJSON,
@@ -104,6 +113,10 @@ export interface CreateOnlineExamRequest {
     createOnlineExamDto: CreateOnlineExamDto;
 }
 
+export interface DeleteOnlineExamRequest {
+    examId: string;
+}
+
 export interface GetCourseZerothQuestionRequest {
     id: string;
 }
@@ -131,6 +144,7 @@ export interface ListCourseTopicsRequest {
 
 export interface ListOnlineExamsRequest {
     id: string;
+    kind?: ExamKind;
 }
 
 export interface PublishOnlineExamRequest {
@@ -173,6 +187,12 @@ export interface SetExamQuestionPointsRequest {
     examId: string;
     questionId: string;
     setQuestionPointsDto: SetQuestionPointsDto;
+}
+
+export interface SetExamQuestionTalebeNotesRequest {
+    examId: string;
+    questionId: string;
+    setTalebeNotesDto: SetTalebeNotesDto;
 }
 
 export interface UnpublishOnlineExamRequest {
@@ -349,7 +369,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * \"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.
+     * \"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.
      * Open a new online exam
      */
     async createOnlineExamRaw(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamCreatedResponse>> {
@@ -394,12 +414,55 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * \"Yeni sınav\": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.
+     * \"Yeni sınav\": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.
      * Open a new online exam
      */
     async createOnlineExam(requestParameters: CreateOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamCreatedResponse> {
         const response = await this.createOnlineExamRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * A çalışma seti (PRACTICE, MDRS-248), draft or published, goes with its questions, their options and topics, and its picked topics, in one transaction. Once a talebe has started it or a pool attempt drew one of its questions (the summary\'s and the draft\'s `locked`), it is 409 EXAM_LOCKED: those attempts are the talebe\'s record. An exam (EXAM) is 409 EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and deleting one is a decision of its own. Written to `audit_log` as `online_exam.delete`.
+     * Seti sil: delete a çalışma seti with its questions
+     */
+    async deleteOnlineExamRaw(requestParameters: DeleteOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling deleteOnlineExam().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * A çalışma seti (PRACTICE, MDRS-248), draft or published, goes with its questions, their options and topics, and its picked topics, in one transaction. Once a talebe has started it or a pool attempt drew one of its questions (the summary\'s and the draft\'s `locked`), it is 409 EXAM_LOCKED: those attempts are the talebe\'s record. An exam (EXAM) is 409 EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and deleting one is a decision of its own. Written to `audit_log` as `online_exam.delete`.
+     * Seti sil: delete a çalışma seti with its questions
+     */
+    async deleteOnlineExam(requestParameters: DeleteOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteOnlineExamRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -675,7 +738,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.
+     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.
      * The course\'s online exams
      */
     async listOnlineExamsRaw(requestParameters: ListOnlineExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OnlineExamSummaryResponse>>> {
@@ -687,6 +750,10 @@ export class OnlineExamsApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['kind'] != null) {
+            queryParameters['kind'] = requestParameters['kind'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -710,7 +777,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first.
+     * Nazar\'s \"Sınavlar\": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.
      * The course\'s online exams
      */
     async listOnlineExams(requestParameters: ListOnlineExamsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OnlineExamSummaryResponse>> {
@@ -719,7 +786,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. Written to `audit_log` as `online_exam.publish`.
+     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question, for which a topic is not needed (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.
      * Yayınla: now, or at a day and time, with a latest start
      */
     async publishOnlineExamRaw(requestParameters: PublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OnlineExamDraftResponse>> {
@@ -764,7 +831,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. Written to `audit_log` as `online_exam.publish`.
+     * Plans the exam\'s celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course\'s talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft\'s `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question, for which a topic is not needed (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.
      * Yayınla: now, or at a day and time, with a latest start
      */
     async publishOnlineExam(requestParameters: PublishOnlineExamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OnlineExamDraftResponse> {
@@ -986,7 +1053,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or a topic is kept as incomplete, and the answer says what it lacks. Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.
+     * The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or, in an exam, a topic is kept as incomplete, and the answer says what it lacks; a çalışma seti\'s question needs no topic (MDRS-248). Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.
      * Save a question as the preparer writes it
      */
     async saveExamQuestionRaw(requestParameters: SaveExamQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExamQuestionWriteResponse>> {
@@ -1039,7 +1106,7 @@ export class OnlineExamsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or a topic is kept as incomplete, and the answer says what it lacks. Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.
+     * The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or, in an exam, a topic is kept as incomplete, and the answer says what it lacks; a çalışma seti\'s question needs no topic (MDRS-248). Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.
      * Save a question as the preparer writes it
      */
     async saveExamQuestion(requestParameters: SaveExamQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExamQuestionWriteResponse> {
@@ -1160,6 +1227,68 @@ export class OnlineExamsApi extends runtime.BaseAPI {
      */
     async setExamQuestionPoints(requestParameters: SetExamQuestionPointsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExamPointsResponse> {
         const response = await this.setExamQuestionPointsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question\'s content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.
+     * Turn a question\'s talebe notes on or off
+     */
+    async setExamQuestionTalebeNotesRaw(requestParameters: SetExamQuestionTalebeNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<QuestionTalebeNotesResponse>> {
+        if (requestParameters['examId'] == null) {
+            throw new runtime.RequiredError(
+                'examId',
+                'Required parameter "examId" was null or undefined when calling setExamQuestionTalebeNotes().'
+            );
+        }
+
+        if (requestParameters['questionId'] == null) {
+            throw new runtime.RequiredError(
+                'questionId',
+                'Required parameter "questionId" was null or undefined when calling setExamQuestionTalebeNotes().'
+            );
+        }
+
+        if (requestParameters['setTalebeNotesDto'] == null) {
+            throw new runtime.RequiredError(
+                'setTalebeNotesDto',
+                'Required parameter "setTalebeNotesDto" was null or undefined when calling setExamQuestionTalebeNotes().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/online-exams/{examId}/questions/{questionId}/talebe-notes`;
+        urlPath = urlPath.replace(`{${"examId"}}`, encodeURIComponent(String(requestParameters['examId'])));
+        urlPath = urlPath.replace(`{${"questionId"}}`, encodeURIComponent(String(requestParameters['questionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetTalebeNotesDtoToJSON(requestParameters['setTalebeNotesDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => QuestionTalebeNotesResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question\'s content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.
+     * Turn a question\'s talebe notes on or off
+     */
+    async setExamQuestionTalebeNotes(requestParameters: SetExamQuestionTalebeNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<QuestionTalebeNotesResponse> {
+        const response = await this.setExamQuestionTalebeNotesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

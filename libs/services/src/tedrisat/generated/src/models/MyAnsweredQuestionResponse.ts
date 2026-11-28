@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { MyQuestionNoteResponse } from './MyQuestionNoteResponse';
+import {
+    MyQuestionNoteResponseFromJSON,
+    MyQuestionNoteResponseFromJSONTyped,
+    MyQuestionNoteResponseToJSON,
+    MyQuestionNoteResponseToJSONTyped,
+} from './MyQuestionNoteResponse';
 import type { QuestionOutcome } from './QuestionOutcome';
 import {
     QuestionOutcomeFromJSON,
@@ -76,6 +83,18 @@ export interface MyAnsweredQuestionResponse {
      * @memberof MyAnsweredQuestionResponse
      */
     options: Array<MyAnsweredOptionResponse>;
+    /**
+     * Whether the caller may write a note on it (MDRS-248, soru notları); a note written before it was turned off is still in `myNote`. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {boolean}
+     * @memberof MyAnsweredQuestionResponse
+     */
+    talebeNotes?: boolean;
+    /**
+     * The caller's own note on it; null when they wrote none. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {MyQuestionNoteResponse}
+     * @memberof MyAnsweredQuestionResponse
+     */
+    myNote?: MyQuestionNoteResponse | null;
 }
 
 
@@ -111,6 +130,8 @@ export function MyAnsweredQuestionResponseFromJSONTyped(json: any, ignoreDiscrim
         'points': json['points'],
         'got': json['got'],
         'options': ((json['options'] as Array<any>).map(MyAnsweredOptionResponseFromJSON)),
+        'talebeNotes': json['talebeNotes'] == null ? undefined : json['talebeNotes'],
+        'myNote': json['myNote'] == null ? undefined : MyQuestionNoteResponseFromJSON(json['myNote']),
     };
 }
 
@@ -132,6 +153,8 @@ export function MyAnsweredQuestionResponseToJSONTyped(value?: MyAnsweredQuestion
         'points': value['points'],
         'got': value['got'],
         'options': ((value['options'] as Array<any>).map(MyAnsweredOptionResponseToJSON)),
+        'talebeNotes': value['talebeNotes'],
+        'myNote': MyQuestionNoteResponseToJSON(value['myNote']),
     };
 }
 

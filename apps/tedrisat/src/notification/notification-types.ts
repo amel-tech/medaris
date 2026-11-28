@@ -23,11 +23,17 @@ export const NOTIFICATION_TYPES = [
   "DECK_PUBLISH_RESULT",
   // The course team sent its review of the talebe's homework on a celse.
   "SUBMISSION_REVIEWED",
+  // The course team answered the talebe's question on a celse (MDRS-248).
+  "QUESTION_ANSWERED",
   // A celse planned as an exam, a day before it, and its results opened to
   // the talebe (MDRS-248).
   "EXAM_SCHEDULED",
   "EXAM_REMINDER",
   "EXAM_RESULTS_RELEASED",
+  // A talebe sent their note on a question to the hoca, and the hoca
+  // answered it (MDRS-248, soru notları).
+  "QUESTION_NOTE_SHARED",
+  "QUESTION_NOTE_REPLIED",
   // Nizam side (MDRS-179): what a köşk nazımı or Medaris nazımı is told.
   "COURSE_BAN_PLACED",
   "KOSK_BAN_PLACED",

@@ -125,9 +125,13 @@ export function ScopePicker({ current, options, labels }: ScopePickerProps) {
 
   return (
     <Menu.Root>
+      {/* `shrink-0`: the sidebar is a column of the screen's height, and
+          `min-block-control` replaces the button's content-sized minimum, so
+          without it a name on two lines was squeezed into one control height
+          and spilled over the border ("Tefsir dersi verelim mi", 960 px). */}
       <Menu.Trigger
         aria-label={labels.change}
-        className="mds-btn mds-btn--outline inline-full block-auto min-block-control justify-start gap-3 py-2 whitespace-normal"
+        className="mds-btn mds-btn--outline inline-full block-auto min-block-control shrink-0 justify-start gap-3 py-2 whitespace-normal"
       >
         {currentMark}
         <Lines

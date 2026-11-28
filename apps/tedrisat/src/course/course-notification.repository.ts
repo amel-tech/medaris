@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, eq, isNull } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import {
+  courseMuderris,
   courses,
   courseWeeks,
   enrollments,
@@ -104,6 +105,17 @@ export class CourseNotificationRepository {
    * The talebe who hold an active seat: ENROLLED only. A request is not a
    * seat, a completion has finished the course, and a revoked seat is out.
    */
+  /** The course's hocas with an account: the müderris on its list (MDRS-248, soru notları). */
+  async findMuderrisIds(courseId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ userId: courseMuderris.userId })
+      .from(courseMuderris)
+      .where(eq(courseMuderris.courseId, courseId));
+    return [
+      ...new Set(rows.flatMap((r) => (r.userId === null ? [] : [r.userId]))),
+    ];
+  }
+
   async findSeatHolders(courseId: string): Promise<string[]> {
     const rows = await this.db
       .select({ userId: enrollments.userId })

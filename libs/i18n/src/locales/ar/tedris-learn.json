@@ -52,6 +52,16 @@
     "openLabel": ": {title} (يُفتح في تبويب جديد)",
     "watchLabel": "شاهد التسجيل: {title}"
   },
+  "DocumentsTab": {
+    "empty": "لا توجد مستندات في هذا الدرس بعد.",
+    "allTitle": "جميع المستندات",
+    "allHint": "مستندات الدرس كله أولًا، ثم حسب الأسابيع",
+    "general": "الدرس كله",
+    "weekLabel": "الأسبوع {number}",
+    "sessionLabel": "افتح صفحة الحلقة: {title}",
+    "newTab": " (يُفتح في تبويب جديد)",
+    "download": " (يُنزَّل)"
+  },
   "RecordingRelease": {
     "opens": "يُتاح التسجيل يوم {day} الساعة {time}.",
     "early": "يُتاح للطلاب يوم {day} الساعة {time}",

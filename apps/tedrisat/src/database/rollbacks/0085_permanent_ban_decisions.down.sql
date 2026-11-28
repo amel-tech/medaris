@@ -1,6 +1,6 @@
--- Reverses migrations/0082_permanent_ban_decisions.sql (MDRS-194). The app
+-- Reverses migrations/0085_permanent_ban_decisions.sql (MDRS-194). The app
 -- never runs this: drizzle's migrator only moves forward. To roll back by
--- hand, run these statements in one transaction, then delete 0082's row from
+-- hand, run these statements in one transaction, then delete 0085's row from
 -- "drizzle"."__drizzle_migrations" so that the next boot applies it again.
 --
 -- Lost, because these rows and columns are the only copy: every platform ban

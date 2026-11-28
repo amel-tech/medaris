@@ -16,6 +16,7 @@ export type Section =
   | "courses"
   | "schedule"
   | "exams"
+  | "practice"
   | "decks"
   | null;
 
@@ -25,17 +26,18 @@ const SECTION_PREFIXES: [Section, RegExp][] = [
   ["courses", /^\/(my-courses|learning\/my-courses)(\/|$)/],
   ["schedule", /^\/schedule(\/|$)/],
   ["exams", /^\/my-exams(\/|$)/],
+  ["practice", /^\/calisma-sorulari(\/|$)/],
   ["decks", /^\/decks(\/|$)/],
 ];
 
-/** Which of the six nav items the page belongs to; a köşk or medrese page is Keşfet's. */
+/** Which of the seven nav items the page belongs to; a köşk or medrese page is Keşfet's. */
 export const sectionOf = (pathname: string): Section =>
   SECTION_PREFIXES.find(([, re]) => re.test(pathname))?.[0] ?? null;
 
 /**
  * The phone menu of a signed-in talebe (design tedris/44, canvas rule 18): the
  * 56 px bar, and the sheet it opens with Ana sayfa, Keşfet, Derslerim,
- * Programım, Sınavlarım (MDRS-299) and Desteler, and the person at the block-end as the way to
+ * Programım, Sınavlarım (MDRS-299), Çalışma Soruları (MDRS-248) and Desteler, and the person at the block-end as the way to
  * Hesap. "Çıkış yap" is not here: it lives in the account page (design
  * tedris/16 is its confirmation). The Dialog, its focus on the close button and
  * its closing when the window passes 768 px are the kit's `AppBar`.
@@ -64,9 +66,11 @@ export function MemberPhoneMenu({
           ? t("schedule")
           : section === "exams"
             ? t("exams")
-            : section === "decks"
-              ? t("decks")
-              : t("home"));
+            : section === "practice"
+              ? t("practice")
+              : section === "decks"
+                ? t("decks")
+                : t("home"));
 
   const item = (key: Exclude<Section, null>, href: string, label: string) => (
     <NavItem href={`${href}`} linkComponent={Link} active={section === key}>
@@ -118,6 +122,7 @@ export function MemberPhoneMenu({
       {item("courses", "/my-courses", t("courses"))}
       {item("schedule", "/schedule", t("schedule"))}
       {item("exams", "/my-exams", t("exams"))}
+      {item("practice", "/calisma-sorulari", t("practice"))}
       {item("decks", "/decks", t("decks"))}
     </AppBar>
   );

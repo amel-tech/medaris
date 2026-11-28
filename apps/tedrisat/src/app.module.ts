@@ -46,6 +46,8 @@ import { NizamDashboardModule } from "./nizam-dashboard/nizam-dashboard.module";
 import { NotificationModule } from "./notification/notification.module";
 import { OnlineExamModule } from "./online-exam/online-exam.module";
 import { PlatformPolicyModule } from "./platform-policy/platform-policy.module";
+import { PracticeModule } from "./practice/practice.module";
+import { QuestionNoteModule } from "./question-note/question-note.module";
 import { ScheduleModule } from "./schedule/schedule.module";
 import { UserModule } from "./user/user.module";
 
@@ -109,6 +111,10 @@ import { UserModule } from "./user/user.module";
     IntegrationModule,
     // Online multiple-choice exams (MDRS-299), last so their routes come last in the OpenAPI document.
     OnlineExamModule,
+    // Çalışma soruları (MDRS-248), after the online exams they are prepared as.
+    PracticeModule,
+    // Soru notları (MDRS-248), on the questions of both.
+    QuestionNoteModule,
   ],
   controllers: [AppController],
   providers: [AppService],

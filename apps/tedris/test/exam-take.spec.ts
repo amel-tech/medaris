@@ -3,9 +3,9 @@ import type {
   ExamAttemptResponse,
   ExamBriefingResponse,
 } from "@medaris/services/tedrisat";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, key, render, settle } from "./dom";
 
 /**
  * The exam page of tedris (MDRS-299, `graphs/tedris/exams/take`): a choice
@@ -47,6 +47,11 @@ vi.mock("@medaris/ui/mds/toast", () => ({
 }));
 vi.mock("~/lib/send-to-sign-in", () => ({ sendToSignIn: () => false }));
 vi.mock("~/features/online-exams/actions", () => mocks);
+// The note icon's Server Actions (soru notları), never called here.
+vi.mock("~/features/question-notes/actions", () => ({
+  saveMyQuestionNote: vi.fn(),
+  deleteMyQuestionNote: vi.fn(),
+}));
 
 const ok = <T>(data: T) => ({ success: true as const, data });
 
@@ -118,10 +123,14 @@ const button = (host: HTMLElement, label: string) =>
   [...host.querySelectorAll("button")].find(
     (b) => b.textContent?.trim() === label
   ) as HTMLButtonElement;
+/** An option's card, the <label>, found by the option's text (its letter aside). */
+const card = (host: HTMLElement, label: string) =>
+  [...host.querySelectorAll("label")].find(
+    (l) =>
+      (l.querySelector(".mds-choice__label") ?? l).textContent?.trim() === label
+  ) as HTMLLabelElement | undefined;
 const radio = (host: HTMLElement, label: string) =>
-  [...host.querySelectorAll("label")]
-    .find((l) => l.textContent?.trim() === label)
-    ?.querySelector("[role=radio]") as HTMLElement;
+  card(host, label)?.querySelector("[role=radio]") as HTMLElement;
 
 const mount = async (b: ExamBriefingResponse) => {
   const { ExamTake } = await import(
@@ -304,6 +313,43 @@ describe("the exam page (MDRS-299)", () => {
     expect(host.textContent).toContain("Süre doldu");
   });
 
+  it("asks the server for the clock every 10 seconds while the countdown runs (EXM-TAKE-15)", async () => {
+    // Only the intervals are fake: `settle` waits on real time. The toaster
+    // and the translations mocked above are new on every render, as the
+    // toaster once was in the app, so the clock must not restart with them.
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+      let server = 1800;
+      mocks.tickExamClock.mockImplementation(async () => {
+        server -= 10;
+        return ok({ secondsLeft: server, status: "IN_PROGRESS" });
+      });
+      const host = await mount(briefing());
+      await click(button(host, "Sınava başla"));
+      await settle();
+      // One second at a time, so the countdown renders between them.
+      for (let second = 1; second <= 30; second += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000);
+        });
+        if (second === 9) expect(mocks.tickExamClock).not.toHaveBeenCalled();
+        if (second === 10) expect(mocks.tickExamClock).toHaveBeenCalledTimes(1);
+      }
+      expect(mocks.tickExamClock).toHaveBeenCalledTimes(3);
+      expect(mocks.tickExamClock).toHaveBeenLastCalledWith(
+        "l1",
+        expect.any(String)
+      );
+      // The server's word stands: 1770 seconds left.
+      expect(host.querySelector("[role=timer]")?.textContent).toContain(
+        "29:30"
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("goes on with an attempt in progress where the talebe was", async () => {
     mocks.resumeExamAttempt.mockResolvedValue(
       ok({
@@ -473,6 +519,80 @@ describe("the exam page (MDRS-299)", () => {
     expect(list.querySelector("[aria-label='1. soru, Atlandı']")).toBeTruthy();
   });
 
+  it("keeps Bitir in the bar, leads with Sonraki under the options, Bitir at the end, and takes the keys", async () => {
+    mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+    mocks.saveExamAnswer.mockResolvedValue(
+      ok({ written: true, secondsLeft: 1700 })
+    );
+    const host = await mount(briefing());
+    // Nothing is picked by a key on the briefing.
+    await key(document.body, "1");
+    await click(button(host, "Sınava başla"));
+    await settle();
+    expect(mocks.saveExamAnswer).not.toHaveBeenCalled();
+    const bar = host.querySelector("[data-testid=exam-clock]")
+      ?.parentElement as HTMLElement;
+    expect(
+      bar.querySelector("[data-testid=finish-in-bar]")?.className
+    ).toContain("mds-btn--secondary");
+    const nav = host.querySelector("[data-testid=take-nav]") as HTMLElement;
+    const lead = nav.querySelector(".take-nav__go") as HTMLButtonElement;
+    expect(lead.textContent).toBe("Sonraki");
+    expect(lead.className).toContain("mds-btn--primary");
+    expect(
+      card(host, "Be")?.querySelector(".take-option__letter")?.textContent
+    ).toBe("B");
+    await key(document.body, "b");
+    await settle();
+    expect(radio(host, "Be").getAttribute("aria-checked")).toBe("true");
+    expect(mocks.saveExamAnswer).toHaveBeenLastCalledWith(
+      "l1",
+      "q1",
+      expect.objectContaining({ optionIds: ["b"] })
+    );
+    await key(document.body, "Enter");
+    await settle();
+    expect(host.textContent).toContain("İkinci soru");
+    expect(lead.textContent).toBe("Sınavı bitir");
+    await key(document.body, "Enter");
+    await settle();
+    expect(document.querySelector("[role=alertdialog]")).toBeTruthy();
+    // The dialog keeps its keys: a digit picks nothing under it.
+    await key(document.querySelector("[role=alertdialog]") as Element, "1");
+    await settle();
+    expect(radio(host, "Cim").getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("lays the exam out for a desk like the çalışma soruları: panes and the list behind Sorular (tek ekran)", async () => {
+    mocks.startExamAttempt.mockResolvedValue(ok(attempt()));
+    const host = await mount(briefing());
+    await click(button(host, "Sınava başla"));
+    await settle();
+    const screen = host.querySelector("[data-take-screen]") as HTMLElement;
+    expect(screen.className).toContain("take-column");
+    const bar = host.querySelector("[data-testid=exam-clock]")
+      ?.parentElement as HTMLElement;
+    expect(bar.className).toContain("take-bar");
+    const body = host
+      .querySelector("#exam-question")
+      ?.closest("section.take-body") as HTMLElement;
+    expect(body).toBeTruthy();
+    expect(
+      body.querySelector(".take-question-pane #exam-question")
+    ).toBeTruthy();
+    expect(body.querySelector(".take-options-pane .take-options")).toBeTruthy();
+    expect(body.querySelector("[data-testid=take-nav]")).toBeTruthy();
+    const toggle = bar.querySelector(
+      "[data-testid=take-list-toggle]"
+    ) as HTMLButtonElement;
+    const list = host.querySelector("nav.take-navigator") as HTMLElement;
+    expect(toggle.getAttribute("aria-controls")).toBe(list.id);
+    await click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    await key(document.body, "Escape");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("names the list's colours among what to know before the start", async () => {
     const host = await mount(briefing());
     expect(host.textContent).toContain(
@@ -490,6 +610,8 @@ describe("the exam page (MDRS-299)", () => {
     expect(sample.closest("li")?.textContent).toContain(
       "Soruların yazısını büyütüp küçültebilirsin"
     );
+    // The buttons now sit once in the exam's top bar, and the sentence says so.
+    expect(sample.closest("li")?.textContent).toContain("üst çubuktaki");
   });
 
   it("zooms the whole exam step by step, spans the screen at the largest, and keeps it for a reload", async () => {
@@ -507,6 +629,13 @@ describe("the exam page (MDRS-299)", () => {
     // The timer, the question and the list are all inside the zoomed area.
     expect(card().querySelector("[data-testid=exam-clock]")).toBeTruthy();
     expect(card().querySelector("nav")).toBeTruthy();
+    // A− / A+ once, in the bar beside the timer, not on the question.
+    const sizes = host.querySelectorAll("[data-testid=text-size]");
+    expect(sizes).toHaveLength(1);
+    expect(
+      sizes[0].closest("section")?.querySelector("[data-testid=exam-clock]")
+    ).toBeTruthy();
+    expect(sizes[0].closest("[aria-labelledby=exam-question]")).toBeNull();
     expect(card().parentElement?.style.maxInlineSize).not.toBe("none");
     expect(button(host, "A−").disabled).toBe(true);
     for (let i = 0; i < 3; i++) await click(button(host, "A+"));

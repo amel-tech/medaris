@@ -1,0 +1,179 @@
+# tedris.exams.result on the local stack (graphs/README.md, "The stack and the bindings"): a talebe's own screen of a past online
+# exam, /my-exams/<lessonId>, as the spare talebe applicantF signed in through Keycloak's real form.
+#   node apps/engine/src/cli.ts replay graphs/tedris/exams/result --bind graphs/tedris/exams/result/binding.yaml --out <dir>
+#   ... --cover transitions --out <dir>
+#
+# Data. Each scenario makes its own and takes it away; no seeded course or account is touched. applicantF holds a seat in "Deneme
+# dersi xtResC" (helpers/course.mjs, one week of one celse); its online exams are made through the API as its hoca
+# (helpers/exams.mjs: three SINGLE questions in the topic "Deneme konusu"):
+#   released   xtResDone, taken with two answers of three right, closed early and released: the score, the counts, the standing,
+#              both topic sections and the answers beside the right ones (closed early is closed for everyone)
+#   releasedOpen  xtResOpen, taken, and its results opened while it is still open: the result, and "Cevapların ve doğruları, sınav
+#              herkes için bitince burada açılır." in place of the answers. The release ends an open exam for everyone since 24 Nov
+#              (rule correct-only-when-closed), so the results are opened with SQL alone, as on an exam released before then
+#   waiting    xtResWait, taken and not released: "Sonuç henüz açıklanmadı"
+#   running    xtResRun, started and left open: "Sınavın sürüyor" and "Devam et"
+#   notFound   no data: a celse id that is no exam's answers 404
+#   failed     xtResWait taken, and tedrisat's per-person budget for its my-result read spent (helpers/throttle.mjs): the read gets
+#              429, "Sonuç okunamadı"; "Yeniden dene" reads again in the same window and fails again
+# The teardowns run exams.mjs remove before course.mjs remove (the order exams.mjs asks for).
+#
+# Not reachable on the stack, and why:
+#   - noAnswer: helpers/exams.mjs take answers every question, so no question is left blank.
+#   - topics or courseTopics none on a released result: every question the helper makes carries its topic.
+#   - read failed with the network down (the read is the server's): only the 429 is made.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.exams.result
+
+# the topic every question of exams.mjs carries
+samples:
+  name: Deneme konusu
+
+data:
+  done: { json: ../.local/made/xtResDone.json }
+  wait: { json: ../.local/made/xtResWait.json }
+  run: { json: ../.local/made/xtResRun.json }
+  open: { json: ../.local/made/xtResOpen.json }
+
+scenarios:
+  released:
+    given: { read: ok, attempt: ended, released: yes, closed: yes, topics: some, courseTopics: some }
+    as: applicantF
+    open: '{tedris}/my-exams/{done.lesson}'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtResC, --weeks, '1', --lessons, '1', --talebe, applicantF]
+        expect: '"tag":"xtResC"'
+      - run: [node, helpers/exams.mjs, make, xtResDone, --course, xtResC, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtResDone, applicantF, --right, '2']
+        expect: 'FINISHED right=2/3'
+      - run: [node, helpers/exams.mjs, close, xtResDone]
+        expect: 'CLOSED'
+      - run: [node, helpers/exams.mjs, release, xtResDone]
+        expect: 'released'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtResDone]
+      - run: [node, helpers/course.mjs, remove, xtResC]
+        expect: 'course remove xtResC'
+    samples:
+      course: Deneme dersi xtResC
+      title: Deneme sınavı xtResDone
+
+  releasedOpen:
+    given: { read: ok, attempt: ended, released: yes, closed: no, topics: some, courseTopics: some }
+    as: applicantF
+    open: '{tedris}/my-exams/{open.lesson}'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtResC, --weeks, '1', --lessons, '1', --talebe, applicantF]
+        expect: '"tag":"xtResC"'
+      - run: [node, helpers/exams.mjs, make, xtResOpen, --course, xtResC, --publish, now, --late, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtResOpen, applicantF, --right, '2']
+        expect: 'FINISHED right=2/3'
+      # what "Sonuçları talebelere aç" wrote before it ended the exam: the results open, the exam stays open
+      - run: [node, helpers/sql.mjs, "update lesson_exams set results_released_at = now() where lesson_id = '{open.lesson}'"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtResOpen]
+      - run: [node, helpers/course.mjs, remove, xtResC]
+        expect: 'course remove xtResC'
+    samples:
+      course: Deneme dersi xtResC
+      title: Deneme sınavı xtResOpen
+
+  waiting:
+    given: { read: ok, attempt: ended, released: no, closed: no, topics: some, courseTopics: some }
+    as: applicantF
+    open: '{tedris}/my-exams/{wait.lesson}'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtResC, --weeks, '1', --lessons, '1', --talebe, applicantF]
+        expect: '"tag":"xtResC"'
+      - run: [node, helpers/exams.mjs, make, xtResWait, --course, xtResC, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtResWait, applicantF]
+        expect: 'FINISHED'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtResWait]
+      - run: [node, helpers/course.mjs, remove, xtResC]
+        expect: 'course remove xtResC'
+    samples:
+      course: Deneme dersi xtResC
+      title: Deneme sınavı xtResWait
+
+  running:
+    given: { read: ok, attempt: inProgress, released: no, closed: no, topics: some, courseTopics: some }
+    as: applicantF
+    open: '{tedris}/my-exams/{run.lesson}'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtResC, --weeks, '1', --lessons, '1', --talebe, applicantF]
+        expect: '"tag":"xtResC"'
+      - run: [node, helpers/exams.mjs, make, xtResRun, --course, xtResC, --publish, now, --minutes, '120']
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtResRun, applicantF, --open]
+        expect: 'IN_PROGRESS'
+    teardown:
+      - run: [node, helpers/exams.mjs, remove, xtResRun]
+      - run: [node, helpers/course.mjs, remove, xtResC]
+        expect: 'course remove xtResC'
+    samples:
+      course: Deneme dersi xtResC
+      title: Deneme sınavı xtResRun
+
+  notFound:
+    given: { read: gone, attempt: ended, released: no, closed: no, topics: none, courseTopics: none }
+    as: applicantF
+    open: '{tedris}/my-exams/00000000-0000-4000-8000-000000000000'
+
+  failed:
+    given: { read: failed, attempt: ended, released: no, closed: no, topics: none, courseTopics: none }
+    as: applicantF
+    open: '{tedris}/my-exams/{wait.lesson}'
+    setup:
+      - run: [node, helpers/course.mjs, make, xtResC, --weeks, '1', --lessons, '1', --talebe, applicantF]
+        expect: '"tag":"xtResC"'
+      - run: [node, helpers/exams.mjs, make, xtResWait, --course, xtResC, --publish, now]
+        expect: '"status":"OPEN"'
+      - run: [node, helpers/exams.mjs, take, xtResWait, applicantF]
+        expect: 'FINISHED'
+      - run: [node, helpers/throttle.mjs, hold, applicantF, '/lessons/{wait.lesson}/online-exam/my-result']
+        expect: 'held '
+    teardown:
+      - run: [node, helpers/throttle.mjs, clear, applicantF, '/lessons/{wait.lesson}/online-exam/my-result']
+        expect: 'clear '
+      - run: [node, helpers/exams.mjs, remove, xtResWait]
+      - run: [node, helpers/course.mjs, remove, xtResC]
+        expect: 'course remove xtResC'
+
+events:
+  # the person goes to another page of tedris: Keşfet, from the address bar
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  left: { url: '{tedris}/discover' }
+  list_opened: { url: '{tedris}/my-exams' }
+  exam_opened: { url: '{tedris}/courses/*/lessons/*/sinav' }
+
+nodes:
+  # "Sınavlarım" is also the menu's entry in the wide bar: the breadcrumb's is the one in "Sayfa yolu"
+  crumbRoot: { role: link, name: Sınavlarım, within: { role: navigation, name: Sayfa yolu } }
+  # an Alert's title is a paragraph, not its accessible name: found by its role and its words
+  notFoundAlert: { role: status, hasText: Böyle bir sınav yok }
+  loadFailedAlert: { role: alert, hasText: Sonuç okunamadı }
+  inProgressAlert: { role: status, hasText: Sınavın sürüyor }
+  # one of three sentences: handed in by the talebe, ended by the time, closed early by the team
+  handedIn: { text: '/(tarihinde teslim ettin\.|tarihinde kendiliğinden bitti\.|tarihinde erken bitirdi\.)$/' }
+  # the course line and its topic share one <li>: the topic is its start, the line its end
+  courseTopicName: { text: '/^\d+\. Deneme konusu · /' }
+  courseTopicLine: { text: '/Yüzde \d+ · \d+ sınavdan$/' }
+  # the outcome is the first Badge of each answer's header
+  questionOutcome: { css: '[data-testid=my-answer] > div > .mds-badge:first-of-type' }
+  noAnswer: { skip: "helpers/exams.mjs take answers every question, so no question is blank" }
+  # the helper's questions are "Soru n", their options "Doğru n", "Yanlış n-a" and "Yanlış n-b"
+  questionText: { text: '/^Soru \d+$/' }
+  optionText: { text: '/^(Doğru \d+|Yanlış \d+-[ab])$/' }
+  # the page's lists have no name: each is found in its own section (Cevaplarım holds a list of options in each answer)
+  topicsList: { role: list, within: { role: region, name: Konulara göre } }
+  courseList: { role: list, within: { role: region, name: Dersin konularında durumum } }
+  answersList: { css: '[aria-labelledby=my-result-answers] > ol' }

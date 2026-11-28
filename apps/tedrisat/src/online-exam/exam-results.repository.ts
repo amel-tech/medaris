@@ -98,6 +98,21 @@ export class ExamResultsRepository {
     };
   }
 
+  /** The published online exam of a celse; null for a written or oral exam's celse, or any other. */
+  async examIdOfLesson(lessonId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ id: onlineExams.id })
+      .from(onlineExams)
+      .where(
+        and(
+          eq(onlineExams.lessonId, lessonId),
+          isNotNull(onlineExams.publishedAt)
+        )
+      )
+      .limit(1);
+    return row?.id ?? null;
+  }
+
   /** The talebe seated in the course, by name; one with no name sorts last. */
   async listSeated(courseId: string): Promise<ISeatedTalebe[]> {
     const rows = await this.db
@@ -317,7 +332,10 @@ export class ExamResultsRepository {
       .where(eq(examAnswers.attemptId, attemptId));
   }
 
-  /** Sets the early close and writes `online_exam.close` to the audit log. */
+  /**
+   * Sets the early close and writes `online_exam.close` to the audit log,
+   * with `via: "exam.release"` when the release of the results closed it.
+   */
   async markClosed(
     tx: Tx,
     entry: {
@@ -326,6 +344,7 @@ export class ExamResultsRepository {
       actorId: string;
       at: Date;
       finished: number;
+      via?: "exam.release";
     }
   ): Promise<void> {
     await tx
@@ -337,7 +356,11 @@ export class ExamResultsRepository {
       action: "online_exam.close",
       entity: "online_exam",
       entityId: entry.examId,
-      details: { courseId: entry.courseId, finished: entry.finished },
+      details: {
+        courseId: entry.courseId,
+        finished: entry.finished,
+        ...(entry.via ? { via: entry.via } : {}),
+      },
     });
   }
 

@@ -178,3 +178,19 @@ export class ExamNotPublishedError extends ConflictError {
     });
   }
 }
+
+/**
+ * A route of one kind called on the other (MDRS-248): the points, the early
+ * close, the results or the length of an exam on a çalışma seti, or a
+ * çalışma seti's route on an exam. Nothing is written.
+ */
+export class ExamKindMismatchError extends ConflictError {
+  static readonly code = "EXAM_KIND_MISMATCH";
+  constructor(examId: string, kind: string, expected: string) {
+    super(
+      ExamKindMismatchError.code,
+      `Exam ${examId} is of kind ${kind}, not ${expected}`,
+      { examId, kind, expected }
+    );
+  }
+}

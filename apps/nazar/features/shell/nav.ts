@@ -125,6 +125,12 @@ export const NAV: Readonly<Record<ScopeKind, readonly NavSectionDef[]>> = {
           requires: "exam.prepare",
         },
         {
+          id: "practice",
+          icon: "edit",
+          to: page("calisma-sorulari"),
+          requires: "exam.prepare",
+        },
+        {
           id: "evaluation",
           icon: "check",
           to: page("degerlendirme"),

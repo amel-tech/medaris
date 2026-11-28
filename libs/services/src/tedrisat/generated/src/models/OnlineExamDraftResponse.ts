@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ExamKind } from './ExamKind';
+import {
+    ExamKindFromJSON,
+    ExamKindFromJSONTyped,
+    ExamKindToJSON,
+    ExamKindToJSONTyped,
+} from './ExamKind';
 import type { ExamQuestionResponse } from './ExamQuestionResponse';
 import {
     ExamQuestionResponseFromJSON,
@@ -60,6 +67,12 @@ export interface OnlineExamDraftResponse {
      * @memberof OnlineExamDraftResponse
      */
     courseId: string;
+    /**
+     * An exam, or a çalışma seti (PRACTICE), which has no celse, no length, no points and no zeroth question; its `status` is DRAFT or OPEN.
+     * @type {ExamKind}
+     * @memberof OnlineExamDraftResponse
+     */
+    kind: ExamKind;
     /**
      * 
      * @type {string}
@@ -121,6 +134,12 @@ export interface OnlineExamDraftResponse {
      */
     status: OnlineExamDraftResponseStatusEnum;
     /**
+     * Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft.
+     * @type {boolean}
+     * @memberof OnlineExamDraftResponse
+     */
+    locked: boolean;
+    /**
      * The earliest start, its celse's time; null for a draft, which has no celse.
      * @type {Date}
      * @memberof OnlineExamDraftResponse
@@ -138,6 +157,12 @@ export interface OnlineExamDraftResponse {
      * @memberof OnlineExamDraftResponse
      */
     problems: Array<PublishProblemResponse>;
+    /**
+     * How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {number}
+     * @memberof OnlineExamDraftResponse
+     */
+    unansweredNotes?: number;
     /**
      * 
      * @type {number}
@@ -165,6 +190,7 @@ export type OnlineExamDraftResponseStatusEnum = typeof OnlineExamDraftResponseSt
 export function instanceOfOnlineExamDraftResponse(value: object): value is OnlineExamDraftResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
+    if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('durationMinutes' in value) || value['durationMinutes'] === undefined) return false;
     if (!('instructions' in value) || value['instructions'] === undefined) return false;
@@ -175,6 +201,7 @@ export function instanceOfOnlineExamDraftResponse(value: object): value is Onlin
     if (!('questions' in value) || value['questions'] === undefined) return false;
     if (!('pointsTotal' in value) || value['pointsTotal'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('locked' in value) || value['locked'] === undefined) return false;
     if (!('startsAt' in value) || value['startsAt'] === undefined) return false;
     if (!('latestStartAt' in value) || value['latestStartAt'] === undefined) return false;
     if (!('problems' in value) || value['problems'] === undefined) return false;
@@ -194,6 +221,7 @@ export function OnlineExamDraftResponseFromJSONTyped(json: any, ignoreDiscrimina
         
         'id': json['id'],
         'courseId': json['courseId'],
+        'kind': ExamKindFromJSON(json['kind']),
         'title': json['title'],
         'durationMinutes': json['durationMinutes'],
         'instructions': json['instructions'],
@@ -204,9 +232,11 @@ export function OnlineExamDraftResponseFromJSONTyped(json: any, ignoreDiscrimina
         'questions': ((json['questions'] as Array<any>).map(ExamQuestionResponseFromJSON)),
         'pointsTotal': json['pointsTotal'],
         'status': json['status'],
+        'locked': json['locked'],
         'startsAt': (json['startsAt'] == null ? null : new Date(json['startsAt'])),
         'latestStartAt': (json['latestStartAt'] == null ? null : new Date(json['latestStartAt'])),
         'problems': ((json['problems'] as Array<any>).map(PublishProblemResponseFromJSON)),
+        'unansweredNotes': json['unansweredNotes'] == null ? undefined : json['unansweredNotes'],
         'version': json['version'],
     };
 }
@@ -224,6 +254,7 @@ export function OnlineExamDraftResponseToJSONTyped(value?: OnlineExamDraftRespon
         
         'id': value['id'],
         'courseId': value['courseId'],
+        'kind': ExamKindToJSON(value['kind']),
         'title': value['title'],
         'durationMinutes': value['durationMinutes'],
         'instructions': value['instructions'],
@@ -234,9 +265,11 @@ export function OnlineExamDraftResponseToJSONTyped(value?: OnlineExamDraftRespon
         'questions': ((value['questions'] as Array<any>).map(ExamQuestionResponseToJSON)),
         'pointsTotal': value['pointsTotal'],
         'status': value['status'],
+        'locked': value['locked'],
         'startsAt': ((value['startsAt'] as any).toISOString()),
         'latestStartAt': ((value['latestStartAt'] as any).toISOString()),
         'problems': ((value['problems'] as Array<any>).map(PublishProblemResponseToJSON)),
+        'unansweredNotes': value['unansweredNotes'],
         'version': value['version'],
     };
 }

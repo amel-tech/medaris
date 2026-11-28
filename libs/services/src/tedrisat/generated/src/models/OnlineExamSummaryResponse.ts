@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ExamKind } from './ExamKind';
+import {
+    ExamKindFromJSON,
+    ExamKindFromJSONTyped,
+    ExamKindToJSON,
+    ExamKindToJSONTyped,
+} from './ExamKind';
+
 /**
  * 
  * @export
@@ -25,6 +33,12 @@ export interface OnlineExamSummaryResponse {
      * @memberof OnlineExamSummaryResponse
      */
     id: string;
+    /**
+     * 
+     * @type {ExamKind}
+     * @memberof OnlineExamSummaryResponse
+     */
+    kind: ExamKind;
     /**
      * 
      * @type {string}
@@ -44,6 +58,12 @@ export interface OnlineExamSummaryResponse {
      */
     status: OnlineExamSummaryResponseStatusEnum;
     /**
+     * Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft.
+     * @type {boolean}
+     * @memberof OnlineExamSummaryResponse
+     */
+    locked: boolean;
+    /**
      * When it opens; null for a draft.
      * @type {Date}
      * @memberof OnlineExamSummaryResponse
@@ -55,6 +75,12 @@ export interface OnlineExamSummaryResponse {
      * @memberof OnlineExamSummaryResponse
      */
     updatedAt: Date;
+    /**
+     * How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {number}
+     * @memberof OnlineExamSummaryResponse
+     */
+    unansweredNotes?: number;
 }
 
 
@@ -75,9 +101,11 @@ export type OnlineExamSummaryResponseStatusEnum = typeof OnlineExamSummaryRespon
  */
 export function instanceOfOnlineExamSummaryResponse(value: object): value is OnlineExamSummaryResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
+    if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('questionCount' in value) || value['questionCount'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('locked' in value) || value['locked'] === undefined) return false;
     if (!('startsAt' in value) || value['startsAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
     return true;
@@ -94,11 +122,14 @@ export function OnlineExamSummaryResponseFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'id': json['id'],
+        'kind': ExamKindFromJSON(json['kind']),
         'title': json['title'],
         'questionCount': json['questionCount'],
         'status': json['status'],
+        'locked': json['locked'],
         'startsAt': (json['startsAt'] == null ? null : new Date(json['startsAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
+        'unansweredNotes': json['unansweredNotes'] == null ? undefined : json['unansweredNotes'],
     };
 }
 
@@ -114,11 +145,14 @@ export function OnlineExamSummaryResponseToJSONTyped(value?: OnlineExamSummaryRe
     return {
         
         'id': value['id'],
+        'kind': ExamKindToJSON(value['kind']),
         'title': value['title'],
         'questionCount': value['questionCount'],
         'status': value['status'],
+        'locked': value['locked'],
         'startsAt': ((value['startsAt'] as any).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
+        'unansweredNotes': value['unansweredNotes'],
     };
 }
 

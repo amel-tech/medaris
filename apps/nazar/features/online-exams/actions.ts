@@ -8,6 +8,7 @@ import {
 import type {
   CourseTopicResponse,
   CourseZerothQuestionResponse,
+  ExamKind,
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   OnlineExamDraftResponse,
@@ -27,24 +28,31 @@ import {
  * someone else saved the exam since, and the page reads it again.
  */
 
+/** "Yeni sınav", or with `kind: PRACTICE` "Yeni çalışma seti" (MDRS-248). */
 export async function createOnlineExam(
   courseId: string,
-  title: string
+  title: string,
+  kind: ExamKind = "EXAM"
 ): Promise<ActionOutcome<{ id: string }>> {
   return outcomeOf(
     await authenticatedAction((api) =>
       api.onlineExams.createOnlineExam({
         id: courseId,
-        createOnlineExamDto: { title },
+        createOnlineExamDto: { title, kind },
       })
     )
   );
 }
 
-/** The exam's settings: its title, its length in minutes (null until typed) and the team's instructions (blank is none). */
+/**
+ * The exam's settings: its title, its length in minutes (null until typed)
+ * and the team's instructions (blank is none). A çalışma seti has no length:
+ * the key is left out, since the API refuses any length on a set
+ * (EXAM_KIND_MISMATCH), a null one included.
+ */
 export interface ExamSettings {
   title: string;
-  durationMinutes: number | null;
+  durationMinutes?: number | null;
   instructions: string | null;
 }
 
@@ -163,6 +171,21 @@ export async function unpublishOnlineExam(
         versionDto: { version },
       })
     )
+  );
+}
+
+/**
+ * "Seti sil" (MDRS-248): a çalışma seti with its questions. EXAM_LOCKED once
+ * a talebe started it or a pool attempt drew from it.
+ */
+export async function deletePracticeSet(
+  examId: string
+): Promise<ActionOutcome<{ id: string }>> {
+  return outcomeOf(
+    await authenticatedAction(async (api) => {
+      await api.onlineExams.deleteOnlineExam({ examId });
+      return { id: examId };
+    })
   );
 }
 

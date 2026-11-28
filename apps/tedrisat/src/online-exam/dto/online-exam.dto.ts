@@ -20,6 +20,7 @@ import {
 } from "class-validator";
 import {
   AnswerMode,
+  ExamKind,
   ONLINE_EXAM_INSTRUCTIONS_MAX,
   ONLINE_EXAM_TITLE_MAX,
   OPTION_TEXT_MAX,
@@ -114,6 +115,31 @@ export class CreateOnlineExamDto {
   @MinLength(1)
   @MaxLength(ONLINE_EXAM_TITLE_MAX)
   title!: string;
+
+  @ApiPropertyOptional({
+    enum: ExamKind,
+    enumName: "ExamKind",
+    default: ExamKind.EXAM,
+    description:
+      "EXAM, left out: an exam sat once with its celse. PRACTICE: a çalışma seti, which the course's talebe solve whenever they like, as often as they like, with no celse, length, points or zeroth question (MDRS-248).",
+  })
+  // Not @IsOptional: it would let a null through unchecked.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsEnum(ExamKind)
+  kind?: ExamKind;
+}
+
+/** `?kind=` of the course's exam list (MDRS-248): EXAM when left out. */
+export class ListOnlineExamsQueryDto {
+  @ApiPropertyOptional({
+    enum: ExamKind,
+    enumName: "ExamKind",
+    default: ExamKind.EXAM,
+  })
+  // Not @IsOptional: it would let a null through unchecked.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsEnum(ExamKind)
+  kind?: ExamKind;
 }
 
 /** A new topic of the course's list. */
@@ -254,6 +280,14 @@ export class SaveExamQuestionDto extends VersionedDto {
   @ArrayMaxSize(50)
   @IsUUID("all", { each: true })
   topicIds!: string[];
+
+  @ApiPropertyOptional({
+    description:
+      "Whether the talebe may write a note on it (MDRS-248, soru notları); left out, it stays as it is. On a published set, `PUT …/talebe-notes` turns it. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  @IsOptional()
+  @IsBoolean()
+  talebeNotes?: boolean;
 }
 
 /** A question's own points, or null to put it back into the equal share. */
@@ -319,6 +353,11 @@ export class ExamQuestionResponse {
   })
   points!: string;
   @ApiProperty() complete!: boolean;
+  @ApiPropertyOptional({
+    description:
+      "Whether the talebe may write a note on it (MDRS-248, soru notları). A new question starts off, in a çalışma seti and an exam alike. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  talebeNotes?: boolean;
   @ApiProperty({
     type: [String],
     enum: ["text", "option", "correct", "topic"],
@@ -347,6 +386,13 @@ export class PublishProblemResponse {
 export class OnlineExamDraftResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
   @ApiProperty({ format: "uuid" }) courseId!: string;
+  @ApiProperty({
+    enum: ExamKind,
+    enumName: "ExamKind",
+    description:
+      "An exam, or a çalışma seti (PRACTICE), which has no celse, no length, no points and no zeroth question; its `status` is DRAFT or OPEN.",
+  })
+  kind!: ExamKind;
   @ApiProperty() title!: string;
   @ApiProperty({
     type: Number,
@@ -383,6 +429,11 @@ export class OnlineExamDraftResponse {
   @ApiProperty({ enum: ["DRAFT", "SCHEDULED", "OPEN", "CLOSED"] })
   status!: "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
   @ApiProperty({
+    description:
+      "Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft.",
+  })
+  locked!: boolean;
+  @ApiProperty({
     type: Date,
     nullable: true,
     description:
@@ -396,6 +447,11 @@ export class OnlineExamDraftResponse {
     description: "What keeps it from being published; empty when it can be.",
   })
   problems!: PublishProblemResponse[];
+  @ApiPropertyOptional({
+    description:
+      "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  unansweredNotes?: number;
   @ApiProperty() version!: number;
 }
 
@@ -449,10 +505,16 @@ export class TopicRemovedResponse {
 
 export class OnlineExamSummaryResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ enum: ExamKind, enumName: "ExamKind" }) kind!: ExamKind;
   @ApiProperty() title!: string;
   @ApiProperty() questionCount!: number;
   @ApiProperty({ enum: ["DRAFT", "SCHEDULED", "OPEN", "CLOSED"] })
   status!: "DRAFT" | "SCHEDULED" | "OPEN" | "CLOSED";
+  @ApiProperty({
+    description:
+      "Whether it can no longer be taken back to a draft (`POST …/unpublish` is 409 EXAM_LOCKED): an exam once its celse has started; a çalışma seti once a talebe has started it, finished or not, or a pool attempt drew one of its questions (MDRS-248). Always false for a draft.",
+  })
+  locked!: boolean;
   @ApiProperty({
     type: Date,
     nullable: true,
@@ -460,6 +522,11 @@ export class OnlineExamSummaryResponse {
   })
   startsAt!: Date | null;
   @ApiProperty() updatedAt!: Date;
+  @ApiPropertyOptional({
+    description:
+      "How many notes the talebe sent to the hoca on its questions wait for an answer (MDRS-248, soru notları): the badge on the list. Always sent by the server; optional in the contract (MDRS-248, soru notları).",
+  })
+  unansweredNotes?: number;
 }
 
 export class OnlineExamCreatedResponse {

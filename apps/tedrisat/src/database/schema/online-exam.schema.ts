@@ -13,12 +13,17 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { AnswerMode, Scoring } from "../../online-exam/domain/online-exam";
+import {
+  AnswerMode,
+  ExamKind,
+  Scoring,
+} from "../../online-exam/domain/online-exam";
 import { courses, lessons } from "./course.schema";
 import { madrasahs } from "./madrasah.schema";
 
 export const examAnswerMode = pgEnum("exam_answer_mode", AnswerMode);
 export const examScoring = pgEnum("exam_scoring", Scoring);
+export const examKind = pgEnum("exam_kind", ExamKind);
 
 /**
  * One topic of a course's online exams (MDRS-299): a short name with a number
@@ -67,6 +72,10 @@ export const courseExamTopics = table(
  * `version` is bumped by every write of the exam, its topics, its questions
  * and their points; a write that names an older one is refused
  * (EXAM_STALE), so two people editing it never overwrite each other unseen.
+ *
+ * `kind` PRACTICE is a çalışma seti (MDRS-248): published without a celse,
+ * so its `lesson_id` stays null, and solved by the talebe in
+ * `practice_attempts` as often as they like.
  */
 export const onlineExams = table(
   "online_exams",
@@ -79,6 +88,7 @@ export const onlineExams = table(
     lessonId: uuid("lesson_id").references(() => lessons.id, {
       onDelete: "restrict",
     }),
+    kind: examKind("kind").default(ExamKind.EXAM).notNull(),
     title: text("title").notNull(),
     // No default: the team types it, and an exam without it is not published
     // (the owner, 22 Nov 2026: "sınav süresinin varsayılanı olmasın, zorunlu
@@ -102,6 +112,11 @@ export const onlineExams = table(
     index("online_exams_course_idx").on(t.courseId),
     uniqueIndex("online_exams_lesson_uq").on(t.lessonId),
     check("online_exams_duration_check", sql`${t.durationMinutes} >= 1`),
+    // A çalışma seti never has a celse.
+    check(
+      "online_exams_kind_lesson_check",
+      sql`${t.kind} = 'EXAM' or ${t.lessonId} is null`
+    ),
   ]
 );
 
@@ -161,6 +176,11 @@ export const examQuestions = table(
       .notNull(),
     scoring: examScoring("scoring"),
     ownPoints: integer("own_points"),
+    // Whether the talebe may write a note on it (MDRS-248, soru notları):
+    // the team's per question icon. A new question takes its set's default
+    // (a çalışma seti's on, an exam's off; `addQuestion`), and it is no part
+    // of the question's content, so turning it is no write of the exam.
+    talebeNotes: boolean("talebe_notes").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

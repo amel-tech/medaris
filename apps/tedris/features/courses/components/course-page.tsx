@@ -25,6 +25,10 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useMemo, useState } from "react";
 import { courseCover } from "~/features/courses/course-cover";
+import {
+  courseAnchor,
+  PRACTICE_HREF,
+} from "~/features/practice/practice-model";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 import {
   type AssignmentViewer,
@@ -37,6 +41,7 @@ import {
   holdsSeat,
   sessionWhen,
 } from "../course-view";
+import { courseDocuments } from "../documents-model";
 import { canWriteNotes } from "../lesson-note-model";
 import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { sessionChoices } from "../question-model";
@@ -47,6 +52,7 @@ import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
 import { CourseSarfTab } from "./course-sarf-tab";
+import { DocumentsTab } from "./documents-tab";
 import { MyGradesTab } from "./exam-grades";
 import { FileErrorNotice } from "./file-error-notice";
 import { RecordingsTab } from "./recordings-tab";
@@ -74,6 +80,7 @@ export const CoursePage = ({
   initialTab,
   grades = null,
   views = null,
+  hasPractice = false,
   now: nowProp,
 }: {
   course: CourseDetailResponse;
@@ -120,6 +127,12 @@ export const CoursePage = ({
    * failed, and then the programme draws no watch marks.
    */
   views?: LessonViewResponse[] | null;
+  /**
+   * Whether the course has a published çalışma seti for this talebe
+   * (MDRS-248, Faz 3): then the aside links to Çalışma Soruları; otherwise
+   * nothing is drawn.
+   */
+  hasPractice?: boolean;
   /** The tab the page opens on: `?tab=kayitlar` from a session page. */
   initialTab?: string;
   /** The instant the page is drawn at, for tests. */
@@ -176,6 +189,10 @@ export const CoursePage = ({
   const asksQuestions =
     !course.contentLocked && canWriteNotes(course.enrollment?.status);
 
+  // MDRS-248: every document of the course on one tab, for who may read the
+  // content; the course detail already carries the course's and each celse's.
+  const documents = course.contentLocked ? null : courseDocuments(course);
+
   const tabs = [
     { value: "mufredat", label: t("tabCurriculum") },
     {
@@ -185,6 +202,15 @@ export const CoursePage = ({
         ? { count: recordings.length }
         : {}),
     },
+    ...(documents
+      ? [
+          {
+            value: "dokumanlar",
+            label: t("tabDocuments"),
+            ...(documents.count > 0 ? { count: documents.count } : {}),
+          },
+        ]
+      : []),
     ...(seat
       ? [
           {
@@ -405,6 +431,16 @@ export const CoursePage = ({
               signInHref={signInHref ?? invite.signIn}
               registerHref={registerHref ?? invite.register}
             />
+            {hasPractice ? (
+              <Button
+                href={`${PRACTICE_HREF}#${courseAnchor(course.id)}`}
+                variant="secondary"
+                fullWidth
+                data-testid="course-practice-link"
+              >
+                {t("practiceLink")}
+              </Button>
+            ) : null}
             {resourceList}
           </div>
         )}
@@ -466,6 +502,11 @@ export const CoursePage = ({
                 now={now}
               />
             </TabsPanel>
+            {documents ? (
+              <TabsPanel value="dokumanlar" className="pbs-4">
+                <DocumentsTab documents={documents} courseId={course.id} />
+              </TabsPanel>
+            ) : null}
             {seat ? (
               <TabsPanel value="deste" className="pbs-4">
                 {decks.length > 0 ? (

@@ -1,33 +1,20 @@
-import type { CSSProperties } from "react";
-
-const ARABIC = /\p{Script=Arabic}/u;
-const LETTER = /\p{L}/u;
-
-/** True when the text's first letter is Arabic script: it is drawn as Arabic. */
-export const startsArabic = (text: string): boolean => {
-  for (const ch of text) {
-    if (ARABIC.test(ch)) return true;
-    if (LETTER.test(ch)) return false;
-  }
-  return false;
-};
-
 /**
- * An Arabic run (the owner, 22 Nov 2026: "arapça font boyutu küçük kalıyor
- * … 1 rem yapalım"): Naskh, never under 1rem, the Arabic leading, and
- * isolated, so a list's letter or a "Doğru" beside it keeps its place.
+ * A question's, an option's or an answer's text: the Arabic text standard of
+ * the design system (MDRS-248), one module for tedris and nazar. An Arabic
+ * text is Naskh at the Latin size it stands for times --arabic-scale (1.4),
+ * never under --fs-arabic-text-min (18px), at the harakat leading
+ * (--lh-arabic-text, 2), with lang="ar" dir="rtl" on the element and
+ * isolated. A text with a Latin letter, whatever it starts with, takes the
+ * page's direction (`paragraphDir`); its Arabic runs keep theirs. A− / A+
+ * multiply the size, so Arabic stays the same ratio larger than Turkish at
+ * every step. See docs/migration/mdrs-248-arapca-metin-standardi.md.
  */
-const ARABIC_RUN: CSSProperties = {
-  fontFamily: "var(--font-arabic)",
-  fontSize: "max(1rem, 1em)",
-  lineHeight: "var(--lh-arabic)",
-  unicodeBidi: "isolate",
-};
-
-/** The attributes of a question's or an option's text: Arabic, or left to the browser. */
-export const textProps = (
-  text: string
-): { lang?: "ar"; dir: "rtl" | "auto"; style?: CSSProperties } =>
-  startsArabic(text)
-    ? { lang: "ar", dir: "rtl", style: ARABIC_RUN }
-    : { dir: "auto" };
+export {
+  arabicRuns,
+  arabicTextProps as textProps,
+  hasArabic,
+  isArabicOnly,
+  isMixed,
+  paragraphDir,
+  startsArabic,
+} from "@medaris/tokens/arabic";

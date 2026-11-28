@@ -6,12 +6,12 @@
 # The story: the hoca (müderris) opens Değerlendirme from the course menu and finds the exam as a column ("1. hafta · Ara sınav (/100)", with the
 # badge "Sınav"), opens it, types each talebe's score (a score above the full mark is refused where it is typed; Enter saves and moves down; "Girmedi"
 # for one who did not sit it), watches "1/2 girildi" follow, goes back to the table, and releases the results with one press that asks nothing and
-# cannot be taken back. A talebe reads the score on Notlarım from then on (tedris.course.grades, which this flow starts) and is told by a notification.
+# cannot be taken back. An online exam's column (MDRS-299) asks first, since its release also ends the exam for everyone (24 Nov 2026). A talebe reads the score on Notlarım from then on (tedris.course.grades, which this flow starts) and is told by a notification.
 # The exam is planned beforehand on "Celse planla" (nazar.sessions.plan); this flow starts with the exam there.
 #
 # What it settles that the inventory leaves loose:
 #   - the exam screen stays live after the release: the boxes still take scores, and the API takes them (no check of resultsReleasedAt, exam.repository.ts
-#     :150-251), so a score can be changed after the talebe may read it, silently on both sides (EXAM-2);
+#     :155-256), so a score can be changed after the talebe may read it, silently on both sides (EXAM-2);
 #   - the page's own words still speak of recited homework only: the subtitle, the table's caption, the way back "Bütün ödevler" and the empty page that
 #     tells the hoca to pick "Ezber" in Müfredat, never to plan an exam (EXAM-1);
 #   - "Excel indir" is drawn here and what it does is nazar.files.download's: every press is a 400 INVALID_PATH, the page loads again and says nothing
@@ -54,8 +54,8 @@ summary: >-
 
 scope:
   shows: >-
-    the read of the board, the table with an exam's column and its cells, the exam's own screen (the count, the boxes, "Girmedi", the release and its
-    badge), the toasts of the save and the release, the three ways the page can be empty or refused, and the hand-over to the talebe's Notlarım
+    the read of the board, the table with an exam's column and its cells, the exam's own screen (the count, the boxes, "Girmedi", the release, its
+    question on an online exam, and its badge), the toasts of the save and the release, the three ways the page can be empty or refused, and the hand-over to the talebe's Notlarım
   world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
   outOfView:
     - "the columns of recited homework and the marks Tam, Eksik and Vermedi, their keys and notes: nazar.evaluation.markRecited (it starts tedris.learn.homeworkMemorize)"
@@ -73,8 +73,10 @@ decisions:
       releases once and has no way back); the page has no question and the button is on with 0/N entered, so each talebe would read "Girilmedi".
     recommend: >-
       Yes (F-D1-28): an AlertDialog that says how many results are entered of how many, that the talebe will read them and be told, and that it cannot be
-      undone, with the focus on "Vazgeç"; the same shape as Reddet on the Pano.
-    affects: [scoring, releasing]
+      undone, with the focus on "Vazgeç"; the same shape as Reddet on the Pano. Done in part on 24 Nov 2026: an online exam's column asks, in the words
+      of its results page (that the release ends the exam for everyone, and what each talebe then reads), because its release ends the exam; it does
+      not say how many are entered, and a written or oral exam's column still asks nothing.
+    affects: [scoring, confirmRelease, releasing]
   D2:
     question: >-
       Should a score still be changeable after the release? The boxes stay live and the API takes the change (no check of resultsReleasedAt), so the talebe
@@ -107,6 +109,12 @@ context:
     say:
       closed: "when the board was read the exam's results were not yet released (resultsReleasedAt empty)"
       opened: "when the board was read the exam's results were released already, by this person on another day or by another of the course team"
+  format:
+    values: [written, online]
+    initial: any
+    say:
+      written: "the exam is written or oral (\"Yazılı\", \"Şifahi\"): its release asks nothing"
+      online: "the exam is an online one (\"Çoktan seçmeli\", MDRS-299): its release ends the exam for everyone, so the page asks first"
   results:
     values: [closed, opened]
     initial: closed
@@ -121,12 +129,13 @@ context:
       over: "the box the person typed in says \"En çok {max} puan verilebilir.\" under it"
       invalid: "the box the person typed in says \"Puan 0 ya da daha büyük bir tam sayı olmalı.\" under it"
   last:
-    values: [nothing, released, releaseFailed, saveFailed]
+    values: [nothing, released, releaseFailed, releaseNotOpen, saveFailed]
     initial: nothing
     say:
       nothing: "no toast of this page is up"
       released: "the toast \"Sonuçlar talebelere açıldı.\" stands in the region for six seconds"
       releaseFailed: "the error toast \"Sonuçlar açılamadı.\" stands until it is closed"
+      releaseNotOpen: "the same error toast, with \"Sınav açık değil: henüz açılmadı ya da bitti.\" under it: the online exam has not opened"
       saveFailed: "the error toast \"Kaydedilemedi\" with the talebe's name stands until it is closed, and the cell has gone back to what tedrisat held"
 
 guards:
@@ -145,6 +154,7 @@ effects:
   saveRefused: { set: { last: saveFailed } }
   resultsOpened: { set: { results: opened, last: released } }
   releaseRefused: { set: { last: releaseFailed } }
+  releaseNotOpen: { set: { last: releaseNotOpen } }
 
 failures:
   opening:
@@ -163,12 +173,13 @@ failures:
   releasing:
     from: releaseExamResults
     signedOut: [HTTP_401]
+    notOpen: [EXAM_NOT_OPEN]
     refused: [EXAM_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, AUTHZ_FORBIDDEN]
 
 # The story the page tells first, as e2e exam#2 tells it: the hoca opens the exam, types 120 (refused: nothing saved), types 85 for one talebe, marks the
 # other "Girmedi", goes back to the table and opens the exam again, and releases the results.
 main:
-  given: { board: ready, before: closed }
+  given: { board: ready, before: closed, format: written }
   events: [DONE, OPEN_EXAM, ENTER_TOO_HIGH, ENTER_SCORE, DONE, PRESS_ABSENT, DONE, BACK, OPEN_EXAM, RELEASE, DONE]
 
 initial: opening
@@ -187,8 +198,8 @@ states:
     on:
       DONE:
         - { guard: "board == 'ready'", target: overview, source: apps/nazar/features/evaluation/components/evaluation-page.tsx:57 }
-        - { guard: "board == 'noColumns'", target: noColumns, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197 }
-        - { guard: "board == 'noTalebe'", target: noTalebe, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202 }
+        - { guard: "board == 'noColumns'", target: noColumns, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:208 }
+        - { guard: "board == 'noTalebe'", target: noTalebe, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:213 }
       FAIL.forbidden: { guard: "board == 'forbidden'", target: forbidden, source: apps/nazar/features/evaluation/components/evaluation-page.tsx:48, say: "the page's heading stays and an alert says the person may not" }
       FAIL.failed: { guard: "board == 'failed'", target: loadFailed, source: apps/nazar/features/evaluation/components/evaluation-page.tsx:48, say: "the page's heading stays and a retry state is drawn under it" }
       FAIL.missing: { target: not_found, source: apps/nazar/lib/tedrisat-read.ts:46, say: "the portal's 404 page" }
@@ -207,10 +218,10 @@ states:
       A recited-homework column, if the course has one, is drawn beside the exam's and is nazar.evaluation.markRecited's.
     on:
       OPEN_EXAM:
-        - { guard: reopened, target: scoring, effect: [opensReleased], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:122, say: "they press the exam's heading; the exam screen shows the badge, not the button, because the results are open already" }
-        - { target: scoring, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:208, say: "they press the exam's heading: the table unmounts and the exam screen takes its place; the focus falls to the document (F-D1-12)" }
+        - { guard: reopened, target: scoring, effect: [opensReleased], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:125, say: "they press the exam's heading; the exam screen shows the badge, not the button, because the results are open already" }
+        - { target: scoring, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:219, say: "they press the exam's heading: the table unmounts and the exam screen takes its place; the focus falls to the document (F-D1-12)" }
       NAVIGATE: { target: left, say: "they use the menu, the breadcrumb or the address" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:289
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:300
 
   noColumns:
     title: The board has no column
@@ -221,7 +232,7 @@ states:
       control.
     on:
       NAVIGATE: { target: left, say: "they use the menu, the breadcrumb or the address" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:208
 
   noTalebe:
     title: The board has columns and no talebe
@@ -231,7 +242,7 @@ states:
       exam. The page's heading and subtitle stay. No control.
     on:
       NAVIGATE: { target: left, say: "they use the menu, the breadcrumb or the address" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:213
 
   forbidden:
     title: The page says the person may not
@@ -269,19 +280,22 @@ states:
       above the full mark says "En çok {max} puan verilebilir." under the box and a fraction or a negative says "Puan 0 ya da daha büyük bir tam sayı olmalı.",
       each a role=alert paragraph with aria-invalid on the box and no aria-describedby (EXAM-3), and nothing is sent (e2e exam#2 a1, a2); a number that fits is drawn at
       once in the table and in the count and sent, and Enter then moves the focus to the next row's box (also from a blank box, never after a refused score,
-      and the last row has no next box). "Girmedi" empties the box, saves the absence and takes the chip's pressed state (aria-pressed). The same score is not sent twice. The release has
-      no question and no way back (F-D1-28), and the focus of the pressed button is lost (F-D1-12). A page that has released the exam keeps every box live:
+      and the last row has no next box). "Girmedi" empties the box, saves the absence and takes the chip's pressed state (aria-pressed). The same score is not sent twice. On a written or
+      oral exam the release has no question and no way back (F-D1-28); on an online exam it asks first (confirmRelease). The focus of the pressed button is
+      lost (F-D1-12). A page that has released the exam keeps every box live:
       a score can still be changed and the API takes it (EXAM-2). From here "Bütün ödevler" returns to the table. Read from the code; the focus moves, the
       ordering of the rows and the optimistic cell were not seen in a browser.
     on:
-      ENTER_SCORE: { target: savingScore, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:694, say: "they type a whole number up to the full mark and press Enter, or leave the box: the cell is drawn at once and the score is sent" }
-      PRESS_ABSENT: { target: savingAbsent, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:759, say: "they press Girmedi on a row: the box empties and the absence is sent" }
-      ENTER_TOO_HIGH: { target: scoring, effect: [tooHigh], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:701, say: "they type a number above the full mark and press Enter or leave the box: the box says so and nothing is sent; the focus stays in the box" }
-      ENTER_NOT_WHOLE: { target: scoring, effect: [notWhole], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:701, say: "they type a fraction or a negative number: the box says it is not a score and nothing is sent" }
-      RELEASE: { guard: "results == 'closed'", target: releasing, effect: [clearNote], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:631, say: "they press Sonuçları talebelere aç: no question is asked (F-D1-28)" }
-      BACK: { target: overview, effect: [leavesTheExam], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:216, say: "they press Bütün ödevler: the exam screen unmounts and the table takes its place, the focus falls to the document (F-D1-12)" }
+      ENTER_SCORE: { target: savingScore, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:730, say: "they type a whole number up to the full mark and press Enter, or leave the box: the cell is drawn at once and the score is sent" }
+      PRESS_ABSENT: { target: savingAbsent, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:795, say: "they press Girmedi on a row: the box empties and the absence is sent" }
+      ENTER_TOO_HIGH: { target: scoring, effect: [tooHigh], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:737, say: "they type a number above the full mark and press Enter or leave the box: the box says so and nothing is sent; the focus stays in the box" }
+      ENTER_NOT_WHOLE: { target: scoring, effect: [notWhole], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:737, say: "they type a fraction or a negative number: the box says it is not a score and nothing is sent" }
+      RELEASE:
+        - { guard: "results == 'closed' and format == 'written'", target: releasing, effect: [clearNote], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:653, say: "they press Sonuçları talebelere aç on a written or oral exam: no question is asked (F-D1-28)" }
+        - { guard: "results == 'closed' and format == 'online'", target: confirmRelease, effect: [clearNote], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:654, say: "they press it on an online exam: a question comes first" }
+      BACK: { target: overview, effect: [leavesTheExam], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:227, say: "they press Bütün ödevler: the exam screen unmounts and the table takes its place, the focus falls to the document (F-D1-12)" }
       NAVIGATE: { target: left, say: "they use the menu, the breadcrumb or the address" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:566
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:580
 
   savingScore:
     title: The score is on its way
@@ -295,10 +309,10 @@ states:
     invoke: { action: saveExamResult }
     on:
       DONE:
-        - { guard: "results == 'closed'", target: scoring, effect: [scoreSaved, scoreSavedClosed], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:155, say: "the score is kept and the talebe still reads \"Sonuç henüz açıklanmadı\"" }
-        - { target: scoring, effect: [scoreSaved], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:155, say: "the score is kept, and the talebe reads it at their next read (EXAM-2)" }
-      FAIL.refused: { target: scoring, effect: [saveRefused], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:157, say: "the cell goes back and an error toast names the talebe" }
-      FAIL.signedOut: { target: sent_to_sign_in, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:154 }
+        - { guard: "results == 'closed'", target: scoring, effect: [scoreSaved, scoreSavedClosed], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:158, say: "the score is kept and the talebe still reads \"Sonuç henüz açıklanmadı\"" }
+        - { target: scoring, effect: [scoreSaved], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:158, say: "the score is kept, and the talebe reads it at their next read (EXAM-2)" }
+      FAIL.refused: { target: scoring, effect: [saveRefused], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:160, say: "the cell goes back and an error toast names the talebe" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:157 }
     source: apps/nazar/features/evaluation/actions.ts:45
 
   savingAbsent:
@@ -309,10 +323,24 @@ states:
       after the release. A refusal puts the cell back and raises the error toast; a pressed chip is not sent again.
     invoke: { action: saveExamResult }
     on:
-      DONE: { target: scoring, effect: [absentSaved], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:155 }
-      FAIL.refused: { target: scoring, effect: [saveRefused], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:157, say: "the chip goes back and an error toast names the talebe" }
-      FAIL.signedOut: { target: sent_to_sign_in, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:154 }
+      DONE: { target: scoring, effect: [absentSaved], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:158 }
+      FAIL.refused: { target: scoring, effect: [saveRefused], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:160, say: "the chip goes back and an error toast names the talebe" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:157 }
     source: apps/nazar/features/evaluation/actions.ts:45
+
+  confirmRelease:
+    title: Sonuçlar talebelere açılsın mı?
+    by: human
+    description: >-
+      On an online exam's column only (MDRS-299), the kit's AlertDialog, in the words of the exam's own results page (nazar.exams.results): the title, that
+      releasing ends the exam for everyone and no one can start it any more, and that each talebe reads their score, their standing by topic and their
+      answers with the correct ones and is told, and that it cannot be undone. The board does not read whether the exam is still going on or has closed,
+      so it says that the release ends it either way, and it cannot say how many talebe's exams are still going on. The focus starts on Vazgeç
+      (alert-dialog.tsx:70). Since 24 Nov 2026; read from the code and the spec, not walked.
+    on:
+      CONFIRM: { target: releasing, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:671, say: "they press Sonuçları aç: the button turns busy and the call goes out" }
+      CANCEL: { target: scoring, say: "they press Vazgeç, or close the question: nothing is released" }
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:664
 
   releasing:
     title: The results are being opened
@@ -322,12 +350,16 @@ states:
       ENROLLED seat holder except the caller (EXAM_RESULTS_RELEASED; a COMPLETED talebe reads the grades and is not told: EXAM-4); a second call changes nothing and
       tells nobody, and still answers the first time. The page then draws the toast "Sonuçlar talebelere açıldı." and the badge "Sonuçlar açık" in the button's
       place, and the talebe's Notlarım (tedris.course.grades, started here) shows the score. The call has no try/catch around it: if it never reaches Next, the
-      button stays busy (F-D1-20, from the code).
+      button stays busy (F-D1-20, from the code). An online exam's column (MDRS-299) is released by the same call after its question, which
+      since 24 Nov 2026 first ends the exam for everyone, as "Sınavı erken bitir" does (rule release-ends-the-exam of nazar.exams.results), and is
+      refused before the exam opens (EXAM_NOT_OPEN): the error toast then says why, "Sınav açık değil: henüz açılmadı ya da bitti."; any other
+      refusal is the toast's title alone, as before.
     invoke: { action: releaseExamResults }
     on:
-      DONE: { target: scoring, effect: [resultsOpened], starts: { flow: tedris.course.grades, given: { released: "true" } }, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:168, say: "a toast says the results are open, the badge takes the button's place, and the talebe's Notlarım now holds the scores" }
-      FAIL.refused: { target: scoring, effect: [releaseRefused], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:165, say: "an error toast says the results could not be opened; the button is back" }
-      FAIL.signedOut: { target: sent_to_sign_in, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:163 }
+      DONE: { target: scoring, effect: [resultsOpened], starts: { flow: tedris.course.grades, given: { released: "true" } }, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:179, say: "a toast says the results are open, the badge takes the button's place, and the talebe's Notlarım now holds the scores" }
+      FAIL.notOpen: { target: scoring, effect: [releaseNotOpen], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:172, say: "the online exam has not opened: the error toast says so; the button is back" }
+      FAIL.refused: { target: scoring, effect: [releaseRefused], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:168, say: "an error toast says the results could not be opened; the button is back" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:166 }
     source: apps/nazar/features/evaluation/actions.ts:67
 
   not_found:
@@ -351,16 +383,16 @@ assertions:
   - id: exam-screen-needs-the-table
     never: "state in ['scoring', 'savingScore', 'savingAbsent', 'releasing'] and board != 'ready'"
     say: The exam screen is reached only from the table, which is drawn only when the board has a column and a seated talebe
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:208
   - id: release-only-while-closed
-    never: "state == 'releasing' and results == 'opened'"
+    never: "state in ['confirmRelease', 'releasing'] and results == 'opened'"
     say: The release is asked for only while the button is there; once the results are open the badge takes its place
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:624
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:646
   - id: refused-score-is-not-sent
     never: "state == 'savingScore' and problem != 'none'"
     say: A score the box refuses, above the full mark or not a whole number, is never sent
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:700
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:736
   - id: toast-tells-the-truth
     never: "last == 'released' and results == 'closed'"
     say: The toast that says the results are open stands only after the exam screen has the badge
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:168
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:179

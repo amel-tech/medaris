@@ -17,8 +17,10 @@ Every number below sits next to the command that printed it; commands run from t
   köşk, medrese and course. The invitation predicate has no test of its own for the platform scope.
 - `ban_permanent_requests` gains `status` (`PENDING`, `APPROVED`, `REJECTED`), `decided_by`,
   `decided_at`, `decision_note` and `platform_ban_id`. A request that existed before reads as `PENDING`.
-- Migration `0082_permanent_ban_decisions` and its rollback
-  `rollbacks/0082_permanent_ban_decisions.down.sql`.
+- Migration `0085_permanent_ban_decisions` and its rollback
+  `rollbacks/0085_permanent_ban_decisions.down.sql`. It was numbered 0082
+  until `main`'s çalışma soruları migrations took 0081 to 0083; the row below
+  was measured under the old number.
 - Three routes, tagged `nizam`:
 
   | Route | operationId |

@@ -1,3 +1,4 @@
+import { paragraphDir } from "@medaris/tokens/arabic";
 import { ArabicText } from "./arabic-text";
 import { ResourceList, type ResourceRow } from "./course-resources";
 
@@ -86,7 +87,7 @@ export const SessionResources = ({
             data-testid="session-kaynak"
           >
             {labels.reading}{" "}
-            <span className="text-neutral-default" dir="auto">
+            <span className="text-neutral-default" dir={paragraphDir(kaynak)}>
               <ArabicText text={kaynak} />
             </span>
           </p>

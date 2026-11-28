@@ -77,6 +77,12 @@ export interface SaveExamQuestionDto {
      * @memberof SaveExamQuestionDto
      */
     topicIds: Array<string>;
+    /**
+     * Whether the talebe may write a note on it (MDRS-248, soru notları); left out, it stays as it is. On a published set, `PUT …/talebe-notes` turns it. Always sent by the server; optional in the contract (MDRS-248, soru notları).
+     * @type {boolean}
+     * @memberof SaveExamQuestionDto
+     */
+    talebeNotes?: boolean;
 }
 
 
@@ -109,6 +115,7 @@ export function SaveExamQuestionDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'answerMode': AnswerModeFromJSON(json['answerMode']),
         'scoring': json['scoring'] == null ? undefined : ScoringFromJSON(json['scoring']),
         'topicIds': json['topicIds'],
+        'talebeNotes': json['talebeNotes'] == null ? undefined : json['talebeNotes'],
     };
 }
 
@@ -129,6 +136,7 @@ export function SaveExamQuestionDtoToJSONTyped(value?: SaveExamQuestionDto | nul
         'answerMode': AnswerModeToJSON(value['answerMode']),
         'scoring': ScoringToJSON(value['scoring']),
         'topicIds': value['topicIds'],
+        'talebeNotes': value['talebeNotes'],
     };
 }
 

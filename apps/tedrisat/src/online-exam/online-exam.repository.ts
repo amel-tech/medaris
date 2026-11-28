@@ -12,14 +12,18 @@ import {
   onlineExamTopics,
   zerothOptions,
 } from "../database/schema/online-exam.schema";
+import { practiceAttempts } from "../database/schema/practice.schema";
+import { questionNotes } from "../database/schema/question-note.schema";
 import {
   type AnswerMode,
+  ExamKind,
   nextFreeTopicNumber,
   type Scoring,
   topicNameKey,
   topicNameOf,
 } from "./domain/online-exam";
 import {
+  ExamKindMismatchError,
   ExamLockedError,
   ExamNotPublishedError,
   ExamStaleError,
@@ -48,12 +52,15 @@ export interface IDraftQuestion {
   answerMode: AnswerMode;
   scoring: Scoring | null;
   ownPoints: number | null;
+  /** Whether the talebe may write a note on it (MDRS-248, soru notları). */
+  talebeNotes: boolean;
   topicIds: string[];
   options: Array<{ id: string; text: string; correct: boolean }>;
 }
 
 export interface IOnlineExamSummary {
   id: string;
+  kind: ExamKind;
   title: string;
   questionCount: number;
   /** Null until the team types it; a published exam always has it. */
@@ -69,6 +76,7 @@ export interface IOnlineExamSummary {
 export interface IOnlineExamDraft {
   id: string;
   courseId: string;
+  kind: ExamKind;
   title: string;
   /** Null until the team types it; a published exam always has it. */
   durationMinutes: number | null;
@@ -157,11 +165,51 @@ export class OnlineExamRepository {
     return exam?.courseId ?? null;
   }
 
-  /** The course's online exams, the latest changed first. */
-  async listExams(courseId: string): Promise<IOnlineExamSummary[]> {
+  /** The kind of an exam (MDRS-248); null when there is no such exam. */
+  async kindOf(examId: string): Promise<ExamKind | null> {
+    const [exam] = await this.db
+      .select({ kind: onlineExams.kind })
+      .from(onlineExams)
+      .where(eq(onlineExams.id, examId))
+      .limit(1);
+    return exam?.kind ?? null;
+  }
+
+  /**
+   * Of the given çalışma setleri, those a talebe has started (an attempt at
+   * the set, finished or not) or a pool attempt of the course drew a
+   * question of: unpublishing them is EXAM_LOCKED (MDRS-248).
+   */
+  async startedPracticeIds(
+    examIds: readonly string[],
+    tx?: Tx
+  ): Promise<Set<string>> {
+    if (examIds.length === 0) return new Set();
+    const db = tx ?? this.db;
+    const rows = await db
+      .select({ id: onlineExams.id })
+      .from(onlineExams)
+      .where(
+        and(
+          inArray(onlineExams.id, [...examIds]),
+          eq(onlineExams.kind, ExamKind.PRACTICE),
+          sql`(exists (select 1 from ${practiceAttempts} where ${practiceAttempts.setId} = ${onlineExams.id})
+            or exists (select 1 from ${practiceAttempts} where ${practiceAttempts.courseId} = ${onlineExams.courseId} and ${practiceAttempts.setId} is null
+              and jsonb_exists_any(${practiceAttempts.questionOrder}, array(select ${examQuestions.id}::text from ${examQuestions} where ${examQuestions.examId} = ${onlineExams.id}))))`
+        )
+      );
+    return new Set(rows.map((r) => r.id));
+  }
+
+  /** The course's online exams of one kind, the latest changed first. */
+  async listExams(
+    courseId: string,
+    kind: ExamKind
+  ): Promise<IOnlineExamSummary[]> {
     return this.db
       .select({
         id: onlineExams.id,
+        kind: onlineExams.kind,
         title: onlineExams.title,
         questionCount: count(examQuestions.id),
         durationMinutes: onlineExams.durationMinutes,
@@ -174,28 +222,31 @@ export class OnlineExamRepository {
       .from(onlineExams)
       .leftJoin(examQuestions, eq(examQuestions.examId, onlineExams.id))
       .leftJoin(lessons, eq(lessons.id, onlineExams.lessonId))
-      .where(eq(onlineExams.courseId, courseId))
+      .where(
+        and(eq(onlineExams.courseId, courseId), eq(onlineExams.kind, kind))
+      )
       .groupBy(onlineExams.id, lessons.id)
       .orderBy(desc(onlineExams.updatedAt));
   }
 
-  /** Opens a draft: 60 minutes, no question, no celse. */
+  /** Opens a draft, an exam or a çalışma seti: no length, no question, no celse. */
   async createExam(
     courseId: string,
     title: string,
+    kind: ExamKind,
     actorId: string
   ): Promise<string> {
     return this.db.transaction(async (tx) => {
       const [made] = await tx
         .insert(onlineExams)
-        .values({ courseId, title, createdBy: actorId })
+        .values({ courseId, title, kind, createdBy: actorId })
         .returning({ id: onlineExams.id });
       await tx.insert(auditLog).values({
         actorId,
         action: "online_exam.create",
         entity: "online_exam",
         entityId: made.id,
-        details: { courseId, title },
+        details: { courseId, title, kind },
       });
       return made.id;
     });
@@ -204,9 +255,13 @@ export class OnlineExamRepository {
   /** An exam of the course as its page reads it; null when there is none. */
   async findDraft(
     courseId: string,
-    examId: string
+    examId: string,
+    // A caller's transaction (a practice attempt's start reads the set under
+    // its lock): the reads run on its connection rather than a second one.
+    tx?: Tx
   ): Promise<IOnlineExamDraft | null> {
-    const [found] = await this.db
+    const db = tx ?? this.db;
+    const [found] = await db
       .select({ exam: onlineExams, startsAt: lessons.scheduledAt })
       .from(onlineExams)
       .leftJoin(lessons, eq(lessons.id, onlineExams.lessonId))
@@ -217,17 +272,17 @@ export class OnlineExamRepository {
     if (!found) return null;
     const { exam } = found;
     const [zeroth, picked, questions] = await Promise.all([
-      this.db
+      db
         .select({ id: zerothOptions.id, text: zerothOptions.text })
         .from(zerothOptions)
         .where(eq(zerothOptions.examId, examId))
         .orderBy(asc(zerothOptions.position)),
-      this.db
+      db
         .select({ topicId: onlineExamTopics.topicId })
         .from(onlineExamTopics)
         .where(eq(onlineExamTopics.examId, examId))
         .orderBy(asc(onlineExamTopics.position)),
-      this.db
+      db
         .select()
         .from(examQuestions)
         .where(eq(examQuestions.examId, examId))
@@ -236,12 +291,12 @@ export class OnlineExamRepository {
     const ids = questions.map((q) => q.id);
     const [options, carried] = ids.length
       ? await Promise.all([
-          this.db
+          db
             .select()
             .from(examOptions)
             .where(inArray(examOptions.questionId, ids))
             .orderBy(asc(examOptions.position)),
-          this.db
+          db
             .select()
             .from(examQuestionTopics)
             .where(inArray(examQuestionTopics.questionId, ids)),
@@ -250,6 +305,7 @@ export class OnlineExamRepository {
     return {
       id: exam.id,
       courseId: exam.courseId,
+      kind: exam.kind,
       title: exam.title,
       durationMinutes: exam.durationMinutes,
       instructions: exam.instructions,
@@ -263,6 +319,7 @@ export class OnlineExamRepository {
         answerMode: q.answerMode,
         scoring: q.scoring,
         ownPoints: q.ownPoints,
+        talebeNotes: q.talebeNotes,
         topicIds: carried
           .filter((c) => c.questionId === q.id)
           .map((c) => c.topicId),
@@ -617,6 +674,7 @@ export class OnlineExamRepository {
   ): Promise<{ result: T; version: number }> {
     const [exam] = await tx
       .select({
+        kind: onlineExams.kind,
         version: onlineExams.version,
         publishedAt: onlineExams.publishedAt,
         lessonId: onlineExams.lessonId,
@@ -630,7 +688,19 @@ export class OnlineExamRepository {
     if (of === "draft" && exam.publishedAt !== null) {
       throw new ExamLockedError(w.examId);
     }
-    if (of === "published") {
+    if (of === "published" && exam.kind === ExamKind.PRACTICE) {
+      if (exam.publishedAt === null) {
+        throw new ExamNotPublishedError(w.examId);
+      }
+      // A çalışma seti has no celse to open: it is locked once a talebe has
+      // started it, or a pool attempt drew one of its questions. Starting
+      // one holds the set's row (`practice`), and a pool attempt the
+      // course's published sets for share, so none begins while this write
+      // holds it.
+      if ((await this.startedPracticeIds([w.examId], tx)).has(w.examId)) {
+        throw new ExamLockedError(w.examId);
+      }
+    } else if (of === "published") {
       if (exam.publishedAt === null || exam.lessonId === null) {
         throw new ExamNotPublishedError(w.examId);
       }
@@ -699,6 +769,14 @@ export class OnlineExamRepository {
     );
   }
 
+  /** Publishes a çalışma seti inside its write: no celse, no window, no zeroth question. */
+  async publishPractice(tx: Tx, examId: string): Promise<void> {
+    await tx
+      .update(onlineExams)
+      .set({ publishedAt: new Date() })
+      .where(eq(onlineExams.id, examId));
+  }
+
   /** Makes the exam a draft again, its celse's key cleared before the celse goes. */
   async unpublish(tx: Tx, examId: string): Promise<void> {
     await tx
@@ -764,7 +842,12 @@ export class OnlineExamRepository {
     }
   }
 
-  /** Adds an empty question last; its five option fields are the page's, nothing is stored for them. */
+  /**
+   * Adds an empty question last; its five option fields are the page's,
+   * nothing is stored for them. Its talebe notes start off, in a çalışma
+   * seti and an exam alike (MDRS-248, soru notları): the hoca turns them on
+   * per question.
+   */
   async addQuestion(tx: Tx, examId: string): Promise<string> {
     const [last] = await tx
       .select({ position: max(examQuestions.position) })
@@ -772,9 +855,57 @@ export class OnlineExamRepository {
       .where(eq(examQuestions.examId, examId));
     const [made] = await tx
       .insert(examQuestions)
-      .values({ examId, position: (last?.position ?? -1) + 1 })
+      .values({
+        examId,
+        position: (last?.position ?? -1) + 1,
+        talebeNotes: false,
+      })
       .returning({ id: examQuestions.id });
     return made.id;
+  }
+
+  /**
+   * Turns the talebe notes of one question of the exam on or off (MDRS-248,
+   * soru notları), draft or published, locked or not: it is no part of the
+   * question's content, so the exam's version stays and nothing a talebe
+   * answered changes. Written to `audit_log` as `exam_question.talebe_notes`
+   * in the same transaction. QUESTION_NOT_FOUND for a question of another
+   * exam.
+   */
+  async setTalebeNotes(
+    courseId: string,
+    examId: string,
+    questionId: string,
+    talebeNotes: boolean,
+    actorId: string
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [exam] = await tx
+        .select({ id: onlineExams.id })
+        .from(onlineExams)
+        .where(
+          and(eq(onlineExams.id, examId), eq(onlineExams.courseId, courseId))
+        );
+      if (!exam) throw new OnlineExamNotFoundError(examId);
+      const changed = await tx
+        .update(examQuestions)
+        .set({ talebeNotes })
+        .where(
+          and(
+            eq(examQuestions.id, questionId),
+            eq(examQuestions.examId, examId)
+          )
+        )
+        .returning({ id: examQuestions.id });
+      if (changed.length === 0) throw new QuestionNotFoundError(questionId);
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "exam_question.talebe_notes",
+        entity: "exam_question",
+        entityId: questionId,
+        details: { courseId, examId, talebeNotes },
+      });
+    });
   }
 
   /** The question of this exam, taken for update; QUESTION_NOT_FOUND otherwise. */
@@ -809,6 +940,7 @@ export class OnlineExamRepository {
       answerMode: AnswerMode;
       scoring: Scoring | null;
       topicIds: string[];
+      talebeNotes?: boolean;
     }
   ): Promise<void> {
     const topicIds = [...new Set(input.topicIds)];
@@ -819,6 +951,9 @@ export class OnlineExamRepository {
         text: input.text,
         answerMode: input.answerMode,
         scoring: input.scoring,
+        ...(input.talebeNotes === undefined
+          ? {}
+          : { talebeNotes: input.talebeNotes }),
         updatedAt: new Date(),
       })
       .where(eq(examQuestions.id, questionId));
@@ -863,13 +998,77 @@ export class OnlineExamRepository {
     }
   }
 
-  /** Removes a question with its options and topics. */
+  /** Removes a question with its options, topics and talebe notes. */
   async removeQuestion(tx: Tx, questionId: string): Promise<void> {
+    await tx
+      .delete(questionNotes)
+      .where(eq(questionNotes.questionId, questionId));
     await tx.delete(examOptions).where(eq(examOptions.questionId, questionId));
     await tx
       .delete(examQuestionTopics)
       .where(eq(examQuestionTopics.questionId, questionId));
     await tx.delete(examQuestions).where(eq(examQuestions.id, questionId));
+  }
+
+  /**
+   * Deletes a çalışma seti (MDRS-248) with its questions, their options and
+   * topics, its picked topics and any zeroth options, and writes
+   * `online_exam.delete`, in one transaction under the set's row lock. An
+   * exam is EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and
+   * deleting one is a decision of its own. A set a talebe started, or a pool
+   * attempt drew a question of, is EXAM_LOCKED, draft or published: its
+   * attempts and answers hold keys to it and are the talebe's record.
+   * Starting a set holds its row, and a pool attempt the course's published
+   * sets, so neither begins while this holds it.
+   */
+  async deletePractice(
+    courseId: string,
+    examId: string,
+    actorId: string
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [exam] = await tx
+        .select({ kind: onlineExams.kind, title: onlineExams.title })
+        .from(onlineExams)
+        .where(
+          and(eq(onlineExams.id, examId), eq(onlineExams.courseId, courseId))
+        )
+        .for("update");
+      if (!exam) throw new OnlineExamNotFoundError(examId);
+      if (exam.kind !== ExamKind.PRACTICE) {
+        throw new ExamKindMismatchError(examId, exam.kind, ExamKind.PRACTICE);
+      }
+      if ((await this.startedPracticeIds([examId], tx)).has(examId)) {
+        throw new ExamLockedError(examId);
+      }
+      // Kept to the set's own rows, in the course purge's order: the keys
+      // into a question first, then the questions, then the set. The
+      // talebe's notes (soru notları) do not lock a set: they go with it.
+      await tx.delete(questionNotes).where(eq(questionNotes.examId, examId));
+      const questionIds = tx
+        .select({ id: examQuestions.id })
+        .from(examQuestions)
+        .where(eq(examQuestions.examId, examId));
+      await tx
+        .delete(examOptions)
+        .where(inArray(examOptions.questionId, questionIds));
+      await tx
+        .delete(examQuestionTopics)
+        .where(inArray(examQuestionTopics.questionId, questionIds));
+      await tx.delete(examQuestions).where(eq(examQuestions.examId, examId));
+      await tx.delete(zerothOptions).where(eq(zerothOptions.examId, examId));
+      await tx
+        .delete(onlineExamTopics)
+        .where(eq(onlineExamTopics.examId, examId));
+      await tx.delete(onlineExams).where(eq(onlineExams.id, examId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "online_exam.delete",
+        entity: "online_exam",
+        entityId: examId,
+        details: { courseId, examId, title: exam.title, kind: exam.kind },
+      });
+    });
   }
 
   /** Every question's own points, for the share; taken under the exam's lock. */

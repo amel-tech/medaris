@@ -1,33 +1,129 @@
-import type { DraftCourseTopicResponse } from "@medaris/services/tedrisat";
+import type { ExamKind } from "@medaris/services/tedrisat";
+
+/** The course page a kind is prepared under: "Sınavlar", or "Çalışma Soruları" for a set (MDRS-248). */
+export const segmentOf = (kind: ExamKind): string =>
+  kind === "PRACTICE" ? "calisma-sorulari" : "sinavlar";
 
 /** The option fields a new question shows (the owner: five). */
 export const OPTION_FIELDS = 5;
 
-/** "3, 7" → the topics of those numbers, and the numbers no topic has. */
-export function topicsByNumbers(
-  text: string,
-  topics: readonly DraftCourseTopicResponse[]
-): { ids: string[]; unknown: number[] } {
-  const ids: string[] = [];
-  const unknown: number[] = [];
-  for (const part of text.split(/[\s,;]+/).filter(Boolean)) {
-    const n = Number(part);
-    const topic = topics.find((t) => t.number === n);
-    if (!Number.isInteger(n) || !topic) unknown.push(n);
-    else if (!ids.includes(topic.id)) ids.push(topic.id);
+/** The most options a question takes: the API's `@ArrayMaxSize(50)` on them. */
+export const OPTIONS_MAX = 50;
+
+/** An option's longest text: the API's `OPTION_TEXT_MAX`. */
+export const OPTION_TEXT_MAX = 1000;
+
+/** "A", "B", … "Z", "AA", "AB": the option's mark, as `<ol type="A">` counts. */
+export const optionLetter = (index: number): string => {
+  let n = index + 1;
+  let letters = "";
+  while (n > 0) {
+    letters = String.fromCharCode(65 + ((n - 1) % 26)) + letters;
+    n = Math.floor((n - 1) / 26);
   }
-  return { ids, unknown };
+  return letters;
+};
+
+// "A) ", "b. ", "(3) ", "12. ", "Ç) ": the mark a list copied from a document starts each line with.
+const LINE_MARK = /^\(?(\d{1,2}|\p{L})[.)]\s+/u;
+const TURKISH = "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ";
+
+/** Whether the marks count on one by one: 1, 2, 3… or A, B, C… (Latin or Turkish order). */
+function counting(marks: readonly string[]): boolean {
+  const steps = (order: (mark: string) => number, of = marks) =>
+    of.every(
+      (mark, k) => k === 0 || order(mark) === order(of[k - 1] ?? "") + 1
+    );
+  if (marks.every((mark) => /^\d+$/.test(mark))) return steps(Number);
+  if (marks.every((mark) => /^[A-Za-z]$/.test(mark)))
+    return steps((mark) => mark.charCodeAt(0));
+  const upper = marks.map((mark) => mark.toLocaleUpperCase("tr-TR"));
+  return (
+    upper.every((mark) => TURKISH.includes(mark)) &&
+    steps((mark) => TURKISH.indexOf(mark), upper)
+  );
 }
 
-/** The topics' numbers as the field shows them: "3, 7". */
-export const numbersOf = (
-  ids: readonly string[],
-  topics: readonly DraftCourseTopicResponse[]
-): string =>
-  topics
-    .filter((t) => ids.includes(t.id))
-    .map((t) => t.number)
-    .join(", ");
+/**
+ * The lines of a paste, one option each: blank lines dropped, cut to an
+ * option's longest text, and the marks taken off only when every line
+ * carries one and they count on (A, B, C… or 1, 2, 3…), so "I. Dünya
+ * Savaşı" and "V. Murad" keep theirs. One line or none is not a list: the
+ * caller lets the paste through.
+ */
+export function pastedOptions(text: string): string[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  if (lines.length < 2) return lines;
+  const marks = lines.map((line) => LINE_MARK.exec(line)?.[1]);
+  const strip =
+    marks.every((mark) => mark !== undefined) && counting(marks as string[]);
+  return lines.map((line) =>
+    (strip ? line.replace(LINE_MARK, "").trim() : line).slice(
+      0,
+      OPTION_TEXT_MAX
+    )
+  );
+}
+
+/**
+ * The options after `lines` are pasted into the empty one at `at`: the
+ * lines go, in order, into it and the empty options after it, skipping any
+ * that already hold text (nothing typed is overwritten), then into new
+ * options, up to `max`; lines past it are left out. `last` is the option
+ * the last line went into.
+ */
+export function spreadOptions<O extends { text: string; correct: boolean }>(
+  options: readonly O[],
+  at: number,
+  lines: readonly string[],
+  max: number = OPTIONS_MAX
+): { options: Array<O | { text: string; correct: boolean }>; last: number } {
+  const next: Array<O | { text: string; correct: boolean }> = [...options];
+  let i = at;
+  let last = at;
+  for (const line of lines) {
+    while (i < next.length && next[i]?.text.trim() !== "") i += 1;
+    if (i >= max) break;
+    next[i] =
+      i < next.length
+        ? { ...(next[i] as O), text: line }
+        : { text: line, correct: false };
+    last = i;
+    i += 1;
+  }
+  return { options: next, last };
+}
+
+/**
+ * What saving does to the options as typed (MDRS-248): the empty ones are
+ * left out, each correct mark going with its own option, so the letters
+ * after an empty one move up. `gaps` is true when an empty option stands
+ * before a typed one (the letters will move); `blankCorrect` is the index of
+ * the first empty option marked correct, which blocks the save, or -1.
+ */
+export function optionsToSave(
+  options: ReadonlyArray<{ text: string; correct: boolean }>
+): {
+  kept: Array<{ text: string; correct: boolean }>;
+  gaps: boolean;
+  blankCorrect: number;
+} {
+  const blank = (o: { text: string }) => o.text.trim() === "";
+  let last = -1;
+  options.forEach((o, i) => {
+    if (!blank(o)) last = i;
+  });
+  return {
+    kept: options
+      .filter((o) => !blank(o))
+      .map((o) => ({ text: o.text.trim(), correct: o.correct })),
+    gaps: last > 0 && options.slice(0, last).some(blank),
+    blankCorrect: options.findIndex((o) => blank(o) && o.correct),
+  };
+}
 
 /** The catalog key that words a refusal. */
 export function onlineExamErrorKey(code: string): string {
@@ -61,17 +157,24 @@ export function onlineExamErrorKey(code: string): string {
 
 export type Lack = "text" | "option" | "correct" | "topic";
 
-/** What a question still lacks, as the API says it (text, a second option, a correct one, a topic). */
-export function lacksOf(q: {
-  text: string;
-  options: ReadonlyArray<{ text: string; correct: boolean }>;
-  topicIds: readonly string[];
-}): Lack[] {
+/**
+ * What a question still lacks, as the API's `lacksOf(q, kind)` says it: a
+ * text, a second option, a correct one, and in an exam a topic. A çalışma
+ * seti's question needs no topic (MDRS-248).
+ */
+export function lacksOf(
+  q: {
+    text: string;
+    options: ReadonlyArray<{ text: string; correct: boolean }>;
+    topicIds: readonly string[];
+  },
+  kind: ExamKind = "EXAM"
+): Lack[] {
   const lacks: Lack[] = [];
   if (q.text.trim() === "") lacks.push("text");
   if (q.options.length < 2) lacks.push("option");
   if (!q.options.some((o) => o.correct)) lacks.push("correct");
-  if (q.topicIds.length === 0) lacks.push("topic");
+  if (kind === "EXAM" && q.topicIds.length === 0) lacks.push("topic");
   return lacks;
 }
 
@@ -173,6 +276,8 @@ export type UnsavedQuestion = {
   scoring: ScoringValue | null;
   /** Own points in hundredths; null shares what the others leave. */
   points: number | null;
+  /** Whether its talebe may write a note on it (MDRS-248); left out by an older page. */
+  talebeNotes?: boolean;
 };
 
 const unsavedKey = (examId: string) => `exam-unsaved:${examId}`;

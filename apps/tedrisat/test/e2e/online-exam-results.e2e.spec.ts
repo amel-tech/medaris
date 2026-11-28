@@ -302,6 +302,144 @@ describe("online exams, the team's results (e2e)", () => {
     expect((await results(draft).expect(404)).body.code).toBe("EXAM_NOT_FOUND");
   });
 
+  /** "Sonuçları talebelere aç", Değerlendirme's release of the exam celse's results. */
+  const release = (exam: IPublished, who = muderris) =>
+    http()
+      .post(`/lessons/${exam.lessonId}/exam-results/release`)
+      .set("Authorization", who);
+  const examRow = async (exam: IPublished) => {
+    const [row] = await db()
+      .select({ closedEarlyAt: onlineExams.closedEarlyAt })
+      .from(onlineExams)
+      .where(eq(onlineExams.id, exam.examId));
+    const [celse] = await db()
+      .select({ releasedAt: lessonExams.resultsReleasedAt })
+      .from(lessonExams)
+      .where(eq(lessonExams.lessonId, exam.lessonId));
+    return { closedEarlyAt: row.closedEarlyAt, releasedAt: celse.releasedAt };
+  };
+  const closeAudits = () =>
+    db()
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.action, "online_exam.close"));
+
+  it("ends the exam for everyone when its results are released: an attempt in progress ends with its saved answers, and the talebe reads their answers with the correct ones", async () => {
+    const exam = await publish();
+    // The talebe answered one question and left without "Sınavı bitir".
+    await sit(exam, [exam.questions[0].correct]);
+
+    await release(exam).expect(200);
+    const [attempt] = await db()
+      .select()
+      .from(examAttempts)
+      .where(eq(examAttempts.examId, exam.examId));
+    expect(attempt).toMatchObject({
+      finishedBy: "CLOSED_EARLY",
+      scoreHundredths: 5000,
+    });
+    expect(await resultOf(exam)).toEqual({
+      score: 50,
+      gradedBy: CAST.MUDERRIS,
+    });
+    // Closed early at the release's own time.
+    const row = await examRow(exam);
+    expect(row.releasedAt).not.toBeNull();
+    expect(row.closedEarlyAt?.getTime()).toBe(row.releasedAt?.getTime());
+    const audits = await closeAudits();
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      actorId: CAST.MUDERRIS,
+      entityId: exam.examId,
+      details: { courseId: ids.courseId, finished: 1, via: "exam.release" },
+    });
+
+    const after = await results(exam).expect(200);
+    expect(after.body.exam).toMatchObject({ closed: true, mayClose: false });
+    expect(after.body).toMatchObject({ released: true });
+    expect(after.body.talebe[0]).toMatchObject({
+      state: "FINISHED",
+      finishedBy: "CLOSED_EARLY",
+    });
+    // Nothing is saved after it, and it cannot be closed again.
+    await http()
+      .put(take(exam, `/attempt/answers/${exam.questions[1].id}`))
+      .set("Authorization", talebe)
+      .send({
+        holderId: HOLDER,
+        seq: 9,
+        optionIds: [exam.questions[1].correct],
+        skipped: false,
+      })
+      .expect((res) => expect(res.status).toBeGreaterThanOrEqual(400));
+    expect((await close(exam).expect(409)).body.code).toBe("EXAM_NOT_OPEN");
+
+    // The talebe's own screen: the score, and "Cevaplarım" with the correct options.
+    const mine = await http()
+      .get(take(exam, "/my-result"))
+      .set("Authorization", talebe)
+      .expect(200);
+    expect(mine.body).toMatchObject({
+      released: true,
+      closed: true,
+      score: "50.00",
+      counts: { right: 1, wrong: 0, blank: 1 },
+    });
+    expect(mine.body.questions).toHaveLength(2);
+    expect(
+      (
+        mine.body.questions as Array<{
+          options: Array<{ correct: boolean }>;
+        }>
+      ).every((q) => q.options.some((o) => o.correct))
+    ).toBe(true);
+  });
+
+  it("refuses to release an online exam that has not opened, and changes nothing", async () => {
+    const later = await publish({
+      startsAt: new Date(Date.now() + 60 * 60_000),
+    });
+    expect((await release(later).expect(409)).body.code).toBe("EXAM_NOT_OPEN");
+    expect(await examRow(later)).toEqual({
+      closedEarlyAt: null,
+      releasedAt: null,
+    });
+    expect(await closeAudits()).toHaveLength(0);
+    expect(
+      await db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "exam.release"))
+    ).toHaveLength(0);
+  });
+
+  it("keeps the close of an exam that has closed for everyone as it was", async () => {
+    // Closed early before the release.
+    const early = await publish();
+    await sit(early, [early.questions[0].correct]);
+    await close(early).expect(200);
+    const closedAt = (await examRow(early)).closedEarlyAt;
+    expect(closedAt).not.toBeNull();
+    await release(early).expect(200);
+    expect((await examRow(early)).closedEarlyAt?.getTime()).toBe(
+      closedAt?.getTime()
+    );
+    expect(await closeAudits()).toHaveLength(1);
+
+    // Past its latest start with no one in it: not closed early by the release.
+    const past = await publish();
+    await db()
+      .update(onlineExams)
+      .set({ latestStartAt: new Date(Date.now() - 1_000) })
+      .where(eq(onlineExams.id, past.examId));
+    await release(past).expect(200);
+    expect(await examRow(past)).toMatchObject({ closedEarlyAt: null });
+    expect((await results(past).expect(200)).body.exam).toMatchObject({
+      closed: true,
+    });
+    expect(await closeAudits()).toHaveLength(1);
+  });
+
   it("is read by those who prepare the exam, and says who may release it", async () => {
     const exam = await publish();
     for (const who of [CAST.SESSION, CAST.TALEBE, CAST.STRANGER]) {

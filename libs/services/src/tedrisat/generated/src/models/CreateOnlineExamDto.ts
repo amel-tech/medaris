@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ExamKind } from './ExamKind';
+import {
+    ExamKindFromJSON,
+    ExamKindFromJSONTyped,
+    ExamKindToJSON,
+    ExamKindToJSONTyped,
+} from './ExamKind';
+
 /**
  * 
  * @export
@@ -25,7 +33,15 @@ export interface CreateOnlineExamDto {
      * @memberof CreateOnlineExamDto
      */
     title: string;
+    /**
+     * EXAM, left out: an exam sat once with its celse. PRACTICE: a çalışma seti, which the course's talebe solve whenever they like, as often as they like, with no celse, length, points or zeroth question (MDRS-248).
+     * @type {ExamKind}
+     * @memberof CreateOnlineExamDto
+     */
+    kind?: ExamKind;
 }
+
+
 
 /**
  * Check if a given object implements the CreateOnlineExamDto interface.
@@ -46,6 +62,7 @@ export function CreateOnlineExamDtoFromJSONTyped(json: any, ignoreDiscriminator:
     return {
         
         'title': json['title'],
+        'kind': json['kind'] == null ? undefined : ExamKindFromJSON(json['kind']),
     };
 }
 
@@ -61,6 +78,7 @@ export function CreateOnlineExamDtoToJSONTyped(value?: CreateOnlineExamDto | nul
     return {
         
         'title': value['title'],
+        'kind': ExamKindToJSON(value['kind']),
     };
 }
 

@@ -20,7 +20,9 @@ import {
   removeCourseZerothQuestion,
   saveCourseZerothQuestion,
 } from "../actions";
+import { paragraphDir } from "../arabic";
 import { onlineExamErrorKey } from "../online-exams";
+import { ArabicText } from "./arabic-text";
 
 /**
  * "Sıfırıncı soru" on a course's Sınavlar page (MDRS-299). The owner, 22 Nov
@@ -175,14 +177,14 @@ export function CourseZerothSection({
                     : t("OnlineExams.zeroth.fromMadrasah")}
                 </Badge>
               </div>
-              <p className="mds-body" dir="auto">
-                {applied.text}
+              <p className="mds-body" dir={paragraphDir(applied.text)}>
+                <ArabicText text={applied.text} />
               </p>
               <ol className="mds-body-sm flex flex-col gap-1" type="A">
                 {applied.options.map((option, i) => (
                   // the options are positions of a question saved whole
-                  <li key={i} dir="auto">
-                    {option}
+                  <li key={i} dir={paragraphDir(option)}>
+                    <ArabicText text={option} />
                   </li>
                 ))}
               </ol>

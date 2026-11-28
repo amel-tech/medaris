@@ -32,6 +32,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -39,12 +40,17 @@ import {
 } from "@nestjs/swagger";
 import type { AuthorizedRequest } from "../course/interfaces/authorized-request.interface";
 import {
+  QuestionTalebeNotesResponse,
+  SetTalebeNotesDto,
+} from "../question-note/dto/question-note.dto";
+import {
   CourseTopicResponse,
   CreateCourseTopicDto,
   CreateOnlineExamDto,
   ExamPointsResponse,
   ExamQuestionWriteResponse,
   ExamVersionResponse,
+  ListOnlineExamsQueryDto,
   OnlineExamCreatedResponse,
   OnlineExamDraftResponse,
   OnlineExamSummaryResponse,
@@ -98,25 +104,28 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "The course's online exams",
     description:
-      'Nazar\'s "Sınavlar": each online exam of the course with its title, its question count and where it stands, the latest changed first.',
+      'Nazar\'s "Sınavlar": each online exam of the course with its title, its question count and where it stands, the latest changed first. `?kind=PRACTICE` lists the çalışma setleri instead (MDRS-248); left out, the exams only.',
     operationId: "listOnlineExams",
   })
   @ApiOkResponse({ type: [OnlineExamSummaryResponse] })
+  @ApiBadRequestResponse({ description: "VALIDATION_ERROR" })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
   @Authz(PERMISSIONS.EXAM_PREPARE, byParam(ENTITIES.COURSE, "id"))
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Get("courses/:id/online-exams")
   listExams(
     @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) courseId: string
+    @Param("id", ParseUUIDPipe) courseId: string,
+    @Query() query: ListOnlineExamsQueryDto
   ): Promise<OnlineExamSummaryResponse[]> {
-    return this.service.listExams(courseId, request.user);
+    return this.service.listExams(courseId, request.user, query.kind);
   }
 
   @ApiOperation({
     summary: "Open a new online exam",
     description:
-      '"Yeni sınav": a draft of the course with its title, 60 minutes and no question. It has no celse until it is published, so no talebe sees it. Written to `audit_log` as `online_exam.create`.',
+      '"Yeni sınav": a draft of the course with its title, no length and no question. It has no celse until it is published, so no talebe sees it. `kind: PRACTICE` opens a çalışma seti instead (MDRS-248), which never has a celse. Written to `audit_log` as `online_exam.create`.',
     operationId: "createOnlineExam",
   })
   @ApiCreatedResponse({ type: OnlineExamCreatedResponse })
@@ -131,7 +140,7 @@ export class OnlineExamController {
     @Param("id", ParseUUIDPipe) courseId: string,
     @Body() dto: CreateOnlineExamDto
   ): Promise<OnlineExamCreatedResponse> {
-    return this.service.createExam(courseId, dto.title, request.user);
+    return this.service.createExam(courseId, dto.title, request.user, dto.kind);
   }
 
   @ApiOperation({
@@ -162,7 +171,10 @@ export class OnlineExamController {
   @ApiBadRequestResponse({ description: "VALIDATION_ERROR, TOPIC_NOT_FOUND" })
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
-  @ApiConflictResponse({ description: "EXAM_STALE, EXAM_LOCKED" })
+  @ApiConflictResponse({
+    description:
+      "EXAM_STALE, EXAM_LOCKED, EXAM_KIND_MISMATCH (a length on a çalışma seti)",
+  })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Patch("online-exams/:examId")
@@ -175,9 +187,32 @@ export class OnlineExamController {
   }
 
   @ApiOperation({
+    summary: "Seti sil: delete a çalışma seti with its questions",
+    description:
+      "A çalışma seti (PRACTICE, MDRS-248), draft or published, goes with its questions, their options and topics, and its picked topics, in one transaction. Once a talebe has started it or a pool attempt drew one of its questions (the summary's and the draft's `locked`), it is 409 EXAM_LOCKED: those attempts are the talebe's record. An exam (EXAM) is 409 EXAM_KIND_MISMATCH: it has a celse and talebe sittings, and deleting one is a decision of its own. Written to `audit_log` as `online_exam.delete`.",
+    operationId: "deleteOnlineExam",
+  })
+  @ApiNoContentResponse({ description: "Deleted." })
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
+  @ApiConflictResponse({
+    description:
+      "EXAM_LOCKED (a talebe started it, or a pool attempt drew from it), EXAM_KIND_MISMATCH (an exam)",
+  })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("online-exams/:examId")
+  deleteExam(
+    @Req() request: AuthorizedRequest,
+    @Param("examId", ParseUUIDPipe) examId: string
+  ): Promise<void> {
+    return this.service.deleteExam(examId, request.user);
+  }
+
+  @ApiOperation({
     summary: "Yayınla: now, or at a day and time, with a latest start",
     description:
-      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. Written to `audit_log` as `online_exam.publish`.",
+      "Plans the exam's celse at its earliest start, as long as the exam and the latest start together, with its exam row (MULTIPLE_CHOICE, out of 100), and links the exam to it, in one transaction. The course's talebe are told and get the calendar invitation, as of any exam celse. An exam with no question, an incomplete question, points that do not total 100 or no zeroth question is 409 EXAM_NOT_READY, listing them all; the draft's `problems` says the same before. A çalışma seti (PRACTICE, MDRS-248) is published otherwise: at once, with no celse, no notification, no window and no zeroth question (the times in the body are not read); it needs one complete question, for which a topic is not needed (else EXAM_NOT_READY with NO_QUESTION), and its incomplete questions are not solved. Written to `audit_log` as `online_exam.publish`.",
     operationId: "publishOnlineExam",
   })
   @ApiOkResponse({ type: OnlineExamDraftResponse })
@@ -209,7 +244,8 @@ export class OnlineExamController {
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND" })
   @ApiConflictResponse({
-    description: "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened), EXAM_STALE",
+    description:
+      "EXAM_NOT_PUBLISHED, EXAM_LOCKED (it has opened; a çalışma seti once a talebe has started it), EXAM_STALE",
   })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
@@ -247,7 +283,7 @@ export class OnlineExamController {
   @ApiOperation({
     summary: "Save a question as the preparer writes it",
     description:
-      "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or a topic is kept as incomplete, and the answer says what it lacks. Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
+      "The text, the options with their correct marks, the answer mode and its scoring, and the topics. A question that lacks its text, a second option, a correct one or, in an exam, a topic is kept as incomplete, and the answer says what it lacks; a çalışma seti's question needs no topic (MDRS-248). Check boxes (MULTIPLE) with fewer than two correct options, or a scoring without them, is 400 QUESTION_MODE_INVALID. A topic of the course the exam has not picked yet is picked with it. Written to `audit_log` as `exam_question.save`.",
     operationId: "saveExamQuestion",
   })
   @ApiOkResponse({ type: ExamQuestionWriteResponse })
@@ -267,6 +303,33 @@ export class OnlineExamController {
     @Body() dto: SaveExamQuestionDto
   ): Promise<ExamQuestionWriteResponse> {
     return this.service.saveQuestion(examId, questionId, dto, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Turn a question's talebe notes on or off",
+    description:
+      "The icon on the question (MDRS-248, soru notları): whether the talebe may write a note on it. It is no part of the question's content, so it names no version, bumps none and is taken on a published or locked set or exam as on a draft. What the talebe wrote stays readable when it is turned off; new writes are 409 NOTES_DISABLED. Written to `audit_log` as `exam_question.talebe_notes`.",
+    operationId: "setExamQuestionTalebeNotes",
+  })
+  @ApiOkResponse({ type: QuestionTalebeNotesResponse })
+  @ApiBadRequestResponse({ description: "VALIDATION_ERROR" })
+  @ApiForbiddenResponse({ description: FORBIDDEN })
+  @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND, QUESTION_NOT_FOUND" })
+  @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @Put("online-exams/:examId/questions/:questionId/talebe-notes")
+  setTalebeNotes(
+    @Req() request: AuthorizedRequest,
+    @Param("examId", ParseUUIDPipe) examId: string,
+    @Param("questionId", ParseUUIDPipe) questionId: string,
+    @Body() dto: SetTalebeNotesDto
+  ): Promise<QuestionTalebeNotesResponse> {
+    return this.service.setTalebeNotes(
+      examId,
+      questionId,
+      dto.talebeNotes,
+      request.user
+    );
   }
 
   @ApiOperation({
@@ -306,7 +369,8 @@ export class OnlineExamController {
   @ApiForbiddenResponse({ description: FORBIDDEN })
   @ApiNotFoundResponse({ description: "EXAM_NOT_FOUND, QUESTION_NOT_FOUND" })
   @ApiConflictResponse({
-    description: "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL",
+    description:
+      "EXAM_STALE, EXAM_LOCKED, POINTS_OVER_TOTAL, EXAM_KIND_MISMATCH (a çalışma seti, whose questions all weigh the same)",
   })
   @Authz(PERMISSIONS.EXAM_PREPARE, byOnlineExamCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))

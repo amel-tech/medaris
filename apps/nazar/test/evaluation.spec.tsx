@@ -607,9 +607,101 @@ describe("exams on Değerlendirme", () => {
       document.querySelector('[data-testid="exam-release"]') as HTMLElement
     );
     await settle();
+    // A written exam asks nothing: one press releases it.
+    expect(document.querySelector("[role=alertdialog]")).toBeNull();
     expect(actions.releaseExamResults).toHaveBeenCalledWith("x-1");
     expect(
       document.querySelector('[data-testid="exam-released"]')
     ).not.toBeNull();
+  });
+});
+
+/** The same board with "Ara sınav" an online exam (MDRS-299). */
+const onlineResponse = () => {
+  const response: { columns: Array<{ exam: { format: string } }> } =
+    examResponse();
+  response.columns[0].exam.format = "MULTIPLE_CHOICE";
+  return response as never;
+};
+const results = resources.tr.nazar.ExamResults;
+const dialog = () =>
+  document.querySelector("[role=alertdialog]") as HTMLElement | null;
+const pressRelease = async () => {
+  await click(
+    document.querySelector('[data-testid="exam-release"]') as HTMLElement
+  );
+  await settle(80);
+};
+
+describe("an online exam on Değerlendirme (MDRS-299)", () => {
+  it("knows an online exam's column from a written one", () => {
+    expect(
+      boardOf(onlineResponse()).columns.map((c) => c.exam?.online)
+    ).toEqual([true, false]);
+    expect(boardOf(examResponse()).columns[0].exam?.online).toBe(false);
+  });
+
+  it("asks before the release, says it ends the exam, and releases only on confirm", async () => {
+    await mount(boardOf(onlineResponse()));
+    await open("x-1");
+    await pressRelease();
+    expect(actions.releaseExamResults).not.toHaveBeenCalled();
+    const asked = dialog()?.textContent ?? "";
+    expect(asked).toContain(results.releaseConfirmTitle);
+    expect(asked).toContain(results.releaseEndsExam);
+    expect(asked).toContain(results.releaseConfirmBody);
+    // The board does not know how many are still taking it.
+    expect(asked).not.toContain("devam ediyor");
+    await click(buttonIn(dialog() as HTMLElement, results.releaseConfirm));
+    await settle(80);
+    expect(actions.releaseExamResults).toHaveBeenCalledTimes(1);
+    expect(actions.releaseExamResults).toHaveBeenCalledWith("x-1");
+    expect(
+      document.querySelector('[data-testid="exam-released"]')
+    ).not.toBeNull();
+  });
+
+  it("releases nothing on Vazgeç", async () => {
+    await mount(boardOf(onlineResponse()));
+    await open("x-1");
+    await pressRelease();
+    await click(buttonIn(dialog() as HTMLElement, results.cancel));
+    await settle(80);
+    expect(actions.releaseExamResults).not.toHaveBeenCalled();
+    expect(
+      document.querySelector('[data-testid="exam-release"]')
+    ).not.toBeNull();
+    expect(document.querySelector('[data-testid="exam-released"]')).toBeNull();
+  });
+
+  it("says why a release before the exam opens is refused", async () => {
+    actions.releaseExamResults.mockResolvedValue({
+      success: false,
+      code: "EXAM_NOT_OPEN",
+    });
+    await mount(boardOf(onlineResponse()));
+    await open("x-1");
+    await pressRelease();
+    await click(buttonIn(dialog() as HTMLElement, results.releaseConfirm));
+    await settle(80);
+    const text = document.body.textContent ?? "";
+    expect(text).toContain(tr.releaseFailed);
+    expect(text).toContain("Sınav açık değil: henüz açılmadı ya da bitti.");
+    expect(
+      document.querySelector('[data-testid="exam-release"]')
+    ).not.toBeNull();
+  });
+
+  it("gives any other refusal no reason, as before", async () => {
+    actions.releaseExamResults.mockResolvedValue({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+    await mount(boardOf(examResponse()));
+    await open("x-1");
+    await pressRelease();
+    const text = document.body.textContent ?? "";
+    expect(text).toContain(tr.releaseFailed);
+    expect(text).not.toContain(results.notOpen);
   });
 });

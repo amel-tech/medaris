@@ -1,5 +1,6 @@
 import type { NotificationResponse } from "@medaris/services/tedrisat";
 import type { IconName } from "@medaris/ui/mds/icon";
+import { notesHref } from "~/features/question-notes/note-model";
 
 /**
  * Everything the notifications page decides without a browser: how a stored
@@ -25,10 +26,13 @@ const ICONS: Record<string, IconName> = {
   KOSK_APPLICATION_RESULT: "kosk",
   DECK_PUBLISH_RESULT: "cards",
   SUBMISSION_REVIEWED: "note",
+  QUESTION_ANSWERED: "chats",
   // MDRS-248: an exam planned, a day away, and its results opened.
   EXAM_SCHEDULED: "calendar",
   EXAM_REMINDER: "clock",
   EXAM_RESULTS_RELEASED: "check",
+  // MDRS-248 (soru notları): the hoca answered a note the talebe sent.
+  QUESTION_NOTE_REPLIED: "note",
 };
 
 const PLACEHOLDERS = [
@@ -40,6 +44,7 @@ const PLACEHOLDERS = [
   "makeupAt",
   "previousAt",
   "reason",
+  "setTitle",
 ] as const;
 
 export const notificationIcon = (type: string): IconName =>
@@ -56,15 +61,30 @@ const text = (params: Params, key: string): string | null => {
  * (no target, or a session whose course is not in `params`). A path from
  * stored values is built only from UUIDs the API validated, never from free
  * text.
+ *
+ * An answered question note (MDRS-248, soru notları) leads to the course's
+ * "Notlarım" under Çalışma Soruları.
+ *
+ * An answered question (MDRS-248) leads to the celse's watch page, where
+ * "Soru sor" lists the talebe's questions on that celse with their answers;
+ * `?soru=1` tells that page to fall back to the course's "Sorularım" tab
+ * when the celse has nothing to watch.
  */
 export const notificationHref = (n: NotificationResponse): string | null => {
   if (!n.targetId) return null;
   switch (n.targetType) {
     case "COURSE":
-      return `/courses/${n.targetId}`;
+      // An answered note leads to the course's "Notlarım", where it is shown.
+      return n.type === "QUESTION_NOTE_REPLIED"
+        ? notesHref(n.targetId)
+        : `/courses/${n.targetId}`;
     case "SESSION": {
       const courseId = text(n.params, "courseId");
-      return courseId ? `/courses/${courseId}/lessons/${n.targetId}` : null;
+      if (!courseId) return null;
+      const session = `/courses/${courseId}/lessons/${n.targetId}`;
+      return n.type === "QUESTION_ANSWERED"
+        ? `${session}/izle?soru=1`
+        : session;
     }
     case "DECK":
       return `/decks/${n.targetId}`;

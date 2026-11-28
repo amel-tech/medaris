@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "practice_attempts_pool_open_uq" ON "practice_attempts" USING btree ("user_id","course_id") WHERE "practice_attempts"."finished_at" is null and "practice_attempts"."set_id" is null;

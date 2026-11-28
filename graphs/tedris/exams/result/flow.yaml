@@ -1,32 +1,32 @@
 # A talebe's own screen of a past online exam in tedris-web: the score, the rank, the standing by topic, and their answers.
-# BUILT (MDRS-299, #418): apps/tedris/app/my-exams/[lessonId]/page.tsx with features/online-exams/components/my-exam-result.tsx; its one
-# read is getMyExamResult (domain/online-exams.yaml), which carries the standing across the course as well, so the plan's second read
-# (getMyTopicStanding) is gone. Written graph-first on 21 November 2026; `status: proposed`, so no state names code.
+# Written from the code (captured): apps/tedris/app/my-exams/[lessonId]/page.tsx with features/online-exams/components/my-exam-result.tsx
+# (MDRS-299, #418); its one read is getMyExamResult (domain/online-exams.yaml), which carries the standing across the course as well.
 # A multiple-choice exam ("Çoktan seçmeli") has this screen; a written or oral one leads to Notlarım.
 #
 # The owner's words this flow carries: "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler"; "her soru için hangi
 # konu hakkında olduğu işaretlenecek"; "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek" (21 Nov); the score
-# once the team releases the results ("evet", 21 Nov); the answers once the exam has closed for everyone ("evet", 21 Nov); the
+# once the team releases the results ("evet", 21 Nov); the answers once the exam has closed for everyone ("evet", 21 Nov), which the
+# release of the results brings about since 24 Nov ("Önerini uygula": releasing ends the exam for everyone); the
 # standing as a percentage ("Yalnız yüzde", 21 Nov). The rank (22 Nov): "talebe sınav sonucunu gördüğünde 'sınava şu kadar kişi girdi,
 # senin puanın şu, bu kadar kişiden şu sıradasınız' diye görülsün. aynı şekilde konu başına da bu sıralama olsun. eşit puan alanlar
 # 'şu sıradasınız şu kadar kişi sizinle aynı puanı aldı' görsün".
 #
 # Choices made in the code that are not his: competition ranking (1, 2, 2, 4); only finished attempts are counted; tedris says "sen"
-# where he wrote "siz"; the result is one page with sections rather than the plan's separate screens (the states below still split it
-# by what is read first).
+# where he wrote "siz"; the result is one page with sections rather than the plan's separate screens.
 schema: delurio-graph/0
 kind: flow
 id: tedris.exams.result
-status: proposed
+status: captured
 domain: medaris.api
 ui: tedris.exams.result
 title: Read my result of an exam, by topic
 summary: >-
-  A talebe opens a past exam from Sınavlarım. Until the course team releases the results, the screen says "Sonuç henüz açıklanmadı".
-  After, it shows the score out of 100, how many answers were right, wrong and left blank, when the exam was handed in and whether
-  the time ended it, and the standing in each of the exam's topics: the percentage of the points its questions carry that were got,
-  with the right and wrong counts, the weakest topic first. Once the exam has closed for everyone, the talebe also reads their own
-  answers beside the correct ones, and their standing in each topic across the course's exams.
+  A talebe opens a past exam from Sınavlarım. Until the course team releases the results, the screen says when and how the exam ended
+  and "Sonuç henüz açıklanmadı". After, on the same page, it shows the score out of 100, how many answers were right, wrong and left
+  blank, the talebe's place among those who took it, the standing in each of the exam's topics (the percentage of the points its
+  questions carry that were got, with the counts and the place, the weakest topic first) and in each topic across the course's
+  released exams. Once the exam has closed for everyone, which the release does, the talebe also reads their own answers beside the
+  correct ones.
 scope:
   shows: the talebe's screen of one past exam in tedris-web
   world: open
@@ -38,6 +38,12 @@ context:
       ok: the talebe's attempt is read
       gone: the talebe has no attempt of this exam, or there is no such exam for them
       failed: the read fails
+  attempt:
+    values: [ended, inProgress]
+    initial: any
+    say:
+      ended: the talebe's attempt has ended
+      inProgress: the talebe's attempt has not ended
   released:
     values: [no, yes]
     initial: any
@@ -48,27 +54,40 @@ context:
     values: [no, yes]
     initial: any
     say:
-      no: the exam is still open to some talebe (its latest start has not passed, or an attempt is in progress)
+      no: the exam is still open to some talebe (its latest start has not passed, or an attempt is in progress); with the results released, only an exam released before the release ended it (24 Nov 2026)
       yes: the exam has closed for everyone
+  topics:
+    values: [none, some]
+    initial: any
+    say:
+      none: no question of the exam carries a topic
+      some: the exam's questions carry topics
+  courseTopics:
+    values: [none, some]
+    initial: any
+    say:
+      none: no topic of the course stands in a released exam
+      some: the course's topics stand in its released exams
 guards:
   answersOpen: "closed == 'yes'"
 
 failures:
-  opening: { from: getMyExamResult, gone: [ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND], unreadable: [network, timeout, 5xx] }
-# A 401 is the session's, and sends the talebe to sign in (realm.auth.signIn); it is not drawn here.
+  opening: { from: getMyExamResult, gone: [ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND, AUTHZ_FORBIDDEN], unreadable: [HTTP_429, network, timeout, 5xx] }
+# A 401 is the session's, and sends the talebe to sign in (reauthIfRefused, realm.auth.signIn); it is not drawn here.
 
 main:
-  given: { read: ok, released: yes }
-  events: [DONE, TOPICS]
+  given: { read: ok, attempt: ended, released: yes, closed: yes, topics: some, courseTopics: some }
+  events: [DONE]
 initial: opening
 states:
   opening:
     title: The talebe's screen of the exam is opened
+    source: apps/tedris/features/online-exams/my-reads.ts:43
     description: >-
-      The action getMyExamResult, GET /lessons/{id}/online-exam/my-result. Only the talebe whose attempt it is reads it; to anyone
-      else, and to a talebe who did not take the exam, there is no such screen. Before the release it says only that the exam was
-      taken, when and how it ended; after, the score, the counts and the topics; once the exam has also closed for everyone, the
-      questions with the talebe's answers and the correct ones.
+      The server page reads getMyExamResult, GET /lessons/{id}/online-exam/my-result. Only the talebe whose attempt it is reads it; to
+      anyone else, and to a talebe who did not take the exam, there is no such screen (a 404 or a 403). Before the release it says only
+      that the exam was taken, when and how it ended; after, the score, the counts and the topics; once the exam has also closed for
+      everyone, the questions with the talebe's answers and the correct ones.
     invoke: { action: getMyExamResult }
     on:
       DONE: { guard: "read == 'ok'", target: loaded, say: "the attempt is read" }
@@ -76,77 +95,76 @@ states:
       FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read fails" }
   loaded:
     title: The screen is drawn as the read says
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:108
     description: A step with no screen of its own.
     always:
+      - { guard: "attempt == 'inProgress'", target: inProgress, say: "the attempt has not ended" }
       - { guard: "released == 'no'", target: awaitingRelease, say: "the results are not released" }
       - { target: resultShown, say: "the results are released" }
   notFound:
     title: No such exam
-    description: The page says there is no such exam among the talebe's, and leads back to Sınavlarım.
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:66
+    description: >-
+      A neutral alert "Böyle bir sınav yok", "Bu sınav, girdiğin sınavlar arasında değil."; the breadcrumb "Sınavlarım" above it, on
+      every state of the page, leads back.
     by: human
     on:
-      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:50" }
       NAVIGATE: left
   loadFailed:
     title: The result could not be read
-    description: The page says the result could not be read, with "Yeniden dene".
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:67
+    description: An alert "Sonuç okunamadı", "Sınavının sonucu okunamadı. Biraz sonra yeniden dene.", with "Yeniden dene", a link to the page's own address.
     by: human
     on:
-      RETRY: { target: opening, say: "they press Yeniden dene" }
+      RETRY: { target: opening, say: "they press Yeniden dene: the page is loaded again", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:75" }
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
+      NAVIGATE: left
+  inProgress:
+    title: The exam is still in progress
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:112
+    description: >-
+      The talebe's attempt has not ended (an address opened by hand, or a page left open): the course and the title, an alert "Sınavın
+      sürüyor", "Bu sınava başladın ve henüz bitmedi.", and "Devam et" to the exam's own page.
+    by: human
+    on:
+      CONTINUE: { target: exam_opened, say: "they press Devam et", source: "apps/tedris/features/online-exams/components/my-exam-result.tsx:115" }
       BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   awaitingRelease:
     title: Sonuç henüz açıklanmadı
-    description: The screen says the exam was handed in and when, and that the result is not released yet; no score.
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:166
+    description: >-
+      The course and the title (h1), a line saying when it ended and how (handed in, ended by the time, or closed early by the team),
+      "Sonuç henüz açıklanmadı" (h2) and "Dersin ekibi sonuçları açıkladığında puanın ve konulara göre durumun burada görünür."; no
+      score, no topic, no answer. Nothing reads the page again when the results are released: the talebe opens it again.
     by: human
     on:
-      RELEASED: { target: opening, say: "the course team releases the results, and the page is read again" }
       BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   resultShown:
     title: The talebe's result
+    source: apps/tedris/features/online-exams/components/my-exam-result.tsx:143
     description: >-
-      The score out of 100, the counts of right, wrong and blank answers, when it was handed in and whether the time ended it, and the
-      standing in each topic of the exam. It says how many took the exam and the talebe's place among them, and how many got the same
-      score when others did. Until the exam has closed for everyone, it says the answers can be read once it has; after, "Cevaplarım"
-      opens them.
+      One page, read top to bottom: the line of when and how it ended, "100 üzerinden {score}" (h2), the right, wrong and blank counts,
+      and the standing ("Sınava {taken} kişi girdi. Puanın {score}. {taken} kişi içinde {rank}. sıradasın", with how many share it).
+      Then, each a section under its h2: "Konulara göre", each topic of the exam with a bar, its percentage, its counts and its own
+      standing, the weakest first, when the questions carry topics; "Dersin konularında durumum", each topic over the course's
+      released exams, when there is one; and "Cevaplarım": until the exam has closed for everyone "Cevapların ve doğruları, sınav
+      herkes için bitince burada açılır.", after it each question in the talebe's order with the outcome, the points got, and each
+      option marked "Senin seçimin" and "Doğru şık". Nothing on the page opens or closes a section.
     by: human
     goal: true
     on:
-      TOPICS: { target: topicsShown, say: "they open the standing by topic" }
-      ANSWERS: { guard: answersOpen, target: answersShown, say: "they open their answers, once the exam has closed for everyone" }
-      COURSE_TOPICS: { target: courseTopics, say: "they open their standing across the course's exams, which came with the same read" }
-      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
-      NAVIGATE: left
-  topicsShown:
-    title: The standing by topic
-    description: >-
-      For each topic of the exam: the percentage of the points its questions carry that were got, how many of them were right and
-      wrong, and the talebe's place among those who took it, with the ties; the weakest topic first.
-    by: human
-    on:
-      BACK: resultShown
-      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
-      NAVIGATE: left
-  answersShown:
-    title: The talebe's answers
-    description: Each question in the talebe's order, their answer, the correct one, and the points got.
-    by: human
-    on:
-      BACK: resultShown
-      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
-      NAVIGATE: left
-  courseTopics:
-    title: The standing across the course's exams
-    description: Each topic of the course with the talebe's percentage over every exam that carried it.
-    by: human
-    on:
-      BACK: resultShown
       BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   list_opened:
     title: Sınavlarım is opened
     description: tedris.exams.mine.
+    type: final
+  exam_opened:
+    title: The exam's own page is opened
+    description: tedris.exams.take, where the attempt goes on.
     type: final
   left:
     title: The talebe left the page
