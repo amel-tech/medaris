@@ -169,3 +169,25 @@ export function sarfTableTexts(
   });
   return texts;
 }
+
+/**
+ * The canvas's elements with the sizes of `measured` taken over, by id: where
+ * each stands, and everything else about it, is the müderris's and is kept.
+ * An element whose size already agrees is handed back as it is.
+ */
+export function resized<
+  T extends { id: string; width: number; height: number },
+>(
+  elements: readonly T[],
+  measured: readonly { id: string; width: number; height: number }[]
+): T[] {
+  const sizes = new Map(measured.map((element) => [element.id, element]));
+  return elements.map((element) => {
+    const size = sizes.get(element.id);
+    if (!size) return element;
+    if (size.width === element.width && size.height === element.height) {
+      return element;
+    }
+    return { ...element, width: size.width, height: size.height };
+  });
+}
