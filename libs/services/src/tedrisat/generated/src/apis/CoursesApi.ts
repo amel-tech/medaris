@@ -24,11 +24,14 @@ import type {
   CourseDetailResponse,
   CourseNazirsResponse,
   CoursePartnerCodesResponse,
+  CourseSarfRootResponse,
   CourseStatsResponse,
   CourseSummaryResponse,
+  CourseTermResponse,
   CreateCourseDeckDto,
   CreateCourseDto,
   CreateCourseNazirDto,
+  CreateCourseTermDto,
   CreatedCourseDeckResponse,
   EnrolledCourseResponse,
   EnrollmentResponse,
@@ -42,12 +45,14 @@ import type {
   RemovedEnrollmentResponse,
   ReplaceCourseDto,
   RosterEnrollmentResponse,
+  SaveCourseSarfRootDto,
   SetEnrollmentStatusDto,
   SetMuderrisDto,
   SetMuderrisUnvanDto,
   UpdateCourseDeckDto,
   UpdateCourseDto,
   UpdateCourseNazirDto,
+  UpdateCourseTermDto,
   UpdateProgressDto,
 } from '../models/index';
 import {
@@ -69,16 +74,22 @@ import {
     CourseNazirsResponseToJSON,
     CoursePartnerCodesResponseFromJSON,
     CoursePartnerCodesResponseToJSON,
+    CourseSarfRootResponseFromJSON,
+    CourseSarfRootResponseToJSON,
     CourseStatsResponseFromJSON,
     CourseStatsResponseToJSON,
     CourseSummaryResponseFromJSON,
     CourseSummaryResponseToJSON,
+    CourseTermResponseFromJSON,
+    CourseTermResponseToJSON,
     CreateCourseDeckDtoFromJSON,
     CreateCourseDeckDtoToJSON,
     CreateCourseDtoFromJSON,
     CreateCourseDtoToJSON,
     CreateCourseNazirDtoFromJSON,
     CreateCourseNazirDtoToJSON,
+    CreateCourseTermDtoFromJSON,
+    CreateCourseTermDtoToJSON,
     CreatedCourseDeckResponseFromJSON,
     CreatedCourseDeckResponseToJSON,
     EnrolledCourseResponseFromJSON,
@@ -105,6 +116,8 @@ import {
     ReplaceCourseDtoToJSON,
     RosterEnrollmentResponseFromJSON,
     RosterEnrollmentResponseToJSON,
+    SaveCourseSarfRootDtoFromJSON,
+    SaveCourseSarfRootDtoToJSON,
     SetEnrollmentStatusDtoFromJSON,
     SetEnrollmentStatusDtoToJSON,
     SetMuderrisDtoFromJSON,
@@ -117,6 +130,8 @@ import {
     UpdateCourseDtoToJSON,
     UpdateCourseNazirDtoFromJSON,
     UpdateCourseNazirDtoToJSON,
+    UpdateCourseTermDtoFromJSON,
+    UpdateCourseTermDtoToJSON,
     UpdateProgressDtoFromJSON,
     UpdateProgressDtoToJSON,
 } from '../models/index';
@@ -155,6 +170,11 @@ export interface CreateCourseNazirRequest {
     createCourseNazirDto: CreateCourseNazirDto;
 }
 
+export interface CreateCourseTermRequest {
+    id: string;
+    createCourseTermDto: CreateCourseTermDto;
+}
+
 export interface DeleteCourseRequest {
     id: string;
 }
@@ -162,6 +182,16 @@ export interface DeleteCourseRequest {
 export interface DeleteCourseDeckRequest {
     id: string;
     deckId: string;
+}
+
+export interface DeleteCourseSarfRootRequest {
+    id: string;
+    rootId: string;
+}
+
+export interface DeleteCourseTermRequest {
+    id: string;
+    termId: string;
 }
 
 export interface EnrollInCourseRequest {
@@ -226,6 +256,14 @@ export interface LeaveCourseRequest {
     id: string;
 }
 
+export interface ListCourseSarfRootsRequest {
+    id: string;
+}
+
+export interface ListCourseTermsRequest {
+    id: string;
+}
+
 export interface RejectEnrollmentRequest {
     id: string;
     userId: string;
@@ -256,6 +294,11 @@ export interface RestoreCourseRequest {
 export interface RevokeCourseNazirRequest {
     id: string;
     postId: string;
+}
+
+export interface SaveCourseSarfRootRequest {
+    id: string;
+    saveCourseSarfRootDto: SaveCourseSarfRootDto;
 }
 
 export interface SetCourseMuderrisRequest {
@@ -295,6 +338,12 @@ export interface UpdateCourseNazirRequest {
 export interface UpdateCourseProgressRequest {
     id: string;
     updateProgressDto: UpdateProgressDto;
+}
+
+export interface UpdateCourseTermRequest {
+    id: string;
+    termId: string;
+    updateCourseTermDto: UpdateCourseTermDto;
 }
 
 export interface WithdrawEnrollmentRequest {
@@ -671,6 +720,60 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Only the term itself is required; a text left out or empty is kept as null. Every text is stored as typed and shown as plain text. At most 1000 terms a course (400 COURSE_TERMS_FULL). Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Add a term to a course\'s glossary
+     */
+    async createCourseTermRaw(requestParameters: CreateCourseTermRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseTermResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createCourseTerm().'
+            );
+        }
+
+        if (requestParameters['createCourseTermDto'] == null) {
+            throw new runtime.RequiredError(
+                'createCourseTermDto',
+                'Required parameter "createCourseTermDto" was null or undefined when calling createCourseTerm().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/terms`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateCourseTermDtoToJSON(requestParameters['createCourseTermDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseTermResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Only the term itself is required; a text left out or empty is kept as null. Every text is stored as typed and shown as plain text. At most 1000 terms a course (400 COURSE_TERMS_FULL). Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Add a term to a course\'s glossary
+     */
+    async createCourseTerm(requestParameters: CreateCourseTermRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseTermResponse> {
+        const response = await this.createCourseTermRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Removes the course and its weeks, lessons, müderris, resources and enrollments in one transaction and records an audit entry. Everyone else hides instead (MDRS-124).
      * Delete a course for real (SYSTEM_ADMIN only)
      */
@@ -767,6 +870,108 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async deleteCourseDeck(requestParameters: DeleteCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteCourseDeckRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * The cards already drafted from it into a deck stay. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Take a root off a course\'s sarf page
+     */
+    async deleteCourseSarfRootRaw(requestParameters: DeleteCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteCourseSarfRoot().'
+            );
+        }
+
+        if (requestParameters['rootId'] == null) {
+            throw new runtime.RequiredError(
+                'rootId',
+                'Required parameter "rootId" was null or undefined when calling deleteCourseSarfRoot().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/sarf-roots/{rootId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"rootId"}}`, encodeURIComponent(String(requestParameters['rootId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The cards already drafted from it into a deck stay. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Take a root off a course\'s sarf page
+     */
+    async deleteCourseSarfRoot(requestParameters: DeleteCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteCourseSarfRootRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * The term is removed for good; there is no history. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Delete a term of a course\'s glossary
+     */
+    async deleteCourseTermRaw(requestParameters: DeleteCourseTermRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteCourseTerm().'
+            );
+        }
+
+        if (requestParameters['termId'] == null) {
+            throw new runtime.RequiredError(
+                'termId',
+                'Required parameter "termId" was null or undefined when calling deleteCourseTerm().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/terms/{termId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"termId"}}`, encodeURIComponent(String(requestParameters['termId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The term is removed for good; there is no history. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Delete a term of a course\'s glossary
+     */
+    async deleteCourseTerm(requestParameters: DeleteCourseTermRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteCourseTermRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1434,6 +1639,94 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * In the order they were added. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * The roots on a course\'s sarf page
+     */
+    async listCourseSarfRootsRaw(requestParameters: ListCourseSarfRootsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseSarfRootResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseSarfRoots().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/sarf-roots`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CourseSarfRootResponseFromJSON));
+    }
+
+    /**
+     * In the order they were added. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * The roots on a course\'s sarf page
+     */
+    async listCourseSarfRoots(requestParameters: ListCourseSarfRootsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseSarfRootResponse>> {
+        const response = await this.listCourseSarfRootsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Every term of the course, in the order they were added; the reader sorts and searches. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * A course\'s glossary
+     */
+    async listCourseTermsRaw(requestParameters: ListCourseTermsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseTermResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseTerms().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/terms`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CourseTermResponseFromJSON));
+    }
+
+    /**
+     * Every term of the course, in the order they were added; the reader sorts and searches. Read by whoever reads the course\'s content: an enrolled talebe and the course\'s staff.
+     * A course\'s glossary
+     */
+    async listCourseTerms(requestParameters: ListCourseTermsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseTermResponse>> {
+        const response = await this.listCourseTermsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
@@ -1762,6 +2055,60 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async revokeCourseNazir(requestParameters: RevokeCourseNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.revokeCourseNazirRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Adds the root in the given bâb, or, when the course already has it in that bâb, changes its mastar and its masdar\'s vezin; the row comes back either way. Sülâsî mücerred sâlim only: a root with a hamza or a weak letter fails field validation, a doubled one is 400 COURSE_SARF_ROOT_DOUBLED. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Put a root on a course\'s sarf page
+     */
+    async saveCourseSarfRootRaw(requestParameters: SaveCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseSarfRootResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling saveCourseSarfRoot().'
+            );
+        }
+
+        if (requestParameters['saveCourseSarfRootDto'] == null) {
+            throw new runtime.RequiredError(
+                'saveCourseSarfRootDto',
+                'Required parameter "saveCourseSarfRootDto" was null or undefined when calling saveCourseSarfRoot().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/sarf-roots`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SaveCourseSarfRootDtoToJSON(requestParameters['saveCourseSarfRootDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseSarfRootResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Adds the root in the given bâb, or, when the course already has it in that bâb, changes its mastar and its masdar\'s vezin; the row comes back either way. Sülâsî mücerred sâlim only: a root with a hamza or a weak letter fails field validation, a doubled one is 400 COURSE_SARF_ROOT_DOUBLED. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Put a root on a course\'s sarf page
+     */
+    async saveCourseSarfRoot(requestParameters: SaveCourseSarfRootRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseSarfRootResponse> {
+        const response = await this.saveCourseSarfRootRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
@@ -2171,6 +2518,68 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async updateCourseProgress(requestParameters: UpdateCourseProgressRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EnrollmentResponse> {
         const response = await this.updateCourseProgressRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * A key left out stays as it is; a text sent as null or empty is cleared. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Edit a term of a course\'s glossary
+     */
+    async updateCourseTermRaw(requestParameters: UpdateCourseTermRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseTermResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateCourseTerm().'
+            );
+        }
+
+        if (requestParameters['termId'] == null) {
+            throw new runtime.RequiredError(
+                'termId',
+                'Required parameter "termId" was null or undefined when calling updateCourseTerm().'
+            );
+        }
+
+        if (requestParameters['updateCourseTermDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateCourseTermDto',
+                'Required parameter "updateCourseTermDto" was null or undefined when calling updateCourseTerm().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/terms/{termId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"termId"}}`, encodeURIComponent(String(requestParameters['termId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateCourseTermDtoToJSON(requestParameters['updateCourseTermDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseTermResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * A key left out stays as it is; a text sent as null or empty is cleared. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.
+     * Edit a term of a course\'s glossary
+     */
+    async updateCourseTerm(requestParameters: UpdateCourseTermRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseTermResponse> {
+        const response = await this.updateCourseTermRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

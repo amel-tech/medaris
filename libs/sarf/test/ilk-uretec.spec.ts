@@ -7,8 +7,7 @@ import {
   mazi,
   muzari,
   readRoot,
-  sigaDraftProblems,
-} from "~/features/decks/siga";
+} from "../src";
 
 // Letter by letter, each mark on its own: what a sarf book writes, spelled out
 // so a misplaced haraka cannot hide inside a glyph.
@@ -337,6 +336,7 @@ describe("generateSigas", () => {
       kok: "ن ص ر",
       bab: "nasara",
       kip: "mazi",
+      bina: "malum",
       sahis: "gaib",
       cinsiyet: "muzekker",
       sayi: "mufred",
@@ -345,6 +345,7 @@ describe("generateSigas", () => {
       kok: "ن ص ر",
       bab: "nasara",
       kip: "mazi",
+      bina: "malum",
       sahis: "mutekellim",
       cinsiyet: null,
       sayi: "cem",
@@ -375,29 +376,12 @@ describe("generateSigas", () => {
       muzariMeaning: "",
     });
     expect(only).toHaveLength(14);
-    expect(only?.every((d) => d.contentMeta.kip === "muzari")).toBe(true);
+    expect(only?.every((d) => d.contentMeta?.kip === "muzari")).toBe(true);
     expect(only?.every((d) => d.contentBack === "")).toBe(true);
   });
 
   it("drafts nothing for a root it cannot conjugate", () => {
     expect(generateSigas({ ...request, root: "قول" })).toBeNull();
-  });
-});
-
-describe("sigaDraftProblems", () => {
-  it("names the drafts with a face shorter than 3 or longer than 5000", () => {
-    const drafts =
-      generateSigas({
-        root: "ن ص ر",
-        bab: "nasara",
-        kips: ["mazi"],
-        maziMeaning: "yardım etti",
-        muzariMeaning: "",
-      }) ?? [];
-    expect(sigaDraftProblems(drafts)).toEqual([]);
-    drafts[2] = { ...drafts[2], contentBack: "  " };
-    drafts[5] = { ...drafts[5], contentFront: "x".repeat(5001) };
-    expect(sigaDraftProblems(drafts)).toEqual([2, 5]);
   });
 });
 

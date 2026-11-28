@@ -29,12 +29,14 @@ import { FileErrorNotice } from "./file-error-notice";
 import { LessonNotes } from "./lesson-notes";
 import { SessionActionCard, type WatchPoster } from "./session-action-card";
 import { SessionAgenda } from "./session-agenda";
+import { SessionBoard } from "./session-board";
 import { SessionExam } from "./session-exam";
 import { SessionHeader } from "./session-header";
 import { SessionHomework } from "./session-homework";
 import { SessionPager } from "./session-pager";
 import { hasSessionResources, SessionResources } from "./session-resources";
 import { SessionStateBadge } from "./session-state-badge";
+import { SessionTeacherNote } from "./session-teacher-note";
 
 /**
  * The celse detail page (MDRS-158, MDRS-285; layout MDRS-289): a live celse
@@ -157,6 +159,26 @@ export const SessionPage = async ({
         lessonId={session.id}
         assignment={session.assignment ?? null}
       />
+    ) : null;
+
+  // What the müderris prepared for the celse (its note, then its board): for
+  // whoever reads the celse's content, enrolled or staff, while the celse
+  // stands.
+  const material =
+    !session.contentLocked && !cancelled ? (
+      <>
+        <SessionTeacherNote lessonId={session.id} />
+        <SessionBoard lessonId={session.id} />
+        {/* The course's glossary is a tab of the course page; a celse leads there. */}
+        <p className="mds-body-sm">
+          <a
+            className="mds-btn mds-btn--link"
+            href={`/courses/${course.id}?tab=lugat`}
+          >
+            {t("SessionPage.glossaryLink")}
+          </a>
+        </p>
+      </>
     ) : null;
 
   // MDRS-248: the note the müderris wrote for talebe when cancelling, whole,
@@ -382,6 +404,8 @@ export const SessionPage = async ({
       {notes}
 
       {homework}
+
+      {material}
 
       {details.length > 0 ? (
         <div

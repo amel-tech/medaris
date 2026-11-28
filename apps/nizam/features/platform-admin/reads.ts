@@ -3,6 +3,7 @@ import {
   type AuditPageResponse,
   type CourseRequestListResponse,
   type KoskApplicationListResponse,
+  type PermanentBanRequestListResponse,
   type PlatformPolicyListResponse,
   ResponseError,
   type ScopedPolicyListResponse,
@@ -89,3 +90,11 @@ export const getKoskName = (
 export const getPendingAppeals = (): Promise<
   PlatformRead<AppealListResponse>
 > => read("the appeals", (c) => c.nizam.listAppeals({ status: "PENDING" }));
+
+/** Kalıcı yasak talepleri: the requests waiting for a decision, with both counts. */
+export const getPendingPermanentBans = (): Promise<
+  PlatformRead<PermanentBanRequestListResponse>
+> =>
+  read("the permanent ban requests", (c) =>
+    c.nizam.listPermanentBanRequests({ status: "PENDING" })
+  );

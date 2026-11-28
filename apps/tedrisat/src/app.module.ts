@@ -18,6 +18,8 @@ import { CalendarFeedModule } from "./calendar-feed/calendar-feed.module";
 import { configuration } from "./config";
 import { CourseModule } from "./course/course.module";
 import { CourseRequestModule } from "./course-request/course-request.module";
+import { CourseSarfModule } from "./course-sarf/course-sarf.module";
+import { CourseTermModule } from "./course-term/course-term.module";
 import { DatabaseModule } from "./database/database.module";
 import { DeckReviewModule } from "./deck-review/deck-review.module";
 import { EvaluationModule } from "./evaluation/evaluation.module";
@@ -30,9 +32,11 @@ import { IntegrationModule } from "./integration/integration.module";
 import { PartnerRegistryModule } from "./integration/partner-registry.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
+import { LessonBoardModule } from "./lesson-board/lesson-board.module";
 import { LessonNoteModule } from "./lesson-note/lesson-note.module";
 import { LessonQuestionModule } from "./lesson-question/lesson-question.module";
 import { LessonSubmissionModule } from "./lesson-submission/lesson-submission.module";
+import { LessonTeacherNoteModule } from "./lesson-teacher-note/lesson-teacher-note.module";
 import { LessonViewModule } from "./lesson-view/lesson-view.module";
 import { MadrasahCourseModule } from "./madrasah/course/madrasah-course.module";
 import { MadrasahModule } from "./madrasah/madrasah.module";
@@ -72,6 +76,10 @@ import { UserModule } from "./user/user.module";
     MadrasahModule,
     HostingModule,
     CourseModule,
+    CourseSarfModule,
+    CourseTermModule,
+    LessonBoardModule,
+    LessonTeacherNoteModule,
     LessonNoteModule,
     LessonViewModule,
     LessonQuestionModule,

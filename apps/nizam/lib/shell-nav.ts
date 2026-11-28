@@ -211,11 +211,10 @@ const koskGeneral: NavGroup = {
 };
 
 /**
- * The köşk's menu (nizam 52) holds only pages that exist. The design also
- * draws Celseler, Talebeler and Ders kayıtları for the whole köşk; those are
- * later-phase screens with no route yet, so they stay out of the menu until
- * they are built rather than answer 404 (MDRS-211). A course's own sessions
- * and roster are reached from the course.
+ * The köşk's menu (nizam 52), in the order of its canvas. Celseler, Talebeler
+ * and Ders kayıtları list across every course of the köşk (MDRS-211); a
+ * course's own sessions and roster are reached from the course, and from the
+ * rows of those lists.
  */
 const koskGroups: NavGroup[] = [
   koskGeneral,
@@ -227,6 +226,18 @@ const koskGroups: NavGroup[] = [
         label: "courses",
         path: "/kosks/:kosk/dersler",
         icon: "courses",
+      },
+      {
+        id: "sessions",
+        label: "sessions",
+        path: "/kosks/:kosk/celseler",
+        icon: "calendar",
+      },
+      {
+        id: "students",
+        label: "students",
+        path: "/kosks/:kosk/talebeler",
+        icon: "student",
       },
       {
         id: "applications",
@@ -241,6 +252,12 @@ const koskGroups: NavGroup[] = [
         label: "courseRequests",
         path: "/kosks/:kosk/ders-talepleri",
         icon: "edit",
+      },
+      {
+        id: "recordings",
+        label: "enrollments",
+        path: "/kosks/:kosk/ders-kayitlari",
+        icon: "video",
       },
       {
         id: "decks",
@@ -421,11 +438,23 @@ export function activeEntryId(
 }
 
 /**
- * A course's pages (overview nizam/53, editor, Celseler nizam/56, Talebeler
- * nizam/57) are the köşk's Dersler: the köşk-wide Celseler and Talebeler are
- * not in the menu yet (MDRS-211), so Dersler is drawn selected.
+ * Which menu entry a course's own page belongs to. Its Celseler (nizam/56)
+ * and its Talebeler (nizam/57) are drawn under the köşk-wide entries of the
+ * same name (MDRS-211); the overview (nizam/53), the editor and the rest are
+ * the köşk's Dersler.
  */
 export function coursePathAlias(current: string): string {
   const course = /^\/kosks\/([^/]+)\/courses(\/|$)/.exec(current);
-  return course ? `/kosks/${course[1]}/dersler` : current;
+  if (!course) return current;
+  const page =
+    /^\/kosks\/[^/]+\/courses\/[^/]+\/(sessions|students)(\/|$)/.exec(
+      current
+    )?.[1];
+  const entry =
+    page === "sessions"
+      ? "celseler"
+      : page === "students"
+        ? "talebeler"
+        : "dersler";
+  return `/kosks/${course[1]}/${entry}`;
 }

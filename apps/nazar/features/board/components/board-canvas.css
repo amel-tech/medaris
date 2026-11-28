@@ -1,0 +1,12 @@
+/* The lesson board's canvas (Excalidraw) brings its own stylesheet. It is
+   taken into the `components` layer rather than loaded as it is: a sheet with
+   no layer would sit above every layer of the app's own build and win
+   wherever its selectors met ours. The layer order is the app's, written out
+   so this sheet says the same whichever one the browser reads first.
+
+   The path is the package's production sheet by file: its `exports` name the
+   sheet only under the `development` and `production` conditions, which the
+   CSS toolchain does not set. */
+@layer theme, base, mds-base, components, utilities;
+@import "../../../node_modules/@excalidraw/excalidraw/dist/prod/index.css"
+  layer(components);

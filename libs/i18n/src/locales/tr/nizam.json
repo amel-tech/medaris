@@ -619,8 +619,11 @@
     "new": "Yeni",
     "scope": {
       "COURSE": "Ders",
-      "KOSK": "Köşk"
+      "KOSK": "Köşk",
+      "MADRASAH": "Medrese",
+      "PLATFORM": "Platform"
     },
+    "platformDetail": "Bütün Medaris",
     "extendedFrom": "{course} dersinden genişletildi",
     "roles": {
       "KOSK_NAZIM": "Köşk nazımı",
@@ -2013,6 +2016,7 @@
     "banned": "Yasaklı",
     "bannedCourse": "Yasaklı · Bu ders",
     "bannedKosk": "Yasaklı · Köşk",
+    "bannedPlatform": "Yasaklı · Platform",
     "showing": "{total} talebeden {shown} tanesi gösteriliyor",
     "more": "Daha fazla göster",
     "emptySearch": "Aramaya uyan talebe yok",
@@ -3134,6 +3138,11 @@
       "help": "Medrese bu notu okuyacak.",
       "reasonLabel": "Karar notu"
     },
+    "permanentBan": {
+      "title": "Kalıcı yasak talebini reddet",
+      "body": "Alt kademedeki yasak olduğu gibi kalır. Ret gerekçesini talep eden kişi görür.",
+      "help": "Talep eden bu gerekçeyi okuyacak."
+    },
     "unpublish": {
       "title": "Desteyi yayından kaldır",
       "body": "Deste herkese açık listeden çıkar ve sahibine özel olarak kalır. Gerekçe, deste sahibine bildirimle iletilir.",
@@ -3638,6 +3647,167 @@
       "forbidden": "Bu işlem için izniniz yok."
     }
   },
+  "PermanentBansPage": {
+    "title": "Kalıcı yasak talepleri",
+    "intro": "Ders, köşk ya da medrese yasağı koyanların, aynı kişinin platformdan da yasaklanması için açtığı talepler.",
+    "introApprove": "Onay, kişiyi platformdan yasaklar: bütün köşk, medrese ve derslere erişimi kalkar.",
+    "introReject": "Ret, alt kademedeki yasağı olduğu gibi bırakır. Kararınızı talep eden kişi görür.",
+    "tabsLabel": "Talep durumu",
+    "tabs": {
+      "PENDING": "Karar bekleyen",
+      "DECIDED": "Karara bağlanan"
+    },
+    "empty": {
+      "PENDING": "Karar bekleyen kalıcı yasak talebi yok.",
+      "DECIDED": "Karara bağlanmış kalıcı yasak talebi yok."
+    },
+    "loadFailedTitle": "Kalıcı yasak talepleri okunamadı",
+    "loadFailed": "Talepler şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "status": {
+      "PENDING": "Karar bekliyor",
+      "APPROVED": "Onaylandı",
+      "REJECTED": "Reddedildi"
+    },
+    "unknownPerson": "Bilinmiyor",
+    "currentBan": "Mevcut yasak",
+    "scope": "Kapsam",
+    "scopes": {
+      "COURSE": "Ders yasağı",
+      "KOSK": "Köşk yasağı",
+      "MADRASAH": "Medrese yasağı",
+      "PLATFORM": "Platform yasağı"
+    },
+    "bannedBy": "Koyan",
+    "banReason": "Yasağın gerekçesi",
+    "request": "Talep",
+    "requestedBy": "Talep eden",
+    "theBanner": "yasağı koyan",
+    "requestReason": "Talebin gerekçesi",
+    "liftedTitle": "Bu yasak kaldırılmış",
+    "liftedBody": "Alt kademedeki yasak kaldırıldığı için talep onaylanamaz; yalnız reddedilebilir.",
+    "decidedLine": "Karar veren: {name} · {when}",
+    "decisionNote": "Ret gerekçesi",
+    "seeInBans": "Yasaklamalar’da gör",
+    "seeInBansLabel": "Yasaklamalar’da gör: {name}",
+    "reject": "Reddet",
+    "rejectLabel": "Reddet: {name}",
+    "approve": "Onayla",
+    "approveLabel": "Onayla: {name}",
+    "approved": "Talep onaylandı",
+    "approvedBody": "{name} platformdan yasaklandı.",
+    "rejected": "Talep reddedildi",
+    "rejectedBody": "{name} için alt kademedeki yasak olduğu gibi kaldı; ret gerekçesini talep eden görür.",
+    "answerFailed": "Karar kaydedilemedi",
+    "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+      "answered": "Bu talep az önce karara bağlanmış.",
+      "gone": "Bu talep artık yok.",
+      "lifted": "Alt kademedeki yasak kaldırılmış; talep onaylanamaz, yalnız reddedilebilir.",
+      "target": "Bu kişi platformdan yasaklanamaz.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
+  "KoskLists": {
+    "week": "Hafta {n}",
+    "minutes": "{minutes} dk",
+    "loadFailed": "Liste şu an okunamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Yeniden dene",
+    "pager": {
+      "label": "Sayfalar",
+      "range": "{from}–{to} / {total}",
+      "prev": "Önceki",
+      "next": "Sonraki",
+      "pastEnd": "Bu sayfada satır yok. Önceki sayfaya dönün."
+    },
+    "sessions": {
+      "title": "Celseler",
+      "intro": "{kosk} içindeki bütün derslerin celseleri, tarihe göre. Bir celseyi planlamak, taşımak ya da iptal etmek için dersine gidin.",
+      "loadFailedTitle": "Celseler okunamadı",
+      "tabsLabel": "Celse zamanı",
+      "tabs": {
+        "UPCOMING": "Yaklaşan celseler",
+        "PAST": "Geçmiş celseler"
+      },
+      "caption": {
+        "UPCOMING": "{kosk}: yaklaşan celseler",
+        "PAST": "{kosk}: geçmiş celseler"
+      },
+      "empty": {
+        "UPCOMING": "Yaklaşan celse yok.",
+        "PAST": "Geçmiş celse yok."
+      },
+      "columns": {
+        "session": "Celse",
+        "course": "Ders",
+        "time": "Zaman",
+        "state": "Durum"
+      },
+      "state": {
+        "cancelled": "İptal edildi",
+        "ended": "Sona erdi",
+        "live": "Şu an canlı",
+        "scheduled": "Planlandı"
+      },
+      "inPerson": "Yüz yüze",
+      "goToCourse": "{course} dersinin celselerine git"
+    },
+    "students": {
+      "intro": "{kosk} içindeki derslere kayıtlı ve dersini tamamlamış talebeler; her satır bir kişi. Bir talebeyle ilgili işlem için dersine gidin.",
+      "loadFailedTitle": "Talebeler okunamadı",
+      "pendingTitle": "Onay bekleyen başvurular",
+      "pending": "Onay bekleyen {count} başvuru var.",
+      "goToApplications": "Başvurular’a git",
+      "searchLabel": "Talebe ara",
+      "searchPlaceholder": "Ad ya da e-posta ara",
+      "search": "Ara",
+      "total": "{count} talebe",
+      "caption": "{kosk}: talebeler",
+      "empty": "Bu köşkün derslerinde henüz talebe yok.",
+      "emptyFiltered": "Bu aramaya uyan talebe yok.",
+      "unknown": "Adı bilinmiyor",
+      "completed": "tamamladı",
+      "columns": {
+        "student": "Talebe",
+        "email": "E-posta",
+        "courses": "Kayıtlı dersler",
+        "since": "İlk kayıt"
+      },
+      "title": "Talebeler"
+    },
+    "recordings": {
+      "intro": "{kosk} içindeki celselerin ders kayıtları, derslere ve haftalara göre. Ders kaydı eklemek ya da düzenlemek için dersine gidin.",
+      "loadFailedTitle": "Ders kayıtları okunamadı",
+      "total": "{count} ders kaydı",
+      "empty": "Bu köşkün derslerinde henüz ders kaydı yok.",
+      "caption": "{course}: Hafta {n} ders kayıtları",
+      "session": "Celse: {when}",
+      "goToCourse": "Derse git",
+      "goToCourseLabel": "{course} dersinin celselerine git",
+      "columns": {
+        "recording": "Ders kaydı",
+        "source": "Kaynak",
+        "status": "Durum",
+        "visibility": "Görünürlük"
+      },
+      "provider": {
+        "BUNNY": "Medaris oynatıcısı",
+        "DRIVE": "Google Drive",
+        "YOUTUBE": "YouTube",
+        "OTHER": "Bağlantı"
+      },
+      "status": {
+        "READY": "Hazır",
+        "PROCESSING": "Hazırlanıyor",
+        "FAILED": "Başarısız"
+      },
+      "visibility": {
+        "PUBLIC": "Herkese açık",
+        "ENROLLED": "Yalnız kayıtlı talebeler"
+      },
+      "title": "Ders kayıtları"
+    }
+  },
   "Dashboard": {
     "title": "Ana sayfa",
     "greeting": "Selâmün aleyküm, {name} Bey.",
@@ -3711,7 +3881,8 @@
     },
     "permanentBans": {
       "title": "Kalıcı yasak talepleri",
-      "empty": "Bekleyen kalıcı yasak talebi yok."
+      "empty": "Bekleyen kalıcı yasak talebi yok.",
+      "pending": "Karar bekleyen {count} kalıcı yasak talebi var."
     },
     "passive": {
       "title": "Pasif kapsamlar",
@@ -3731,6 +3902,8 @@
       "empty": "Açık yasak yok.",
       "courseBan": "Ders yasağı: {name}",
       "koskBan": "Köşk yasağı: {name}",
+      "madrasahBan": "Medrese yasağı: {name}",
+      "platformBan": "Platform yasağı: bütün Medaris",
       "placedBy": "koyan {name}",
       "reason": "Gerekçe: {reason}",
       "goTo": "Yasaklamalar’a git"

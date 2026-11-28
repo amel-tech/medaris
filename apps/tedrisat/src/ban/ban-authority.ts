@@ -60,8 +60,8 @@ export const madrasahPlace = (madrasahId: string): IBanPlace => ({
 export const PLATFORM_PLACE: IBanPlace = { kind: "PLATFORM" };
 
 /**
- * Where an existing ban sits: its course, its köşk or its medrese, by its
- * scope. `madrasahId` is the medrese a course ban's course belongs to, or the
+ * Where an existing ban sits: its course, its köşk, its medrese or the
+ * platform, by its scope. `madrasahId` is the medrese a course ban's course belongs to, or the
  * medrese of a medrese-wide ban.
  */
 export function placeOfBan(
@@ -84,6 +84,7 @@ export function placeOfBan(
   if (ban.scope === BAN_SCOPES.KOSK) {
     return ban.koskId ? koskPlace(ban.koskId) : null;
   }
+  if (ban.scope === BAN_SCOPES.PLATFORM) return PLATFORM_PLACE;
   return madrasahId ? madrasahPlace(madrasahId) : null;
 }
 

@@ -399,5 +399,16 @@
     "topicStandingTied": "{taken} kişi içinde {rank}. sıradasın; {tiedWith} kişi seninle aynı puanı aldı.",
     "view": "Sınav sayfası",
     "viewLabel": "Sınav sayfası: {course}, {title}"
+  },
+  "SessionBoard": {
+    "title": "Ders tahtası",
+    "hint": "Müderrisin bu celse için hazırladığı tahta. Kaydırıp yakınlaştırabilirsiniz.",
+    "canvas": "Ders tahtası",
+    "loading": "Tahta yükleniyor…",
+    "imagesFailed": "Tahtadaki bazı görseller yüklenemedi. Sayfayı yenileyin."
+  },
+  "SessionTeacherNote": {
+    "title": "Ders notu",
+    "hint": "Müderrisin bu celse için yazdığı not."
   }
 }

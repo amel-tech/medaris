@@ -26,6 +26,8 @@ export const translatorFor = (
     messages: {
       ...resources.tr.tedris,
       tedrisLearn: resources.tr.tedrisLearn,
+      // The sîga names both apps share (`common.sarf`).
+      common: resources.tr.common,
     },
     namespace: (root === "tedris" ? rest : [root, ...rest])
       .filter(Boolean)

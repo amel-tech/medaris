@@ -22,6 +22,7 @@ import {
   type BanScope,
   banPermanentRequests,
   bans,
+  type PermanentBanRequestStatus,
 } from "../database/schema/ban.schema";
 import { courses, enrollments } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
@@ -74,7 +75,17 @@ export interface IBanEntry extends IBan {
   koskName: string | null;
   /** When the medrese asked for the ban to be permanent; null when it has not. */
   permanentRequestedAt: Date | null;
+  /** What Medaris administration decided on that request; null when none was made. */
+  permanentRequestStatus: PermanentBanRequestStatus | null;
+  permanentDecidedAt: Date | null;
+  /** The note of a refusal, for the one who asked. */
+  permanentDecisionNote: string | null;
 }
+
+/** A transaction of the tedrisat database, for a write that joins another's. */
+export type BanTransaction = Parameters<
+  Parameters<DatabaseService["db"]["transaction"]>[0]
+>[0];
 
 export interface INewBan {
   userId: string;
@@ -89,6 +100,8 @@ export interface INewBan {
   bannedTier: number;
   /** the course ban this one widens (MDRS-178); the audit row says `ban.extend` */
   extendedFromBanId?: string;
+  /** the approved request a PLATFORM ban comes from (MDRS-194), named in the audit row */
+  permanentRequestId?: string;
 }
 
 /** Which bans the Medaris-wide list shows (MDRS-178, screen nizam/48). */
@@ -137,10 +150,12 @@ const sameBar = (entry: INewBan): SQL =>
           eq(bans.scope, BAN_SCOPES.KOSK),
           eq(bans.koskId, entry.koskId as string)
         )
-      : and(
-          eq(bans.scope, BAN_SCOPES.MADRASAH),
-          eq(bans.madrasahId, entry.madrasahId as string)
-        )) as SQL;
+      : entry.scope === BAN_SCOPES.PLATFORM
+        ? eq(bans.scope, BAN_SCOPES.PLATFORM)
+        : and(
+            eq(bans.scope, BAN_SCOPES.MADRASAH),
+            eq(bans.madrasahId, entry.madrasahId as string)
+          )) as SQL;
 
 @Injectable()
 export class BanRepository {
@@ -178,8 +193,8 @@ export class BanRepository {
 
   /**
    * The open ban that bars the person from the course, if any: a COURSE ban
-   * on it, a KOSK ban on the köşk it is in, or a MADRASAH ban on the medrese
-   * it belongs to.
+   * on it, a KOSK ban on the köşk it is in, a MADRASAH ban on the medrese it
+   * belongs to, or a PLATFORM ban, which bars from every course.
    */
   async findOpenBarring(
     userId: string,
@@ -196,7 +211,8 @@ export class BanRepository {
           or(
             and(eq(bans.scope, BAN_SCOPES.COURSE), eq(bans.courseId, courseId)),
             and(eq(bans.scope, BAN_SCOPES.KOSK), eq(bans.koskId, koskId)),
-            eq(bans.madrasahId, courseMadrasah(courseId))
+            eq(bans.madrasahId, courseMadrasah(courseId)),
+            eq(bans.scope, BAN_SCOPES.PLATFORM)
           )
         )
       )
@@ -223,7 +239,8 @@ export class BanRepository {
                 sql`(select ${courses.koskId} from ${courses} where ${courses.id} = ${courseId})`
               )
             ),
-            eq(bans.madrasahId, courseMadrasah(courseId))
+            eq(bans.madrasahId, courseMadrasah(courseId)),
+            eq(bans.scope, BAN_SCOPES.PLATFORM)
           )
         )
       )
@@ -249,24 +266,42 @@ export class BanRepository {
           or(
             and(eq(bans.scope, BAN_SCOPES.COURSE), eq(bans.courseId, courseId)),
             and(eq(bans.scope, BAN_SCOPES.KOSK), eq(bans.koskId, koskId)),
-            eq(bans.madrasahId, courseMadrasah(courseId))
+            eq(bans.madrasahId, courseMadrasah(courseId)),
+            eq(bans.scope, BAN_SCOPES.PLATFORM)
           )
         )
       )
       .orderBy(bans.createdAt);
     const byUser = new Map<string, IBan>();
     // The wider ban is the one shown when several are open: a COURSE ban
-    // gives way to either of the others, a KOSK ban to nothing.
+    // gives way to any of the others, a KOSK ban to a PLATFORM ban alone.
+    const width: Record<BanScope, number> = {
+      [BAN_SCOPES.COURSE]: 0,
+      [BAN_SCOPES.MADRASAH]: 1,
+      [BAN_SCOPES.KOSK]: 2,
+      [BAN_SCOPES.PLATFORM]: 3,
+    };
     for (const row of rows as IBan[]) {
       const current = byUser.get(row.userId);
-      if (
-        !current ||
-        row.scope === BAN_SCOPES.KOSK ||
-        (row.scope === BAN_SCOPES.MADRASAH && current.scope !== BAN_SCOPES.KOSK)
-      )
+      // Rows come oldest first, and of two bans of one width the later is shown.
+      if (!current || width[row.scope] >= width[current.scope])
         byUser.set(row.userId, row);
     }
     return byUser;
+  }
+
+  /**
+   * Whether the person holds any assigned role anywhere: a nazım, a
+   * başmüderris, a nazır or a müderris of some scope. A platform ban covers
+   * every scope, so it is asked of all of them (MDRS-194).
+   */
+  async holdsAnyRole(userId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ role: roleAssignments.role })
+      .from(roleAssignments)
+      .where(and(eq(roleAssignments.userId, userId), isHeld()))
+      .limit(1);
+    return row !== undefined;
   }
 
   /** The roles the person holds that bear on the scopes, one entry per role held. */
@@ -297,39 +332,48 @@ export class BanRepository {
    * stands is returned with `created: false`.
    */
   async create(entry: INewBan): Promise<{ ban: IBan; created: boolean }> {
-    return this.db.transaction(async (tx) => {
-      const [inserted] = await tx
-        .insert(bans)
-        .values(entry)
-        .onConflictDoNothing()
-        .returning();
-      if (inserted) {
-        await tx.insert(auditLog).values({
-          actorId: entry.bannedBy,
-          action: entry.extendedFromBanId ? "ban.extend" : "ban.create",
-          entity: "ban",
-          entityId: inserted.id,
-          details: {
-            extendedFromBanId: entry.extendedFromBanId ?? null,
-            userId: entry.userId,
-            scope: entry.scope,
-            koskId: entry.koskId,
-            madrasahId: entry.madrasahId,
-            courseId: entry.courseId,
-            extendedFromCourseId: entry.extendedFromCourseId,
-            role: entry.bannedRole,
-            reason: entry.reason,
-          },
-        });
-        return { ban: inserted as IBan, created: true };
-      }
-      const [standing] = await tx
-        .select()
-        .from(bans)
-        .where(and(eq(bans.userId, entry.userId), open(), sameBar(entry)))
-        .limit(1);
-      return { ban: standing as IBan, created: false };
-    });
+    return this.db.transaction((tx) => this.createWithin(tx, entry));
+  }
+
+  /** `create`, as a step of a transaction another write has opened (MDRS-194). */
+  async createWithin(
+    tx: BanTransaction,
+    entry: INewBan
+  ): Promise<{ ban: IBan; created: boolean }> {
+    const [inserted] = await tx
+      .insert(bans)
+      .values(entry)
+      .onConflictDoNothing()
+      .returning();
+    if (inserted) {
+      await tx.insert(auditLog).values({
+        actorId: entry.bannedBy,
+        action: entry.extendedFromBanId ? "ban.extend" : "ban.create",
+        entity: "ban",
+        entityId: inserted.id,
+        details: {
+          extendedFromBanId: entry.extendedFromBanId ?? null,
+          ...(entry.permanentRequestId
+            ? { permanentRequestId: entry.permanentRequestId }
+            : {}),
+          userId: entry.userId,
+          scope: entry.scope,
+          koskId: entry.koskId,
+          madrasahId: entry.madrasahId,
+          courseId: entry.courseId,
+          extendedFromCourseId: entry.extendedFromCourseId,
+          role: entry.bannedRole,
+          reason: entry.reason,
+        },
+      });
+      return { ban: inserted as IBan, created: true };
+    }
+    const [standing] = await tx
+      .select()
+      .from(bans)
+      .where(and(eq(bans.userId, entry.userId), open(), sameBar(entry)))
+      .limit(1);
+    return { ban: standing as IBan, created: false };
   }
 
   /**
@@ -379,6 +423,12 @@ export class BanRepository {
       ) as SQL,
       status === "ACTIVE" ? desc(bans.createdAt) : desc(bans.liftedAt)
     );
+  }
+
+  /** The bans of the given ids with their names, in no promised order. */
+  async entriesOf(ids: readonly string[]): Promise<IBanEntry[]> {
+    if (ids.length === 0) return [];
+    return this.entries(inArray(bans.id, [...ids]), desc(bans.createdAt));
   }
 
   /** One ban with its names, open or lifted. */
@@ -476,7 +526,9 @@ export class BanRepository {
           ? eq(courses.koskId, ban.koskId)
           : ban.scope === BAN_SCOPES.MADRASAH && ban.madrasahId
             ? eq(courses.madrasahId, ban.madrasahId)
-            : null;
+            : ban.scope === BAN_SCOPES.PLATFORM
+              ? sql`true`
+              : null;
     if (!covered) return [];
     const older = alias(bans, "older_ban");
     return this.db
@@ -518,7 +570,8 @@ export class BanRepository {
                     and(
                       eq(older.scope, BAN_SCOPES.MADRASAH),
                       eq(older.madrasahId, courses.madrasahId)
-                    )
+                    ),
+                    eq(older.scope, BAN_SCOPES.PLATFORM)
                   )
                 )
               )
@@ -566,6 +619,9 @@ export class BanRepository {
           string | null
         >`(select ${enrollments.studentEmail} from ${enrollments} where ${enrollments.userId} = ${bans.userId} and ${enrollments.studentEmail} is not null order by ${enrollments.createdAt} limit 1)`,
         permanentRequestedAt: banPermanentRequests.createdAt,
+        permanentRequestStatus: banPermanentRequests.status,
+        permanentDecidedAt: banPermanentRequests.decidedAt,
+        permanentDecisionNote: banPermanentRequests.decisionNote,
       })
       .from(bans)
       .leftJoin(target, eq(target.id, bans.userId))
@@ -630,6 +686,10 @@ export class BanRepository {
       extendedFromCourseTitle: r.widenedTitle,
       koskName: r.koskName,
       permanentRequestedAt: r.permanentRequestedAt,
+      permanentRequestStatus:
+        r.permanentRequestStatus as PermanentBanRequestStatus | null,
+      permanentDecidedAt: r.permanentDecidedAt,
+      permanentDecisionNote: r.permanentDecisionNote,
     }));
   }
 
@@ -723,7 +783,7 @@ export class BanRepository {
 
   /**
    * Whether an open ban bars the person anywhere in the medrese: a MADRASAH
-   * ban on it, or a COURSE ban on one of its courses.
+   * ban on it, a COURSE ban on one of its courses, or a PLATFORM ban.
    */
   async isBarredInMadrasah(
     userId: string,
@@ -738,6 +798,7 @@ export class BanRepository {
           open(),
           or(
             eq(bans.madrasahId, madrasahId),
+            eq(bans.scope, BAN_SCOPES.PLATFORM),
             inArray(
               bans.courseId,
               this.db

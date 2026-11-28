@@ -18,7 +18,8 @@ const koskOfEnrollment = sql`(select ${courses.koskId} from ${courses} where ${c
  * (the calendar feed, Programım, the phone menu's next session) reads this, so
  * what "enrolled" means is written once: a pending request is not in it, and a
  * barred talebe's courses drop out until the ban lifts. A medrese-wide ban
- * (MDRS-187) is the one with a `madrasah_id`, which only it has.
+ * (MDRS-187) is the one with a `madrasah_id`, which only it has; a platform
+ * ban (MDRS-194) takes every course.
  *
  * `excludePassive` is for the lists that hand out a live link: a course whose
  * müderris, köşk nazımı or başmüderris has gone is closed even to its
@@ -55,6 +56,6 @@ export const enrolledCourseIds = (
               holdsIn(ASSIGNED_ROLES.KOSK_NAZIM, koskOfEnrollment)
             )}))`
           : undefined,
-        sql`not exists (select 1 from ${bans} where ${bans.userId} = ${enrollments.userId} and ${bans.liftedAt} is null and ((${bans.scope} = 'COURSE' and ${bans.courseId} = ${enrollments.courseId}) or (${bans.scope} = 'KOSK' and ${bans.koskId} = (select ${courses.koskId} from ${courses} where ${courses.id} = ${enrollments.courseId})) or ${bans.madrasahId} = (select ${courses.madrasahId} from ${courses} where ${courses.id} = ${enrollments.courseId})))`
+        sql`not exists (select 1 from ${bans} where ${bans.userId} = ${enrollments.userId} and ${bans.liftedAt} is null and (${bans.scope} = 'PLATFORM' or (${bans.scope} = 'COURSE' and ${bans.courseId} = ${enrollments.courseId}) or (${bans.scope} = 'KOSK' and ${bans.koskId} = (select ${courses.koskId} from ${courses} where ${courses.id} = ${enrollments.courseId})) or ${bans.madrasahId} = (select ${courses.madrasahId} from ${courses} where ${courses.id} = ${enrollments.courseId})))`
       )
     );

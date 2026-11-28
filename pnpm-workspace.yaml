@@ -12,7 +12,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 packages:
-  # Explicit enumeration, no globs (ADR-001 §D11) — 18 real packages.
+  # Explicit enumeration, no globs (ADR-001 §D11) — 19 real packages.
   # An unregistered package fails loudly instead of being silently ignored.
   - 'apps/tedrisat'
   - 'apps/teskilat'
@@ -31,6 +31,7 @@ packages:
   - 'libs/i18n'
   - 'libs/types'
   - 'libs/utils'
+  - 'libs/sarf'
   - 'libs/auth'
   # Reserved names — docs-only, create nothing now (ADR-001 §D1):
   #   apps/muhasebe, apps/e2e, apps/web, apps/docs,
@@ -160,6 +161,21 @@ overrides:
   # 2026-11-16: raised to 1.16.2 for GHSA-mrwp-f3q8-3g9p (high: sensitiveHeaders
   # from another realm are dropped, and custom credentials follow redirects).
   follow-redirects: ^1.16.2
+  # 2026-11-24, with the lesson board. @excalidraw/excalidraw 0.18.1 declares
+  # nanoid as the exact string "3.3.3" and its mermaid-to-excalidraw declares
+  # "4.0.2": GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8 and GHSA-xwg4-73v4-xw9w
+  # (all high) reach both, fixed on the 3.x line in 3.3.18 and, for the 4.x
+  # line, only in 5.1.16: 4.x got no patch. Both consumers import the one
+  # named export `nanoid`, which 5.x still has. Its langium reaches lodash-es
+  # 4.17.21 (GHSA-r5fr-rjxr-66jc, high), fixed in 4.18.1. Exact declarations
+  # leave no room to re-resolve, so only an override moves them. The `@3` and
+  # `@4` selectors keep each consumer on the line it asked for where a patch
+  # exists there.
+  # Removal condition: drop these when @excalidraw/excalidraw ships a version
+  # whose own declarations admit the patched releases.
+  nanoid@3: ^3.3.18
+  nanoid@4: ^5.1.16
+  lodash-es: ^4.18.1
 
   # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
   # (oversized array), GHSA-qfvm-cv95-jqjf (fd leak), GHSA-wc9g-mqfw-jrwm
@@ -364,6 +380,7 @@ catalog:
   next-intl: ^4.4.0
   '@t3-oss/env-nextjs': ^0.13.8
   '@fontsource/scheherazade-new': ^5.2.8
+  '@excalidraw/excalidraw': ~0.18.1 # the lesson board's canvas (MIT, released 2026-04-20); tilde: its scene format is what a saved board is written in
   dotenv: ^17.4.2 # libs/i18n runtime — MDRS-21: +1 major
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1

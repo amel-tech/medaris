@@ -9,6 +9,7 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { normalizeYoutubeLiveUrl } from "@medaris/utils";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -289,6 +290,23 @@ export function SessionsTable({
         {t("Sessions.week", { n: row.weekNumber })}
         {row.isMakeUp ? ` · ${t("Sessions.makeUp")}` : ""}
       </span>
+      {canManage ? (
+        // The müderris's own material of the session, each on its own page.
+        <span className="mds-caption flex flex-wrap gap-3">
+          <Link
+            href={`/ders/${courseId}/celseler/${row.id}/tahta`}
+            aria-label={t("Sessions.boardLabel", { title: row.title })}
+          >
+            {t("Sessions.board")}
+          </Link>
+          <Link
+            href={`/ders/${courseId}/celseler/${row.id}/not`}
+            aria-label={t("Sessions.teacherNoteLabel", { title: row.title })}
+          >
+            {t("Sessions.teacherNote")}
+          </Link>
+        </span>
+      ) : null}
     </span>
   );
 

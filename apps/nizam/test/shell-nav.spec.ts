@@ -120,8 +120,11 @@ describe("the menus as the canvases draw them", () => {
       [
         "Köşk",
         "Dersler",
+        "Celseler",
+        "Talebeler",
         "Başvurular",
         "Ders talepleri",
+        "Ders kayıtları",
         "Köşk desteleri",
         "Yasaklamalar",
         "Arşiv",
@@ -140,6 +143,25 @@ describe("the menus as the canvases draw them", () => {
           existsSync(join(appDir, dir, "page.tsx")),
           `${i.id}: ${i.path}`
         ).toBe(true);
+      }
+    }
+  });
+
+  it("Medaris başnazımı and nazımı: every entry is a page that exists, but the one known gap (MDRS-194)", () => {
+    const appDir = fileURLToPath(new URL("../app", import.meta.url));
+    // YouTube bağlantısı is drawn in the menu and not built yet. Listed here
+    // so that a second missing page fails, and so that building this one
+    // fails too until the entry leaves the list.
+    const unbuilt = ["youtube"];
+    for (const variant of ["chief", "medaris"] as const) {
+      for (const g of navGroups(variant)) {
+        for (const i of g.items) {
+          const dir = i.path === "/" ? "(home)" : i.path;
+          expect(
+            existsSync(join(appDir, dir, "page.tsx")),
+            `${variant} ${i.id}: ${i.path}`
+          ).toBe(!unbuilt.includes(i.id));
+        }
       }
     }
   });
@@ -216,11 +238,17 @@ describe("where the viewer is", () => {
     expect(coursePathAlias("/kosks/a/courses/new")).toBe("/kosks/a/dersler");
   });
 
-  it("draws Dersler selected on a course's Celseler and Talebeler too: the köşk-wide pages are not built (MDRS-211)", () => {
+  it("draws Celseler and Talebeler selected on a course's own Celseler and Talebeler (MDRS-211)", () => {
     expect(coursePathAlias("/kosks/a/courses/c/students")).toBe(
-      "/kosks/a/dersler"
+      "/kosks/a/talebeler"
     );
     expect(coursePathAlias("/kosks/a/courses/c/sessions")).toBe(
+      "/kosks/a/celseler"
+    );
+    expect(coursePathAlias("/kosks/a/courses/c/sessions/new")).toBe(
+      "/kosks/a/celseler"
+    );
+    expect(coursePathAlias("/kosks/a/courses/sessions")).toBe(
       "/kosks/a/dersler"
     );
     expect(coursePathAlias("/kosks/a/basvurular")).toBe("/kosks/a/basvurular");

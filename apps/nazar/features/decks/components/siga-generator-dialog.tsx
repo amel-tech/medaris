@@ -1,5 +1,14 @@
 "use client";
 
+import {
+  BAB_KEYS,
+  BABS,
+  type BabKey,
+  generateSigas,
+  readRoot,
+  type SigaCekimDraft as SigaDraft,
+  type SigaMeta,
+} from "@medaris/sarf";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
@@ -15,17 +24,10 @@ import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { createCards } from "../actions";
 import { type CardType, deckErrorKey, FACE_MAX, FACE_MIN } from "../decks";
-import {
-  BAB_KEYS,
-  BABS,
-  type BabKey,
-  generateSigas,
-  readRoot,
-  type SigaDraft,
-  type SigaKip,
-  type SigaMeta,
-  sigaDraftProblems,
-} from "../siga";
+import { sigaDraftProblems } from "../siga";
+
+/** The two tenses this dialog drafts; the sarf screen drafts every kip. */
+type SigaKip = "mazi" | "muzari";
 
 /** A draft's sîga as the preview names it: "Gâib · müfred", "Mütekellim · vahde". */
 const sigaLabel = (words: Messages, meta: SigaMeta): string => {

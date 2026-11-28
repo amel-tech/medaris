@@ -52,7 +52,7 @@ export class ExtendBanDto {
     enum: [...EXTEND_SCOPES],
     enumName: "ExtendBanScope",
     description:
-      "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.",
+      "The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request.",
   })
   @IsIn(EXTEND_SCOPES)
   scope!: string;
@@ -101,7 +101,8 @@ export class BanResponse {
     type: String,
     format: "uuid",
     nullable: true,
-    description: "Null for a MADRASAH ban, which belongs to no single köşk.",
+    description:
+      "Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all.",
   })
   koskId!: string | null;
 

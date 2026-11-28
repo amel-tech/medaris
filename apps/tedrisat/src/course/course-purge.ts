@@ -12,6 +12,8 @@ import {
   lessonResources,
   lessons,
 } from "../database/schema/course.schema";
+import { courseSarfRoots } from "../database/schema/course-sarf.schema";
+import { courseTerms } from "../database/schema/course-term.schema";
 import {
   examAnswers,
   examAttempts,
@@ -24,6 +26,10 @@ import {
   lessonAssignments,
 } from "../database/schema/lesson-assignment.schema";
 import {
+  lessonBoardFiles,
+  lessonBoards,
+} from "../database/schema/lesson-board.schema";
+import {
   examResults,
   lessonExams,
 } from "../database/schema/lesson-exam.schema";
@@ -34,6 +40,7 @@ import {
   submissionFiles,
   submissionReviewFiles,
 } from "../database/schema/lesson-submission.schema";
+import { lessonTeacherNotes } from "../database/schema/lesson-teacher-note.schema";
 import { lessonViews } from "../database/schema/lesson-view.schema";
 import {
   courseExamTopics,
@@ -139,6 +146,8 @@ export async function purgeCourses(
     await deleteLessonResources(tx, lessonIds, "course.purge");
     await deleteLessonSubmissions(tx, lessonIds, "course.purge");
     await deleteLessonAssignments(tx, lessonIds, "course.purge");
+    await deleteLessonBoards(tx, lessonIds, "course.purge");
+    await deleteLessonTeacherNotes(tx, lessonIds);
     counts.lessons = (
       await tx
         .delete(lessons)
@@ -156,6 +165,12 @@ export async function purgeCourses(
   // children — `scope_id` points at any kind of scope — so they are named
   // here too (MDRS-134). Not counted: `muderris` below already counts who
   // taught there.
+  // The roots on the course's sarf page and its glossary hang off the course
+  // itself.
+  await tx
+    .delete(courseSarfRoots)
+    .where(inArray(courseSarfRoots.courseId, courseIds));
+  await tx.delete(courseTerms).where(inArray(courseTerms.courseId, courseIds));
   await deleteAssignmentsIn(tx, SCOPE_TYPES.COURSE, courseIds);
   counts.muderris = (
     await tx
@@ -382,6 +397,30 @@ export async function deleteLessonAssignments(
 }
 
 /**
+ * Deletes the boards of the given lessons, their images first, inside the
+ * caller's transaction, and marks every image's object for removal from
+ * storage once it commits. Shared by every purge that deletes lessons.
+ */
+export async function deleteLessonBoards(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[],
+  reason: DeletionReason
+): Promise<void> {
+  const removed = await tx
+    .delete(lessonBoardFiles)
+    .where(inArray(lessonBoardFiles.lessonId, lessonIds))
+    .returning({ key: lessonBoardFiles.storageKey });
+  await enqueueStorageDeletions(
+    tx,
+    removed.map((f) => f.key),
+    reason
+  );
+  await tx
+    .delete(lessonBoards)
+    .where(inArray(lessonBoards.lessonId, lessonIds));
+}
+
+/**
  * Deletes the exam rows of the given lessons (MDRS-248), their results first,
  * inside the caller's transaction. Nothing of an exam is held in storage.
  */
@@ -431,6 +470,8 @@ export async function deleteSession(
   await deleteLessonResources(tx, ids, reason);
   await deleteLessonSubmissions(tx, ids, reason);
   await deleteLessonAssignments(tx, ids, reason);
+  await deleteLessonBoards(tx, ids, reason);
+  await deleteLessonTeacherNotes(tx, ids);
   await tx.delete(lessons).where(eq(lessons.id, lessonId));
 }
 
@@ -464,4 +505,17 @@ export async function recordDeletion(
     entityId: entry.entityId,
     details: entry.details,
   });
+}
+
+/**
+ * Deletes the notes the müderris wrote for the given lessons, inside the
+ * caller's transaction. Shared by every purge that deletes lessons.
+ */
+export async function deleteLessonTeacherNotes(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[]
+): Promise<void> {
+  await tx
+    .delete(lessonTeacherNotes)
+    .where(inArray(lessonTeacherNotes.lessonId, lessonIds));
 }

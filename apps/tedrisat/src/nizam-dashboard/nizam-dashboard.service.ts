@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { AssignmentService } from "../assignment/assignment.service";
 import { BanService } from "../ban/ban.service";
 import { BanForbiddenError } from "../ban/errors/ban-errors";
+import { PermanentBanService } from "../ban/permanent-ban.service";
 import { InactiveScopeService } from "../inactive-scope/inactive-scope.service";
 import { isSystemAdmin } from "../platform-access/platform-access.service";
 import type { TokenClaims } from "../user/interfaces/token-claims.interface";
@@ -36,7 +37,8 @@ export class NizamDashboardService {
     private readonly repo: NizamDashboardRepository,
     private readonly assignments: AssignmentService,
     private readonly inactive: InactiveScopeService,
-    private readonly bans: BanService
+    private readonly bans: BanService,
+    private readonly permanentBans: PermanentBanService
   ) {}
 
   async get(user: TokenClaims): Promise<NizamDashboardResponse> {
@@ -56,6 +58,7 @@ export class NizamDashboardService {
       applications,
       deckRequests,
       appeals,
+      permanentBanRequests,
       passive,
       latestBans,
       dbName,
@@ -64,6 +67,7 @@ export class NizamDashboardService {
       sections.applications ? this.repo.applications(CARD_ROWS) : null,
       sections.deckRequests ? this.repo.deckRequests(CARD_ROWS) : null,
       sections.appeals ? this.repo.pendingAppeals() : null,
+      sections.permanentBans ? this.permanentBans.pendingCount() : null,
       this.inactive.brief(),
       sections.bans ? this.latestBans(user) : null,
       this.repo.givenNameOf(user.sub),
@@ -80,9 +84,7 @@ export class NizamDashboardService {
         koskApplications: applications?.count ?? null,
         deckPublishRequests: deckRequests?.count ?? null,
         appeals,
-        // Permanent-ban requests have no model yet (nizam/45 is a later
-        // phase): a viewer who would see them has none waiting.
-        permanentBanRequests: sections.permanentBans ? 0 : null,
+        permanentBanRequests,
       },
       platformCounts: {
         kosk: numbers.kosk,
@@ -128,6 +130,7 @@ export class NizamDashboardService {
         scope: b.scope,
         courseTitle: b.courseTitle,
         koskName: b.koskName,
+        madrasahName: b.madrasahName,
         bannedByName: b.bannerPerson.name ?? b.bannerPerson.email,
         reason: b.reason,
         createdAt: b.createdAt,

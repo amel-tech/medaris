@@ -47,9 +47,11 @@ import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { sessionChoices } from "../question-model";
 import { CourseAside } from "./course-aside";
 import { CourseDecksTab } from "./course-decks-tab";
+import { CourseGlossaryTab } from "./course-glossary-tab";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
+import { CourseSarfTab } from "./course-sarf-tab";
 import { DocumentsTab } from "./documents-tab";
 import { MyGradesTab } from "./exam-grades";
 import { FileErrorNotice } from "./file-error-notice";
@@ -216,6 +218,14 @@ export const CoursePage = ({
             label: t("tabDeck"),
             ...(decks.length > 0 ? { count: decks.length } : {}),
           },
+        ]
+      : []),
+    // The müderris's own material is content: for who holds a seat, while
+    // the course's content is open.
+    ...(seat && !course.contentLocked
+      ? [
+          { value: "sarf", label: t("tabSarf") },
+          { value: "lugat", label: t("tabGlossary") },
         ]
       : []),
     ...(asksQuestions
@@ -504,6 +514,16 @@ export const CoursePage = ({
                 ) : (
                   <EmptyState>{t("deckEmpty")}</EmptyState>
                 )}
+              </TabsPanel>
+            ) : null}
+            {seat && !course.contentLocked ? (
+              <TabsPanel value="sarf" className="pbs-4">
+                <CourseSarfTab courseId={course.id} />
+              </TabsPanel>
+            ) : null}
+            {seat && !course.contentLocked ? (
+              <TabsPanel value="lugat" className="pbs-4">
+                <CourseGlossaryTab courseId={course.id} />
               </TabsPanel>
             ) : null}
             {asksQuestions ? (

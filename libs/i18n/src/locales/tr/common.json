@@ -17,6 +17,61 @@
     "en": "English",
     "tr": "Türkçe"
   },
+  "sarf": {
+    "kip": {
+      "mazi": "Mâzî",
+      "muzari": "Muzâri",
+      "masdar": "Masdar",
+      "ismi_fail": "İsm-i fâil",
+      "ismi_meful": "İsm-i mef'ûl",
+      "cehdi_mutlak": "Cehd-i mutlak",
+      "cehdi_mustagrak": "Cehd-i müstağrak",
+      "nefyi_hal": "Nefy-i hâl",
+      "nefyi_istikbal": "Nefy-i istikbâl",
+      "tekidi_nefyi_istikbal": "Te'kîd-i nefy-i istikbâl",
+      "emri_gaib": "Emr-i gâib",
+      "nehyi_gaib": "Nehy-i gâib",
+      "emri_hazir": "Emr-i hâzır",
+      "nehyi_hazir": "Nehy-i hâzır",
+      "ismi_zaman": "İsm-i zaman",
+      "ismi_mekan": "İsm-i mekân",
+      "ismi_alet": "İsm-i âlet",
+      "masdar_merre": "Masdar binâ-i merre",
+      "masdar_nev": "Masdar binâ-i nev'",
+      "ismi_tasgir": "İsm-i tasğîr",
+      "ismi_mensub": "İsm-i mensûb",
+      "mubalaga": "Mübâlağa ism-i fâil",
+      "ismi_tafdil": "İsm-i tafdîl",
+      "fiili_taaccub": "Fi'l-i taaccüb",
+      "taaccub_evvel": "Fi'l-i taaccüb-i evvel",
+      "taaccub_sani": "Fi'l-i taaccüb-i sânî"
+    },
+    "bina": {
+      "malum": "Ma'lûm",
+      "mechul": "Mechûl"
+    },
+    "row": {
+      "gaib": "Gâib",
+      "gaibe": "Gâibe",
+      "muhatab": "Muhâtab",
+      "muhataba": "Muhâtaba",
+      "mutekellim": "Mütekellim",
+      "muzekker": "Müzekker",
+      "muennes": "Müennes"
+    },
+    "sayi": {
+      "mufred": "Müfred",
+      "tesniye": "Tesniye",
+      "cem": "Cem"
+    },
+    "bab": "Bâb:",
+    "speakerForms": "vahde · maa'l-gayr",
+    "cellNone": "Bu sîga yok",
+    "taslak": "Taslak",
+    "taslakHelp": "Semâî: en yaygın vezin önerildi, hoca doğrular.",
+    "extraPlurals": "Diğer cemiler",
+    "meaning": "Anlam"
+  },
   "toast": {
     "close": "Kapat"
   },

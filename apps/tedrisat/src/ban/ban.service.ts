@@ -387,9 +387,10 @@ export class BanService {
    * Tells the talebe of each course a new ban has taken from them (MDRS-213).
    * They read what changed, "erişimin kaldırıldı", never "yasak"
    * (MDS-VOICE-05), and never the reason, which is for those who lift the ban.
-   * A notification that cannot be written never undoes the ban.
+   * A notification that cannot be written never undoes the ban. Public for
+   * the platform ban an approved request opens (MDRS-194).
    */
-  private async tellBarred(banId: string): Promise<void> {
+  async tellBarred(banId: string): Promise<void> {
     try {
       const seats = await this.repo.seatsNewlyBarred(banId);
       if (seats.length === 0) return;

@@ -53,7 +53,7 @@ export interface BanResponse {
      */
     scope: BanScope;
     /**
-     * Null for a MADRASAH ban, which belongs to no single köşk.
+     * Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all.
      * @type {string}
      * @memberof BanResponse
      */

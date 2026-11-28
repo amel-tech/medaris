@@ -12,11 +12,15 @@ import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
  */
 export type AllBansRead = AllBansListResponse | "forbidden" | null;
 
-/** First page of the Medaris-wide ban list (nizam 48): open bans, newest first. */
-export const getAllBans = async (): Promise<AllBansRead> => {
+/** First page of the Medaris-wide ban list (nizam 48): open bans, newest first, narrowed to a person when the address names one (`?q=`). */
+export const getAllBans = async (q?: string): Promise<AllBansRead> => {
   try {
     const api = await tedrisatApi();
-    return await api.bans.listAllBans({ status: "ACTIVE", limit: 20 });
+    return await api.bans.listAllBans({
+      status: "ACTIVE",
+      q: q || undefined,
+      limit: 20,
+    });
   } catch (error) {
     await passOnSignIn(error);
     if (error instanceof ResponseError && error.response.status === 403) {

@@ -90,6 +90,7 @@ component, not the folder** — release-please cuts releases against the compone
 | `types` | `libs/types` |
 | `utils` | `libs/utils` |
 | `env` | `libs/env` |
+| `sarf` | `libs/sarf` |
 
 **Cross-cutting** — these release nothing on their own:
 
@@ -274,6 +275,7 @@ the implementation.
 | `types` | `shared` | *(none)* | `types` |
 | `utils` | `shared` | *(none)* | `util` |
 | `env` | `shared` | *(none)* | `util` |
+| `sarf` | `shared` | *(none)* | `util` |
 
 `scope:shared` libraries are deliberately **platform-neutral** — they carry no
 `platform:*` tag, which is what lets both the Nest apps and the browser bundles

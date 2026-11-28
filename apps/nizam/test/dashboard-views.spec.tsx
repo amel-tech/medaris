@@ -189,6 +189,34 @@ describe("the başnazım's home page (nizam 01)", () => {
     expect(empty).toContain("Bekleyen deste yayın isteği yok.");
     expect(empty).toContain("Açık yasak yok.");
   });
+
+  it("words a platform ban and a medrese ban as what they are (MDRS-194)", () => {
+    const [first] = chief.latestBans ?? [];
+    if (!first) throw new Error("the fixture has a ban");
+    const wide = render(
+      <MedarisHome
+        data={{
+          ...chief,
+          latestBans: [
+            { ...first, scope: "PLATFORM", courseTitle: null, koskName: null },
+            {
+              ...first,
+              id: "b2",
+              scope: "MADRASAH",
+              courseTitle: null,
+              koskName: null,
+              madrasahName: "Süleymaniye Medresesi",
+            },
+          ],
+        }}
+        grants={null}
+        nowIso={NOW}
+      />
+    );
+    expect(wide).toContain("Platform yasağı: bütün Medaris");
+    expect(wide).toContain("Medrese yasağı: Süleymaniye Medresesi");
+    expect(wide).not.toContain("Köşk yasağı");
+  });
 });
 
 const grants: GrantResponse[] = [
@@ -246,6 +274,42 @@ describe("a Medaris nazımı's home page (nizam 05)", () => {
   it("sums the three queues it shows: 7 (criterion 2)", () => {
     expect(html).toContain("Selâmün aleyküm, Hasan Basri Bey.");
     expect(html).toContain("Karar bekleyen 7 talep var.");
+  });
+
+  it("counts the waiting permanent ban requests and links to their page (MDRS-194)", () => {
+    expect(html).toContain("Karar bekleyen 2 kalıcı yasak talebi var.");
+    expect(html).toContain('href="/talepler/kalici-yasak"');
+    const none = render(
+      <MedarisHome
+        data={{
+          ...nazim,
+          pendingTotals: { ...nazim.pendingTotals, permanentBanRequests: 0 },
+        }}
+        grants={grants}
+        nowIso={NOW}
+      />
+    );
+    expect(none).toContain("Bekleyen kalıcı yasak talebi yok.");
+    expect(none).not.toContain('href="/talepler/kalici-yasak"');
+  });
+
+  it("shows the başnazım the section only while a request waits (MDRS-194)", () => {
+    const quiet = render(
+      <MedarisHome data={chief} grants={grants} nowIso={NOW} />
+    );
+    expect(quiet).not.toContain("home-permanent-bans");
+    const waiting = render(
+      <MedarisHome
+        data={{
+          ...chief,
+          pendingTotals: { ...chief.pendingTotals, permanentBanRequests: 1 },
+        }}
+        grants={grants}
+        nowIso={NOW}
+      />
+    );
+    expect(waiting).toContain("Karar bekleyen 1 kalıcı yasak talebi var.");
+    expect(waiting).toContain('href="/talepler/kalici-yasak"');
   });
 
   it("draws neither the course numbers nor the passive scopes", () => {
@@ -460,11 +524,11 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(html).toContain("/kosks/k1/courses/c1/sessions");
   });
 
-  it("links no page that is not built: the köşk-wide Celseler, Talebeler and Ders kayıtları (MDRS-211)", () => {
-    expect(html).not.toMatch(
-      /\/kosks\/k1\/(celseler|talebeler|ders-kayitlari)/
+  it("sends the Celseler card's Tümünü gör to the köşk-wide Celseler (MDRS-211)", () => {
+    expect(html).toMatch(
+      /<a[^>]*href="\/kosks\/k1\/celseler"[^>]*>Tümünü gör<\/a>/
     );
-    // the applications card keeps its "Tümünü gör", to a page that exists
+    // the applications card keeps its own
     expect(html).toContain('href="/kosks/k1/basvurular"');
   });
 

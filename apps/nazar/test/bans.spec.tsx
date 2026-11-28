@@ -129,6 +129,9 @@ const ban = (n: number, over: Record<string, unknown> = {}) => ({
   viewerMayEscalate: true,
   viewerMayRequestPermanent: true,
   permanentRequestedAt: null,
+  permanentRequestStatus: null,
+  permanentDecidedAt: null,
+  permanentDecisionNote: null,
   ...over,
 });
 
@@ -170,6 +173,7 @@ const canvas = () => [
     viewerMayEscalate: false,
     viewerMayRequestPermanent: false,
     permanentRequestedAt: new Date("2026-09-30T09:00:00+03:00"),
+    permanentRequestStatus: "PENDING",
   }),
 ];
 const lifted = () => [
@@ -457,6 +461,39 @@ describe("the rows", () => {
       false,
       true,
     ]);
+    expect(rows().every((row) => row.permanentOutcome === null)).toBe(true);
+  });
+
+  it("says how Medaris administration answered a permanent request (MDRS-194)", () => {
+    const decided = (over: Record<string, unknown>) =>
+      banRows(
+        [
+          ban(7, {
+            permanentRequestedAt: new Date("2026-09-30T09:00:00+03:00"),
+            permanentDecidedAt: new Date("2026-10-01T09:00:00+03:00"),
+            ...over,
+          }),
+        ] as never,
+        t,
+        {
+          locale: "tr",
+          timeZone: "Europe/Istanbul",
+          now: new Date("2026-10-02T12:00:00+03:00"),
+          madrasahName: "Süleymaniye Medresesi",
+        }
+      )[0];
+    const refused = decided({
+      permanentRequestStatus: "REJECTED",
+      permanentDecisionNote: "Tek olay; medrese yasağı yeterli.",
+    });
+    expect(refused?.permanentPending).toBe(false);
+    expect(refused?.permanentOutcome).toEqual({
+      status: "REJECTED",
+      note: "Tek olay; medrese yasağı yeterli.",
+    });
+    expect(
+      decided({ permanentRequestStatus: "APPROVED" })?.permanentOutcome
+    ).toEqual({ status: "APPROVED", note: null });
   });
 });
 

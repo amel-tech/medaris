@@ -52,6 +52,10 @@ export const PAGE_CODES = {
   /** "Değerlendirme" (MDRS-248): the marks are written under `session.manage` */
   evaluation: [CODES.sessionManage],
   decks: [CODES.deckManageCourse],
+  sarf: [CODES.courseEdit],
+  glossary: [CODES.courseEdit],
+  board: [CODES.sessionManage],
+  teacherNote: [CODES.sessionManage],
   settings: [
     CODES.courseEdit,
     CODES.courseSettings,

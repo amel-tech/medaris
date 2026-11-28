@@ -58,6 +58,12 @@ export interface DashboardBanResponse {
      */
     koskName?: string | null;
     /**
+     * The medrese of a medrese ban, or of a course ban in a medrese course
+     * @type {string}
+     * @memberof DashboardBanResponse
+     */
+    madrasahName?: string | null;
+    /**
      * 
      * @type {string}
      * @memberof DashboardBanResponse
@@ -105,6 +111,7 @@ export function DashboardBanResponseFromJSONTyped(json: any, ignoreDiscriminator
         'scope': BanScopeFromJSON(json['scope']),
         'courseTitle': json['courseTitle'] == null ? undefined : json['courseTitle'],
         'koskName': json['koskName'] == null ? undefined : json['koskName'],
+        'madrasahName': json['madrasahName'] == null ? undefined : json['madrasahName'],
         'bannedByName': json['bannedByName'] == null ? undefined : json['bannedByName'],
         'reason': json['reason'],
         'createdAt': (new Date(json['createdAt'])),
@@ -127,6 +134,7 @@ export function DashboardBanResponseToJSONTyped(value?: DashboardBanResponse | n
         'scope': BanScopeToJSON(value['scope']),
         'courseTitle': value['courseTitle'],
         'koskName': value['koskName'],
+        'madrasahName': value['madrasahName'],
         'bannedByName': value['bannedByName'],
         'reason': value['reason'],
         'createdAt': ((value['createdAt']).toISOString()),

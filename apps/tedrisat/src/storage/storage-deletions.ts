@@ -16,6 +16,7 @@ export type DeletionReason =
   | "submission.review_file_delete"
   | "assignment.delete"
   | "assignment.file_delete"
+  | "board.file_delete"
   | "upload.failed"
   | "upload.unclaimed";
 

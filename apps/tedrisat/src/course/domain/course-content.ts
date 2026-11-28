@@ -153,7 +153,8 @@ export type RosterRead =
   | "stats"
   | "badge-counts"
   | "pending"
-  | "kosk-dashboard";
+  | "kosk-dashboard"
+  | "kosk-students";
 
 /** The caller's own row says ENROLLED or COMPLETED (PENDING is not enrolled). */
 export function isEnrolledTalebe(

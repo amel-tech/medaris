@@ -164,19 +164,14 @@ test("a path no page answers, under the köşk the nazım manages, is 'Sayfa bul
   const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
   try {
     await signIn(page, KOSK_NAZIM);
-    await page.goto(`/kosks/${managed.koskId}/celseler`);
+    // A path no page answers; Celseler itself is a page since MDRS-211.
+    await page.goto(`/kosks/${managed.koskId}/boyle-bir-sayfa-yok`);
     await expect(
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();
     await expect(page.getByText("izniniz yok")).toHaveCount(0);
-    // the shell around it is still there, and its menu no longer offers the page
+    // the shell around it is still there
     await expect(page.locator("aside").first()).toBeVisible();
-    await expect(
-      page
-        .locator("aside")
-        .first()
-        .getByRole("link", { name: /^Celseler/ })
-    ).toHaveCount(0);
     await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
     await expect(page).toHaveURL(HOME);
   } finally {

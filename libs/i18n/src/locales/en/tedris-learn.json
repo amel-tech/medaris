@@ -399,5 +399,16 @@
     "topicStandingTied": "You are {rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} of {taken}; {tiedWith, plural, one {# other person} other {# other people}} got the same as you.",
     "view": "Exam page",
     "viewLabel": "Exam page: {course}, {title}"
+  },
+  "SessionBoard": {
+    "title": "Lesson board",
+    "hint": "The board the teacher prepared for this session. You can pan and zoom it.",
+    "canvas": "Lesson board",
+    "loading": "Loading the board…",
+    "imagesFailed": "Some pictures on the board could not be loaded. Refresh the page."
+  },
+  "SessionTeacherNote": {
+    "title": "Lesson note",
+    "hint": "The note the teacher wrote for this session."
   }
 }

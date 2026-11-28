@@ -35,6 +35,7 @@ const nextConfig = {
     "@medaris/icons",
     "@medaris/i18n",
     "@medaris/utils",
+    "@medaris/sarf",
     "@medaris/services",
   ],
   experimental: {

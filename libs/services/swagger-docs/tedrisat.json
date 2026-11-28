@@ -781,6 +781,203 @@
         ]
       }
     },
+    "/kosks/{id}/sessions": {
+      "get": {
+        "description": "The live sessions of the köşk's published, shown courses, a page at a time: `tab=UPCOMING` is everything not over yet, soonest first, `tab=PAST` everything that is over, latest first. Cancelled sessions stay listed and say so. No meeting link is sent: that is the course's own Celseler page; `inPerson` is sent only to a caller holding `kosk.manage`. For the köşk's nazımları and the başnazım, and a Medaris nazımı holding `platform.kosk_edit`. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "operationId": "listKoskSessions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tab",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "UPCOMING",
+                "PAST"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskSessionListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every course's live sessions for the köşk (Celseler)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/students": {
+      "get": {
+        "description": "Everyone enrolled in, or who completed, a course of the köşk that is not hidden: one row a person, newest first by first enrollment, each with all of their courses in the köşk, and how many applications wait (`pendingCount`). `q` matches the name or the e-mail address. Names and addresses are personal data: for the köşk's nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it, as it does not open the applicants), and every read is written to `audit_log` as a roster read on the köşk. A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "operationId": "listKoskStudents",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskStudentListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The köşk's talebe, a page at a time (Talebeler)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/recordings": {
+      "get": {
+        "description": "The ders kayıtları of the köşk's shown courses, a page at a time, ordered by course, then the latest week, then the latest session: each with its course, week, session time, source, status and visibility. No address is sent: watching and editing are the course's own page. Which recordings a course shows is decided by its own content rule (visibility, a closed course, a failed upload); this list shows them all, so it is for the köşk's nazımları and the başnazım alone (`kosk.manage`; `platform.kosk_edit` does not open it). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`.",
+        "operationId": "listKoskRecordings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskRecordingListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every course's ders kayıtları for the köşk (Ders kayıtları)",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
     "/kosks": {
       "get": {
         "description": "Open to callers with no token (MDRS-122). Lists every köşk except the unlisted ones (`isPrivate`): an unlisted köşk is in no list, for anyone — it is reached by its link. `managedBy=me` narrows the list, and its `total`, to the köşks the caller manages (KOSK_NAZIM, MDRS-108, MDRS-134), unlisted ones included — nizam's köşk list; it needs a token. `madrasahId` narrows it to the köşks that medrese holds a hosting right in (MDRS-134).",
@@ -5793,7 +5990,8 @@
               "enum": [
                 "COURSE",
                 "KOSK",
-                "MADRASAH"
+                "MADRASAH",
+                "PLATFORM"
               ],
               "type": "string"
             }
@@ -5907,7 +6105,7 @@
     },
     "/bans/{banId}/lift": {
       "post": {
-        "description": "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
+        "description": "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban, `platform.ban_account` for a platform ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
         "operationId": "liftBan",
         "parameters": [
           {
@@ -6203,6 +6401,144 @@
         "summary": "Bar a talebe from a course of the medrese, or from all of it (Yasakla)",
         "tags": [
           "bans"
+        ]
+      }
+    },
+    "/permanent-ban-requests": {
+      "get": {
+        "description": "Waiting ones oldest first, decided ones newest first, each with the ban it is about, and both counts. For the başnazım and a Medaris nazımı holding `platform.ban_account`.",
+        "operationId": "listPermanentBanRequests",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "DECIDED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermanentBanRequestListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Permanent ban requests (Karar bekleyen / Karara bağlanan)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/permanent-ban-requests/{id}/approve": {
+      "post": {
+        "description": "Bars the person from all of Medaris: a PLATFORM ban is opened beside the ban the request is about, and every köşk, medrese and course refuses them from then on. The sign-in account is not closed. A person already barred from the platform keeps that ban. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already, 409 BAN_ALREADY_LIFTED when the ban it is about was lifted meanwhile. Written to the audit log (permanent_ban.approve, and ban.create for the platform ban).",
+        "operationId": "approvePermanentBanRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "BAN_TARGET_INVALID"
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "PERMANENT_BAN_REQUEST_NOT_PENDING or BAN_ALREADY_LIFTED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve the request (Onayla)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/permanent-ban-requests/{id}/reject": {
+      "post": {
+        "description": "The note is required and is read by whoever asked; the ban the request is about stays as it was. 409 PERMANENT_BAN_REQUEST_NOT_PENDING when it was decided already. Written to the audit log (permanent_ban.reject).",
+        "operationId": "rejectPermanentBanRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectPermanentBanRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": "BAN_FORBIDDEN"
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "PERMANENT_BAN_REQUEST_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refuse the request (Reddet)",
+        "tags": [
+          "nizam"
         ]
       }
     },
@@ -9095,6 +9431,687 @@
         "summary": "Withdraw a medrese's hosting right",
         "tags": [
           "kosks"
+        ]
+      }
+    },
+    "/courses/{id}/sarf-roots": {
+      "get": {
+        "description": "In the order they were added. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "listCourseSarfRoots",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseSarfRootResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The roots on a course's sarf page",
+        "tags": [
+          "courses"
+        ]
+      },
+      "put": {
+        "description": "Adds the root in the given bâb, or, when the course already has it in that bâb, changes its mastar and its masdar's vezin; the row comes back either way. Sülâsî mücerred sâlim only: a root with a hamza or a weak letter fails field validation, a doubled one is 400 COURSE_SARF_ROOT_DOUBLED. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "saveCourseSarfRoot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCourseSarfRootDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSarfRootResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, COURSE_SARF_ROOT_DOUBLED"
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Put a root on a course's sarf page",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/sarf-roots/{rootId}": {
+      "delete": {
+        "description": "The cards already drafted from it into a deck stay. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "deleteCourseSarfRoot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rootId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, COURSE_SARF_ROOT_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a root off a course's sarf page",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/terms": {
+      "get": {
+        "description": "Every term of the course, in the order they were added; the reader sorts and searches. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "listCourseTerms",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseTermResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A course's glossary",
+        "tags": [
+          "courses"
+        ]
+      },
+      "post": {
+        "description": "Only the term itself is required; a text left out or empty is kept as null. Every text is stored as typed and shown as plain text. At most 1000 terms a course (400 COURSE_TERMS_FULL). Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "createCourseTerm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCourseTermDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTermResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, COURSE_TERMS_FULL"
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a term to a course's glossary",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/terms/{termId}": {
+      "patch": {
+        "description": "A key left out stays as it is; a text sent as null or empty is cleared. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "updateCourseTerm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "termId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCourseTermDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseTermResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, COURSE_TERM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a term of a course's glossary",
+        "tags": [
+          "courses"
+        ]
+      },
+      "delete": {
+        "description": "The term is removed for good; there is no history. Whoever holds `course.edit` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "deleteCourseTerm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "termId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, COURSE_TERM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a term of a course's glossary",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/lessons/{id}/board": {
+      "get": {
+        "description": "The scene as it was last saved and the images on it. A session with no board answers with `scene: null` and no files, not 404. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "getLessonBoard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonBoardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A session's board",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "post": {
+        "description": "The scene replaces the one before it. It is sent as the multipart field `file` (its JSON, at most 4 MB), not as a JSON body: a board of handwriting is larger than a JSON body may be. tedrisat keeps the scene's elements and its background and drops the rest of the canvas's state. Every image the scene shows must already be a file of the board (400 LESSON_BOARD_SCENE_INVALID otherwise); the board's files the scene no longer shows are removed, from storage too. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "saveLessonBoard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonBoardResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "LESSON_BOARD_SCENE_INVALID"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "413": {
+            "description": "The scene is too large."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save a session's board",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/board/files": {
+      "post": {
+        "description": "The image is the multipart field `file` and `fileKey` the id the canvas gave it. A PNG, JPEG or WebP as read from its bytes (415 FILE_TYPE_NOT_ALLOWED), at most 25 MB (413 FILE_TOO_LARGE). A key the board already has answers with the file it has: the canvas names an image by its content. It is shown once a scene that names it is saved, and removed when a saved scene no longer does. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "addLessonBoardFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "fileKey": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file",
+                  "fileKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonBoardFileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED, LESSON_BOARD_FILE_KEY_INVALID, LESSON_BOARD_FILES_FULL"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add an image to a session's board",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/board/files/{fileKey}": {
+      "get": {
+        "description": "The image's bytes. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "getLessonBoardFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileKey",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image."
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, LESSON_BOARD_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An image of a session's board",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/teacher-note": {
+      "get": {
+        "description": "The note as it was last saved. A session with no note answers with `body: null`, not 404. Read by whoever reads the course's content: an enrolled talebe and the course's staff.",
+        "operationId": "getLessonTeacherNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonTeacherNoteResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `course.view_details`."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A session's note from its müderris",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "put": {
+        "description": "The text replaces the one before it; there is no history. At most 20000 characters. A body that is null, left out or only whitespace removes the note. Whoever holds `session.manage` on the course: its müderris, its nazırı and the managers above it.",
+        "operationId": "saveLessonTeacherNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveLessonTeacherNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonTeacherNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write a session's note",
+        "tags": [
+          "lessons"
         ]
       }
     },
@@ -18547,6 +19564,311 @@
           "permissions"
         ]
       },
+      "KoskSessionRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese the course belongs to; null for a köşk's own"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "cancelled": {
+            "type": "boolean",
+            "description": "The session was called off; it stays listed"
+          },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person, by the lesson or its course. How a session is attended goes where the meeting link goes (MDRS-283): left out for a caller without `kosk.manage`."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "courseId",
+          "courseTitle",
+          "madrasahName",
+          "weekNumber",
+          "scheduledAt",
+          "durationMinutes",
+          "cancelled"
+        ]
+      },
+      "KoskSessionListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskSessionRowResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Rows of the tab asked for, on every page"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "upcomingCount": {
+            "type": "number",
+            "description": "Sessions not over yet, cancelled ones too"
+          },
+          "pastCount": {
+            "type": "number",
+            "description": "Sessions that are over, cancelled ones too"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "upcomingCount",
+          "pastCount"
+        ]
+      },
+      "KoskStudentCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ENROLLED",
+              "COMPLETED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status"
+        ]
+      },
+      "KoskStudentResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstEnrolledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskStudentCourseResponse"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "name",
+          "email",
+          "firstEnrolledAt",
+          "courses"
+        ]
+      },
+      "KoskStudentListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskStudentResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "Talebe matching the search, on every page"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Applications waiting in the köşk's courses (Başvurular)"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "pendingCount"
+        ]
+      },
+      "RecordingProvider": {
+        "type": "string",
+        "enum": [
+          "YOUTUBE",
+          "DRIVE",
+          "OTHER",
+          "BUNNY"
+        ]
+      },
+      "RecordingStatus": {
+        "type": "string",
+        "enum": [
+          "PROCESSING",
+          "READY",
+          "FAILED"
+        ]
+      },
+      "RecordingVisibility": {
+        "type": "string",
+        "enum": [
+          "PUBLIC",
+          "ENROLLED"
+        ]
+      },
+      "KoskRecordingRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "weekTitle": {
+            "type": "string"
+          },
+          "sessionAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the session it records was held, if it has a time"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingProvider"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingStatus"
+              }
+            ]
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "lessonId",
+          "courseId",
+          "courseTitle",
+          "weekNumber",
+          "weekTitle",
+          "sessionAt",
+          "durationMinutes",
+          "provider",
+          "status",
+          "visibility"
+        ]
+      },
+      "KoskRecordingListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KoskRecordingRowResponse"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
       "KoskManagedBy": {
         "type": "string",
         "enum": [
@@ -22228,7 +23550,8 @@
         "enum": [
           "COURSE",
           "KOSK",
-          "MADRASAH"
+          "MADRASAH",
+          "PLATFORM"
         ]
       },
       "EnrollmentBanResponse": {
@@ -22593,30 +23916,6 @@
           "title",
           "weekNumber",
           "status"
-        ]
-      },
-      "RecordingProvider": {
-        "type": "string",
-        "enum": [
-          "YOUTUBE",
-          "DRIVE",
-          "OTHER",
-          "BUNNY"
-        ]
-      },
-      "RecordingVisibility": {
-        "type": "string",
-        "enum": [
-          "PUBLIC",
-          "ENROLLED"
-        ]
-      },
-      "RecordingStatus": {
-        "type": "string",
-        "enum": [
-          "PROCESSING",
-          "READY",
-          "FAILED"
         ]
       },
       "SessionRecordingResponse": {
@@ -24168,7 +25467,7 @@
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "Null for a MADRASAH ban, which belongs to no single köşk."
+            "description": "Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all."
           },
           "courseId": {
             "type": "string",
@@ -24329,13 +25628,13 @@
         "enum": [
           "KOSK"
         ],
-        "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet."
+        "description": "The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request."
       },
       "ExtendBanDto": {
         "type": "object",
         "properties": {
           "scope": {
-            "description": "The wider scope the ban moves up to. Only KOSK exists: medrese and platform bans are not modelled yet.",
+            "description": "The wider scope the ban moves up to. Only KOSK is offered here: a medrese ban is placed through the medrese routes, and a platform ban only by approving a permanent ban request.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ExtendBanScope"
@@ -24382,6 +25681,15 @@
           "reason"
         ]
       },
+      "PermanentBanRequestStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "description": "What Medaris administration decided on that request: PENDING while it waits, APPROVED (the person is barred from all of Medaris) or REJECTED (this ban stays as it was). Null when no request was made."
+      },
       "MadrasahBanResponse": {
         "type": "object",
         "properties": {
@@ -24403,7 +25711,7 @@
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "Null for a MADRASAH ban, which belongs to no single köşk."
+            "description": "Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all."
           },
           "courseId": {
             "type": "string",
@@ -24481,7 +25789,26 @@
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "When the medrese asked for the ban to be permanent; null when it has not. The request is not decided yet: deciding is Medaris administration's, a later phase."
+            "description": "When the medrese asked for the ban to be permanent; null when it has not."
+          },
+          "permanentRequestStatus": {
+            "nullable": true,
+            "description": "What Medaris administration decided on that request: PENDING while it waits, APPROVED (the person is barred from all of Medaris) or REJECTED (this ban stays as it was). Null when no request was made.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PermanentBanRequestStatus"
+              }
+            ]
+          },
+          "permanentDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "permanentDecisionNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "The note of a refusal, for whoever asked; null otherwise."
           }
         },
         "required": [
@@ -24505,7 +25832,10 @@
           "viewerMayLift",
           "viewerMayEscalate",
           "viewerMayRequestPermanent",
-          "permanentRequestedAt"
+          "permanentRequestedAt",
+          "permanentRequestStatus",
+          "permanentDecidedAt",
+          "permanentDecisionNote"
         ]
       },
       "MadrasahBanListResponse": {
@@ -24569,6 +25899,176 @@
           "userId",
           "scope",
           "reason"
+        ]
+      },
+      "PermanentBanRequestBanResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BanScope"
+              }
+            ]
+          },
+          "koskName": {
+            "type": "string",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the lower ban was placed."
+          },
+          "bannedBy": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "bannedRole": {
+            "type": "string",
+            "description": "The role the banner acted in. The client words it."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "liftedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Set when the ban was lifted meanwhile: such a request can be refused, not approved."
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "scope",
+          "koskName",
+          "courseTitle",
+          "madrasahName",
+          "reason",
+          "bannedBy",
+          "bannedRole",
+          "createdAt",
+          "liftedAt"
+        ]
+      },
+      "PermanentBanRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the requester asks for a permanent ban."
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/BanPersonResponse"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BanPersonResponse"
+              }
+            ]
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "decisionNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "The note of a refusal; null for an approval."
+          },
+          "platformBanId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "The PLATFORM ban an approval opened, or the one that stood already."
+          },
+          "ban": {
+            "$ref": "#/components/schemas/PermanentBanRequestBanResponse"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reason",
+          "requestedBy",
+          "createdAt",
+          "decidedBy",
+          "decidedAt",
+          "decisionNote",
+          "platformBanId",
+          "ban"
+        ]
+      },
+      "PermanentBanRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermanentBanRequestResponse"
+            }
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "Requests waiting for a decision."
+          },
+          "decidedCount": {
+            "type": "number",
+            "description": "Requests approved or refused."
+          }
+        },
+        "required": [
+          "items",
+          "pendingCount",
+          "decidedCount"
+        ]
+      },
+      "RejectPermanentBanRequestDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Why the request is refused. Read by whoever asked. Required, and not blank."
+          }
+        },
+        "required": [
+          "note"
         ]
       },
       "NotificationResponse": {
@@ -26816,6 +28316,341 @@
         "enum": [
           "KEEP",
           "HIDE"
+        ]
+      },
+      "CourseSarfRootResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kok": {
+            "type": "string",
+            "example": "ن ص ر",
+            "description": "The root, three sâlim Arabic letters with a space between. Sülâsî mücerred sâlim only: a hamza, a weak letter or a doubled root is refused."
+          },
+          "bab": {
+            "type": "string",
+            "enum": [
+              "nasara",
+              "daraba",
+              "fataha",
+              "semia",
+              "hasune",
+              "hasibe"
+            ]
+          },
+          "mastar": {
+            "type": "string",
+            "nullable": true
+          },
+          "masdarVezin": {
+            "type": "string",
+            "enum": [
+              "fal",
+              "feal",
+              "ful",
+              "fil",
+              "fuul",
+              "feale",
+              "fuule",
+              "fiale",
+              "filan"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "kok",
+          "bab",
+          "mastar",
+          "masdarVezin",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SaveCourseSarfRootDto": {
+        "type": "object",
+        "properties": {
+          "kok": {
+            "type": "string",
+            "example": "ن ص ر",
+            "description": "The root, three sâlim Arabic letters with a space between. Sülâsî mücerred sâlim only: a hamza, a weak letter or a doubled root is refused."
+          },
+          "bab": {
+            "type": "string",
+            "enum": [
+              "nasara",
+              "daraba",
+              "fataha",
+              "semia",
+              "hasune",
+              "hasibe"
+            ],
+            "example": "nasara"
+          },
+          "mastar": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120,
+            "example": "yardım etmek",
+            "description": "The Turkish mastar the meaning templates are built on. Left out or empty, the tables show the Arabic alone."
+          },
+          "masdarVezin": {
+            "type": "string",
+            "enum": [
+              "fal",
+              "feal",
+              "ful",
+              "fil",
+              "fuul",
+              "feale",
+              "fuule",
+              "fiale",
+              "filan"
+            ],
+            "example": "fal",
+            "description": "The vezin of the masdar, which is semâî: the müderris confirms the one the engine offered or picks another."
+          }
+        },
+        "required": [
+          "kok",
+          "bab",
+          "masdarVezin"
+        ]
+      },
+      "CourseTermResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "term": {
+            "type": "string",
+            "description": "The term as the course says it, e.g. `mâzî`."
+          },
+          "arabic": {
+            "type": "string",
+            "nullable": true,
+            "description": "The term's Arabic spelling, vowelled if the müderris wishes."
+          },
+          "lexicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "description": "What the word means in the language (lügat manası)."
+          },
+          "technicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "description": "What it means as a term of the science (ıstılah manası). Plain text."
+          },
+          "example": {
+            "type": "string",
+            "nullable": true,
+            "description": "An example of the term in use."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "term",
+          "arabic",
+          "lexicalMeaning",
+          "technicalMeaning",
+          "example",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateCourseTermDto": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "The term as the course says it, e.g. `mâzî`."
+          },
+          "arabic": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200,
+            "description": "The term's Arabic spelling, vowelled if the müderris wishes."
+          },
+          "lexicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What the word means in the language (lügat manası)."
+          },
+          "technicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What it means as a term of the science (ıstılah manası). Plain text."
+          },
+          "example": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000,
+            "description": "An example of the term in use."
+          }
+        },
+        "required": [
+          "term"
+        ]
+      },
+      "UpdateCourseTermDto": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "The term as the course says it, e.g. `mâzî`."
+          },
+          "arabic": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200,
+            "description": "The term's Arabic spelling, vowelled if the müderris wishes."
+          },
+          "lexicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What the word means in the language (lügat manası)."
+          },
+          "technicalMeaning": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "What it means as a term of the science (ıstılah manası). Plain text."
+          },
+          "example": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000,
+            "description": "An example of the term in use."
+          }
+        }
+      },
+      "LessonBoardFileResponse": {
+        "type": "object",
+        "properties": {
+          "fileKey": {
+            "type": "string",
+            "example": "3f1c9a",
+            "description": "The id the canvas gave the image; an image element of the scene names it as its `fileId`."
+          },
+          "contentType": {
+            "type": "string",
+            "example": "image/png"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fileKey",
+          "contentType",
+          "sizeBytes"
+        ]
+      },
+      "LessonBoardResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scene": {
+            "type": "object",
+            "nullable": true,
+            "description": "The canvas document (`{ elements, appState }`) as it was saved; null when the session has no board yet. Its images are not inside it: each is in `files`, fetched by its `fileKey`."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonBoardFileResponse"
+            }
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "lessonId",
+          "scene",
+          "files",
+          "updatedAt"
+        ]
+      },
+      "LessonTeacherNoteResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string",
+            "nullable": true,
+            "description": "The note as Markdown. It is stored as typed; the reader renders it and never trusts it as HTML. Null when the session has no note."
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "lessonId",
+          "body",
+          "updatedAt"
+        ]
+      },
+      "SaveLessonTeacherNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 20000,
+            "description": "The note as Markdown. It is stored as typed; the reader renders it and never trusts it as HTML. Null or empty removes the note."
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "LessonNoteResponse": {
@@ -30826,7 +32661,7 @@
           "permanentBanRequests": {
             "type": "number",
             "nullable": true,
-            "description": "Kalıcı yasak talepleri: the request model comes with a later phase, so the count is 0 for a viewer who would see it"
+            "description": "Kalıcı yasak talepleri: the requests for a permanent ban waiting for a decision"
           }
         }
       },
@@ -30999,6 +32834,11 @@
           "koskName": {
             "type": "string",
             "nullable": true
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese of a medrese ban, or of a course ban in a medrese course"
           },
           "bannedByName": {
             "type": "string",

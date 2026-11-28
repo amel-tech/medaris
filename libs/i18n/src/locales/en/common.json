@@ -17,6 +17,61 @@
     "en": "English",
     "tr": "Türkçe"
   },
+  "sarf": {
+    "kip": {
+      "mazi": "Past (māḍī)",
+      "muzari": "Present (muḍāriʿ)",
+      "masdar": "Verbal noun (maṣdar)",
+      "ismi_fail": "Active participle",
+      "ismi_meful": "Passive participle",
+      "cehdi_mutlak": "Negated past (lam)",
+      "cehdi_mustagrak": "Not yet (lammā)",
+      "nefyi_hal": "Negated present (mā)",
+      "nefyi_istikbal": "Negated future (lā)",
+      "tekidi_nefyi_istikbal": "Emphatic negated future (lan)",
+      "emri_gaib": "Third-person command",
+      "nehyi_gaib": "Third-person prohibition",
+      "emri_hazir": "Command",
+      "nehyi_hazir": "Prohibition",
+      "ismi_zaman": "Noun of time",
+      "ismi_mekan": "Noun of place",
+      "ismi_alet": "Noun of instrument",
+      "masdar_merre": "Noun of one instance",
+      "masdar_nev": "Noun of manner",
+      "ismi_tasgir": "Diminutive",
+      "ismi_mensub": "Relative noun",
+      "mubalaga": "Intensive participle",
+      "ismi_tafdil": "Comparative",
+      "fiili_taaccub": "Verb of wonder",
+      "taaccub_evvel": "First verb of wonder",
+      "taaccub_sani": "Second verb of wonder"
+    },
+    "bina": {
+      "malum": "Active",
+      "mechul": "Passive"
+    },
+    "row": {
+      "gaib": "3rd person m.",
+      "gaibe": "3rd person f.",
+      "muhatab": "2nd person m.",
+      "muhataba": "2nd person f.",
+      "mutekellim": "1st person",
+      "muzekker": "Masculine",
+      "muennes": "Feminine"
+    },
+    "sayi": {
+      "mufred": "Singular",
+      "tesniye": "Dual",
+      "cem": "Plural"
+    },
+    "bab": "Pattern:",
+    "speakerForms": "alone · with others",
+    "cellNone": "No such form",
+    "taslak": "Draft",
+    "taslakHelp": "Not derivable by rule: the commonest pattern is suggested for the teacher to confirm.",
+    "extraPlurals": "Other plurals",
+    "meaning": "Meaning"
+  },
   "toast": {
     "close": "Close"
   },

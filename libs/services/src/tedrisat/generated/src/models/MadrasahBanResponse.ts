@@ -20,6 +20,13 @@ import {
     BanPersonResponseToJSON,
     BanPersonResponseToJSONTyped,
 } from './BanPersonResponse';
+import type { PermanentBanRequestStatus } from './PermanentBanRequestStatus';
+import {
+    PermanentBanRequestStatusFromJSON,
+    PermanentBanRequestStatusFromJSONTyped,
+    PermanentBanRequestStatusToJSON,
+    PermanentBanRequestStatusToJSONTyped,
+} from './PermanentBanRequestStatus';
 import type { BanScope } from './BanScope';
 import {
     BanScopeFromJSON,
@@ -53,7 +60,7 @@ export interface MadrasahBanResponse {
      */
     scope: BanScope;
     /**
-     * Null for a MADRASAH ban, which belongs to no single köşk.
+     * Null for a MADRASAH ban, which belongs to no single köşk, and for a PLATFORM ban, which covers them all.
      * @type {string}
      * @memberof MadrasahBanResponse
      */
@@ -155,11 +162,29 @@ export interface MadrasahBanResponse {
      */
     viewerMayRequestPermanent: boolean;
     /**
-     * When the medrese asked for the ban to be permanent; null when it has not. The request is not decided yet: deciding is Medaris administration's, a later phase.
+     * When the medrese asked for the ban to be permanent; null when it has not.
      * @type {Date}
      * @memberof MadrasahBanResponse
      */
     permanentRequestedAt: Date | null;
+    /**
+     * What Medaris administration decided on that request: PENDING while it waits, APPROVED (the person is barred from all of Medaris) or REJECTED (this ban stays as it was). Null when no request was made.
+     * @type {PermanentBanRequestStatus}
+     * @memberof MadrasahBanResponse
+     */
+    permanentRequestStatus: PermanentBanRequestStatus | null;
+    /**
+     * 
+     * @type {Date}
+     * @memberof MadrasahBanResponse
+     */
+    permanentDecidedAt: Date | null;
+    /**
+     * The note of a refusal, for whoever asked; null otherwise.
+     * @type {string}
+     * @memberof MadrasahBanResponse
+     */
+    permanentDecisionNote: string | null;
 }
 
 
@@ -189,6 +214,9 @@ export function instanceOfMadrasahBanResponse(value: object): value is MadrasahB
     if (!('viewerMayEscalate' in value) || value['viewerMayEscalate'] === undefined) return false;
     if (!('viewerMayRequestPermanent' in value) || value['viewerMayRequestPermanent'] === undefined) return false;
     if (!('permanentRequestedAt' in value) || value['permanentRequestedAt'] === undefined) return false;
+    if (!('permanentRequestStatus' in value) || value['permanentRequestStatus'] === undefined) return false;
+    if (!('permanentDecidedAt' in value) || value['permanentDecidedAt'] === undefined) return false;
+    if (!('permanentDecisionNote' in value) || value['permanentDecisionNote'] === undefined) return false;
     return true;
 }
 
@@ -223,6 +251,9 @@ export function MadrasahBanResponseFromJSONTyped(json: any, ignoreDiscriminator:
         'viewerMayEscalate': json['viewerMayEscalate'],
         'viewerMayRequestPermanent': json['viewerMayRequestPermanent'],
         'permanentRequestedAt': (json['permanentRequestedAt'] == null ? null : new Date(json['permanentRequestedAt'])),
+        'permanentRequestStatus': PermanentBanRequestStatusFromJSON(json['permanentRequestStatus']),
+        'permanentDecidedAt': (json['permanentDecidedAt'] == null ? null : new Date(json['permanentDecidedAt'])),
+        'permanentDecisionNote': json['permanentDecisionNote'],
     };
 }
 
@@ -258,6 +289,9 @@ export function MadrasahBanResponseToJSONTyped(value?: MadrasahBanResponse | nul
         'viewerMayEscalate': value['viewerMayEscalate'],
         'viewerMayRequestPermanent': value['viewerMayRequestPermanent'],
         'permanentRequestedAt': ((value['permanentRequestedAt'] as any).toISOString()),
+        'permanentRequestStatus': PermanentBanRequestStatusToJSON(value['permanentRequestStatus']),
+        'permanentDecidedAt': ((value['permanentDecidedAt'] as any).toISOString()),
+        'permanentDecisionNote': value['permanentDecisionNote'],
     };
 }
 
